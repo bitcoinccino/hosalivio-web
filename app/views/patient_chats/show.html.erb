@@ -1,17 +1,25 @@
 <% content_for :title, "#{@patient.full_name} · HosAlivio" %>
 
-<div class="flex h-screen">
+<div class="flex h-screen" data-controller="sidebar" data-sidebar-storage-key-value="patientChatSidebar">
   <!-- ─── Left Rail: IDG Roster ─────────────────────────────────── -->
-  <aside class="w-72 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6">
+  <aside data-sidebar-target="sidebar" data-collapsed="false"
+         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
     <div>
-      <div class="flex items-center gap-2">
-        <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center">
-          <i class="ri-heart-pulse-line text-sm"></i>
+      <div class="flex items-center justify-between group-data-[collapsed=true]/sb:flex-col group-data-[collapsed=true]/sb:gap-2">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+            <i class="ri-heart-pulse-line text-sm"></i>
+          </div>
+          <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold group-data-[collapsed=true]/sb:hidden">HosAlivio</h1>
         </div>
-        <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</h1>
+        <button type="button" data-action="click->sidebar#toggle"
+                title="Toggle sidebar"
+                class="w-7 h-7 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] flex items-center justify-center flex-shrink-0 transition">
+          <i class="ri-side-bar-line text-[15px]"></i>
+        </button>
       </div>
 
-      <div class="mt-6 pb-5 border-b border-[#D9D5CD]">
+      <div class="mt-6 pb-5 border-b border-[#D9D5CD] group-data-[collapsed=true]/sb:hidden">
         <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Patient</div>
         <div class="mt-1 font-serif text-lg text-[#1D1C1A]"><%= @patient.full_name %></div>
         <div class="text-xs text-[#6B665F] mt-0.5 font-mono"><%= @patient.mrn %></div>
@@ -22,11 +30,51 @@
         <% end %>
       </div>
 
+      <div class="mt-6 pb-5 border-b border-[#D9D5CD] group-data-[collapsed=true]/sb:hidden">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Family</div>
+          <% if @can_invite_family %>
+            <%= link_to new_patient_family_path(@patient),
+                  class: "text-[11px] text-[#D97757] hover:underline inline-flex items-center gap-0.5" do %>
+              <i class="ri-user-add-line text-[12px]"></i> Invite
+            <% end %>
+          <% end %>
+        </div>
+        <% if @family_users.empty? %>
+          <div class="text-[11px] text-[#6B665F] italic">No family linked yet.</div>
+        <% else %>
+          <div class="space-y-2">
+            <% @family_users.each do |fu| %>
+              <div class="flex items-center gap-2 <%= 'opacity-50' unless fu.active %>">
+                <div class="w-7 h-7 rounded-full bg-[#D97757] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  <%= fu.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12px] text-[#1D1C1A] truncate"><%= fu.full_name %></div>
+                  <div class="text-[10px] text-[#6B665F] truncate">
+                    <%= fu.relationship.presence ? "#{fu.relationship.capitalize} of #{@patient.first_name}" : "Family member" %>
+                  </div>
+                </div>
+                <% if @can_invite_family && fu.active %>
+                  <%= button_to patient_family_path(@patient, fu), method: :delete,
+                        form: { class: "inline" },
+                        data: { turbo_confirm: "Revoke family access for #{fu.full_name}?" },
+                        class: "text-[10px] text-[#C1403A] hover:bg-[#FFF3EC] rounded-full w-6 h-6 flex items-center justify-center",
+                        title: "Revoke access" do %>
+                    <i class="ri-close-line"></i>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
       <nav class="mt-6 space-y-3">
-        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2">IDG Team</div>
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2 group-data-[collapsed=true]/sb:hidden">IDG Team</div>
         <% @idg_roster.each do |row| %>
-          <div class="flex items-center gap-3 text-sm">
-            <span class="relative flex items-center justify-center w-7 h-7 rounded-full bg-white border border-[#D9D5CD] text-[#6B665F]">
+          <div class="flex items-center gap-3 text-sm group-data-[collapsed=true]/sb:justify-center" title="<%= row[:name] %> (<%= row[:role].tr("_", " ") %>)">
+            <span class="relative flex items-center justify-center w-7 h-7 rounded-full bg-white border border-[#D9D5CD] text-[#6B665F] flex-shrink-0">
               <i class="<%=
                 {
                   'admissions'    => 'ri-customer-service-2-line',
@@ -37,7 +85,7 @@
                 }.fetch(row[:role], 'ri-user-line') %> text-sm"></i>
               <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#EFECE6] <%= row[:present] ? 'bg-emerald-500' : 'bg-[#B9B4AB]' %>"></span>
             </span>
-            <div>
+            <div class="group-data-[collapsed=true]/sb:hidden">
               <div class="text-[13px] text-[#1D1C1A] leading-tight"><%= row[:name] %></div>
               <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role].tr("_", " ") %></div>
             </div>
@@ -47,13 +95,7 @@
     </div>
 
     <div>
-      <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Agency</div>
-      <div class="text-sm text-[#1D1C1A] mt-0.5"><%= @agency.name %></div>
-      <div class="text-xs text-[#6B665F] mt-0.5">Tier: <%= @agency.billing_tier.capitalize %></div>
-      <button class="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition">
-        <i class="ri-sparkling-2-line"></i>
-        VHAS · Upgrade
-      </button>
+      <%= render "shared/user_menu", direction: :up %>
     </div>
   </aside>
 

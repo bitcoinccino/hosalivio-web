@@ -39,18 +39,18 @@ puts "   #{agency.name} (#{agency.slug})"
 ActsAsTenant.with_tenant(agency) do
   puts "== Seeding users (one per role) =="
   USERS = {
-    "admin"         => { email: "admin@hosalivio.test",      name: "System Admin" },
-    "rn"            => { email: "pascal@hosalivio.test",     name: "Pascal (RN)" },
-    "md"            => { email: "esther@hosalivio.test",     name: "Dr. Esther (MD)" },
-    "don"           => { email: "diaphnie@hosalivio.test",   name: "Diaphnie (DON)" },
-    "admissions"    => { email: "lucia@hosalivio.test",      name: "Lucia (Admissions)" },
-    "dme"           => { email: "marcus@hosalivio.test",     name: "Marcus (DME)" },
-    "pharmacy"      => { email: "simone@hosalivio.test",     name: "Simone (Pharmacy)" },
-    "insurance"     => { email: "kendra@hosalivio.test",     name: "Kendra (Insurance)" },
-    "billing"       => { email: "wolfwide@hosalivio.test",   name: "Wolfwide (Billing)" },
-    "chaplain"      => { email: "geoginio@hosalivio.test",   name: "Geoginio (Chaplain)" },
-    "social_worker" => { email: "nickla@hosalivio.test",     name: "Nickla (SW)" },
-    "aide"          => { email: "flore@hosalivio.test",      name: "Flore (Aide)" }
+    "admin"         => { email: "admin@hosalivio.com",      name: "System Admin" },
+    "rn"            => { email: "rn@hosalivio.com",         name: "Pascal (RN)" },
+    "md"            => { email: "md@hosalivio.com",         name: "Dr. Esther (MD)" },
+    "don"           => { email: "don@hosalivio.com",        name: "Diaphnie (DON)" },
+    "admissions"    => { email: "admissions@hosalivio.com", name: "Lucia (Admissions)" },
+    "dme"           => { email: "dme@hosalivio.com",        name: "Marcus (DME)" },
+    "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Simone (Pharmacy)" },
+    "insurance"     => { email: "insurance@hosalivio.com",  name: "Kendra (Insurance)" },
+    "billing"       => { email: "billing@hosalivio.com",    name: "Wolfwide (Billing)" },
+    "chaplain"      => { email: "chaplain@hosalivio.com",   name: "Geoginio (Chaplain)" },
+    "social_worker" => { email: "sw@hosalivio.com",         name: "Nickla (SW)" },
+    "aide"          => { email: "aide@hosalivio.com",       name: "Flore (Aide)" }
   }
 
   USERS.each do |role_name, info|
@@ -65,10 +65,10 @@ ActsAsTenant.with_tenant(agency) do
   puts "   #{User.where(agency: agency).count} users, #{UserRole.count} role assignments"
 
   puts "== Seeding demo patient =="
-  rn  = User.find_by!(email: "pascal@hosalivio.test")
-  md  = User.find_by!(email: "esther@hosalivio.test")
-  sw  = User.find_by!(email: "nickla@hosalivio.test")
-  cpl = User.find_by!(email: "geoginio@hosalivio.test")
+  rn  = User.find_by!(email: "rn@hosalivio.com")
+  md  = User.find_by!(email: "md@hosalivio.com")
+  sw  = User.find_by!(email: "sw@hosalivio.com")
+  cpl = User.find_by!(email: "chaplain@hosalivio.com")
 
   patient = Patient.find_or_initialize_by(agency: agency, mrn: "HOS-00001")
   if patient.new_record?
@@ -154,7 +154,7 @@ ActsAsTenant.with_tenant(agency) do
   end
 
   # Family portal user — for login-gated /patients/:id/chat
-  family_user = User.find_or_initialize_by(email: "family@hosalivio.test")
+  family_user = User.find_or_initialize_by(email: "family@hosalivio.com")
   family_user.full_name     = "Carlos Alvarez (son of #{patient.first_name})"
   family_user.agency        = agency
   family_user.family_access = true
@@ -266,10 +266,10 @@ admissions_role = Role.find_by!(name: "admissions")
 matrix = []
 ActsAsTenant.without_tenant do
   Agency.where(is_partner: true).order(:name).each do |a|
-    email = "coordinator@#{a.slug.downcase}.test"
+    email = "partner@#{a.slug.downcase}.com"
     ActsAsTenant.with_tenant(a) do
       u = User.find_or_initialize_by(email: email)
-      u.full_name = "#{a.name} Coordinator"
+      u.full_name = "#{a.name} Partner"
       u.agency    = a
       u.timezone  = "America/New_York"
       u.password  = "hello123"
@@ -283,6 +283,6 @@ puts matrix.join("\n")
 
 puts ""
 puts "== Done. =="
-puts "Demo credentials: any @hosalivio.test email + password 'hello123'"
+puts "Demo credentials: any @hosalivio.com email + password 'hello123'"
 puts ""
 puts "To print JWT tokens for agents:  bin/rails hosalivio:tokens"

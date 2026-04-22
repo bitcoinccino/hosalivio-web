@@ -1,0 +1,86 @@
+<% if user_signed_in? %>
+  <%
+    u = current_user
+    role = u.role_names.first
+    initials = u.full_name.to_s.split.map(&:first).first(2).join.upcase
+    role_color = {
+      "rn" => "#2F6F4E", "md" => "#2B4A7A", "sw" => "#7A4A8C",
+      "social_worker" => "#7A4A8C", "chaplain" => "#8C6A2F",
+      "aide" => "#AD7340", "don" => "#8B5A2B", "admissions" => "#C96F3F",
+      "admin" => "#1D1C1A", "family" => "#D97757"
+    }[role] || "#6B665F"
+    direction   = local_assigns.fetch(:direction, :down)
+    panel_pos   = direction == :up ? "bottom-full mb-2" : "top-full mt-2"
+    caret_icon  = direction == :up ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"
+    wrapper_cls = direction == :up ? "relative block w-full" : "relative inline-block"
+    button_cls  = direction == :up ? "w-full justify-between" : ""
+  %>
+  <div class="<%= wrapper_cls %>" data-controller="user-menu">
+    <button type="button"
+            data-action="click->user-menu#toggle"
+            title="<%= u.full_name %> — account menu"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white border border-[#EFECE6] hover:border-[#D9D5CD] hover:shadow-sm transition <%= button_cls %> group-data-[collapsed=true]/sb:p-0 group-data-[collapsed=true]/sb:border-0 group-data-[collapsed=true]/sb:bg-transparent group-data-[collapsed=true]/sb:hover:shadow-none group-data-[collapsed=true]/sb:w-auto group-data-[collapsed=true]/sb:justify-center">
+      <div class="w-7 h-7 rounded-full text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0"
+           style="background: <%= role_color %>;">
+        <%= initials %>
+      </div>
+      <div class="text-[11px] leading-tight pr-1 text-left group-data-[collapsed=true]/sb:hidden">
+        <div class="text-[#1D1C1A] truncate max-w-[140px]"><%= u.full_name %></div>
+        <div class="text-[9px] text-[#6B665F] uppercase tracking-wider font-mono"><%= role %></div>
+      </div>
+      <i class="<%= caret_icon %> text-[#6B665F] text-sm group-data-[collapsed=true]/sb:hidden"></i>
+    </button>
+
+    <div data-user-menu-target="panel"
+         class="hidden absolute right-0 <%= panel_pos %> w-64 rounded-2xl bg-white border border-[#EFECE6] shadow-lg overflow-hidden z-50
+                group-data-[collapsed=true]/sb:right-auto
+                group-data-[collapsed=true]/sb:left-full
+                group-data-[collapsed=true]/sb:bottom-0
+                group-data-[collapsed=true]/sb:ml-2
+                group-data-[collapsed=true]/sb:mb-0
+                group-data-[collapsed=true]/sb:mt-0">
+      <div class="px-4 py-3 border-b border-[#EFECE6]">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-full text-white text-[12px] font-bold flex items-center justify-center"
+               style="background: <%= role_color %>;">
+            <%= initials %>
+          </div>
+          <div class="min-w-0">
+            <div class="text-[13px] text-[#1D1C1A] truncate"><%= u.full_name %></div>
+            <div class="text-[11px] text-[#6B665F] truncate"><%= u.email %></div>
+            <div class="text-[9px] text-[#6B665F] uppercase tracking-wider font-mono mt-0.5"><%= role %> · <%= u.agency&.name %></div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="py-1">
+        <%= link_to edit_user_registration_path,
+              class: "flex items-center gap-3 px-4 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+          <i class="ri-user-line text-[#6B665F]"></i> Profile
+        <% end %>
+        <%= link_to edit_user_registration_path,
+              class: "flex items-center gap-3 px-4 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+          <i class="ri-settings-3-line text-[#6B665F]"></i> Settings
+        <% end %>
+        <% unless u.family_access? %>
+          <a href="#"
+             class="flex items-center gap-3 px-4 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+            <i class="ri-sparkling-2-line text-[#D97757]"></i>
+            <span>Upgrade to VHAS</span>
+            <span class="ml-auto text-[9px] font-bold text-white bg-[#D97757] rounded-full px-1.5 py-0.5 uppercase tracking-wider">Pro</span>
+          </a>
+        <% end %>
+      </nav>
+
+      <div class="border-t border-[#EFECE6]">
+        <%= button_to destroy_user_session_path,
+              method: :delete,
+              form: { class: "block w-full" },
+              data: { turbo_confirm: "Sign out of HosAlivio?" },
+              class: "flex items-center gap-3 w-full px-4 py-3 text-[13px] text-[#C1403A] hover:bg-[#FFF3EC]" do %>
+          <i class="ri-logout-box-r-line"></i> Sign out
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

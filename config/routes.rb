@@ -31,6 +31,11 @@ Rails.application.routes.draw do
   get "patients/:id",      to: "patient_chats#show", as: :patient
   get "patients/:id/chat", to: "patient_chats#show", as: :patient_chat  # alias
 
+  # Family-user invitations for a specific patient
+  resources :patients, only: [] do
+    resources :family, only: [:new, :create, :destroy], controller: "patient_families"
+  end
+
   # Calendar + visit CRUD (clinician-facing scheduling)
   get "calendar", to: "calendars#show", as: :calendar
   resources :visits, only: [:new, :create, :show, :edit, :update, :destroy]

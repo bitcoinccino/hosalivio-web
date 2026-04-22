@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Welcome to HosAlivio</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #FBF9F5; margin: 0; padding: 32px 16px; color: #1D1C1A;">
+  <table align="center" width="100%" style="max-width: 520px; background: white; border: 1px solid #EFECE6; border-radius: 16px; overflow: hidden;">
+    <tr>
+      <td style="padding: 28px 32px 8px;">
+        <div style="display: inline-block; width: 32px; height: 32px; border-radius: 50%; background: #D97757; color: white; text-align: center; line-height: 32px; font-weight: bold;">♡</div>
+        <h1 style="font-family: Georgia, serif; font-size: 22px; margin: 12px 0 4px;">You've been added to <%= @patient.first_name %>'s care team.</h1>
+        <p style="font-size: 13px; color: #6B665F; margin: 0;">HosAlivio Hospice · <%= @patient.agency&.name %></p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 16px; font-size: 14px; line-height: 1.55;">
+        <p>Hi <%= @user.full_name.to_s.split.first %>,</p>
+        <p>
+          <%= @invited_by.full_name %> at <%= @patient.agency&.name %> has set up a secure family portal
+          so you can reach the care team looking after <strong><%= @patient.full_name %></strong> anytime.
+        </p>
+        <p>You can send messages, report symptom changes, and read updates from every discipline (RN, MD, social worker, chaplain) in one place.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 16px;">
+        <div style="background: #FBF9F5; border: 1px solid #EFECE6; border-radius: 12px; padding: 16px;">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #6B665F; font-weight: bold;">Your sign-in</div>
+          <div style="font-size: 13px; margin-top: 4px;">Email: <strong><%= @user.email %></strong></div>
+          <div style="font-size: 13px;">Temporary password: <code style="background: #EFECE6; padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', Menlo, monospace;"><%= @temp_password %></code></div>
+          <div style="font-size: 12px; color: #6B665F; margin-top: 8px;">Please change your password on first sign-in.</div>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 32px 28px; text-align: center;">
+        <a href="<%= new_user_session_url %>"
+           style="display: inline-block; background: #D97757; color: white; text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 500; font-size: 14px;">
+          Open the family portal
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 32px 24px; border-top: 1px solid #EFECE6;">
+        <p style="font-size: 11px; color: #6B665F; margin: 16px 0 0; line-height: 1.5;">
+          This is a secure clinical channel. If you received this in error, please email the agency and ignore this message.
+          For emergencies, dial 911.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

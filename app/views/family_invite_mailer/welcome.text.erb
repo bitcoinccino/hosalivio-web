@@ -1,0 +1,22 @@
+You've been added to <%= @patient.first_name %>'s care team.
+HosAlivio Hospice · <%= @patient.agency&.name %>
+
+Hi <%= @user.full_name.to_s.split.first %>,
+
+<%= @invited_by.full_name %> at <%= @patient.agency&.name %> has set up a secure family
+portal so you can reach the care team looking after <%= @patient.full_name %> anytime.
+
+You can send messages, report symptom changes, and read updates from every
+discipline (RN, MD, social worker, chaplain) in one place.
+
+YOUR SIGN-IN
+  Email: <%= @user.email %>
+  Temporary password: <%= @temp_password %>
+
+Please change your password on first sign-in.
+
+Open the family portal: <%= new_user_session_url %>
+
+---
+This is a secure clinical channel. If you received this in error, please email the agency
+and ignore this message. For emergencies, dial 911.

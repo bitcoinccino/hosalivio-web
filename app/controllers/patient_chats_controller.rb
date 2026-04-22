@@ -34,6 +34,13 @@ class PatientChatsController < ApplicationController
       # Vitals trend data — collect up to 8 most-recent visits with vitals
       @vitals_visits  = @recent_visits.select { |v| v.vitals.present? && v.vitals.any? && v.started_at }.first(8).reverse
       @vitals_series  = build_vitals_series(@vitals_visits)
+
+      # Family users linked to this patient (for the sidebar Family section)
+      @family_users = User.where(patient_id: @patient.id, family_access: true).order(active: :desc, full_name: :asc)
+      @can_invite_family =
+        !current_user.family_access? &&
+        ((current_user.role_names & PatientFamiliesController::PRIVILEGED_ROLES).any? ||
+         [@patient.assigned_rn_id, @patient.assigned_md_id].include?(current_user.id))
     end
   end
 

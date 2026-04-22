@@ -1,66 +1,90 @@
 <% content_for :title, "HosAlivio · Mission Stage" %>
 
-<div class="flex h-screen">
+<div class="flex h-screen" data-controller="sidebar" data-sidebar-storage-key-value="dashboardSidebar">
   <!-- Left rail -->
-  <aside class="w-72 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6">
+  <aside data-sidebar-target="sidebar" data-collapsed="false"
+         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
     <div>
-      <div class="flex items-center gap-2">
-        <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center">
-          <i class="ri-heart-pulse-line text-sm"></i>
+      <div class="flex items-center justify-between group-data-[collapsed=true]/sb:flex-col group-data-[collapsed=true]/sb:gap-2">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+            <i class="ri-heart-pulse-line text-sm"></i>
+          </div>
+          <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold group-data-[collapsed=true]/sb:hidden">HosAlivio</h1>
         </div>
-        <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</h1>
+        <button type="button" data-action="click->sidebar#toggle"
+                title="Toggle sidebar"
+                class="w-7 h-7 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] flex items-center justify-center flex-shrink-0 transition">
+          <i class="ri-side-bar-line text-[15px]"></i>
+        </button>
       </div>
-      <div class="mt-6 text-[11px] uppercase tracking-widest text-[#6B665F]">Agency</div>
-      <div class="text-sm text-[#1D1C1A] mt-0.5"><%= @agency&.name || "—" %></div>
-      <div class="text-xs text-[#6B665F] mt-0.5">Tier: <%= @agency&.billing_tier&.capitalize || "—" %></div>
-
       <nav class="mt-8 space-y-1.5 text-sm">
-        <a href="/dashboard" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#D9D5CD] text-[#1D1C1A] font-medium">
-          <i class="ri-radar-line"></i> Mission Stage
+        <a href="/dashboard" title="Mission Stage"
+           class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#D9D5CD] text-[#1D1C1A] font-medium group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <i class="ri-radar-line"></i>
+          <span class="group-data-[collapsed=true]/sb:hidden">Mission Stage</span>
         </a>
-        <a href="/calendar" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
-          <i class="ri-calendar-line"></i> Calendar
+        <a href="/calendar" title="Calendar"
+           class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <i class="ri-calendar-line"></i>
+          <span class="group-data-[collapsed=true]/sb:hidden">Calendar</span>
         </a>
         <% unread_count = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
-        <a href="/notifications" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
-          <i class="ri-notification-3-line"></i> Notifications
+        <a href="/notifications" title="Notifications"
+           class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0 relative">
+          <i class="ri-notification-3-line"></i>
+          <span class="group-data-[collapsed=true]/sb:hidden">Notifications</span>
           <% if unread_count > 0 %>
-            <span class="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D97757] text-white"><%= unread_count %></span>
+            <span class="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D97757] text-white group-data-[collapsed=true]/sb:hidden"><%= unread_count %></span>
+            <span class="hidden group-data-[collapsed=true]/sb:block absolute top-1 right-1 w-2 h-2 bg-[#D97757] rounded-full"></span>
           <% end %>
         </a>
         <% manager_roles = %w[admin don admissions] %>
         <% if (current_user.role_names & manager_roles).any? %>
-          <a href="/branches" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
-            <i class="ri-map-pin-line"></i> Branches
+          <a href="/branches" title="Branches"
+             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+            <i class="ri-map-pin-line"></i>
+            <span class="group-data-[collapsed=true]/sb:hidden">Branches</span>
           </a>
-          <a href="/team_members" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
-            <i class="ri-team-line"></i> Team
+          <a href="/team_members" title="Team"
+             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+            <i class="ri-team-line"></i>
+            <span class="group-data-[collapsed=true]/sb:hidden">Team</span>
           </a>
         <% end %>
-        <div class="flex items-center gap-2 px-3 py-2 text-[#6B665F]">
-          <i class="ri-group-line"></i> IDG Review <span class="text-[10px] ml-auto italic">soon</span>
+        <div title="IDG Review (soon)"
+             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <i class="ri-group-line"></i>
+          <span class="group-data-[collapsed=true]/sb:hidden">IDG Review</span>
+          <span class="text-[10px] ml-auto italic group-data-[collapsed=true]/sb:hidden">soon</span>
         </div>
-        <div class="flex items-center gap-2 px-3 py-2 text-[#6B665F]">
-          <i class="ri-file-list-3-line"></i> Census Report <span class="text-[10px] ml-auto italic">soon</span>
+        <div title="Census Report (soon)"
+             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <i class="ri-file-list-3-line"></i>
+          <span class="group-data-[collapsed=true]/sb:hidden">Census Report</span>
+          <span class="text-[10px] ml-auto italic group-data-[collapsed=true]/sb:hidden">soon</span>
         </div>
       </nav>
     </div>
-    <button class="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition">
-      <i class="ri-sparkling-2-line"></i>
-      VHAS · Upgrade
-    </button>
+    <div class="mt-3">
+      <%= render "shared/user_menu", direction: :up %>
+    </div>
   </aside>
 
   <!-- Main -->
   <main class="flex-1 flex flex-col overflow-hidden">
     <header class="px-8 py-5 border-b border-[#EFECE6] bg-white flex items-center justify-between">
-      <div>
-        <h2 class="text-xl font-serif font-bold text-[#1D1C1A]">Mission Stage</h2>
-        <div class="text-xs text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
+      <div class="flex items-center gap-3">
+        <div>
+          <h2 class="text-xl font-serif font-bold text-[#1D1C1A]">Mission Stage</h2>
+          <div class="text-xs text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
+        </div>
       </div>
       <div id="cable-status" class="font-mono text-xs text-[#6B665F]">connecting…</div>
     </header>
 
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="w-full max-w-[1400px] mx-auto flex-1 flex flex-col overflow-hidden px-4 md:px-8">
     <% if @agency.nil? %>
       <div class="flex-1 flex items-center justify-center text-sm text-[#6B665F]">
         No agency yet — run <code class="font-mono text-[#1D1C1A]">bin/rails db:seed</code>.
@@ -219,6 +243,8 @@
         </section>
       </div>
     <% end %>
+      </div>
+    </div>
   </main>
 </div>
 
