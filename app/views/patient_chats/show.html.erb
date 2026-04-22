@@ -100,31 +100,90 @@
   </aside>
 
   <!-- ─── Main Stage ────────────────────────────────────────────── -->
-  <main class="flex-1 flex flex-col" data-controller="patient-chat" data-patient-chat-patient-id-value="<%= @patient.id %>">
-    <!-- Header -->
-    <header class="px-8 py-5 border-b border-[#EFECE6] bg-white flex items-center justify-between">
-      <div>
-        <h2 class="text-xl font-serif font-bold text-[#1D1C1A]">Comfort Care on the Go</h2>
-        <div class="text-xs text-[#6B665F] mt-0.5">Family ↔ Care Team · <span data-patient-chat-target="status">connecting…</span></div>
-      </div>
-      <!-- Next comfort med (live) -->
-      <% if @headline_order %>
-        <% s = @order_schedules[@headline_order] %>
-        <div class="flex items-center gap-2">
-          <i class="ri-capsule-line text-lg <%= s[:status] == :overdue ? 'text-[#C1403A]' : 'text-[#6B665F]' %>"></i>
-          <div class="text-right">
-            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Next Comfort Med</div>
-            <div class="text-sm font-mono text-[#1D1C1A]">
-              <%= @headline_order.drug_name %> <%= @headline_order.dose %> ·
-              <%= @headline_order.route.upcase %> · <%= @headline_order.frequency %>
-            </div>
-            <div class="text-[11px] font-medium
-                        <%= {overdue: 'text-[#C1403A]', available: 'text-[#D97757]', upcoming: 'text-[#2F6F4E]', unknown: 'text-[#6B665F]'}[s[:status]] %>">
-              <%= s[:label] %>
-            </div>
+  <main class="flex-1 flex flex-col min-w-0" data-controller="patient-chat" data-patient-chat-patient-id-value="<%= @patient.id %>">
+    <!-- Patient Banner -->
+    <header class="px-6 py-4 border-b border-[#EFECE6] bg-white">
+      <div class="flex items-center gap-4">
+        <!-- Avatar -->
+        <div class="w-12 h-12 rounded-full bg-[#EFECE6] text-[#1D1C1A] font-serif text-lg flex items-center justify-center flex-shrink-0">
+          <%= @patient.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+        </div>
+
+        <!-- Identity block -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="font-serif text-xl text-[#1D1C1A] truncate"><%= @patient.full_name %></h2>
+            <% if @patient.dnr? || @patient.dnr_dni? %>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider">
+                <%= @patient.code_status.to_s.upcase.tr("_", "/") %>
+              </span>
+            <% else %>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase">
+                <%= @patient.code_status.to_s.tr("_", " ") %>
+              </span>
+            <% end %>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase">
+              <%= @patient.status %>
+            </span>
+            <% if @patient.advance_directive_on_file %>
+              <span title="Advance Directive on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-line"></i> AD</span>
+            <% end %>
+            <% if @patient.polst_on_file %>
+              <span title="POLST on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-2-line"></i> POLST</span>
+            <% end %>
+          </div>
+          <div class="text-[12px] text-[#6B665F] mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <span><%= @patient.age_years %>yo</span>
+            <span>·</span>
+            <span><%= @patient.gender %></span>
+            <% if @patient.primary_diagnosis.present? %>
+              <span>·</span>
+              <span class="text-[#1D1C1A]"><%= explain_icd(@patient.primary_diagnosis) %></span>
+            <% end %>
+            <span class="font-mono text-[10px]">· <%= @patient.mrn %></span>
           </div>
         </div>
-      <% end %>
+
+        <!-- Right-side stat chips -->
+        <div class="hidden md:flex items-center gap-2 flex-shrink-0">
+          <% if @unresolved_crisis.to_i > 0 %>
+            <div class="px-3 py-1.5 rounded-xl bg-[#FFF3EC] border border-[#D97757] text-center">
+              <div class="text-[9px] uppercase tracking-widest text-[#C1403A] font-bold">Crisis</div>
+              <div class="text-lg font-serif text-[#C1403A] leading-none mt-0.5"><%= @unresolved_crisis %></div>
+            </div>
+          <% end %>
+          <div class="px-3 py-1.5 rounded-xl bg-[#FBF9F5] text-center">
+            <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Days in hospice</div>
+            <div class="text-lg font-serif text-[#1D1C1A] leading-none mt-0.5"><%= @days_in_hospice || "—" %></div>
+          </div>
+          <% if @patient.benefit_period.present? %>
+            <div class="px-3 py-1.5 rounded-xl bg-[#FBF9F5] text-center">
+              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]"><%= @patient.benefit_period.upcase %></div>
+              <div class="text-[11px] font-mono mt-0.5 <%= @days_to_recert && @days_to_recert <= 7 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+                <%= @days_to_recert ? "#{@days_to_recert}d recert" : "—" %>
+              </div>
+            </div>
+          <% end %>
+          <% if @headline_order %>
+            <% s = @order_schedules[@headline_order] %>
+            <div class="px-3 py-1.5 rounded-xl border <%= s[:status] == :overdue ? 'bg-[#FFF3EC] border-[#D97757]' : 'bg-[#FBF9F5] border-[#EFECE6]' %>">
+              <div class="text-[9px] uppercase tracking-widest <%= s[:status] == :overdue ? 'text-[#C1403A] font-bold' : 'text-[#6B665F]' %>">Next comfort med</div>
+              <div class="text-[11px] font-mono text-[#1D1C1A] leading-tight mt-0.5 truncate max-w-[200px]">
+                <%= @headline_order.drug_name %> <%= @headline_order.dose %>
+              </div>
+              <div class="text-[10px] <%= {overdue: 'text-[#C1403A] font-bold', available: 'text-[#D97757]', upcoming: 'text-[#2F6F4E]', unknown: 'text-[#6B665F]'}[s[:status]] %>">
+                <%= s[:label] %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Status line -->
+      <div class="mt-2 text-[11px] text-[#6B665F] flex items-center gap-1.5">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span>Family ↔ Care Team · <span data-patient-chat-target="status">connecting…</span></span>
+      </div>
     </header>
 
     <!-- Message Feed -->
