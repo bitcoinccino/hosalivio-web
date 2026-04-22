@@ -85,7 +85,8 @@ class VisitsController < ApplicationController
       :patient_id, :user_id, :discipline, :visit_type,
       :scheduled_at, :started_at, :ended_at,
       :service_location, :facility_name,
-      :narrative, :pain_score, :billable, :visit_code
+      :narrative, :pain_score, :billable, :visit_code,
+      vitals: [:bp, :temp, :pulse, :resp, :o2]
     )
   end
 

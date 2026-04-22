@@ -589,12 +589,14 @@
       <% end %>
     </div>
 
-    <!-- Footer: back link -->
-    <div class="border-t border-[#EFECE6] px-5 py-3">
-      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-xs text-[#6B665F] hover:text-[#1D1C1A]">
-        <i class="ri-arrow-left-line"></i> Back to Mission Stage
-      </a>
-    </div>
+    <!-- Footer: back to Mission Stage (clinicians only) -->
+    <% unless current_user.family_access? %>
+      <div class="border-t border-[#EFECE6] px-5 py-3">
+        <a href="/dashboard" class="inline-flex items-center gap-1.5 text-xs text-[#6B665F] hover:text-[#1D1C1A]">
+          <i class="ri-arrow-left-line"></i> Back to Mission Stage
+        </a>
+      </div>
+    <% end %>
   </aside>
 
   <!-- Mobile bottom tab bar (visible only below md) -->
