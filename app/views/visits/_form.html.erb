@@ -1,0 +1,103 @@
+<%= form_with(model: @visit, local: true, html: { class: "space-y-4" }) do |f| %>
+  <% if flash[:alert].present? %>
+    <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
+      <i class="ri-error-warning-line mr-1"></i><%= flash[:alert] %>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :patient_id, "Patient", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+    <%= f.select :patient_id,
+          @patients.map { |p| ["#{p.mrn} · #{p.full_name}", p.id] },
+          { include_blank: "Select patient..." },
+          class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <%= f.label :user_id, "Clinician", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.select :user_id,
+            @clinicians.map { |u|
+              role = (u.role_names & %w[rn md don sw chaplain aide social_worker]).first
+              branch_tag = u.branch&.name.presence ? " · #{u.branch.name}" : ""
+              ["#{u.full_name} (#{role})#{branch_tag}", u.id]
+            },
+            {},
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    </div>
+    <div>
+      <%= f.label :discipline, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.select :discipline,
+            Visit.disciplines.keys.map { |d| [d.upcase, d] },
+            {},
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <%= f.label :scheduled_at, "Scheduled start", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.datetime_local_field :scheduled_at,
+            value: @visit.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    </div>
+    <div>
+      <%= f.label :ended_at, "Expected end (optional)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.datetime_local_field :ended_at,
+            value: @visit.ended_at&.strftime("%Y-%m-%dT%H:%M"),
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <%= f.label :visit_type, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.select :visit_type,
+            Visit.visit_types.keys.map { |vt| [vt.tr('_', ' ').titleize, vt] },
+            {},
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    </div>
+    <div>
+      <%
+        location_labels = {
+          "home" => "Home (Q5001)", "ipu" => "Hospice IPU (Q5006)",
+          "hospital_gip" => "Hospital / GIP (Q5005)", "snf" => "SNF (Q5004)",
+          "alf" => "ALF (Q5002)", "nursing_facility" => "Nursing facility (Q5003)",
+          "psychiatric_facility" => "Psych facility (Q5008)",
+          "group_home" => "Group home (Q5009)",
+          "temporary_lodging" => "Temp lodging (Q5009)",
+          "other" => "Other (Q5009)"
+        }
+      %>
+      <%= f.label :service_location, "Place of service", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.select :service_location,
+            Visit.service_locations.keys.map { |k| [location_labels[k] || k, k] },
+            {},
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :facility_name, "Facility name (only if not at home)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+    <%= f.text_field :facility_name,
+          placeholder: "e.g. Memorial Regional Hospital, room 412",
+          class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+  </div>
+
+  <div>
+    <%= f.label :narrative, "Narrative (optional, can fill at the bedside)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+    <%= f.text_area :narrative, rows: 3, class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+  </div>
+
+  <div class="pt-3 border-t border-[#EFECE6] flex items-center justify-between text-[11px] text-[#6B665F]">
+    <span>
+      <i class="ri-shield-check-line"></i>
+      Overlap + 30-min windshield buffer enforced by the database.
+    </span>
+    <div class="flex items-center gap-2">
+      <%= link_to "Cancel", calendar_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+      <%= f.submit (@visit.persisted? ? "Save changes" : "Schedule visit"),
+            class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+    </div>
+  </div>
+<% end %>

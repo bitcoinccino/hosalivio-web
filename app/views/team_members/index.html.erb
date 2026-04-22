@@ -1,0 +1,185 @@
+<% content_for :title, "Team · HosAlivio" %>
+<%
+  role_color = {
+    "rn" => "#2F6F4E", "md" => "#2B4A7A", "sw" => "#7A4A8C",
+    "social_worker" => "#7A4A8C", "chaplain" => "#8C6A2F",
+    "aide" => "#AD7340", "don" => "#8B5A2B", "admissions" => "#C96F3F",
+    "admin" => "#1D1C1A", "insurance" => "#3A6B7A", "billing" => "#5A6B3A",
+    "dme" => "#7A6B5A", "pharmacy" => "#4A6B8C"
+  }
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1 mb-2">
+          <i class="ri-arrow-left-line"></i> Dashboard
+        </a>
+        <h1 class="font-serif text-2xl text-[#1D1C1A]">Clinical Team</h1>
+        <div class="text-[12px] text-[#6B665F] mt-0.5">
+          <%= current_user.agency&.name %> ·
+          <%= @members_by_branch.values.flatten.count %> members across <%= @branches.count %> branch<%= @branches.count == 1 ? "" : "es" %>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <%= link_to branches_path, class: "inline-flex items-center gap-1.5 text-[13px] px-3 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white" do %>
+          <i class="ri-map-pin-line"></i> Branches
+        <% end %>
+        <%= link_to new_team_member_path,
+              class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium" do %>
+          <i class="ri-user-add-line"></i> Add team member
+        <% end %>
+      </div>
+    </div>
+
+    <% if flash[:notice] %>
+      <div class="mb-4 px-4 py-3 rounded-lg bg-[#EEF5EC] border border-[#9BBF93] text-[#2F6F4E] text-[13px]"><%= flash[:notice] %></div>
+    <% end %>
+
+    <% if @expiring.any? %>
+      <div class="mb-6 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4">
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+            <i class="ri-shield-cross-line"></i>
+          </div>
+          <div class="flex-1">
+            <div class="text-[13px] font-bold text-[#C1403A]">
+              <%= @expiring.count %> license<%= @expiring.count == 1 ? "" : "s" %> expiring within 60 days
+            </div>
+            <div class="text-[11px] text-[#6B665F] mt-0.5 mb-2">Renewals block Medicare billing. Nudge these clinicians to upload fresh paperwork.</div>
+            <div class="space-y-1">
+              <% @expiring.each do |u| %>
+                <div class="text-[12px] flex items-center gap-2">
+                  <span class="font-mono text-[10px] px-2 py-0.5 rounded-full
+                    <%= u.license_expired? ? 'bg-[#C1403A] text-white' : (u.license_expiring_soon?(within: 30) ? 'bg-[#D97757] text-white' : 'bg-[#EFECE6] text-[#1D1C1A]') %>">
+                    <%= u.license_expired? ? "EXPIRED" : "#{(u.license_expires_on - Date.current).to_i}d" %>
+                  </span>
+                  <span class="text-[#1D1C1A]"><%= u.full_name %></span>
+                  <span class="text-[#6B665F]">(<%= u.role_names.first %>) · <%= u.branch&.name || "unassigned" %></span>
+                  <span class="text-[#6B665F] font-mono text-[11px] ml-auto"><%= u.license_expires_on.strftime("%b %-d, %Y") %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%
+      sections = @branches.map { |b| [b, @members_by_branch[b.id] || []] }
+      unassigned = @members_by_branch[nil] || []
+      sections << [nil, unassigned] if unassigned.any?
+    %>
+
+    <% sections.each do |branch, members| %>
+      <div class="mb-6 rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+        <div class="px-4 py-3 bg-[#FBF9F5] border-b border-[#EFECE6] flex items-center justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Branch</div>
+            <div class="font-serif text-[15px] text-[#1D1C1A]">
+              <%= branch ? branch.name : "Unassigned" %>
+              <% if branch && (branch.city.present? || branch.state.present?) %>
+                <span class="text-[11px] text-[#6B665F] ml-2 font-sans"><%= [branch.city, branch.state].compact_blank.join(", ") %></span>
+              <% end %>
+            </div>
+          </div>
+          <div class="text-[11px] text-[#6B665F]">
+            <%= members.count %> member<%= members.count == 1 ? "" : "s" %>
+            <% if branch %>
+              · <%= link_to "Add to this branch", new_team_member_path(branch_id: branch.id), class: "ml-2 text-[#D97757] hover:underline" %>
+            <% end %>
+          </div>
+        </div>
+        <% if members.empty? %>
+          <div class="px-4 py-6 text-center text-[12px] text-[#6B665F]">
+            No members at this branch yet.
+          </div>
+        <% else %>
+          <table class="w-full">
+            <tbody>
+              <% members.each do |m| %>
+                <%
+                  caseload = m.current_caseload
+                  cap      = m.max_caseload.to_i
+                  util     = cap.zero? ? 0 : [caseload.to_f / cap, 1.0].min
+                  bar_color = util >= 1.0 ? "#C1403A" : (util >= 0.8 ? "#D97757" : "#2F6F4E")
+                  license_pill = case m.license_status
+                                 when :expired  then ["EXPIRED", "#C1403A", "white"]
+                                 when :expiring then ["#{(m.license_expires_on - Date.current).to_i}d", "#D97757", "white"]
+                                 when :warning  then ["#{(m.license_expires_on - Date.current).to_i}d", "#EFECE6", "#1D1C1A"]
+                                 end
+                %>
+                <tr class="border-b border-[#EFECE6] last:border-0 <%= 'opacity-50' unless m.active %>">
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <span class="text-[13px] text-[#1D1C1A]"><%= m.full_name %></span>
+                      <% if m.on_call %>
+                        <span class="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#2B4A7A] text-white">
+                          <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> on-call
+                        </span>
+                      <% end %>
+                      <% if license_pill %>
+                        <span class="text-[9px] font-mono px-1.5 py-0.5 rounded-full" style="background: <%= license_pill[1] %>; color: <%= license_pill[2] %>;">
+                          lic <%= license_pill[0] %>
+                        </span>
+                      <% end %>
+                    </div>
+                    <div class="text-[10px] text-[#6B665F] mt-0.5">
+                      <%= m.employment_type&.tr("_", " ") %>
+                      <% if m.phone_number.present? %> · <span class="font-mono"><%= m.phone_number %></span><% end %>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex flex-wrap gap-1">
+                      <% m.role_names.each do |r| %>
+                        <span class="inline-block px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider text-white"
+                              style="background: <%= role_color[r] || '#6B665F' %>;">
+                          <%= r.tr("_", " ") %>
+                        </span>
+                      <% end %>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 w-[140px]">
+                    <div class="text-[10px] text-[#6B665F]"><%= caseload %>/<%= cap %> caseload</div>
+                    <div class="mt-1 h-1.5 w-full rounded-full bg-[#EFECE6] overflow-hidden">
+                      <div class="h-full rounded-full" style="width: <%= (util * 100).round %>%; background: <%= bar_color %>;"></div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-[11px]">
+                    <% if m.active %>
+                      <span class="text-[#2F6F4E]">● Active</span>
+                    <% else %>
+                      <span class="text-[#C1403A]">● Inactive</span>
+                    <% end %>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <% if m == current_user %>
+                      <span class="text-[10px] text-[#6B665F]">(you)</span>
+                    <% elsif m.active %>
+                      <%= button_to team_member_path(m), method: :delete,
+                            data: { turbo_confirm: "Deactivate #{m.full_name}?" },
+                            class: "text-[11px] px-3 py-1 rounded-full border border-[#D9D5CD] text-[#C1403A] hover:bg-[#FFF3EC]" do %>
+                        Deactivate
+                      <% end %>
+                    <% else %>
+                      <%= button_to reactivate_team_member_path(m), method: :post,
+                            class: "text-[11px] px-3 py-1 rounded-full border border-[#D9D5CD] text-[#2F6F4E] hover:bg-[#EEF5EC]" do %>
+                        Reactivate
+                      <% end %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="mt-4 text-[11px] text-[#6B665F]">
+      <i class="ri-information-line"></i>
+      New members get the temporary password <span class="font-mono bg-[#EFECE6] px-1 rounded">hello123</span>.
+      Have them change it on first sign-in. AI handoffs route to clinicians in the patient's branch first.
+    </div>
+  </div>
+</div>

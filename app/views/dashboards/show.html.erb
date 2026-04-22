@@ -1,0 +1,363 @@
+<% content_for :title, "HosAlivio · Mission Stage" %>
+
+<div class="flex h-screen">
+  <!-- Left rail -->
+  <aside class="w-72 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6">
+    <div>
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+          <i class="ri-heart-pulse-line text-sm"></i>
+        </div>
+        <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</h1>
+      </div>
+      <div class="mt-6 text-[11px] uppercase tracking-widest text-[#6B665F]">Agency</div>
+      <div class="text-sm text-[#1D1C1A] mt-0.5"><%= @agency&.name || "—" %></div>
+      <div class="text-xs text-[#6B665F] mt-0.5">Tier: <%= @agency&.billing_tier&.capitalize || "—" %></div>
+
+      <nav class="mt-8 space-y-1.5 text-sm">
+        <a href="/dashboard" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#D9D5CD] text-[#1D1C1A] font-medium">
+          <i class="ri-radar-line"></i> Mission Stage
+        </a>
+        <a href="/calendar" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
+          <i class="ri-calendar-line"></i> Calendar
+        </a>
+        <% unread_count = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
+        <a href="/notifications" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
+          <i class="ri-notification-3-line"></i> Notifications
+          <% if unread_count > 0 %>
+            <span class="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D97757] text-white"><%= unread_count %></span>
+          <% end %>
+        </a>
+        <% manager_roles = %w[admin don admissions] %>
+        <% if (current_user.role_names & manager_roles).any? %>
+          <a href="/branches" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
+            <i class="ri-map-pin-line"></i> Branches
+          </a>
+          <a href="/team_members" class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg">
+            <i class="ri-team-line"></i> Team
+          </a>
+        <% end %>
+        <div class="flex items-center gap-2 px-3 py-2 text-[#6B665F]">
+          <i class="ri-group-line"></i> IDG Review <span class="text-[10px] ml-auto italic">soon</span>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2 text-[#6B665F]">
+          <i class="ri-file-list-3-line"></i> Census Report <span class="text-[10px] ml-auto italic">soon</span>
+        </div>
+      </nav>
+    </div>
+    <button class="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition">
+      <i class="ri-sparkling-2-line"></i>
+      VHAS · Upgrade
+    </button>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+    <header class="px-8 py-5 border-b border-[#EFECE6] bg-white flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-serif font-bold text-[#1D1C1A]">Mission Stage</h2>
+        <div class="text-xs text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
+      </div>
+      <div id="cable-status" class="font-mono text-xs text-[#6B665F]">connecting…</div>
+    </header>
+
+    <% if @agency.nil? %>
+      <div class="flex-1 flex items-center justify-center text-sm text-[#6B665F]">
+        No agency yet — run <code class="font-mono text-[#1D1C1A]">bin/rails db:seed</code>.
+      </div>
+    <% else %>
+      <% manager_roles = %w[admin don admissions ceo] %>
+      <% is_manager = (current_user.role_names & manager_roles).any? %>
+      <% if is_manager && (@licenses_expired.to_i > 0 || @licenses_expiring.to_i > 0) %>
+        <section class="mx-6 mt-6">
+          <a href="/team_members" class="block rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 hover:bg-[#FFEDE2] transition">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+                <i class="ri-shield-cross-line text-lg"></i>
+              </div>
+              <div class="flex-1">
+                <div class="text-[11px] uppercase tracking-widest text-[#C1403A] font-bold">Compliance risk</div>
+                <div class="text-[14px] text-[#1D1C1A] mt-0.5">
+                  <% if @licenses_expired.to_i > 0 %>
+                    <strong class="text-[#C1403A]"><%= @licenses_expired %></strong> license<%= @licenses_expired == 1 ? "" : "s" %> already expired
+                  <% end %>
+                  <% if @licenses_expired.to_i > 0 && @licenses_expiring.to_i > 0 %> · <% end %>
+                  <% if @licenses_expiring.to_i > 0 %>
+                    <strong class="text-[#D97757]"><%= @licenses_expiring %></strong> expiring within 60 days
+                  <% end %>
+                </div>
+                <div class="text-[11px] text-[#6B665F] mt-0.5">Renewals block Medicare billing. Click to see who.</div>
+              </div>
+              <i class="ri-arrow-right-line text-[#6B665F]"></i>
+            </div>
+          </a>
+        </section>
+      <% end %>
+
+      <% if @open_inquiries.any? %>
+        <section class="mx-6 mt-6 rounded-2xl border border-[#EFECE6] bg-white overflow-hidden">
+          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-inbox-unarchive-line"></i> Landing-page inquiries</h3>
+            <span class="text-[10px] text-[#6B665F] font-mono"><%= @open_inquiries.size %> open</span>
+          </div>
+          <div class="divide-y divide-[#EFECE6]">
+            <% @open_inquiries.each do |inq| %>
+              <div class="flex items-center gap-3 px-5 py-3 text-[13px]">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white"
+                     style="background: <%= inq.is_general ? '#6B665F' : '#D97757' %>;">
+                  <i class="<%= inq.is_general ? 'ri-megaphone-line' : 'ri-send-plane-2-line' %>"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[#1D1C1A] font-medium">
+                    <%= inq.first_name.presence || "Anonymous" %>
+                    <span class="text-[11px] text-[#6B665F] font-mono">· ZIP <%= inq.zip_prefix %>xx</span>
+                    <% unless inq.is_general %>
+                      <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFF3EC] text-[#D97757] ml-1">Targeted</span>
+                    <% end %>
+                    <% if inq.status_claimed? %>
+                      <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#F0F7F2] text-[#2F6F4E] ml-1">Claimed · <%= inq.claimed_by&.full_name&.split&.first %></span>
+                    <% end %>
+                  </div>
+                  <div class="text-[11px] text-[#6B665F] mt-0.5">
+                    <%= inq.contact %>
+                    <% if inq.question.present? %> · <span class="italic">"<%= truncate(inq.question, length: 90) %>"</span><% end %>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <% if inq.status_new_lead? %>
+                    <%= button_to claim_inquiry_path(inq), class: "text-[11px] px-3 py-1 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b]" do %>
+                      <i class="ri-hand-heart-line"></i> Claim
+                    <% end %>
+                  <% elsif inq.status_claimed? %>
+                    <%= button_to mark_contacted_inquiry_path(inq), class: "text-[11px] px-3 py-1 rounded-full bg-[#2F6F4E] text-white hover:bg-[#265a3d]" do %>
+                      <i class="ri-phone-fill"></i> Contacted
+                    <% end %>
+                    <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %>
+                      <i class="ri-user-add-line"></i> Convert
+                    <% end %>
+                  <% else %>
+                    <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %>
+                      <i class="ri-user-add-line"></i> Convert
+                    <% end %>
+                  <% end %>
+                  <%= button_to dismiss_inquiry_path(inq), class: "text-[11px] px-2 py-1 rounded-full text-[#6B665F] hover:bg-[#EFECE6]" do %>
+                    <i class="ri-close-line"></i>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+
+      <div class="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden">
+        <!-- Census -->
+        <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col">
+          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Active Census</h3>
+            <span class="text-xs text-[#1D1C1A] font-mono"><%= @patients.size %></span>
+          </div>
+          <div class="flex-1 overflow-y-auto">
+            <% if @patients.empty? %>
+              <div class="p-6 text-sm text-[#6B665F]">No patients yet.</div>
+            <% else %>
+              <table class="w-full text-sm">
+                <thead class="bg-[#FBF9F5] text-[11px] uppercase tracking-widest text-[#6B665F]">
+                  <tr>
+                    <th class="text-left px-4 py-2 font-medium">MRN</th>
+                    <th class="text-left px-4 py-2 font-medium">Name</th>
+                    <th class="text-left px-4 py-2 font-medium">Status</th>
+                    <th class="text-left px-4 py-2 font-medium">Code</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @patients.each do |p| %>
+                    <tr class="border-t border-[#EFECE6] hover:bg-[#FBF9F5] transition">
+                      <td class="px-4 py-2 font-mono text-[#1D1C1A]"><%= p.mrn %></td>
+                      <td class="px-4 py-2">
+                        <a href="/patients/<%= p.id %>" class="text-[#D97757] hover:underline">
+                          <%= p.full_name %>
+                        </a>
+                      </td>
+                      <td class="px-4 py-2 text-[#6B665F]"><%= p.status %></td>
+                      <td class="px-4 py-2">
+                        <% if p.dnr? || p.dnr_dni? %>
+                          <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#C1403A] text-white tracking-wider"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+                        <% else %>
+                          <span class="text-[10px] text-[#6B665F]"><%= p.code_status.to_s.upcase %></span>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            <% end %>
+          </div>
+        </section>
+
+        <!-- Event feed -->
+        <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col">
+          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Agent Event Feed · live</h3>
+            <% open_crises = @unresolved_note_ids.size %>
+            <% if open_crises > 0 %>
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider animate-pulse">
+                <i class="ri-alarm-warning-line"></i> <%= open_crises %> OPEN
+              </span>
+            <% end %>
+          </div>
+
+          <div id="event-feed" class="flex-1 overflow-y-auto text-[12px] p-3 space-y-1.5">
+            <% if @stories.empty? %>
+              <div class="text-[#6B665F] p-2">No events yet. Waiting for agents…</div>
+            <% else %>
+              <% @stories.each do |story| %>
+                <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+              <% end %>
+            <% end %>
+          </div>
+        </section>
+      </div>
+    <% end %>
+  </main>
+</div>
+
+<% if @agency %>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const statusEl = document.getElementById("cable-status");
+      const feedEl   = document.getElementById("event-feed");
+      const agencyId = "<%= @agency.id %>";
+
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(`${proto}//${location.host}/cable`);
+
+      ws.onopen  = () => {
+        statusEl.textContent = "connected";
+        statusEl.classList.remove("text-[#6B665F]");
+        statusEl.classList.add("text-[#2F6F4E]");
+        ws.send(JSON.stringify({
+          command: "subscribe",
+          identifier: JSON.stringify({ channel: "MissionStageChannel", agency_id: agencyId })
+        }));
+      };
+      ws.onclose = () => { statusEl.textContent = "disconnected"; statusEl.classList.add("text-[#C1403A]"); };
+      // Persona for live rendering — keep in sync with app/services/event_narrator.rb
+      const PERSONA = {
+        admissions:         { name: "Lucia",      title: "Admissions",    initials: "L", color: "#1D1C1A" },
+        front_door_inbound: { name: "Care Portal",title: "Family-facing", initials: "⌂", color: "#D97757" },
+        rn:                 { name: "Pascal",     title: "RN",            initials: "P", color: "#2F6F4E" },
+        md:                 { name: "Dr. Esther", title: "MD",            initials: "E", color: "#2B4A7A" },
+        don:                { name: "Diaphnie",   title: "DON",           initials: "D", color: "#8B5A2B" },
+        social_worker:      { name: "Nickla",     title: "Social Worker", initials: "N", color: "#7A4A8C" },
+        chaplain:           { name: "Geoginio",   title: "Chaplain",      initials: "G", color: "#8C6A2F" },
+        pharmacy:           { name: "Simone",     title: "Pharmacy",      initials: "S", color: "#5A2F7A" },
+        dme:                { name: "Marcus",     title: "DME",           initials: "M", color: "#3E5D5D" },
+        insurance:          { name: "Kendra",     title: "Insurance",     initials: "K", color: "#3A3936" },
+        billing:            { name: "Wolfwide",   title: "Billing",       initials: "W", color: "#6B665F" },
+        aide:               { name: "Flore",      title: "Aide",          initials: "F", color: "#AD7340" },
+        family:             { name: "Family",     title: "Care Portal",   initials: "♥", color: "#D97757" },
+        system:             { name: "HosAlivio",  title: "System",        initials: "•", color: "#6B665F" }
+      };
+      const ROLE_LABEL = {
+        rn: "RN", md: "MD", don: "DON", aide: "Aide",
+        social_worker: "Social Work", chaplain: "Chaplain",
+        pharmacy: "Pharmacy", dme: "DME", insurance: "Insurance",
+        billing: "Billing", admissions: "Admissions"
+      };
+
+      // Must mirror EventNarrator#narrate in app/services/event_narrator.rb
+      function narrate(p) {
+        const s = p.subject_type, a = p.event, r = p.agent_id;
+        if (r === "admissions" && a === "handoff" && s === "Patient") {
+          const t = p.handoff_role ? (ROLE_LABEL[p.handoff_role] || p.handoff_role) : "team";
+          return { before: "assigned", after: `to the ${t} team`, icon: "ri-send-plane-2-line" };
+        }
+        if (r === "admissions" && a === "create" && s === "Note")
+          return { before: "posted a triage update for", after: p.urgency === "crisis" ? " (crisis triage)" : "", icon: "ri-chat-3-line" };
+        if (r === "front_door_inbound" && a === "create" && s === "Note")
+          return { before: "logged a new concern from", after: p.urgency === "crisis" ? "'s family — marked CRISIS" : "'s family", icon: "ri-feedback-line" };
+        if (a === "create" && s === "MedicationOrder")
+          return { before: `authorized a new medication order${p.drug_name ? ` (${p.drug_name})` : ""} for`, after: "", icon: "ri-capsule-line" };
+        if (a === "update" && s === "MedicationOrder")    return { before: "updated a medication order for", after: "", icon: "ri-capsule-line" };
+        if (a === "create" && s === "MedicationLog")      return { before: "administered a scheduled dose to", after: "", icon: "ri-syringe-line" };
+        if (a === "create" && s === "Visit")              return { before: `started a${p.visit_type ? " " + p.visit_type.replace(/_/g, ' ') : ""} bedside visit with`, after: "", icon: "ri-nurse-line" };
+        if (a === "create" && s === "PharmacyDelivery")   return { before: "requested a pharmacy delivery for", after: "", icon: "ri-truck-line" };
+        if (a === "update" && s === "PharmacyDelivery")   return { before: "updated a pharmacy delivery for", after: "", icon: "ri-truck-line" };
+        if (a === "create" && s === "DmeOrder")           return { before: `ordered${p.equipment_type ? " a " + p.equipment_type.replace(/_/g, ' ') : " equipment"} for`, after: "", icon: "ri-tools-line" };
+        if (a === "create" && s === "Patient")            return { before: "admitted", after: "as a new referral", icon: "ri-user-add-line" };
+        if (a === "update" && s === "Patient")            return { before: "updated", after: "'s chart", icon: "ri-edit-2-line" };
+        if (a === "update" && s === "Note")               return { before: "acknowledged a note on", after: "'s chart", icon: "ri-check-line" };
+        if (a === "inquiry_received" && s === "Inquiry") {
+          const firstName = p.first_name || "Someone";
+          const zip       = p.zip_prefix || "unknown";
+          const qualifier = p.is_general ? "general inquiry" : "targeted inquiry";
+          const source    = (p.source_prompt || "").replace(/_/g, " ");
+          const hint      = source ? ` via ${source}` : "";
+          return { before: `received a ${qualifier} from ${firstName} (ZIP ${zip}xx)${hint}`, after: "", icon: "ri-mail-add-line" };
+        }
+        if (a === "inquiry_converted" && s === "Inquiry") {
+          const firstName = p.first_name || "the family";
+          const mrn       = p.patient_mrn;
+          const who       = p.converted_by;
+          let suffix = mrn ? `into an active referral (${mrn})` : "into an active referral";
+          if (who) suffix += ` — converted by ${who}`;
+          return { before: `converted ${firstName}'s inquiry`, after: suffix, icon: "ri-user-add-line" };
+        }
+        return { before: `${a}d a ${(s||"record").replace(/([A-Z])/g, " $1").trim().toLowerCase()} for`, after: "", icon: "ri-settings-3-line" };
+      }
+
+      ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (["ping", "welcome", "confirm_subscription"].includes(data.type)) return;
+        const p = data.message;
+        if (!p) return;
+
+        const persona = PERSONA[p.agent_id] || { name: p.agent_id, title: "", initials: (p.agent_id||"?")[0].toUpperCase(), color: "#6B665F" };
+        const phrase  = narrate(p);
+        const isCrisis = p.urgency === "crisis";
+
+        const patientLink = p.patient_id && p.patient_name
+          ? `<a href="/patients/${p.patient_id}" class="font-medium text-[#D97757] hover:underline">${p.patient_name}</a>`
+          : "";
+        const crisisPill = isCrisis
+          ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
+          : "";
+
+        const row = document.createElement("div");
+        const base = "flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all duration-700";
+        const highlight = isCrisis
+          ? "border-[#D97757] bg-[#FFF3EC] animate-pulse"
+          : "border-[#FFEB99] bg-[#FFFBEB]";
+        row.className = `${base} ${highlight}`;
+        row.innerHTML = `
+          <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+               style="background: ${persona.color};" title="${persona.name} · ${persona.title}">${persona.initials}</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[13px] leading-tight">${(() => {
+              const titleSpan = persona.title ? `<span class="text-[11px] text-[#6B665F]"> (${persona.title})</span>` : "";
+              const afterHtml = phrase.after
+                ? (phrase.after.startsWith("'")
+                    ? `<span class="text-[#3A3936]">${phrase.after}</span>`
+                    : `<span class="text-[#3A3936]"> ${phrase.after}</span>`)
+                : "";
+              return `<i class="${phrase.icon} text-[#6B665F] mr-1"></i><span class="font-bold text-[#1D1C1A]">${persona.name}</span>${titleSpan} <span class="text-[#3A3936]">${phrase.before}</span>${patientLink ? " " + patientLink : ""}${afterHtml}`;
+            })()}</div>
+            <div class="mt-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+              <time class="font-mono">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
+              ${crisisPill}
+              ${p.patient_mrn ? `<span class="font-mono">· ${p.patient_mrn}</span>` : ""}
+            </div>
+          </div>
+        `;
+        feedEl.insertBefore(row, feedEl.firstChild);
+        if (!isCrisis) {
+          setTimeout(() => {
+            row.classList.remove("border-[#FFEB99]", "bg-[#FFFBEB]");
+            row.classList.add("border-transparent");
+          }, 1800);
+        }
+      };
+    });
+  </script>
+<% end %>

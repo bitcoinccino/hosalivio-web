@@ -1,0 +1,151 @@
+<% content_for :title, "Calendar · HosAlivio" %>
+
+<%
+  discipline_color = {
+    "rn" => "#2F6F4E", "md" => "#2B4A7A", "sw" => "#7A4A8C",
+    "chaplain" => "#8C6A2F", "aide" => "#AD7340", "don" => "#8B5A2B"
+  }
+%>
+
+<div class="min-h-screen" data-controller="calendar">
+  <!-- Top bar -->
+  <header class="sticky top-0 z-20 bg-[#FBF9F5]/90 backdrop-blur border-b border-[#EFECE6]">
+    <div class="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1">
+          <i class="ri-arrow-left-line"></i> Dashboard
+        </a>
+        <h1 class="font-serif text-[20px] text-[#1D1C1A]">Calendar</h1>
+        <span class="text-[11px] text-[#6B665F] font-mono">
+          <%= @agency&.name %> ·
+          week of <%= @week_start.strftime("%b %-d") %>
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="<%= calendar_path(date: (@week_start - 7.days).iso8601) %>"
+           class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A] flex items-center justify-center">
+          <i class="ri-arrow-left-s-line"></i>
+        </a>
+        <a href="<%= calendar_path %>"
+           class="text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A]">
+          Today
+        </a>
+        <a href="<%= calendar_path(date: (@week_start + 7.days).iso8601) %>"
+           class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A] flex items-center justify-center">
+          <i class="ri-arrow-right-s-line"></i>
+        </a>
+        <a href="<%= new_visit_path %>"
+           class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium">
+          <i class="ri-add-line"></i> New visit
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-[1400px] mx-auto px-6 py-6">
+    <% if @clinicians.empty? %>
+      <div class="text-center py-20 text-[#6B665F]">
+        <div class="w-12 h-12 rounded-full bg-[#EFECE6] flex items-center justify-center mx-auto mb-3">
+          <i class="ri-calendar-line text-xl"></i>
+        </div>
+        <div class="font-serif text-lg text-[#1D1C1A]">No clinicians assigned to this agency yet.</div>
+        <div class="text-[13px] mt-1">Diaphnie (DON) assigns the team; once she does, their rows will appear here.</div>
+      </div>
+    <% else %>
+      <!-- Grid header: day columns -->
+      <div class="grid rounded-t-2xl bg-white border border-[#EFECE6] border-b-0" style="grid-template-columns: 180px repeat(7, 1fr);">
+        <div class="px-3 py-2 text-[10px] uppercase tracking-widest text-[#6B665F]">Clinician</div>
+        <% @days.each do |d| %>
+          <div class="px-2 py-2 text-center border-l border-[#EFECE6]
+                      <%= 'bg-[#FBF9F5]' if d == Date.current %>">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= d.strftime("%a") %></div>
+            <div class="text-[15px] font-serif <%= 'text-[#D97757] font-bold' if d == Date.current %>"><%= d.day %></div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Clinician rows -->
+      <% @clinicians.each do |user| %>
+        <div class="grid bg-white border border-t-0 border-[#EFECE6] last:rounded-b-2xl" style="grid-template-columns: 180px repeat(7, 1fr);">
+          <!-- Row header: clinician name -->
+          <div class="px-3 py-3 border-r border-[#EFECE6] flex items-center gap-2">
+            <%
+              role = (user.role_names & %w[rn md don sw chaplain aide social_worker]).first || "rn"
+              role_color = discipline_color[role == "social_worker" ? "sw" : role] || "#6B665F"
+            %>
+            <div class="w-7 h-7 rounded-full text-white text-[11px] font-medium flex items-center justify-center flex-shrink-0"
+                 style="background: <%= role_color %>;">
+              <%= user.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+            </div>
+            <div class="min-w-0">
+              <div class="text-[13px] text-[#1D1C1A] truncate"><%= user.full_name %></div>
+              <div class="text-[10px] text-[#6B665F] uppercase tracking-wider"><%= role == "social_worker" ? "sw" : role %></div>
+            </div>
+          </div>
+
+          <!-- Day cells -->
+          <% @days.each do |day| %>
+            <% cell_visits = @cells[[user.id, day]] %>
+            <div class="border-l border-[#EFECE6] min-h-[96px] p-1.5 cursor-pointer hover:bg-[#FBF9F5] transition relative"
+                 data-action="click->calendar#newVisitForCell"
+                 data-user-id="<%= user.id %>"
+                 data-scheduled-at="<%= day.beginning_of_day.change(hour: 9).iso8601 %>"
+                 data-discipline="<%= user.role_names.first %>">
+              <% cell_visits.each do |v| %>
+                <%
+                  d_key = v.discipline.to_s == "social_worker" ? "sw" : v.discipline.to_s
+                  color = discipline_color[d_key] || "#6B665F"
+                %>
+                <a href="<%= visit_path(v) %>"
+                   class="block mb-1 px-2 py-1 rounded-lg text-[11px] leading-tight text-white shadow-sm hover:shadow hover:brightness-110 transition"
+                   style="background: <%= color %>;"
+                   data-action="click->calendar#stopPropagation">
+                  <div class="flex items-center justify-between gap-1">
+                    <span class="font-mono"><%= v.anchor_start&.strftime("%-l:%M%P") %></span>
+                    <span class="opacity-80" title="<%= v.agent_authored ? 'Scheduled by AI agent' : 'Scheduled by a human' %>">
+                      <%= v.agent_authored ? "🤖" : "👤" %>
+                    </span>
+                  </div>
+                  <div class="truncate mt-0.5">
+                    <%= v.patient&.full_name || "—" %>
+                  </div>
+                  <div class="text-[9px] opacity-80 font-mono mt-0.5 truncate">
+                    <%= v.patient&.mrn %>
+                    <% if v.patient&.zip.present? %>
+                      · <%= v.patient.zip.to_s[0, 3] %>xx
+                    <% end %>
+                  </div>
+                  <% if v.visit_type.to_s != "routine" || v.service_location.to_s != "home" %>
+                    <div class="text-[9px] uppercase tracking-wider opacity-80 mt-0.5">
+                      <% if v.visit_type.to_s != "routine" %><%= v.visit_type %><% end %>
+                      <% if v.service_location.to_s != "home" %>
+                        <span title="Not at patient's home">· <%= v.service_location.to_s.tr("_", " ") %></span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </a>
+              <% end %>
+              <% if cell_visits.empty? %>
+                <div class="text-[10px] text-[#D9D5CD] hover:text-[#6B665F] opacity-0 hover:opacity-100 transition text-center pt-2">
+                  + Add
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Legend -->
+      <div class="mt-6 flex items-center gap-4 text-[11px] text-[#6B665F] flex-wrap">
+        <span class="uppercase tracking-widest">Legend:</span>
+        <% [["RN","#2F6F4E"], ["MD","#2B4A7A"], ["SW","#7A4A8C"], ["Chaplain","#8C6A2F"], ["Aide","#AD7340"], ["DON","#8B5A2B"]].each do |label, color| %>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded" style="background: <%= color %>;"></span>
+            <%= label %>
+          </span>
+        <% end %>
+        <span class="ml-auto">🤖 AI-scheduled &nbsp;·&nbsp; 👤 Human-scheduled</span>
+      </div>
+    <% end %>
+  </main>
+</div>

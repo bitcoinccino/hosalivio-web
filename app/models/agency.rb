@@ -1,0 +1,85 @@
+class Agency < ApplicationRecord
+  has_paper_trail
+
+  # Tiering for future plans / feature gating
+  enum :billing_tier, { starter: 0, pro: 1, enterprise: 2 }, validate: true
+
+  # Children
+  has_many :branches,    dependent: :destroy
+  has_many :users,       dependent: :restrict_with_error
+  has_many :patients,    dependent: :restrict_with_error
+  has_many :user_roles,  dependent: :destroy
+  has_many :visits,              dependent: :restrict_with_error
+  has_many :medication_orders,   dependent: :restrict_with_error
+  has_many :medication_logs,     dependent: :restrict_with_error
+  has_many :pharmacy_deliveries, dependent: :restrict_with_error
+  has_many :dme_orders,          dependent: :restrict_with_error
+  has_many :agent_events,        dependent: :destroy
+
+  validates :name, presence: true
+  validates :slug, presence: true, uniqueness: true, format: { with: /\A[A-Z0-9]{2,6}\z/ }
+
+  # ── Partner-directory scopes (used on the public landing page) ────────
+  scope :partners,                 -> { where(is_partner: true, active: true) }
+  scope :accepting_referrals,      -> { where(accepting_referrals: true) }
+  scope :with_specialty,           ->(s) { where("specialties  @> ?", [s].to_json) }
+  scope :with_insurance,           ->(i) { where("insurance_accepted @> ?", [i].to_json) }
+  scope :with_language,            ->(l) { where("languages @> ?", [l].to_json) }
+  scope :serving_zip_prefix, lambda { |prefix|
+    next none if prefix.blank?
+    where("service_area_zips @> ? OR service_area_zips @> ? OR zip LIKE ?",
+          [prefix].to_json, [prefix[0, 3]].to_json, "#{prefix}%")
+  }
+
+  SPECIALTY_CATALOG = {
+    "general_hospice"   => "General Hospice",
+    "dementia_care"     => "Dementia & Alzheimer's",
+    "pediatric"         => "Pediatric Hospice",
+    "cardiac"           => "Cardiac / CHF",
+    "oncology"          => "Oncology",
+    "veterans"          => "Veterans Care",
+    "lgbtq_affirming"   => "LGBTQ+ Affirming",
+    "rural_coverage"    => "Rural / Wide-area",
+    "palliative_bridge" => "Palliative Bridge"
+  }.freeze
+
+  INSURANCE_CATALOG = {
+    "medicare" => "Medicare",
+    "medicaid" => "Medicaid",
+    "private"  => "Private Insurance",
+    "va"       => "VA Benefits",
+    "selfpay"  => "Self-pay"
+  }.freeze
+
+  LANGUAGE_CATALOG = {
+    "en" => "English",
+    "es" => "Spanish",
+    "ht" => "Haitian Creole",
+    "pt" => "Portuguese",
+    "zh" => "Chinese",
+    "fr" => "French"
+  }.freeze
+
+  # ── Per-agency agent customization ───────────────────────────────────
+  # agent_personas and agent_overrides are jsonb columns keyed by role.
+  # This wraps them so callers can read/write without raw hash digs.
+  def persona_for(role)  = (agent_personas.presence || {})[role.to_s] || {}
+  def override_for(role) = (agent_overrides.presence || {})[role.to_s].to_s
+
+  def set_persona(role, attrs)
+    self.agent_personas = (agent_personas || {}).merge(role.to_s => attrs.stringify_keys)
+  end
+
+  def set_override(role, text)
+    self.agent_overrides = (agent_overrides || {}).merge(role.to_s => text.to_s)
+  end
+
+  # MRN generator — sequential per agency. Called by Patient#set_mrn.
+  def next_mrn
+    last_seq = patients.where("mrn LIKE ?", "#{slug}-%")
+                       .pluck(:mrn)
+                       .map { |m| m.split("-").last.to_i }
+                       .max || 0
+    format("%s-%05d", slug, last_seq + 1)
+  end
+end

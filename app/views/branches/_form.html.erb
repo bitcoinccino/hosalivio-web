@@ -1,0 +1,159 @@
+<%
+  user_options = User.where(agency: current_user.agency, active: true).order(:full_name).map { |u| [u.full_name, u.id] }
+  type_options = [
+    ["Standard office (admin)", "office"],
+    ["Inpatient Unit (freestanding IPU)", "ipu"],
+    ["Satellite site", "satellite"],
+    ["Storage hub / DME warehouse", "storage_hub"]
+  ]
+  input_cls = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
+  label_cls = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+  section_cls = "pt-5 border-t border-[#EFECE6]"
+  section_header = "text-[11px] uppercase tracking-[0.18em] text-[#6B665F] font-bold mb-3"
+%>
+<%= form_with(model: @branch, local: true, html: { class: "space-y-5" }) do |f| %>
+  <% if flash[:alert].present? %>
+    <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
+      <i class="ri-error-warning-line mr-1"></i><%= flash[:alert] %>
+    </div>
+  <% end %>
+
+  <!-- 1. Identity -->
+  <section>
+    <div class="<%= section_header %>"><i class="ri-building-2-line"></i> Identity</div>
+    <div class="space-y-3">
+      <div class="grid grid-cols-3 gap-3">
+        <div class="col-span-2">
+          <%= f.label :name, "Branch name", class: label_cls %>
+          <%= f.text_field :name, required: true, placeholder: "e.g. Orlando", class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :branch_type, "Type", class: label_cls %>
+          <%= f.select :branch_type, type_options, {}, class: input_cls %>
+        </div>
+      </div>
+      <div class="grid grid-cols-4 gap-3">
+        <div class="col-span-2">
+          <%= f.label :city, class: label_cls %>
+          <%= f.text_field :city, class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :state, class: label_cls %>
+          <%= f.text_field :state, maxlength: 2, placeholder: "FL", class: "#{input_cls} uppercase" %>
+        </div>
+        <div>
+          <%= f.label :zip, class: label_cls %>
+          <%= f.text_field :zip, class: input_cls %>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <%= f.label :phone, "Main phone", class: label_cls %>
+          <%= f.telephone_field :phone, class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :after_hours_phone, "After-hours triage line", class: label_cls %>
+          <%= f.telephone_field :after_hours_phone, class: input_cls %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Regulatory -->
+  <section class="<%= section_cls %>">
+    <div class="<%= section_header %>"><i class="ri-shield-check-line"></i> Regulatory & Compliance</div>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <%= f.label :npi, "NPI (10 digits)", class: label_cls %>
+          <%= f.text_field :npi, maxlength: 10, placeholder: "1234567890", class: "#{input_cls} font-mono" %>
+        </div>
+        <div>
+          <%= f.label :ccn, "Medicare CCN", class: label_cls %>
+          <%= f.text_field :ccn, maxlength: 10, placeholder: "103001", class: "#{input_cls} font-mono" %>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <%= f.label :ein, "Tax ID / EIN", class: label_cls %>
+          <%= f.text_field :ein, placeholder: "XX-XXXXXXX", class: "#{input_cls} font-mono" %>
+        </div>
+        <div>
+          <%= f.label :state_license_number, "State license #", class: label_cls %>
+          <%= f.text_field :state_license_number, class: "#{input_cls} font-mono" %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Operational & Routing -->
+  <section class="<%= section_cls %>">
+    <div class="<%= section_header %>"><i class="ri-route-line"></i> Operational & Routing</div>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <%= f.label :timezone, class: label_cls %>
+          <%= f.select :timezone,
+                ActiveSupport::TimeZone.us_zones.map { |z| [z.name, z.name] },
+                { selected: @branch.timezone.presence || "America/New_York" },
+                class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :triage_email, "Triage / alerts inbox", class: label_cls %>
+          <%= f.email_field :triage_email, placeholder: "orlando.triage@mercy.test", class: input_cls %>
+        </div>
+      </div>
+      <div>
+        <%= f.label :service_area_zips, "Service-area ZIP codes", class: label_cls %>
+        <%= f.text_area :service_area_zips,
+              value: Array(@branch.service_area_zips).join(", "),
+              rows: 2,
+              placeholder: "32801, 32802, 32803  (3-digit prefixes like 328 also match)",
+              class: input_cls %>
+        <div class="text-[10px] text-[#6B665F] mt-1">Comma or newline separated. Full 5-digit ZIPs or 3-digit prefixes. Admissions AI routes inquiries to the branch whose ZIPs match.</div>
+      </div>
+      <div>
+        <%= f.label :service_area_counties, "Service-area counties", class: label_cls %>
+        <%= f.text_area :service_area_counties,
+              value: Array(@branch.service_area_counties).join(", "),
+              rows: 2,
+              placeholder: "Orange, Seminole, Osceola",
+              class: input_cls %>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Leadership -->
+  <section class="<%= section_cls %>">
+    <div class="<%= section_header %>"><i class="ri-user-star-line"></i> Leadership</div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <%= f.label :manager_id, "Administrator / branch manager", class: label_cls %>
+        <%= f.select :manager_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+      </div>
+      <div>
+        <%= f.label :medical_director_id, "Medical Director (MD)", class: label_cls %>
+        <%= f.select :medical_director_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+      </div>
+      <div>
+        <%= f.label :director_of_nursing_id, "Director of Nursing (DON)", class: label_cls %>
+        <%= f.select :director_of_nursing_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+      </div>
+      <div>
+        <%= f.label :clinical_supervisor_id, "Clinical supervisor", class: label_cls %>
+        <%= f.select :clinical_supervisor_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+      </div>
+    </div>
+  </section>
+
+  <div class="pt-4 border-t border-[#EFECE6] flex items-center justify-between">
+    <label class="inline-flex items-center gap-2 text-[13px] text-[#1D1C1A]">
+      <%= f.check_box :active %> Active
+    </label>
+    <div class="flex items-center gap-2">
+      <%= link_to "Cancel", branches_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+      <%= f.submit (@branch.persisted? ? "Save changes" : "Create branch"),
+            class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,27 @@
+<p>Hi <%= @user.full_name&.split&.first %>,</p>
+
+<p>A quick heads-up about tomorrow's visit:</p>
+
+<div style="border-left: 3px solid #D97757; padding: 8px 12px; margin: 12px 0; background: #FBF9F5; font-family: Georgia, serif;">
+  <strong><%= @patient&.full_name %></strong> &middot; MRN <code><%= @patient&.mrn %></code><br>
+  <%= @visit.discipline.to_s.upcase %> visit &middot;
+  <%= @visit.visit_type.to_s.tr("_", " ") %><br>
+  <strong><%= @visit.anchor_start&.strftime("%A %b %-d, %-l:%M %p") %></strong>
+</div>
+
+<% if @visit.agent_authored %>
+  <p style="font-size: 13px; color: #6B665F;">
+    🤖 This visit was scheduled by the AI. Please review in the calendar
+    and adjust if needed.
+  </p>
+<% else %>
+  <p style="font-size: 13px; color: #6B665F;">
+    👤 This visit was scheduled by a human.
+  </p>
+<% end %>
+
+<p style="font-size: 13px; color: #6B665F;">
+  <a href="<%= Rails.application.routes.url_helpers.calendar_url(host: 'localhost', port: 3001, date: @visit.anchor_start&.to_date) %>">
+    Open the calendar
+  </a>
+</p>

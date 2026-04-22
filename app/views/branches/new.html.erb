@@ -1,0 +1,16 @@
+<% content_for :title, "New branch · HosAlivio" %>
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-lg mx-auto">
+    <a href="<%= branches_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to branches
+    </a>
+    <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm">
+      <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">New branch</h1>
+      <div class="text-[12px] text-[#6B665F] mb-5">
+        A physical location under <span class="font-medium"><%= current_user.agency&.name %></span>.
+        Staff and patients get assigned to a branch so handoffs route locally.
+      </div>
+      <%= render "form" %>
+    </div>
+  </div>
+</div>

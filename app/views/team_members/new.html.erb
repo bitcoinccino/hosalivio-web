@@ -1,0 +1,153 @@
+<% content_for :title, "Add team member · HosAlivio" %>
+<%
+  role_options = [
+    ["RN — bedside nursing", "rn"],
+    ["MD — medical director", "md"],
+    ["DON — director of nursing", "don"],
+    ["Social Worker", "social_worker"],
+    ["Chaplain", "chaplain"],
+    ["Aide (HHA / CNA)", "aide"],
+    ["Admissions / coordinator", "admissions"],
+    ["Insurance", "insurance"],
+    ["Billing", "billing"],
+    ["DME", "dme"],
+    ["Pharmacy", "pharmacy"]
+  ]
+  employment_options = [
+    ["Full-time", "full_time"], ["Part-time", "part_time"],
+    ["Contract / 1099", "contract"], ["PRN (as-needed)", "prn"]
+  ]
+  input_cls  = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
+  label_cls  = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+  section_cls = "pt-5 border-t border-[#EFECE6]"
+  section_hdr = "text-[11px] uppercase tracking-[0.18em] text-[#6B665F] font-bold mb-3"
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-2xl mx-auto">
+    <a href="<%= team_members_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to team
+    </a>
+    <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm">
+      <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">Add a team member</h1>
+      <div class="text-[12px] text-[#6B665F] mb-5">
+        They'll be added to <span class="font-medium"><%= current_user.agency&.name %></span> and get
+        the temporary password <span class="font-mono bg-[#EFECE6] px-1 rounded">hello123</span>.
+      </div>
+
+      <%= form_with(model: @member, url: team_members_path, local: true, html: { class: "space-y-5" }) do |f| %>
+        <% if flash[:alert].present? %>
+          <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
+            <i class="ri-error-warning-line mr-1"></i><%= flash[:alert] %>
+          </div>
+        <% end %>
+
+        <!-- Identity -->
+        <section>
+          <div class="<%= section_hdr %>"><i class="ri-user-line"></i> Identity</div>
+          <div class="space-y-3">
+            <div>
+              <%= f.label :full_name, "Full name", class: label_cls %>
+              <%= f.text_field :full_name, required: true, class: input_cls %>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <%= f.label :email, class: label_cls %>
+                <%= f.email_field :email, required: true, class: input_cls %>
+              </div>
+              <div>
+                <%= f.label :phone_number, "Phone (for SMS alerts)", class: label_cls %>
+                <%= f.telephone_field :phone_number, placeholder: "+1 407 555 0101", class: input_cls %>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="<%= label_cls %>">Primary role</label>
+                <%= select_tag "user[role_name]",
+                      options_for_select(role_options, @role_name),
+                      class: input_cls %>
+              </div>
+              <div>
+                <%= f.label :branch_id, "Branch", class: label_cls %>
+                <% branch_options = @branches.map { |b| ["#{b.name}#{' (' + [b.city, b.state].compact_blank.join(', ') + ')' if b.city.present? || b.state.present?}", b.id] } %>
+                <%= f.select :branch_id, branch_options, { include_blank: "— unassigned —" }, class: input_cls %>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Professional & Regulatory -->
+        <section class="<%= section_cls %>">
+          <div class="<%= section_hdr %>"><i class="ri-award-line"></i> Professional & Regulatory</div>
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <%= f.label :license_number, "State license #", class: label_cls %>
+                <%= f.text_field :license_number, class: "#{input_cls} font-mono" %>
+              </div>
+              <div>
+                <%= f.label :license_expires_on, "License expires on", class: label_cls %>
+                <%= f.date_field :license_expires_on, class: input_cls %>
+              </div>
+            </div>
+            <div>
+              <%= f.label :npi, "NPI (physicians / billable practitioners)", class: label_cls %>
+              <%= f.text_field :npi, maxlength: 10, placeholder: "1234567890", class: "#{input_cls} font-mono" %>
+            </div>
+          </div>
+        </section>
+
+        <!-- Employment & Capacity -->
+        <section class="<%= section_cls %>">
+          <div class="<%= section_hdr %>"><i class="ri-briefcase-line"></i> Employment & Capacity</div>
+          <div class="space-y-3">
+            <div class="grid grid-cols-3 gap-3">
+              <div class="col-span-2">
+                <%= f.label :employment_type, "Employment type", class: label_cls %>
+                <%= f.select :employment_type, employment_options, {}, class: input_cls %>
+              </div>
+              <div>
+                <%= f.label :max_caseload, "Max caseload", class: label_cls %>
+                <%= f.number_field :max_caseload, min: 0, max: 200, class: input_cls %>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <%= f.check_box :on_call %>
+              <%= f.label :on_call, "Part of after-hours / weekend on-call rotation", class: "text-[13px] text-[#1D1C1A]" %>
+            </div>
+          </div>
+        </section>
+
+        <!-- Coverage -->
+        <section class="<%= section_cls %>">
+          <div class="<%= section_hdr %>"><i class="ri-route-line"></i> Coverage</div>
+          <div class="space-y-3">
+            <div>
+              <%= f.label :timezone, class: label_cls %>
+              <%= f.select :timezone,
+                    ActiveSupport::TimeZone.us_zones.map { |z| [z.name, z.name] },
+                    { selected: @member.timezone },
+                    class: input_cls %>
+            </div>
+            <div>
+              <%= f.label :service_zips, "Service ZIPs inside branch (optional)", class: label_cls %>
+              <%= f.text_area :service_zips,
+                    value: Array(@member.service_zips).join(", "),
+                    rows: 2,
+                    placeholder: "32801, 32802  — leave blank to cover the entire branch",
+                    class: input_cls %>
+              <div class="text-[10px] text-[#6B665F] mt-1">
+                AI routes visits only to members whose ZIPs match the patient. Empty = full branch coverage.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="pt-4 border-t border-[#EFECE6] flex items-center justify-end gap-2">
+          <%= link_to "Cancel", team_members_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+          <%= f.submit "Add to team",
+                class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

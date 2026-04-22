@@ -1,0 +1,172 @@
+class InquiriesController < ApplicationController
+  # Public `create` for the landing page. Auth-required for everything else.
+  skip_before_action :verify_authenticity_token, only: :create    # JSON POST from public page
+  before_action :authenticate_user!, except: :create
+
+  before_action :set_inquiry, only: [:claim, :mark_contacted, :dismiss, :convert, :convert_to_patient]
+
+  # ── Public submission from landing page ──────────────────────────────
+  def create
+    partner = target_agency(params[:agency_id])
+    return render json: { error: "no_agencies_configured" }, status: :service_unavailable if partner.nil?
+
+    ActsAsTenant.with_tenant(partner) do
+      inquiry = Inquiry.create!(
+        agency:         partner,
+        is_general:     params[:agency_id].blank?,
+        first_name:     params[:name].to_s.strip.presence,
+        contact:        params[:contact].to_s.strip,
+        zip:            params[:zip].to_s.strip,
+        question:       params[:question].to_s.strip,
+        source_prompt:  params[:source_prompt].to_s.presence || "capture",
+        routed_to_role: params[:routed_to_role].to_s.presence || "admissions",
+        status:         :new_lead
+      )
+      render json: { status: "ok", id: inquiry.id, agency: partner.name }, status: :created
+    end
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: "invalid", details: e.record.errors.full_messages }, status: :unprocessable_entity
+  end
+
+  # ── Staff inbox (one agency at a time) ──────────────────────────────
+  def index
+    redirect_to(root_path) and return if current_user.family_access?
+    ActsAsTenant.with_tenant(current_user.agency) do
+      @inquiries = Inquiry.where(status: [:new_lead, :claimed, :contacted]).order(created_at: :desc).limit(100)
+    end
+    respond_to do |f|
+      f.html
+      f.json { render json: @inquiries.map { |i| inquiry_json(i) } }
+    end
+  end
+
+  def claim
+    @inquiry.update!(claimed_by: current_user, claimed_at: Time.current, status: :claimed)
+    redirect_back fallback_location: inquiries_path, notice: "Claimed — call them within the hour."
+  end
+
+  def mark_contacted
+    @inquiry.update!(contacted_at: Time.current, status: :contacted)
+    redirect_back fallback_location: inquiries_path, notice: "Marked contacted."
+  end
+
+  def dismiss
+    @inquiry.update!(status: :dismissed)
+    redirect_back fallback_location: inquiries_path, notice: "Dismissed."
+  end
+
+  # GET /inquiries/:id/convert — quick-confirm form for the admissions coordinator
+  def convert
+    redirect_to(dashboard_path, alert: "Already converted.") and return if @inquiry.status_converted?
+  end
+
+  # POST /inquiries/:id/convert_to_patient — the atomic bridge
+  def convert_to_patient
+    if @inquiry.status_converted?
+      redirect_to(dashboard_path, alert: "Already converted.") and return
+    end
+
+    patient = nil
+    ActsAsTenant.with_tenant(current_user.agency) do
+      Inquiry.transaction do
+        phone, email = split_contact(@inquiry.contact)
+
+        patient = Patient.create!(
+          agency:            current_user.agency,
+          first_name:        params[:first_name].presence || @inquiry.first_name.to_s.strip,
+          last_name:         params[:last_name].to_s.strip,
+          dob:               params[:dob],
+          gender:            params[:gender].presence,
+          primary_diagnosis: params[:primary_diagnosis].to_s.strip,
+          zip:               @inquiry.zip.to_s.strip,
+          phone:             phone,
+          email:             email,
+          caregiver_name:    params[:caregiver_name].presence,
+          caregiver_phone:   params[:caregiver_phone].presence,
+          status:            :referred,
+          code_status:       params[:code_status].presence || :full_code
+        )
+
+        if @inquiry.question.to_s.strip.present?
+          Note.create!(
+            agency:      current_user.agency,
+            patient:     patient,
+            author_role: "admissions",
+            author_user: current_user,
+            body:        "Inquiry context (pre-admission, via #{@inquiry.source_prompt.to_s.tr('_', ' ')}):\n\n\"#{@inquiry.question.strip}\"",
+            urgency:     :normal,
+            source:      :system
+          )
+        end
+
+        @inquiry.update!(
+          status:            :converted,
+          converted_at:      Time.current,
+          converted_patient: patient
+        )
+
+        AgentEvent.create!(
+          agency:           current_user.agency,
+          agent_id:         "admissions",
+          agent_session_id: "convert-#{current_user.id.to_s[0, 8]}",
+          action:           "inquiry_converted",
+          subject:          @inquiry,
+          change_set: {
+            first_name:   @inquiry.first_name,
+            patient_id:   patient.id,
+            patient_mrn:  patient.mrn,
+            converted_by: current_user.full_name
+          },
+          happened_at: Time.current
+        )
+      end
+    end
+
+    redirect_to patient_path(patient),
+                notice: "#{patient.full_name} is now in your active census as #{patient.mrn}. The inquiry question is the first chart note."
+  rescue ActiveRecord::RecordInvalid => e
+    flash.now[:alert] = "Couldn't convert: #{e.record.errors.full_messages.to_sentence}"
+    render :convert, status: :unprocessable_entity
+  end
+
+  # ── helpers ─────────────────────────────────────────────────────────
+  private
+
+  def set_inquiry
+    ActsAsTenant.with_tenant(current_user&.agency) do
+      @inquiry = Inquiry.find(params[:id])
+    end
+  end
+
+  # Resolve which agency to attach the inquiry to.
+  # Targeted: the partner whose "Contact" card was clicked.
+  # General: the HosAlivio flagship (slug HOS), or the first partner as fallback.
+  def target_agency(agency_id)
+    ActsAsTenant.without_tenant do
+      return Agency.where(id: agency_id, is_partner: true).first if agency_id.present?
+      Agency.partners.find_by(slug: "HOS") || Agency.partners.order(:name).first || Agency.first
+    end
+  end
+
+  # A family typed "phone or email" in one box on the landing. Route it to the
+  # correct Patient field when we carry it into the chart.
+  def split_contact(raw)
+    s = raw.to_s.strip
+    return [nil, nil] if s.empty?
+    s.include?("@") ? [nil, s] : [s, nil]
+  end
+
+  def inquiry_json(i)
+    {
+      id:            i.id,
+      first_name:    i.first_name,
+      zip_prefix:    i.zip_prefix,
+      contact:       i.contact,
+      question:      i.question,
+      source_prompt: i.source_prompt,
+      is_general:    i.is_general,
+      status:        i.status,
+      created_at:    i.created_at.iso8601
+    }
+  end
+end

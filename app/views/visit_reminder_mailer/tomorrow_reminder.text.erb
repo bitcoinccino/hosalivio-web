@@ -1,0 +1,11 @@
+Hi <%= @user.full_name&.split&.first %>,
+
+A quick heads-up about tomorrow's visit:
+
+  <%= @patient&.full_name %> (MRN <%= @patient&.mrn %>)
+  <%= @visit.discipline.to_s.upcase %> visit - <%= @visit.visit_type.to_s.tr("_", " ") %>
+  <%= @visit.anchor_start&.strftime("%A %b %-d, %-l:%M %p") %>
+
+<%= @visit.agent_authored ? "Scheduled by the AI. Review and adjust in the calendar if needed." : "Scheduled by a human." %>
+
+Calendar: <%= Rails.application.routes.url_helpers.calendar_url(host: "localhost", port: 3001, date: @visit.anchor_start&.to_date) %>
