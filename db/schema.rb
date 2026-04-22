@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_080000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_23_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -118,6 +118,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_080000) do
     t.index ["agency_id", "patient_id", "status"], name: "index_dme_orders_on_agency_id_and_patient_id_and_status"
     t.index ["agency_id"], name: "index_dme_orders_on_agency_id"
     t.index ["patient_id"], name: "index_dme_orders_on_patient_id"
+  end
+
+  create_table "icd10_explanations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "category"
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.string "hospice_context"
+    t.string "simple_description", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_icd10_explanations_on_code", unique: true
   end
 
   create_table "inquiries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
