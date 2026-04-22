@@ -186,8 +186,37 @@
       </div>
     </header>
 
+    <!-- Pinned crisis strip -->
+    <%
+      pinned = @notes.select { |n| n.urgency_crisis? && n.read_at.nil? && n.author_role == "family" }.last(2)
+    %>
+    <% if pinned.any? %>
+      <div class="px-6 pt-4">
+        <div class="rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
+          <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
+            <i class="ri-pushpin-fill"></i>
+            <span class="font-bold tracking-wider text-[12px]">PINNED · OPEN CRISIS<%= "ES" if pinned.size > 1 %></span>
+            <span class="ml-auto text-[10px] opacity-80">Stays at the top until the care team responds.</span>
+          </div>
+          <div class="divide-y divide-[#EFECE6]">
+            <% pinned.each do |pn| %>
+              <div class="px-4 py-3 flex items-start gap-3">
+                <i class="ri-alarm-warning-fill text-[#C1403A] mt-0.5"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[13px] text-[#1D1C1A] break-words"><%= pn.body %></div>
+                  <div class="text-[10px] text-[#6B665F] font-mono mt-0.5">
+                    <%= pn.created_at.strftime("%a %b %-d · %-l:%M %p") %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
     <!-- Message Feed -->
-    <div class="flex-1 overflow-y-auto px-8 py-6 space-y-5" data-patient-chat-target="feed">
+    <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5" data-patient-chat-target="feed">
       <% if @notes.empty? %>
         <div class="text-center text-sm text-[#6B665F] py-20">
           No messages yet. Tap <i class="ri-add-line text-[#D97757]"></i> or <i class="ri-mic-line text-[#D97757]"></i> to start.
@@ -200,32 +229,48 @@
     </div>
 
     <!-- Input Bar -->
-    <div class="px-8 pb-8 pt-4 bg-[#FBF9F5]">
-      <!-- Quick action bar (hidden by default, toggled by +) -->
-      <div class="mb-3 hidden" data-patient-chat-target="quickActions">
+    <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]">
+      <!-- Always-visible family quick-reply chips -->
+      <div class="mb-2 flex gap-1.5 flex-wrap">
+        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="crisis"
+                data-template="Pain is out of control. She's hurting badly.">
+          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] hover:bg-[#FFEDE2] transition">
+            <i class="ri-alarm-warning-line"></i> Pain still bad
+          </span>
+        </button>
+        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
+                data-template="She's resting now, breathing is calm.">
+          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+            <i class="ri-moon-line"></i> She's resting now
+          </span>
+        </button>
+        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
+                data-template="Please call me as soon as you can.">
+          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+            <i class="ri-phone-line"></i> Call me
+          </span>
+        </button>
+        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
+                data-template="We're running low on comfort kit supplies — please send a refill.">
+          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+            <i class="ri-medicine-bottle-line"></i> Need comfort kit refill
+          </span>
+        </button>
+      </div>
+
+      <!-- Expandable full quick-action bar (urgency-flagged templates) -->
+      <div class="mb-2 hidden" data-patient-chat-target="quickActions">
         <div class="flex gap-2 flex-wrap">
-          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="crisis"
-                  data-template="Pain is out of control — patient is [describe].">
-            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#C1403A] text-white hover:bg-[#a5342f] transition">
-              <i class="ri-alarm-warning-line"></i> Report Pain Crisis
-            </span>
-          </button>
-          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
-                  data-template="Please request a medication refill for [medication].">
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
+                  data-template="Requesting chaplain / spiritual support.">
             <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
-              <i class="ri-medicine-bottle-line"></i> Refill Request
+              <i class="ri-hand-heart-line"></i> Spiritual support
             </span>
           </button>
           <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
-                  data-template="Requesting chaplain/spiritual support.">
+                  data-template="Quick status check — how is everything going?">
             <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
-              <i class="ri-hand-heart-line"></i> Spiritual Support
-            </span>
-          </button>
-          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
-                  data-template="Quick status check: how is everything going?">
-            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
-              <i class="ri-chat-3-line"></i> Status Check
+              <i class="ri-chat-3-line"></i> Status check
             </span>
           </button>
         </div>
@@ -258,7 +303,7 @@
       </form>
 
       <div class="mt-2 text-[11px] text-[#6B665F] text-center">
-        Messages go to Lucia (Front Door) — she triages and notifies the right team member.
+        Messages go to Lucia (Front Door). She triages and loops in Pascal or Dr. Esther instantly.
       </div>
     </div>
   </main>

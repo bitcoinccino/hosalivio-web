@@ -1,15 +1,21 @@
 <%
-  is_family = note.author_role == "family"
-  alignment = is_family ? "ml-auto" : ""
-  bubble_bg = is_family ? "bg-white" : "bg-[#EFECE6]"
-  label_color = case note.author_role
-                when "family"      then "#D97757"
+  role = note.author_role
+  is_family    = role == "family"
+  is_system    = %w[admissions front_door_inbound system].include?(role)
+  is_careteam  = !(is_family || is_system)
+
+  alignment = is_family   ? ""                : (is_careteam ? "ml-auto" : "mx-auto")
+  bubble_bg = is_family   ? "bg-[#FFF3EC]"    : (is_careteam ? "bg-[#E6F0EE]" : "bg-[#EFECE6]")
+  text_color = "text-[#1D1C1A]"
+
+  label_color = case role
+                when "family"      then "#C1403A"
                 when "rn"          then "#2F6F4E"
                 when "md"          then "#2B4A7A"
                 when "social_worker" then "#7A4A8C"
                 when "chaplain"    then "#8C6A2F"
                 when "pharmacy"    then "#5A2F7A"
-                when "admissions"  then "#1D1C1A"
+                when "admissions", "front_door_inbound" then "#6B665F"
                 else                    "#6B665F"
                 end
   role_label = {
@@ -22,7 +28,7 @@
     "admissions" => "Front Door",
     "front_door_inbound" => "Front Door",
     "system" => "System"
-  }.fetch(note.author_role, note.author_role.upcase)
+  }.fetch(role, role.to_s.upcase)
 
   role_icon = {
     "family" => "ri-user-heart-line",
@@ -34,23 +40,48 @@
     "admissions" => "ri-customer-service-2-line",
     "front_door_inbound" => "ri-customer-service-2-line",
     "system" => "ri-flashlight-line"
-  }.fetch(note.author_role, "ri-user-line")
+  }.fetch(role, "ri-user-line")
 %>
 
-<div class="max-w-2xl min-w-0 <%= alignment %> <%= bubble_bg %> rounded-3xl px-6 py-5 overflow-hidden">
-  <div class="flex items-center justify-between mb-1">
-    <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] font-bold" style="color: <%= label_color %>;">
-      <i class="<%= role_icon %> text-[12px]"></i>
-      <%= role_label %>
+<% if note.urgency_crisis? %>
+  <%# Full-width crisis highlight bar — cannot be missed, cannot be mistaken for normal chat %>
+  <div class="w-full rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
+    <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
+      <i class="ri-alarm-warning-fill text-lg"></i>
+      <span class="font-bold tracking-wider text-[13px]">URGENT · <%= role_label.upcase %> FLAGGED</span>
+      <span class="ml-auto text-[10px] opacity-80 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></span>
     </div>
-    <% if note.urgency_crisis? %>
-      <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>
-    <% elsif note.urgency_urgent? %>
-      <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
-    <% end %>
+    <div class="px-5 py-4">
+      <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
+    </div>
   </div>
-  <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= note.body %></p>
-  <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">
-    <%= note.created_at.strftime("%-l:%M %p") %>
+<% elsif is_system %>
+  <%# System / Lucia triage: centered, subtle, with "TRIAGED" pill %>
+  <div class="max-w-xl mx-auto text-center">
+    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %>">
+      <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
+      <span class="text-[10px] font-bold uppercase tracking-widest" style="color: <%= label_color %>;">Triaged</span>
+      <span class="text-[12px] text-[#3A3936] break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></span>
+      <% if note.urgency_urgent? %>
+        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
+      <% end %>
+    </div>
+    <div class="text-[10px] text-[#6B665F] mt-1 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></div>
   </div>
-</div>
+<% else %>
+  <div class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> rounded-3xl px-5 py-4 overflow-hidden">
+    <div class="flex items-center justify-between mb-1 gap-2">
+      <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] font-bold" style="color: <%= label_color %>;">
+        <i class="<%= role_icon %> text-[12px]"></i>
+        <%= role_label %>
+      </div>
+      <% if note.urgency_urgent? %>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
+      <% end %>
+    </div>
+    <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
+    <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">
+      <%= note.created_at.strftime("%-l:%M %p") %>
+    </div>
+  </div>
+<% end %>
