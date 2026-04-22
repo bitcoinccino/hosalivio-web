@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
   static targets = ["input", "feed", "status", "quickActions", "mic"]
-  static values  = { patientId: String }
+  static values  = { patientId: String, lang: { type: String, default: "en-US" } }
 
   connect() {
     this._currentUrgency = "normal"
@@ -47,7 +47,7 @@ export default class extends Controller {
       return
     }
     const r = new SR()
-    r.lang           = "en-US"
+    r.lang           = this.langValue || "en-US"
     r.interimResults = true
     r.continuous     = false
 
