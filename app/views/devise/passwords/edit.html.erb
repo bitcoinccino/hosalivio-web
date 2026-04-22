@@ -1,0 +1,56 @@
+<% content_for :title, "Choose a new password · HosAlivio" %>
+
+<div class="min-h-screen flex items-center justify-center px-4 bg-[#FBF9F5]">
+  <div class="w-full max-w-md">
+    <div class="flex items-center justify-center gap-2 mb-8">
+      <div class="w-9 h-9 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+        <i class="ri-heart-pulse-line text-lg"></i>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</div>
+        <div class="text-[11px] text-[#6B665F] italic -mt-0.5">Comfort Care on the Go</div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-[#EFECE6] p-8">
+      <h2 class="font-serif text-2xl text-[#1D1C1A] mb-1">Choose a new password</h2>
+      <p class="text-sm text-[#6B665F] mb-6">Pick something you'll remember.</p>
+
+      <% if resource.errors.any? %>
+        <div class="mb-4 px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
+          <ul class="list-none space-y-0.5">
+            <% resource.errors.full_messages.each do |msg| %>
+              <li><i class="ri-error-warning-line mr-1"></i><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :put, class: "space-y-4" }) do |f| %>
+        <%= f.hidden_field :reset_password_token %>
+
+        <div>
+          <%= f.label :password, "New password", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+          <%= f.password_field :password, autofocus: true, autocomplete: "new-password", required: true,
+                class: "w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[15px]" %>
+          <% if @minimum_password_length %>
+            <div class="text-[11px] text-[#6B665F] mt-1"><%= @minimum_password_length %> characters minimum</div>
+          <% end %>
+        </div>
+
+        <div>
+          <%= f.label :password_confirmation, "Confirm new password", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+          <%= f.password_field :password_confirmation, autocomplete: "new-password", required: true,
+                class: "w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[15px]" %>
+        </div>
+
+        <%= f.submit "Save new password",
+              class: "w-full px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium transition cursor-pointer" %>
+      <% end %>
+    </div>
+
+    <div class="mt-6 text-center text-xs text-[#6B665F]">
+      <%= link_to "← Back to HosAlivio", root_path, class: "hover:text-[#1D1C1A]" %>
+    </div>
+  </div>
+</div>

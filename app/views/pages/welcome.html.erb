@@ -1,0 +1,371 @@
+<% content_for :title, "HosAlivio · Find a hospice partner" %>
+
+<div class="flex min-h-screen"
+     data-controller="welcome"
+     data-welcome-prompts-value='<%= @prompts_js.to_json %>'>
+
+  <!-- ─── Left Sidebar (returning) ─────────────────────────────── -->
+  <aside class="w-72 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6 sticky top-0 h-screen">
+    <div>
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+          <i class="ri-heart-pulse-line text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</h1>
+          <div class="text-[10px] text-[#6B665F] italic -mt-0.5">Comfort Care on the Go</div>
+        </div>
+      </div>
+
+      <p class="mt-6 pb-5 border-b border-[#D9D5CD] text-[13px] text-[#3A3936] leading-relaxed">
+        Gentle, expert hospice care. Let Lucia help you find the right partner.
+      </p>
+
+      <%= form_with(url: root_path, method: :get, local: true, class: "mt-6 space-y-5") do %>
+
+        <div>
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2 font-bold">
+            <i class="ri-map-pin-line"></i> Location
+          </div>
+          <input type="text" name="zip" value="<%= params[:zip] %>" maxlength="5" inputmode="numeric"
+                 class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-white focus:border-[#D97757] focus:outline-none text-[13px]"
+                 placeholder="ZIP code">
+        </div>
+
+        <div>
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2 font-bold">
+            <i class="ri-first-aid-kit-line"></i> Specialty
+          </div>
+          <div class="space-y-1.5">
+            <% @all_specialties.each do |tag, label| %>
+              <label class="flex items-center gap-2 text-[13px] text-[#1D1C1A] cursor-pointer">
+                <input type="checkbox" name="specialty[]" value="<%= tag %>"
+                       <%= 'checked' if Array(params[:specialty]).include?(tag) %>
+                       class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]">
+                <%= label %>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2 font-bold">
+            <i class="ri-bank-card-line"></i> Insurance
+          </div>
+          <div class="space-y-1.5">
+            <% @all_insurance.each do |tag, label| %>
+              <label class="flex items-center gap-2 text-[13px] text-[#1D1C1A] cursor-pointer">
+                <input type="checkbox" name="insurance[]" value="<%= tag %>"
+                       <%= 'checked' if Array(params[:insurance]).include?(tag) %>
+                       class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]">
+                <%= label %>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2 font-bold">
+            <i class="ri-translate-2"></i> Language
+          </div>
+          <div class="space-y-1.5">
+            <% @all_languages.each do |tag, label| %>
+              <label class="flex items-center gap-2 text-[13px] text-[#1D1C1A] cursor-pointer">
+                <input type="checkbox" name="language[]" value="<%= tag %>"
+                       <%= 'checked' if Array(params[:language]).include?(tag) %>
+                       class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]">
+                <%= label %>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" class="flex-1 text-[13px] py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition">
+            Apply filters
+          </button>
+          <a href="<%= root_path %>" class="text-[13px] py-1.5 px-3 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:bg-[#D9D5CD] transition">
+            Clear
+          </a>
+        </div>
+      <% end %>
+
+      <div class="mt-6 rounded-lg bg-[#FBF9F5] border border-[#D9D5CD] p-3">
+        <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#6B665F] mb-1 font-bold">
+          <i class="ri-shield-check-line"></i> Private
+        </div>
+        <p class="text-[11px] text-[#6B665F] leading-snug">
+          Questions here stay here. Nothing you type is saved to a patient chart unless you explicitly ask us to reach out.
+        </p>
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <%= link_to new_user_session_path,
+            class: "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition" do %>
+        <i class="ri-login-box-line"></i> Sign in
+      <% end %>
+      <div class="text-[10px] text-[#6B665F] text-center">For families already in care</div>
+    </div>
+  </aside>
+
+  <!-- ─── Main Stage: Directory + AI Guide ─────────────────────── -->
+  <main class="flex-1 overflow-y-auto">
+    <!-- Top-right sign-in bar -->
+    <div class="flex justify-end px-10 pt-4">
+      <%= link_to new_user_session_path,
+            class: "inline-flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition" do %>
+        <i class="ri-login-box-line"></i> Sign in
+      <% end %>
+    </div>
+
+    <!-- Hero -->
+    <section class="px-10 pt-4 pb-4">
+      <div class="max-w-3xl mx-auto text-center">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-3">
+          <i class="ri-sparkling-2-line"></i> Hospice Discovery · Concierge by Lucia
+        </div>
+        <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-2">
+          Find a hospice partner near you.
+        </h1>
+        <p class="text-[15px] text-[#3A3936] mx-auto max-w-2xl">
+          Tell Lucia what you need in plain English, or filter on the left. She will match you with the best two or three of our vetted partners.
+        </p>
+      </div>
+    </section>
+
+    <!-- Lucia Co-Pilot search -->
+    <section class="px-10 pt-4 pb-6">
+      <%= form_with(url: root_path, method: :get, local: true, html: { class: "max-w-3xl mx-auto" }) do %>
+        <% Array(params[:specialty]).each { |v| %>
+          <%= hidden_field_tag "specialty[]", v %>
+        <% } %>
+        <% Array(params[:insurance]).each { |v| %>
+          <%= hidden_field_tag "insurance[]", v %>
+        <% } %>
+        <% Array(params[:language]).each { |v| %>
+          <%= hidden_field_tag "language[]", v %>
+        <% } %>
+        <% if params[:zip].present? %>
+          <%= hidden_field_tag :zip, params[:zip] %>
+        <% end %>
+
+        <div class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-4 pr-2 py-2">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1D1C1A] text-white flex items-center justify-center">
+            <span class="text-[11px] font-medium">L</span>
+          </div>
+          <input type="text" name="q" value="<%= @active_query %>"
+                 class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
+                 placeholder="e.g. Miami agency with dementia care that accepts Medicare">
+          <button type="submit" class="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
+            <i class="ri-search-line"></i> Ask Lucia
+          </button>
+        </div>
+
+      <% end %>
+    </section>
+
+    <!-- Partner carousel: same width as the Lucia form, three visible at a time -->
+    <section class="pb-6 max-w-3xl mx-auto" data-controller="carousel">
+      <% if @match[:agencies].empty? %>
+        <div class="max-w-2xl text-center py-16 mx-auto px-10">
+          <div class="w-12 h-12 rounded-full bg-[#EFECE6] flex items-center justify-center mx-auto mb-4">
+            <i class="ri-inbox-2-line text-xl text-[#6B665F]"></i>
+          </div>
+          <div class="font-serif text-lg text-[#1D1C1A]">No partners match those filters.</div>
+          <div class="text-[13px] text-[#6B665F] mt-2">Try fewer filters, a broader zip, or let Lucia handle it via the bar above.</div>
+        </div>
+      <% else %>
+        <!-- Header: Explore partners (left) + What's new (slides in more) -->
+        <div class="flex items-baseline justify-between px-10 mb-4">
+          <h2 class="font-serif text-[20px] text-[#1D1C1A]">Explore partners</h2>
+          <button type="button" data-action="click->carousel#showMore"
+                  class="inline-flex items-center gap-1 text-[13px] text-[#6B665F] hover:text-[#1D1C1A] underline-offset-2 hover:underline">
+            What's new <i class="ri-arrow-right-s-line"></i>
+          </button>
+        </div>
+
+        <!-- Track with floating left/right arrows -->
+        <div class="relative">
+          <button type="button" data-action="click->carousel#prev" aria-label="Previous"
+                  class="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full border border-[#EFECE6] bg-white/95 backdrop-blur hover:bg-white text-[#1D1C1A] shadow-md flex items-center justify-center transition">
+            <i class="ri-arrow-left-s-line text-xl"></i>
+          </button>
+          <button type="button" data-action="click->carousel#next" aria-label="Next"
+                  class="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full border border-[#EFECE6] bg-white/95 backdrop-blur hover:bg-white text-[#1D1C1A] shadow-md flex items-center justify-center transition">
+            <i class="ri-arrow-right-s-line text-xl"></i>
+          </button>
+
+          <div data-carousel-target="track"
+               class="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth px-6 pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <% @match[:agencies].each do |agency| %>
+            <article
+              data-action="click->welcome#contactPartner"
+              data-agency-id="<%= agency.id %>"
+              data-agency-name="<%= agency.name %>"
+              class="group relative snap-start flex-shrink-0 w-56 h-72 rounded-2xl overflow-hidden cursor-pointer transition shadow-sm hover:shadow-lg">
+              <!-- Hero fill -->
+              <div class="absolute inset-0" style="background: linear-gradient(135deg, <%= agency.hero_color %> 0%, <%= agency.hero_color %>cc 60%, <%= agency.hero_color %>90 100%);"></div>
+              <!-- Big emoji / visual anchor -->
+              <div class="absolute inset-0 flex items-center justify-center opacity-90 text-[90px] select-none">
+                <span><%= agency.emoji %></span>
+              </div>
+              <!-- Top-right status chip -->
+              <% if agency.accepting_referrals %>
+                <div class="absolute top-3 right-3">
+                  <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-white bg-black/25 backdrop-blur rounded-full px-2 py-0.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Accepting
+                  </span>
+                </div>
+              <% end %>
+              <!-- Gradient scrim + label -->
+              <div class="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/65 via-black/20 to-transparent text-white">
+                <div class="text-[15px] font-medium leading-tight drop-shadow-sm"><%= agency.name %></div>
+                <div class="text-[11px] opacity-90 mt-0.5 font-mono"><%= [agency.city, agency.state].compact.join(", ") %></div>
+              </div>
+              <!-- Hover overlay: specialties + contact hint -->
+              <div class="absolute inset-0 bg-black/55 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition flex flex-col justify-between p-4 text-white">
+                <div>
+                  <div class="text-[15px] font-medium leading-tight"><%= agency.name %></div>
+                  <div class="text-[11px] opacity-80 mt-0.5"><%= [agency.city, agency.state].compact.join(", ") %></div>
+                  <div class="mt-3 flex flex-wrap gap-1">
+                    <% agency.specialties.first(3).each do |s| %>
+                      <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 border border-white/30">
+                        <%= Agency::SPECIALTY_CATALOG[s] || s.humanize %>
+                      </span>
+                    <% end %>
+                  </div>
+                  <% if agency.bio.present? %>
+                    <p class="text-[12px] opacity-85 mt-3 line-clamp-4"><%= agency.bio %></p>
+                  <% end %>
+                </div>
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="opacity-80"><i class="ri-time-line"></i> ~<%= agency.response_sla_hours %>h</span>
+                  <span class="inline-flex items-center gap-1 font-medium">
+                    <i class="ri-phone-line"></i> Contact
+                  </span>
+                </div>
+              </div>
+            </article>
+          <% end %>
+        </div>
+        </div>
+      <% end %>
+    </section>
+
+    <!-- Quick-replies: relocated from inside the form to below the carousel -->
+    <section class="px-10 pb-4 max-w-3xl mx-auto">
+      <%= form_with(url: root_path, method: :get, local: true, html: { class: "" }) do %>
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-3 text-center">Try a quick ask</div>
+        <div class="flex flex-wrap gap-2 justify-center">
+          <% [
+               "Miami agency that serves Spanish-speaking families",
+               "Pediatric hospice in Orlando",
+               "Veterans care in North Florida",
+               "Dementia specialists with Medicare",
+               "LGBTQ+ affirming hospice"
+             ].each do |q| %>
+            <button type="submit" name="q" value="<%= q %>"
+                    class="text-[12px] px-3 py-1.5 rounded-full bg-[#FBF9F5] border border-[#EFECE6] hover:border-[#D97757] hover:bg-[#FFF3EC] text-[#1D1C1A] transition">
+              <%= q %>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+    </section>
+
+    <!-- Lucia's explanation bubble (after the cards + chips) -->
+    <% if @match[:agencies].any? || @active_query.present? %>
+      <section class="px-10 pb-10">
+        <div class="max-w-3xl mx-auto flex items-start gap-3">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1D1C1A] text-white flex items-center justify-center">
+            <span class="text-[11px] font-medium">L</span>
+          </div>
+          <div class="bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] px-4 py-2.5 text-[13px] text-[#1D1C1A]">
+            <span class="font-bold">Lucia:</span> <%= @match[:explanation] %>
+          </div>
+        </div>
+      </section>
+    <% end %>
+
+    <!-- Secondary FAQ prompts (still useful for orientation) -->
+    <section class="px-10 pb-16 max-w-4xl mx-auto">
+      <div class="text-center">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold mb-3">
+          <i class="ri-question-answer-line"></i> Not sure what to ask yet?
+        </div>
+        <h2 class="font-serif text-2xl text-[#1D1C1A] mb-5">Start with a common question.</h2>
+      </div>
+      <div class="flex flex-wrap gap-2 max-w-3xl mx-auto justify-center">
+        <% @starters.each do |s| %>
+          <button type="button"
+                  data-action="click->welcome#choosePrompt"
+                  data-prompt-id="<%= s[:id] %>"
+                  class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-[#EFECE6] hover:border-[#D97757] hover:bg-[#FFF3EC] text-[13px] text-[#1D1C1A] transition">
+            <i class="<%= s[:icon] %> text-[#D97757]"></i><%= s[:label] %>
+          </button>
+        <% end %>
+      </div>
+
+      <!-- Conversation thread (invisible until a chip is clicked) -->
+      <div class="mt-6 space-y-5 max-w-3xl mx-auto" data-welcome-target="thread"></div>
+    </section>
+
+    <footer class="px-10 py-6 text-[11px] text-[#6B665F] border-t border-[#EFECE6]">
+      © HosAlivio · <a href="#" class="hover:text-[#1D1C1A]">Privacy</a> · <a href="#" class="hover:text-[#1D1C1A]">HIPAA Notice</a>
+    </footer>
+  </main>
+
+  <!-- ─── Modal: contact form ─────────────────────────────────────── -->
+  <div data-welcome-target="capture"
+       data-action="keydown.esc@window->welcome#closeCapture click->welcome#backdropClose"
+       class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="relative w-full max-w-lg bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-6"
+         data-welcome-target="captureDialog">
+      <button type="button" data-action="click->welcome#closeCapture"
+              class="absolute top-3 right-3 w-8 h-8 rounded-full text-[#6B665F] hover:bg-[#EFECE6] flex items-center justify-center">
+        <i class="ri-close-line text-lg"></i>
+      </button>
+
+      <div class="text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-2">
+        <i class="ri-map-pin-line"></i> Reach a local coordinator
+      </div>
+      <div data-welcome-target="partnerBanner" class="hidden mb-3 px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[13px] text-[#1D1C1A]">
+        <i class="ri-send-plane-2-line text-[#D97757]"></i>
+        Sending your request to <span class="font-medium" data-welcome-target="partnerBannerName"></span>.
+      </div>
+      <div class="font-serif text-[16px] text-[#1D1C1A] mb-5">Leave a zip code and a way to reach you. A coordinator will call, usually within the hour.</div>
+
+      <form data-action="submit->welcome#submitCapture" class="space-y-3">
+        <input type="text" name="zip" placeholder="ZIP code" required inputmode="numeric" pattern="[0-9]{5}"
+               class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+        <input type="text" name="name" placeholder="First name" required
+               class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+        <input type="text" name="contact" placeholder="Phone or email" required
+               class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+        <div class="flex items-center justify-between gap-3 pt-3 border-t border-[#EFECE6] text-[11px] text-[#6B665F]">
+          <span><i class="ri-shield-check-line"></i> Not stored in any medical record.</span>
+          <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
+            <i class="ri-send-plane-fill"></i> Request a callback
+          </button>
+        </div>
+      </form>
+
+      <div data-welcome-target="captureThanks" class="hidden">
+        <div class="flex items-start gap-3 text-[#1D1C1A]">
+          <i class="ri-check-double-line text-[#D97757] text-2xl"></i>
+          <div>
+            <div class="font-medium">Thank you. A coordinator will reach out shortly.</div>
+            <div class="text-[12px] text-[#3A3936] mt-1">For medical emergencies, always call 911.</div>
+          </div>
+        </div>
+        <div class="mt-5 text-right">
+          <button type="button" data-action="click->welcome#closeCapture"
+                  class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1D1C1A] hover:bg-[#3A3936] text-white text-sm font-medium transition">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

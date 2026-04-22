@@ -1,0 +1,110 @@
+class User < ApplicationRecord
+  # Devise
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :validatable
+
+  # Audit trail for human edits
+  has_paper_trail
+
+  # Associations
+  belongs_to :agency, optional: true                         # nil only for system admins
+  belongs_to :branch, optional: true                          # physical location within the agency
+  belongs_to :patient, optional: true                         # set only when family_access
+
+  has_many :user_roles, dependent: :destroy
+  has_many :roles, through: :user_roles
+
+  has_many :visits,                           inverse_of: :user
+  has_many :prescribed_medication_orders,     class_name: "MedicationOrder", foreign_key: :prescribed_by_id
+  has_many :administered_medication_logs,     class_name: "MedicationLog",   foreign_key: :administered_by_id
+
+  # Tenant scope: non-system users are constrained to their agency
+  acts_as_tenant :agency, has_global_records: true
+
+  # Validations
+  validates :full_name, presence: true
+  validates :timezone,  presence: true
+  validate  :family_users_must_reference_a_patient
+
+  # --- Employment + compliance --------------------------------------------
+  enum :employment_type, {
+    full_time: 0, part_time: 1, contract: 2, prn: 3
+  }, prefix: true, validate: true
+
+  validates :npi,            format: { with: /\A\d{10}\z/, message: "must be 10 digits" }, allow_blank: true
+  validates :phone_number,   format: { with: /\A[\d\-\+\(\)\s\.]{7,20}\z/, message: "looks invalid" }, allow_blank: true
+  validates :max_caseload,   numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 200 }
+
+  before_validation :normalize_service_zips
+
+  scope :on_call_now, -> { where(on_call: true, active: true) }
+  scope :license_expiring_within, ->(days) {
+    return none if days.blank?
+    where(license_expires_on: Date.current..(Date.current + days.to_i.days))
+  }
+  scope :license_expired, -> { where("license_expires_on < ?", Date.current) }
+
+  # --- Role helpers -------------------------------------------------------
+  def has_role?(name) = roles.exists?(name: name.to_s)
+  def role_names      = roles.pluck(:name)
+
+  # --- Compliance helpers -------------------------------------------------
+  def license_expired? = license_expires_on && license_expires_on < Date.current
+  def license_expiring_soon?(within: 60)
+    return false unless license_expires_on
+    license_expires_on <= Date.current + within.days && !license_expired?
+  end
+
+  def license_status
+    return :none      unless license_expires_on
+    return :expired   if license_expired?
+    return :expiring  if license_expiring_soon?(within: 30)
+    return :warning   if license_expiring_soon?(within: 60)
+    :ok
+  end
+
+  # --- Caseload -----------------------------------------------------------
+  # Count patients where this user holds any case-management role.
+  # Used for Diaphnie's caseload balancing.
+  def current_caseload
+    return 0 unless agency_id
+    Patient.unscoped.where(agency_id: agency_id).where(
+      "assigned_rn_id = :id OR assigned_md_id = :id OR assigned_sw_id = :id OR assigned_chaplain_id = :id",
+      id: id
+    ).count
+  end
+
+  def caseload_utilization
+    return 0.0 if max_caseload.to_i.zero?
+    (current_caseload.to_f / max_caseload).round(2)
+  end
+
+  def at_capacity? = current_caseload >= max_caseload.to_i
+
+  # --- Geographic coverage ------------------------------------------------
+  # A nurse may cover only certain ZIPs inside a branch's territory.
+  def covers_zip?(zip)
+    return true if service_zips.blank?  # no preference = covers the whole branch
+    z = zip.to_s.strip
+    prefix = z[0, 3]
+    Array(service_zips).any? { |entry| entry.to_s == z || entry.to_s == prefix }
+  end
+
+  private
+
+  def normalize_service_zips
+    return if service_zips.is_a?(Array) && !service_zips.any? { |v| v.is_a?(String) && v.match?(/[,\n]/) }
+    raw = service_zips
+    return if raw.blank?
+    self.service_zips = Array(raw).flat_map { |v| v.to_s.split(/[,\n]/) }
+                                  .map(&:strip).reject(&:blank?).uniq
+  end
+
+  def family_users_must_reference_a_patient
+    if family_access && patient_id.blank?
+      errors.add(:patient_id, "is required for family portal users")
+    elsif !family_access && patient_id.present?
+      errors.add(:patient_id, "must be blank unless family_access is true")
+    end
+  end
+end

@@ -1,0 +1,74 @@
+<%
+  # Role visuals — match the chat bubble palette exactly.
+  role_icon = {
+    "family" => "ri-user-heart-line",
+    "rn" => "ri-nurse-line",
+    "md" => "ri-stethoscope-line",
+    "social_worker" => "ri-team-line",
+    "chaplain" => "ri-hand-heart-line",
+    "pharmacy" => "ri-capsule-line",
+    "dme" => "ri-tools-line",
+    "billing" => "ri-bank-card-line",
+    "insurance" => "ri-shield-check-line",
+    "don" => "ri-award-line",
+    "admissions" => "ri-customer-service-2-line",
+    "front_door_inbound" => "ri-customer-service-2-line",
+    "system" => "ri-flashlight-line"
+  }.fetch(ev.agent_id, "ri-user-line")
+
+  role_color = {
+    "family" => "#D97757",
+    "rn" => "#2F6F4E",
+    "md" => "#2B4A7A",
+    "social_worker" => "#7A4A8C",
+    "chaplain" => "#8C6A2F",
+    "pharmacy" => "#5A2F7A",
+    "dme" => "#3E5D5D",
+    "billing" => "#6B665F",
+    "insurance" => "#3A3936",
+    "don" => "#8B5A2B",
+    "admissions" => "#1D1C1A",
+    "front_door_inbound" => "#1D1C1A",
+    "system" => "#6B665F"
+  }.fetch(ev.agent_id, "#6B665F")
+
+  # Urgency / intent pill
+  note_urgency = ev.subject.respond_to?(:urgency) ? ev.subject.urgency : nil
+  handoff_role = ev.change_set.is_a?(Hash) ? ev.change_set["target_role"] : nil
+  intent       = ev.change_set.is_a?(Hash) ? ev.change_set["intent"]      : nil
+
+  # Action-needed pulse: any event tied to an unresolved crisis note
+  row_classes = ["flex items-center gap-2 px-2 py-1.5 rounded-lg border border-transparent"]
+  row_classes << "border-[#D97757] bg-[#FFF3EC] animate-pulse" if unresolved
+%>
+
+<div class="<%= row_classes.join(' ') %>" data-event-id="<%= ev.id %>">
+  <span class="font-mono text-[10px] text-[#6B665F] w-14"><%= ev.happened_at.strftime("%H:%M:%S") %></span>
+
+  <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded"
+        style="color: <%= role_color %>; background: <%= role_color %>14;">
+    <i class="<%= role_icon %>"></i><%= ev.agent_id.tr("_", " ") %>
+  </span>
+
+  <span class="text-[11px] text-[#1D1C1A] font-medium"><%= ev.action %></span>
+
+  <% if ev.subject_type == "Note" %>
+    <% if note_urgency == "crisis" %>
+      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>
+    <% elsif note_urgency == "urgent" %>
+      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
+    <% end %>
+  <% end %>
+
+  <% if handoff_role %>
+    <span class="text-[10px] text-[#6B665F]">→</span>
+    <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-[#EFECE6] text-[#1D1C1A]">
+      <%= handoff_role.tr("_", " ") %>
+    </span>
+    <% if intent %>
+      <span class="text-[10px] text-[#6B665F] italic"><%= intent.tr("_", " ") %></span>
+    <% end %>
+  <% end %>
+
+  <span class="ml-auto font-mono text-[10px] text-[#B9B4AB]"><%= ev.subject_type %>/<%= ev.subject_id.to_s[0, 8] %></span>
+</div>
