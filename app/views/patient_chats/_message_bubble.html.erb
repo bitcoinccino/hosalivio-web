@@ -43,8 +43,12 @@
   }.fetch(role, "ri-user-line")
 %>
 
-<% if note.urgency_crisis? %>
-  <%# Full-width crisis highlight bar — cannot be missed, cannot be mistaken for normal chat %>
+<% if is_system %>
+  <%# System/Lucia notes ALWAYS render as the quiet triaged pill, even when
+      urgency=crisis (those are audit breadcrumbs, not family-facing alarms). %>
+<% end %>
+<% if !is_system && note.urgency_crisis? %>
+  <%# Full-width crisis highlight bar — only for family + care-team notes %>
   <div class="w-full rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
     <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
       <i class="ri-alarm-warning-fill text-lg"></i>

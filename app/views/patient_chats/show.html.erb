@@ -130,11 +130,44 @@
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase">
               <%= @patient.status %>
             </span>
+            <% fam = current_user.family_access? %>
+            <%
+              ad_tip = if fam
+                "Advance Directive: a legal document where #{@patient.first_name} wrote down the kind of care she wants — or doesn't want — if she cannot speak for herself. It's her wishes."
+              else
+                "Advance Directive on file"
+              end
+              polst_tip = if fam
+                "POLST — Physician Orders for Life-Sustaining Treatment. A doctor's signed order that turns #{@patient.first_name}'s wishes into followable instructions for paramedics and nurses, like 'do not resuscitate.'"
+              else
+                "POLST on file"
+              end
+            %>
             <% if @patient.advance_directive_on_file %>
-              <span title="Advance Directive on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-line"></i> AD</span>
+              <span class="text-[10px] text-[#2F6F4E] inline-flex items-center gap-0.5 <%= 'cursor-help underline decoration-dotted decoration-[#2F6F4E] underline-offset-2' if fam %>"
+                    tabindex="<%= fam ? 0 : -1 %>"
+                    <% if fam %>
+                      data-controller="tooltip"
+                      data-tooltip-content-value="<%= ad_tip %>"
+                      data-action="mouseenter->tooltip#show mouseleave->tooltip#hide focus->tooltip#show blur->tooltip#hide click->tooltip#toggle"
+                    <% else %>
+                      title="<%= ad_tip %>"
+                    <% end %>>
+                <i class="ri-file-shield-line"></i> AD
+              </span>
             <% end %>
             <% if @patient.polst_on_file %>
-              <span title="POLST on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-2-line"></i> POLST</span>
+              <span class="text-[10px] text-[#2F6F4E] inline-flex items-center gap-0.5 <%= 'cursor-help underline decoration-dotted decoration-[#2F6F4E] underline-offset-2' if fam %>"
+                    tabindex="<%= fam ? 0 : -1 %>"
+                    <% if fam %>
+                      data-controller="tooltip"
+                      data-tooltip-content-value="<%= polst_tip %>"
+                      data-action="mouseenter->tooltip#show mouseleave->tooltip#hide focus->tooltip#show blur->tooltip#hide click->tooltip#toggle"
+                    <% else %>
+                      title="<%= polst_tip %>"
+                    <% end %>>
+                <i class="ri-file-shield-2-line"></i> POLST
+              </span>
             <% end %>
           </div>
           <div class="text-[12px] text-[#6B665F] mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -162,8 +195,17 @@
             <div class="text-lg font-serif text-[#1D1C1A] leading-none mt-0.5"><%= @days_in_hospice || "—" %></div>
           </div>
           <% if @patient.benefit_period.present? %>
-            <div class="px-3 py-1.5 rounded-xl bg-[#FBF9F5] text-center">
-              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]"><%= @patient.benefit_period.upcase %></div>
+            <% bp_family = current_user.family_access? %>
+            <div class="px-3 py-1.5 rounded-xl bg-[#FBF9F5] text-center <%= 'cursor-help' if bp_family %>"
+                 <% if bp_family %>
+                   tabindex="0"
+                   data-controller="tooltip"
+                   data-tooltip-content-value="<%= benefit_period_explanation(@patient.benefit_period, @patient.first_name) %>"
+                   data-action="mouseenter->tooltip#show mouseleave->tooltip#hide focus->tooltip#show blur->tooltip#hide click->tooltip#toggle"
+                 <% end %>>
+              <div class="text-[9px] uppercase tracking-widest text-[#6B665F] <%= 'underline decoration-dotted decoration-[#6B665F] underline-offset-2' if bp_family %>">
+                <%= benefit_period_label(@patient.benefit_period) %>
+              </div>
               <div class="text-[11px] font-mono mt-0.5 <%= @days_to_recert && @days_to_recert <= 7 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
                 <%= @days_to_recert ? "#{@days_to_recert}d recert" : "—" %>
               </div>
@@ -377,9 +419,19 @@
                 <%= @days_to_recert || "—" %>
               </div>
             </div>
-            <div class="rounded-lg bg-[#FBF9F5] p-3">
-              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Benefit period</div>
-              <div class="text-sm font-medium text-[#1D1C1A] mt-0.5"><%= @patient.benefit_period&.upcase || "—" %></div>
+            <%
+              bp_fam_rail = current_user.family_access? && @patient.benefit_period.present?
+              bp_rail_tooltip = bp_fam_rail ? benefit_period_explanation(@patient.benefit_period, @patient.first_name) : nil
+            %>
+            <div class="rounded-lg bg-[#FBF9F5] p-3 <%= 'cursor-help' if bp_fam_rail %>"
+                 <% if bp_fam_rail %>
+                   tabindex="0"
+                   data-controller="tooltip"
+                   data-tooltip-content-value="<%= bp_rail_tooltip %>"
+                   data-action="mouseenter->tooltip#show mouseleave->tooltip#hide focus->tooltip#show blur->tooltip#hide click->tooltip#toggle"
+                 <% end %>>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] <%= 'underline decoration-dotted decoration-[#6B665F] underline-offset-2' if bp_fam_rail %>">Benefit period</div>
+              <div class="text-sm font-medium text-[#1D1C1A] mt-0.5"><%= benefit_period_label(@patient.benefit_period) %></div>
             </div>
             <div class="rounded-lg <%= @unresolved_crisis > 0 ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %> p-3">
               <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Open crises</div>
