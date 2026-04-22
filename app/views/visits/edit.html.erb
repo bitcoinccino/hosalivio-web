@@ -1,0 +1,20 @@
+<% content_for :title, "Edit visit · HosAlivio" %>
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-xl mx-auto">
+    <a href="<%= calendar_path(date: @visit.scheduled_at&.to_date) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to calendar
+    </a>
+    <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm p-6">
+      <div class="text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-2">
+        <i class="ri-calendar-event-line"></i> Edit visit
+      </div>
+      <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">
+        <%= @visit.patient&.full_name %>
+      </h1>
+      <div class="text-[11px] text-[#6B665F] mb-5">
+        <%= @visit.agent_authored ? "🤖 Originally scheduled by AI" : "👤 Originally scheduled by a human" %>
+      </div>
+      <%= render "form" %>
+    </div>
+  </div>
+</div>

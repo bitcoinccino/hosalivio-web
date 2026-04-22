@@ -1,0 +1,54 @@
+<% content_for :title, "Notifications · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-2xl mx-auto">
+    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to dashboard
+    </a>
+
+    <div class="flex items-center justify-between mb-5">
+      <h1 class="font-serif text-2xl text-[#1D1C1A]">Your notifications</h1>
+      <% if @notifications.any? { |n| n.read_at.nil? } %>
+        <%= button_to mark_all_read_notifications_path, class: "text-[12px] text-[#6B665F] hover:text-[#1D1C1A] underline-offset-2 hover:underline" do %>
+          Mark all read
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if @notifications.empty? %>
+      <div class="text-center py-20 text-[#6B665F]">
+        <div class="w-12 h-12 rounded-full bg-[#EFECE6] flex items-center justify-center mx-auto mb-3">
+          <i class="ri-notification-off-line text-xl"></i>
+        </div>
+        <div class="font-serif text-lg text-[#1D1C1A]">Quiet for now.</div>
+        <div class="text-[13px] mt-1">Reminders for tomorrow's visits arrive in the afternoon.</div>
+      </div>
+    <% else %>
+      <div class="space-y-2">
+        <% @notifications.each do |n| %>
+          <div class="rounded-xl border <%= n.read_at.nil? ? 'border-[#D97757] bg-white' : 'border-[#EFECE6] bg-[#FBF9F5]/70' %> p-4 flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                        <%= n.read_at.nil? ? 'bg-[#FFF3EC] text-[#D97757]' : 'bg-[#EFECE6] text-[#6B665F]' %>">
+              <i class="<%= n.kind == 'visit_reminder_24h' ? 'ri-calendar-check-line' : 'ri-notification-line' %>"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[13px] font-medium text-[#1D1C1A]"><%= n.title %></div>
+              <div class="text-[12px] text-[#3A3936] mt-1 leading-relaxed"><%= n.body %></div>
+              <div class="text-[10px] text-[#6B665F] font-mono mt-2">
+                <%= n.created_at.strftime("%b %-d · %-l:%M %p") %>
+                <% if n.linked_type == "Visit" && n.linked_id %>
+                  · <%= link_to "open in calendar", visit_path(n.linked_id), class: "text-[#D97757] hover:underline" %>
+                <% end %>
+              </div>
+            </div>
+            <% if n.read_at.nil? %>
+              <%= button_to mark_read_notification_path(n), class: "text-[11px] text-[#6B665F] hover:text-[#1D1C1A]" do %>
+                <i class="ri-check-line"></i>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
