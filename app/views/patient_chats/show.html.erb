@@ -308,110 +308,126 @@
     </div>
   </main>
 
-  <!-- ─── Right Rail: Clinical Context ───────────────────────────── -->
+  <!-- ─── Right Rail: At-a-Glance Accordion ─────────────────────── -->
   <aside class="w-80 bg-white border-l border-[#EFECE6] flex flex-col overflow-hidden">
-    <!-- Patient quick-header -->
-    <div class="px-5 py-4 border-b border-[#EFECE6]">
-      <div class="flex items-center justify-between">
-        <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Patient Detail</div>
-        <span class="text-[10px] font-mono text-[#6B665F]"><%= @patient.mrn %></span>
-      </div>
-      <div class="mt-1 font-serif text-lg text-[#1D1C1A]"><%= @patient.full_name %></div>
-      <div class="text-xs text-[#6B665F] mt-0.5">
-        <%= @patient.age_years %>yo · <%= @patient.gender %> · <%= @patient.preferred_language&.upcase %>
-      </div>
-      <div class="mt-2 flex items-center gap-1.5 flex-wrap">
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded
-                     <%= @patient.dnr? || @patient.dnr_dni? ? 'bg-[#C1403A] text-white' : 'bg-[#EFECE6] text-[#1D1C1A]' %> tracking-wider">
-          <%= @patient.code_status.to_s.upcase.tr("_", "/") %>
-        </span>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase">
-          <%= @patient.status %>
-        </span>
-        <% if @patient.advance_directive_on_file %>
-          <span title="Advance Directive on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-line"></i> AD</span>
-        <% end %>
-        <% if @patient.polst_on_file %>
-          <span title="POLST on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-2-line"></i> POLST</span>
-        <% end %>
-      </div>
-      <% if @patient.primary_diagnosis.present? %>
-        <div class="mt-2 text-[12px] text-[#1D1C1A]"><%= @patient.primary_diagnosis %></div>
-      <% end %>
-    </div>
+    <div class="flex-1 overflow-y-auto divide-y divide-[#EFECE6]">
+      <!-- Active Comfort Meds — open by default, priority section -->
+      <details class="group" open>
+        <%= acc_header("ri-capsule-line", "Active Comfort Meds", @active_orders.size.to_s) %>
+        <div class="px-5 pb-4 pt-3">
+          <% if @active_orders.empty? %>
+            <div class="text-xs text-[#6B665F] italic">None</div>
+          <% else %>
+            <% headline_due = @headline_order && @order_schedules[@headline_order][:next_due_at] %>
+            <div class="mb-3 rounded-lg bg-[#FBF9F5] p-2">
+              <div class="text-[9px] uppercase tracking-widest text-[#6B665F] mb-1">Last <%= @timeline_window_hours %>h</div>
+              <%= med_timeline_ribbon(logs: @timeline_logs, window_hours: @timeline_window_hours, headline_next_due: headline_due) %>
+            </div>
 
-    <div class="flex-1 overflow-y-auto">
-      <!-- Snapshot tiles -->
-      <div class="grid grid-cols-2 gap-2 p-4 border-b border-[#EFECE6]">
-        <div class="rounded-lg bg-[#FBF9F5] p-3">
-          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days in hospice</div>
-          <div class="text-xl font-serif text-[#1D1C1A]"><%= @days_in_hospice || "—" %></div>
-        </div>
-        <div class="rounded-lg bg-[#FBF9F5] p-3">
-          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days to recert</div>
-          <div class="text-xl font-serif <%= @days_to_recert && @days_to_recert <= 7 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
-            <%= @days_to_recert || "—" %>
-          </div>
-        </div>
-        <div class="rounded-lg bg-[#FBF9F5] p-3">
-          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Benefit period</div>
-          <div class="text-sm font-medium text-[#1D1C1A] mt-0.5"><%= @patient.benefit_period&.upcase || "—" %></div>
-        </div>
-        <div class="rounded-lg <%= @unresolved_crisis > 0 ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %> p-3">
-          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Open crises</div>
-          <div class="text-xl font-serif <%= @unresolved_crisis > 0 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
-            <%= @unresolved_crisis %>
-          </div>
-        </div>
-      </div>
+            <ul class="space-y-2">
+              <% @active_orders.each do |o| %>
+                <% s = @order_schedules[o] %>
+                <li class="text-[13px]">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <div class="font-medium text-[#1D1C1A] truncate"><%= o.drug_name %> <%= o.dose %></div>
+                    <span class="text-[10px] font-medium
+                                 <%= {overdue: 'text-[#C1403A]', available: 'text-[#D97757]', upcoming: 'text-[#2F6F4E]', unknown: 'text-[#6B665F]'}[s[:status]] %>">
+                      <%= s[:label] %>
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-[#6B665F] font-mono">
+                    <%= o.route.upcase %> · <%= o.frequency %><%= " · PRN" if o.prn %>
+                  </div>
+                  <% if o.prn_indication.present? %>
+                    <div class="text-[11px] text-[#6B665F] italic">for <%= o.prn_indication %></div>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
 
-      <!-- Active medication orders + 12h timeline -->
-      <div class="px-5 py-4 border-b border-[#EFECE6]">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-capsule-line"></i> Active Orders</h3>
-          <span class="text-[10px] text-[#6B665F] font-mono"><%= @active_orders.size %></span>
-        </div>
-
-        <% if @active_orders.empty? %>
-          <div class="text-xs text-[#6B665F] italic">None</div>
-        <% else %>
-          <!-- 12-hour ribbon: dose markers (green) + next-due tick (orange / red if overdue) -->
-          <% headline_due = @headline_order && @order_schedules[@headline_order][:next_due_at] %>
-          <div class="mb-3 rounded-lg bg-[#FBF9F5] p-2">
-            <div class="text-[9px] uppercase tracking-widest text-[#6B665F] mb-1">Last <%= @timeline_window_hours %>h</div>
-            <%= med_timeline_ribbon(logs: @timeline_logs, window_hours: @timeline_window_hours, headline_next_due: headline_due) %>
-          </div>
-
-          <ul class="space-y-2">
-            <% @active_orders.each do |o| %>
-              <% s = @order_schedules[o] %>
-              <li class="text-[13px]">
-                <div class="flex items-baseline justify-between gap-2">
-                  <div class="font-medium text-[#1D1C1A] truncate"><%= o.drug_name %> <%= o.dose %></div>
-                  <span class="text-[10px] font-medium
-                               <%= {overdue: 'text-[#C1403A]', available: 'text-[#D97757]', upcoming: 'text-[#2F6F4E]', unknown: 'text-[#6B665F]'}[s[:status]] %>">
-                    <%= s[:label] %>
-                  </span>
-                </div>
-                <div class="text-[11px] text-[#6B665F] font-mono">
-                  <%= o.route.upcase %> · <%= o.frequency %><%= " · PRN" if o.prn %>
-                </div>
-                <% if o.prn_indication.present? %>
-                  <div class="text-[11px] text-[#6B665F] italic">for <%= o.prn_indication %></div>
-                <% end %>
-              </li>
+            <% unless current_user.family_access? %>
+              <button type="button"
+                      class="mt-3 w-full text-[11px] px-3 py-1.5 rounded-full border border-dashed border-[#D9D5CD] text-[#6B665F] hover:bg-[#FBF9F5] hover:text-[#1D1C1A]">
+                <i class="ri-add-line"></i> Add PRN
+              </button>
             <% end %>
-          </ul>
-        <% end %>
-      </div>
+          <% end %>
+        </div>
+      </details>
+
+      <!-- Care Snapshot (days / recert / BP / crises) — open by default -->
+      <details class="group" open>
+        <%= acc_header("ri-dashboard-3-line", "Care Snapshot") %>
+        <div class="px-5 pb-4">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="rounded-lg bg-[#FBF9F5] p-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days in hospice</div>
+              <div class="text-xl font-serif text-[#1D1C1A]"><%= @days_in_hospice || "—" %></div>
+            </div>
+            <div class="rounded-lg bg-[#FBF9F5] p-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days to recert</div>
+              <div class="text-xl font-serif <%= @days_to_recert && @days_to_recert <= 7 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+                <%= @days_to_recert || "—" %>
+              </div>
+            </div>
+            <div class="rounded-lg bg-[#FBF9F5] p-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Benefit period</div>
+              <div class="text-sm font-medium text-[#1D1C1A] mt-0.5"><%= @patient.benefit_period&.upcase || "—" %></div>
+            </div>
+            <div class="rounded-lg <%= @unresolved_crisis > 0 ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %> p-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Open crises</div>
+              <div class="text-xl font-serif <%= @unresolved_crisis > 0 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+                <%= @unresolved_crisis %>
+              </div>
+            </div>
+          </div>
+
+          <% next_rn_visit = @recent_visits.find { |v| v.discipline == "rn" && v.scheduled_at && v.scheduled_at > Time.current } %>
+          <% if next_rn_visit %>
+            <div class="mt-3 rounded-lg bg-[#E6F0EE] p-3 flex items-start gap-2">
+              <i class="ri-calendar-check-line text-[#2F6F4E] mt-0.5"></i>
+              <div class="text-[12px]">
+                <div class="text-[10px] uppercase tracking-widest text-[#2F6F4E] font-bold">Next RN visit</div>
+                <div class="text-[#1D1C1A]"><%= next_rn_visit.scheduled_at.strftime("%a %b %-d · %-l:%M %p") %></div>
+                <% if next_rn_visit.user %>
+                  <div class="text-[11px] text-[#6B665F]">with <%= next_rn_visit.user.full_name %></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </details>
+
+      <!-- Quick Actions (clinicians only) -->
+      <% unless current_user.family_access? %>
+        <details class="group" open>
+          <%= acc_header("ri-flashlight-line", "Quick Actions") %>
+          <div class="px-5 pb-4 space-y-2">
+            <a href="<%= new_visit_path %>"
+               class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
+              <i class="ri-calendar-line text-[#D97757]"></i> Schedule visit
+            </a>
+            <button type="button"
+                    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
+              <i class="ri-stethoscope-line text-[#2B4A7A]"></i> Handoff to MD
+            </button>
+            <button type="button"
+                    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
+              <i class="ri-medicine-bottle-line text-[#7A4A8C]"></i> Order comfort kit
+            </button>
+            <button type="button"
+                    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
+              <i class="ri-hand-heart-line text-[#8C6A2F]"></i> Request chaplain
+            </button>
+          </div>
+        </details>
+      <% end %>
 
       <!-- Latest vitals + trend sparklines -->
-      <div class="px-5 py-4 border-b border-[#EFECE6]">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-pulse-line"></i> Vitals</h3>
-          <span class="text-[10px] text-[#6B665F] font-mono">n=<%= @vitals_visits.size %></span>
-        </div>
-        <% if @latest_vitals_visit && (v = @latest_vitals_visit.vitals).present? %>
+      <details class="group">
+        <%= acc_header("ri-pulse-line", "Vitals", "n=#{@vitals_visits.size}") %>
+        <div class="px-5 pb-4">
+          <% if @latest_vitals_visit && (v = @latest_vitals_visit.vitals).present? %>
           <%
             rows = [
               { label: "TEMP",  current: v["temp"],  series: @vitals_series[:temp],   stroke: "#C1403A", normal: [97.0, 100.4] },
@@ -434,25 +450,24 @@
               </div>
             <% end %>
           </div>
-          <div class="mt-3 text-[10px] text-[#6B665F] pt-2 border-t border-[#EFECE6]">
-            Last reading: <%= @latest_vitals_visit.discipline.upcase %> ·
-            <%= @latest_vitals_visit.started_at&.strftime("%b %-d, %-l:%M %p") %>
-            <% if @latest_vitals_visit.pain_score %> · pain <%= @latest_vitals_visit.pain_score %>/10<% end %>
-          </div>
-        <% else %>
-          <div class="text-xs text-[#6B665F] italic">No vitals captured yet.</div>
-        <% end %>
-      </div>
+            <div class="mt-3 text-[10px] text-[#6B665F] pt-2 border-t border-[#EFECE6]">
+              Last reading: <%= @latest_vitals_visit.discipline.upcase %> ·
+              <%= @latest_vitals_visit.started_at&.strftime("%b %-d, %-l:%M %p") %>
+              <% if @latest_vitals_visit.pain_score %> · pain <%= @latest_vitals_visit.pain_score %>/10<% end %>
+            </div>
+          <% else %>
+            <div class="text-xs text-[#6B665F] italic">No vitals captured yet.</div>
+          <% end %>
+        </div>
+      </details>
 
       <!-- Recent visits -->
-      <div class="px-5 py-4 border-b border-[#EFECE6]">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-calendar-check-line"></i> Recent Visits</h3>
-          <span class="text-[10px] text-[#6B665F] font-mono"><%= @recent_visits.size %></span>
-        </div>
-        <% if @recent_visits.empty? %>
-          <div class="text-xs text-[#6B665F] italic">No visits yet.</div>
-        <% else %>
+      <details class="group">
+        <%= acc_header("ri-calendar-check-line", "Recent Visits", @recent_visits.size.to_s) %>
+        <div class="px-5 pb-4">
+          <% if @recent_visits.empty? %>
+            <div class="text-xs text-[#6B665F] italic">No visits yet.</div>
+          <% else %>
           <ul class="space-y-2">
             <% @recent_visits.each do |v| %>
               <li class="text-[12px] flex items-start gap-2">
@@ -473,43 +488,45 @@
                 </div>
               </li>
             <% end %>
-          </ul>
-        <% end %>
-      </div>
+            </ul>
+          <% end %>
+        </div>
+      </details>
 
       <!-- DME at home -->
-      <div class="px-5 py-4 border-b border-[#EFECE6]">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-tools-line"></i> DME at Home</h3>
-          <span class="text-[10px] text-[#6B665F] font-mono"><%= @active_dme.size %></span>
+      <details class="group">
+        <%= acc_header("ri-tools-line", "DME at Home", @active_dme.size.to_s) %>
+        <div class="px-5 pb-4">
+          <% if @active_dme.empty? %>
+            <div class="text-xs text-[#6B665F] italic">None on order.</div>
+          <% else %>
+            <ul class="space-y-1">
+              <% @active_dme.each do |d| %>
+                <li class="flex items-center justify-between text-[12px]">
+                  <span class="text-[#1D1C1A]"><%= d.equipment_type.tr("_", " ") %><%= " ×#{d.quantity}" if d.quantity > 1 %></span>
+                  <span class="text-[10px] uppercase tracking-wider text-[#6B665F]"><%= d.status %></span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
         </div>
-        <% if @active_dme.empty? %>
-          <div class="text-xs text-[#6B665F] italic">None on order.</div>
-        <% else %>
-          <ul class="space-y-1">
-            <% @active_dme.each do |d| %>
-              <li class="flex items-center justify-between text-[12px]">
-                <span class="text-[#1D1C1A]"><%= d.equipment_type.tr("_", " ") %><%= " ×#{d.quantity}" if d.quantity > 1 %></span>
-                <span class="text-[10px] uppercase tracking-wider text-[#6B665F]"><%= d.status %></span>
-              </li>
-            <% end %>
-          </ul>
-        <% end %>
-      </div>
+      </details>
 
       <!-- Pending pharmacy deliveries -->
       <% if @pending_deliveries.any? %>
-        <div class="px-5 py-4 border-b border-[#EFECE6]">
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2"><i class="ri-truck-line"></i> Pharmacy Inbound</h3>
-          <ul class="space-y-1">
-            <% @pending_deliveries.each do |p| %>
-              <li class="flex items-center justify-between text-[12px]">
-                <span class="text-[#1D1C1A]"><%= p.kind.tr("_", " ") %></span>
-                <span class="text-[10px] uppercase tracking-wider text-[#D97757]"><%= p.status %></span>
-              </li>
-            <% end %>
-          </ul>
-        </div>
+        <details class="group">
+          <%= acc_header("ri-truck-line", "Pharmacy Inbound", @pending_deliveries.size.to_s) %>
+          <div class="px-5 pb-4">
+            <ul class="space-y-1">
+              <% @pending_deliveries.each do |p| %>
+                <li class="flex items-center justify-between text-[12px]">
+                  <span class="text-[#1D1C1A]"><%= p.kind.tr("_", " ") %></span>
+                  <span class="text-[10px] uppercase tracking-wider text-[#D97757]"><%= p.status %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        </details>
       <% end %>
     </div>
 
