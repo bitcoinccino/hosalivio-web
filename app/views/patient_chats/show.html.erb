@@ -1,9 +1,11 @@
 <% content_for :title, "#{@patient.full_name} · HosAlivio" %>
 
-<div class="flex h-screen" data-controller="sidebar" data-sidebar-storage-key-value="patientChatSidebar">
+<div class="flex h-screen" data-controller="sidebar patient-chat-mobile" data-sidebar-storage-key-value="patientChatSidebar">
   <!-- ─── Left Rail: IDG Roster ─────────────────────────────────── -->
   <aside data-sidebar-target="sidebar" data-collapsed="false"
-         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
+         data-patient-chat-mobile-target="tab" data-tab-name="team"
+         class="group/sb hidden md:flex w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200
+                data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
     <div>
       <div class="flex items-center justify-between group-data-[collapsed=true]/sb:flex-col group-data-[collapsed=true]/sb:gap-2">
         <div class="flex items-center gap-2">
@@ -100,7 +102,10 @@
   </aside>
 
   <!-- ─── Main Stage ────────────────────────────────────────────── -->
-  <main class="flex-1 flex flex-col min-w-0" data-controller="patient-chat" data-patient-chat-patient-id-value="<%= @patient.id %>">
+  <main class="flex-1 flex flex-col min-w-0 pb-14 md:pb-0"
+        data-controller="patient-chat"
+        data-patient-chat-patient-id-value="<%= @patient.id %>"
+        data-patient-chat-mobile-target="tab" data-tab-name="chat">
     <!-- Patient Banner -->
     <header class="px-6 py-4 border-b border-[#EFECE6] bg-white">
       <div class="flex items-center gap-4">
@@ -144,8 +149,8 @@
           </div>
         </div>
 
-        <!-- Right-side stat chips -->
-        <div class="hidden md:flex items-center gap-2 flex-shrink-0">
+        <!-- Right-side stat chips (hidden on small screens; essential info is in banner text) -->
+        <div class="hidden lg:flex items-center gap-2 flex-shrink-0">
           <% if @unresolved_crisis.to_i > 0 %>
             <div class="px-3 py-1.5 rounded-xl bg-[#FFF3EC] border border-[#D97757] text-center">
               <div class="text-[9px] uppercase tracking-widest text-[#C1403A] font-bold">Crisis</div>
@@ -309,7 +314,9 @@
   </main>
 
   <!-- ─── Right Rail: At-a-Glance Accordion ─────────────────────── -->
-  <aside class="w-80 bg-white border-l border-[#EFECE6] flex flex-col overflow-hidden">
+  <aside data-patient-chat-mobile-target="tab" data-tab-name="details"
+         class="hidden md:flex w-80 bg-white border-l border-[#EFECE6] flex-col overflow-hidden
+                data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
     <div class="flex-1 overflow-y-auto divide-y divide-[#EFECE6]">
       <!-- Active Comfort Meds — open by default, priority section -->
       <details class="group" open>
@@ -537,4 +544,26 @@
       </a>
     </div>
   </aside>
+
+  <!-- Mobile bottom tab bar (visible only below md) -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch">
+    <%
+      tabs = [
+        { name: "team",    icon: "ri-team-line",           label: "Team" },
+        { name: "chat",    icon: "ri-chat-3-line",         label: "Chat" },
+        { name: "details", icon: "ri-file-list-3-line",    label: "Details" }
+      ]
+    %>
+    <% tabs.each do |t| %>
+      <button type="button"
+              data-action="click->patient-chat-mobile#activate"
+              data-tab-name="<%= t[:name] %>"
+              data-patient-chat-mobile-target="button"
+              data-mobile-active="<%= t[:name] == 'chat' ? 'true' : 'false' %>"
+              class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F] data-[mobile-active=true]:text-[#D97757] data-[mobile-active=true]:bg-[#FBF9F5] transition">
+        <i class="<%= t[:icon] %> text-lg"></i>
+        <span class="uppercase tracking-wider mt-0.5"><%= t[:label] %></span>
+      </button>
+    <% end %>
+  </nav>
 </div>
