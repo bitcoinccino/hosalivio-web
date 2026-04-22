@@ -1,0 +1,377 @@
+<% content_for :title, "#{@patient.full_name} · HosAlivio" %>
+
+<div class="flex h-screen">
+  <!-- ─── Left Rail: IDG Roster ─────────────────────────────────── -->
+  <aside class="w-72 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6">
+    <div>
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+          <i class="ri-heart-pulse-line text-sm"></i>
+        </div>
+        <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</h1>
+      </div>
+
+      <div class="mt-6 pb-5 border-b border-[#D9D5CD]">
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Patient</div>
+        <div class="mt-1 font-serif text-lg text-[#1D1C1A]"><%= @patient.full_name %></div>
+        <div class="text-xs text-[#6B665F] mt-0.5 font-mono"><%= @patient.mrn %></div>
+        <% if @patient.dnr? || @patient.dnr_dni? %>
+          <div class="mt-2 inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">
+            <%= @patient.code_status.to_s.upcase.tr("_", "/") %>
+          </div>
+        <% end %>
+      </div>
+
+      <nav class="mt-6 space-y-3">
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2">IDG Team</div>
+        <% @idg_roster.each do |row| %>
+          <div class="flex items-center gap-3 text-sm">
+            <span class="relative flex items-center justify-center w-7 h-7 rounded-full bg-white border border-[#D9D5CD] text-[#6B665F]">
+              <i class="<%=
+                {
+                  'admissions'    => 'ri-customer-service-2-line',
+                  'rn'            => 'ri-nurse-line',
+                  'md'            => 'ri-stethoscope-line',
+                  'social_worker' => 'ri-team-line',
+                  'chaplain'      => 'ri-hand-heart-line'
+                }.fetch(row[:role], 'ri-user-line') %> text-sm"></i>
+              <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#EFECE6] <%= row[:present] ? 'bg-emerald-500' : 'bg-[#B9B4AB]' %>"></span>
+            </span>
+            <div>
+              <div class="text-[13px] text-[#1D1C1A] leading-tight"><%= row[:name] %></div>
+              <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role].tr("_", " ") %></div>
+            </div>
+          </div>
+        <% end %>
+      </nav>
+    </div>
+
+    <div>
+      <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Agency</div>
+      <div class="text-sm text-[#1D1C1A] mt-0.5"><%= @agency.name %></div>
+      <div class="text-xs text-[#6B665F] mt-0.5">Tier: <%= @agency.billing_tier.capitalize %></div>
+      <button class="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition">
+        <i class="ri-sparkling-2-line"></i>
+        VHAS · Upgrade
+      </button>
+    </div>
+  </aside>
+
+  <!-- ─── Main Stage ────────────────────────────────────────────── -->
+  <main class="flex-1 flex flex-col" data-controller="patient-chat" data-patient-chat-patient-id-value="<%= @patient.id %>">
+    <!-- Header -->
+    <header class="px-8 py-5 border-b border-[#EFECE6] bg-white flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-serif font-bold text-[#1D1C1A]">Comfort Care on the Go</h2>
+        <div class="text-xs text-[#6B665F] mt-0.5">Family ↔ Care Team · <span data-patient-chat-target="status">connecting…</span></div>
+      </div>
+      <!-- Next comfort med (live) -->
+      <% if @headline_order %>
+        <% s = @order_schedules[@headline_order] %>
+        <div class="flex items-center gap-2">
+          <i class="ri-capsule-line text-lg <%= s[:status] == :overdue ? 'text-[#C1403A]' : 'text-[#6B665F]' %>"></i>
+          <div class="text-right">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Next Comfort Med</div>
+            <div class="text-sm font-mono text-[#1D1C1A]">
+              <%= @headline_order.drug_name %> <%= @headline_order.dose %> ·
+              <%= @headline_order.route.upcase %> · <%= @headline_order.frequency %>
+            </div>
+            <div class="text-[11px] font-medium
+                        <%= {overdue: 'text-[#C1403A]', available: 'text-[#D97757]', upcoming: 'text-[#2F6F4E]', unknown: 'text-[#6B665F]'}[s[:status]] %>">
+              <%= s[:label] %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </header>
+
+    <!-- Message Feed -->
+    <div class="flex-1 overflow-y-auto px-8 py-6 space-y-5" data-patient-chat-target="feed">
+      <% if @notes.empty? %>
+        <div class="text-center text-sm text-[#6B665F] py-20">
+          No messages yet. Tap <i class="ri-add-line text-[#D97757]"></i> or <i class="ri-mic-line text-[#D97757]"></i> to start.
+        </div>
+      <% else %>
+        <% @notes.each do |note| %>
+          <%= render "message_bubble", note: note %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <!-- Input Bar -->
+    <div class="px-8 pb-8 pt-4 bg-[#FBF9F5]">
+      <!-- Quick action bar (hidden by default, toggled by +) -->
+      <div class="mb-3 hidden" data-patient-chat-target="quickActions">
+        <div class="flex gap-2 flex-wrap">
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="crisis"
+                  data-template="Pain is out of control — patient is [describe].">
+            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#C1403A] text-white hover:bg-[#a5342f] transition">
+              <i class="ri-alarm-warning-line"></i> Report Pain Crisis
+            </span>
+          </button>
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
+                  data-template="Please request a medication refill for [medication].">
+            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
+              <i class="ri-medicine-bottle-line"></i> Refill Request
+            </span>
+          </button>
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
+                  data-template="Requesting chaplain/spiritual support.">
+            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
+              <i class="ri-hand-heart-line"></i> Spiritual Support
+            </span>
+          </button>
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
+                  data-template="Quick status check: how is everything going?">
+            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
+              <i class="ri-chat-3-line"></i> Status Check
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <form data-action="submit->patient-chat#send" class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
+        <button type="button" data-action="click->patient-chat#toggleQuickActions"
+                title="Quick actions"
+                class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+          <i class="ri-add-line"></i>
+        </button>
+
+        <input type="text" name="text" data-patient-chat-target="input"
+               autocomplete="off"
+               class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
+               placeholder="Type a message — or tell us what's happening…">
+
+        <button type="button" data-patient-chat-target="mic" data-action="click->patient-chat#toggleMic"
+                disabled
+                class="w-9 h-9 rounded-full text-[#B9B4AB] text-lg flex items-center justify-center cursor-not-allowed transition">
+          <i class="ri-mic-line"></i>
+        </button>
+
+        <button type="submit"
+                title="Send"
+                class="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
+          <i class="ri-send-plane-fill"></i>
+          <span>Send</span>
+        </button>
+      </form>
+
+      <div class="mt-2 text-[11px] text-[#6B665F] text-center">
+        Messages go to Lucia (Front Door) — she triages and notifies the right team member.
+      </div>
+    </div>
+  </main>
+
+  <!-- ─── Right Rail: Clinical Context ───────────────────────────── -->
+  <aside class="w-80 bg-white border-l border-[#EFECE6] flex flex-col overflow-hidden">
+    <!-- Patient quick-header -->
+    <div class="px-5 py-4 border-b border-[#EFECE6]">
+      <div class="flex items-center justify-between">
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Patient Detail</div>
+        <span class="text-[10px] font-mono text-[#6B665F]"><%= @patient.mrn %></span>
+      </div>
+      <div class="mt-1 font-serif text-lg text-[#1D1C1A]"><%= @patient.full_name %></div>
+      <div class="text-xs text-[#6B665F] mt-0.5">
+        <%= @patient.age_years %>yo · <%= @patient.gender %> · <%= @patient.preferred_language&.upcase %>
+      </div>
+      <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded
+                     <%= @patient.dnr? || @patient.dnr_dni? ? 'bg-[#C1403A] text-white' : 'bg-[#EFECE6] text-[#1D1C1A]' %> tracking-wider">
+          <%= @patient.code_status.to_s.upcase.tr("_", "/") %>
+        </span>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase">
+          <%= @patient.status %>
+        </span>
+        <% if @patient.advance_directive_on_file %>
+          <span title="Advance Directive on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-line"></i> AD</span>
+        <% end %>
+        <% if @patient.polst_on_file %>
+          <span title="POLST on file" class="text-[10px] text-[#2F6F4E]"><i class="ri-file-shield-2-line"></i> POLST</span>
+        <% end %>
+      </div>
+      <% if @patient.primary_diagnosis.present? %>
+        <div class="mt-2 text-[12px] text-[#1D1C1A]"><%= @patient.primary_diagnosis %></div>
+      <% end %>
+    </div>
+
+    <div class="flex-1 overflow-y-auto">
+      <!-- Snapshot tiles -->
+      <div class="grid grid-cols-2 gap-2 p-4 border-b border-[#EFECE6]">
+        <div class="rounded-lg bg-[#FBF9F5] p-3">
+          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days in hospice</div>
+          <div class="text-xl font-serif text-[#1D1C1A]"><%= @days_in_hospice || "—" %></div>
+        </div>
+        <div class="rounded-lg bg-[#FBF9F5] p-3">
+          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days to recert</div>
+          <div class="text-xl font-serif <%= @days_to_recert && @days_to_recert <= 7 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+            <%= @days_to_recert || "—" %>
+          </div>
+        </div>
+        <div class="rounded-lg bg-[#FBF9F5] p-3">
+          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Benefit period</div>
+          <div class="text-sm font-medium text-[#1D1C1A] mt-0.5"><%= @patient.benefit_period&.upcase || "—" %></div>
+        </div>
+        <div class="rounded-lg <%= @unresolved_crisis > 0 ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %> p-3">
+          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Open crises</div>
+          <div class="text-xl font-serif <%= @unresolved_crisis > 0 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+            <%= @unresolved_crisis %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active medication orders + 12h timeline -->
+      <div class="px-5 py-4 border-b border-[#EFECE6]">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-capsule-line"></i> Active Orders</h3>
+          <span class="text-[10px] text-[#6B665F] font-mono"><%= @active_orders.size %></span>
+        </div>
+
+        <% if @active_orders.empty? %>
+          <div class="text-xs text-[#6B665F] italic">None</div>
+        <% else %>
+          <!-- 12-hour ribbon: dose markers (green) + next-due tick (orange / red if overdue) -->
+          <% headline_due = @headline_order && @order_schedules[@headline_order][:next_due_at] %>
+          <div class="mb-3 rounded-lg bg-[#FBF9F5] p-2">
+            <div class="text-[9px] uppercase tracking-widest text-[#6B665F] mb-1">Last <%= @timeline_window_hours %>h</div>
+            <%= med_timeline_ribbon(logs: @timeline_logs, window_hours: @timeline_window_hours, headline_next_due: headline_due) %>
+          </div>
+
+          <ul class="space-y-2">
+            <% @active_orders.each do |o| %>
+              <% s = @order_schedules[o] %>
+              <li class="text-[13px]">
+                <div class="flex items-baseline justify-between gap-2">
+                  <div class="font-medium text-[#1D1C1A] truncate"><%= o.drug_name %> <%= o.dose %></div>
+                  <span class="text-[10px] font-medium
+                               <%= {overdue: 'text-[#C1403A]', available: 'text-[#D97757]', upcoming: 'text-[#2F6F4E]', unknown: 'text-[#6B665F]'}[s[:status]] %>">
+                    <%= s[:label] %>
+                  </span>
+                </div>
+                <div class="text-[11px] text-[#6B665F] font-mono">
+                  <%= o.route.upcase %> · <%= o.frequency %><%= " · PRN" if o.prn %>
+                </div>
+                <% if o.prn_indication.present? %>
+                  <div class="text-[11px] text-[#6B665F] italic">for <%= o.prn_indication %></div>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+
+      <!-- Latest vitals + trend sparklines -->
+      <div class="px-5 py-4 border-b border-[#EFECE6]">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-pulse-line"></i> Vitals</h3>
+          <span class="text-[10px] text-[#6B665F] font-mono">n=<%= @vitals_visits.size %></span>
+        </div>
+        <% if @latest_vitals_visit && (v = @latest_vitals_visit.vitals).present? %>
+          <%
+            rows = [
+              { label: "TEMP",  current: v["temp"],  series: @vitals_series[:temp],   stroke: "#C1403A", normal: [97.0, 100.4] },
+              { label: "BP",    current: v["bp"],    series: @vitals_series[:bp_sys], stroke: "#2B4A7A", normal: [90, 140] },
+              { label: "HR",    current: v["pulse"], series: @vitals_series[:pulse],  stroke: "#2F6F4E", normal: [60, 100] },
+              { label: "RR",    current: v["resp"],  series: @vitals_series[:resp],   stroke: "#7A4A8C", normal: [12, 22] },
+              { label: "SpO2",  current: v["o2"],    series: @vitals_series[:o2],     stroke: "#2F6F4E", normal: [92, 100] }
+            ]
+          %>
+          <div class="space-y-2">
+            <% rows.each do |row| %>
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-baseline gap-2 flex-shrink-0">
+                  <span class="text-[9px] text-[#6B665F] uppercase tracking-widest w-9"><%= row[:label] %></span>
+                  <span class="text-sm font-mono text-[#1D1C1A]"><%= row[:current] || "—" %></span>
+                </div>
+                <div class="flex-1 flex justify-end">
+                  <%= sparkline(row[:series], width: 100, height: 18, stroke: row[:stroke], normal_range: row[:normal]) %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          <div class="mt-3 text-[10px] text-[#6B665F] pt-2 border-t border-[#EFECE6]">
+            Last reading: <%= @latest_vitals_visit.discipline.upcase %> ·
+            <%= @latest_vitals_visit.started_at&.strftime("%b %-d, %-l:%M %p") %>
+            <% if @latest_vitals_visit.pain_score %> · pain <%= @latest_vitals_visit.pain_score %>/10<% end %>
+          </div>
+        <% else %>
+          <div class="text-xs text-[#6B665F] italic">No vitals captured yet.</div>
+        <% end %>
+      </div>
+
+      <!-- Recent visits -->
+      <div class="px-5 py-4 border-b border-[#EFECE6]">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-calendar-check-line"></i> Recent Visits</h3>
+          <span class="text-[10px] text-[#6B665F] font-mono"><%= @recent_visits.size %></span>
+        </div>
+        <% if @recent_visits.empty? %>
+          <div class="text-xs text-[#6B665F] italic">No visits yet.</div>
+        <% else %>
+          <ul class="space-y-2">
+            <% @recent_visits.each do |v| %>
+              <li class="text-[12px] flex items-start gap-2">
+                <i class="<%=
+                  { 'rn' => 'ri-nurse-line', 'md' => 'ri-stethoscope-line',
+                    'sw' => 'ri-team-line', 'chaplain' => 'ri-hand-heart-line',
+                    'aide' => 'ri-user-2-line', 'don' => 'ri-award-line' }
+                  .fetch(v.discipline, 'ri-user-line') %> text-[#6B665F] pt-0.5"></i>
+                <div class="flex-1">
+                  <div class="text-[12px]">
+                    <span class="font-medium text-[#1D1C1A]"><%= v.discipline.upcase %></span>
+                    <span class="text-[10px] text-[#6B665F] ml-1">(<%= v.visit_type.tr("_", " ") %>)</span>
+                  </div>
+                  <div class="text-[10px] text-[#6B665F]"><%= v.started_at&.strftime("%b %-d · %-l:%M %p") || "scheduled" %></div>
+                  <% if v.narrative.present? %>
+                    <div class="text-[11px] text-[#3A3936] line-clamp-2 mt-0.5"><%= v.narrative %></div>
+                  <% end %>
+                </div>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+
+      <!-- DME at home -->
+      <div class="px-5 py-4 border-b border-[#EFECE6]">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-tools-line"></i> DME at Home</h3>
+          <span class="text-[10px] text-[#6B665F] font-mono"><%= @active_dme.size %></span>
+        </div>
+        <% if @active_dme.empty? %>
+          <div class="text-xs text-[#6B665F] italic">None on order.</div>
+        <% else %>
+          <ul class="space-y-1">
+            <% @active_dme.each do |d| %>
+              <li class="flex items-center justify-between text-[12px]">
+                <span class="text-[#1D1C1A]"><%= d.equipment_type.tr("_", " ") %><%= " ×#{d.quantity}" if d.quantity > 1 %></span>
+                <span class="text-[10px] uppercase tracking-wider text-[#6B665F]"><%= d.status %></span>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+
+      <!-- Pending pharmacy deliveries -->
+      <% if @pending_deliveries.any? %>
+        <div class="px-5 py-4 border-b border-[#EFECE6]">
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2"><i class="ri-truck-line"></i> Pharmacy Inbound</h3>
+          <ul class="space-y-1">
+            <% @pending_deliveries.each do |p| %>
+              <li class="flex items-center justify-between text-[12px]">
+                <span class="text-[#1D1C1A]"><%= p.kind.tr("_", " ") %></span>
+                <span class="text-[10px] uppercase tracking-wider text-[#D97757]"><%= p.status %></span>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Footer: back link -->
+    <div class="border-t border-[#EFECE6] px-5 py-3">
+      <a href="/dashboard" class="inline-flex items-center gap-1.5 text-xs text-[#6B665F] hover:text-[#1D1C1A]">
+        <i class="ri-arrow-left-line"></i> Back to Mission Stage
+      </a>
+    </div>
+  </aside>
+</div>
