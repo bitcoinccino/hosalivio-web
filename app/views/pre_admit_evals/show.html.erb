@@ -1,0 +1,144 @@
+<% content_for :title, "Pre-admit eval · #{@eval.patient.full_name}" %>
+<%
+  pae = @eval.raw_json["pre_admit_eval"] || {}
+  ic  = pae["informed_consent"]    || {}
+  eob = pae["election_of_benefit"] || {}
+  fc  = pae["financial_consent"]   || {}
+  dx  = pae["diagnosis"]            || {}
+  lcd = pae["medicare_lcd_criteria"] || {}
+  fr  = pae["final_review"]         || {}
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4">
+  <div class="max-w-3xl mx-auto">
+    <a href="<%= patient_path(@eval.patient) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to <%= @eval.patient.full_name %>
+    </a>
+
+    <div class="flex items-start justify-between mb-6">
+      <div>
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Pre-admit evaluation</div>
+        <h1 class="font-serif text-2xl text-[#1D1C1A]"><%= @eval.patient.full_name %></h1>
+        <div class="text-[12px] text-[#6B665F] mt-0.5 font-mono">
+          <%= @eval.evaluator_name %>
+          <% if @eval.evaluator_license %> · LIC <%= @eval.evaluator_license %><% end %>
+          · <%= @eval.evaluated_at&.strftime("%b %-d, %Y %-l:%M %p") %>
+        </div>
+      </div>
+      <%
+        pill_bg = { "draft" => "#EFECE6", "final" => "#2B4A7A", "certified" => "#2F6F4E", "noe_filed" => "#2F6F4E", "revoked" => "#C1403A" }[@eval.status.to_s] || "#6B665F"
+        pill_fg = %w[draft].include?(@eval.status.to_s) ? "#1D1C1A" : "white"
+      %>
+      <span class="inline-block text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider"
+            style="background: <%= pill_bg %>; color: <%= pill_fg %>;">
+        <%= @eval.status.to_s.tr("_", " ") %>
+      </span>
+    </div>
+
+    <% blockers = @eval.certification_blockers %>
+    <% if blockers.any? %>
+      <div class="mb-5 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4">
+        <div class="text-[11px] uppercase tracking-widest text-[#C1403A] font-bold mb-1">Certification blockers</div>
+        <ul class="list-disc ml-5 text-[13px] text-[#1D1C1A] space-y-0.5">
+          <% blockers.each do |b| %><li><%= b %></li><% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if @eval.status_certified? || @eval.status_final? %>
+      <div class="mb-5 rounded-2xl bg-[#F0F4FA] border border-[#2B4A7A] p-4">
+        <div class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold">NOE filing deadline</div>
+        <div class="text-[16px] text-[#1D1C1A] mt-1">
+          <%= @eval.noe_deadline_at&.strftime("%a %b %-d, %Y") %>
+          <% if @eval.noe_overdue? %>
+            <span class="text-[#C1403A] font-bold ml-2">OVERDUE</span>
+          <% else %>
+            <span class="text-[#6B665F] ml-2">(<%= @eval.days_until_noe_deadline %>d remaining)</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="space-y-4">
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Diagnosis</h2>
+        <div class="text-[13px]">
+          <div><strong class="font-mono"><%= dx["primary_icd10"] %></strong> <%= dx["primary_icd10_description"] %></div>
+          <% if (dx["secondary_icd10_codes"] || []).any? %>
+            <div class="text-[12px] text-[#6B665F] mt-1">Secondary: <%= (dx["secondary_icd10_codes"] || []).join(", ") %></div>
+          <% end %>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Medicare LCD</h2>
+        <% if (lcd["criteria_met"] || []).any? %>
+          <ul class="list-disc ml-5 text-[13px] text-[#1D1C1A] space-y-0.5">
+            <% (lcd["criteria_met"] || []).each do |c| %><li><%= c %></li><% end %>
+          </ul>
+        <% end %>
+        <% if lcd["supporting_documentation"].to_s.strip.present? %>
+          <p class="text-[12px] text-[#3A3936] mt-2"><%= lcd["supporting_documentation"] %></p>
+        <% end %>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Informed consent</h2>
+        <div class="grid grid-cols-2 gap-y-1 text-[12px]">
+          <% [
+            ["Services explained",                ic["services_explained"]],
+            ["Levels of care explained",          ic["levels_of_care_explained"]],
+            ["Curative-stop explained",           ic["curative_treatment_stop_explained"]],
+            ["Family agrees to stop curative",    ic["family_agrees_to_stop_curative"]],
+            ["Questions answered",                ic["questions_answered"]],
+            ["Family wants to proceed",           ic["family_wants_to_proceed"]]
+          ].each do |label, val| %>
+            <div class="text-[#6B665F]"><%= label %></div>
+            <div class="<%= val ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= val ? "✓ yes" : "— no" %></div>
+          <% end %>
+        </div>
+        <% if ic["levels_covered_with_family"].is_a?(Array) && ic["levels_covered_with_family"].any? %>
+          <div class="text-[11px] text-[#6B665F] mt-2">Covered: <%= ic["levels_covered_with_family"].map { |l| l.tr("_", " ") }.join(", ") %></div>
+        <% end %>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Election of benefit</h2>
+        <div class="text-[12px] space-y-1">
+          <div>MHES signed: <span class="<%= eob['mhes_signed'] ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= eob["mhes_signed"] ? "✓ yes" : "— no" %></span></div>
+          <div>Effective date: <span class="font-mono"><%= eob["election_effective_date"].presence || "—" %></span></div>
+          <div>Signed by: <%= eob["primary_decision_maker_name"].presence || "—" %><% if eob["primary_decision_maker_relationship"].present? %> (<%= eob["primary_decision_maker_relationship"] %>)<% end %></div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Financial consent</h2>
+        <div class="text-[12px] space-y-1">
+          <div>AOB signed: <span class="<%= fc['assignment_of_benefits_signed'] ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= fc["assignment_of_benefits_signed"] ? "✓ yes" : "— no" %></span></div>
+          <div>AOB signer: <%= fc["aob_signer_name"].presence || "—" %><% if fc["aob_signer_relationship"].present? %> (<%= fc["aob_signer_relationship"] %>)<% end %></div>
+          <div>Liability acknowledged: <span class="<%= fc['aob_liability_acknowledged'] ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= fc["aob_liability_acknowledged"] ? "✓ yes" : "— no" %></span></div>
+          <div>Medicaid R&B needed: <%= fc["medicaid_form_needed"] ? "yes" : "no" %><% if fc["medicaid_form_needed"] %> · signed: <%= fc["medicaid_form_signed"] ? "✓ yes" : "— no" %><% end %></div>
+        </div>
+      </section>
+
+      <% if fr["rn_recommendation"].to_s.strip.present? %>
+        <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+          <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">RN recommendation</h2>
+          <p class="text-[13px] text-[#1D1C1A]"><%= fr["rn_recommendation"] %></p>
+          <% if fr["prognosis_estimate"].to_s.strip.present? %>
+            <div class="text-[12px] text-[#6B665F] mt-2">Prognosis: <%= fr["prognosis_estimate"] %></div>
+          <% end %>
+          <% if fr["hospice_eligibility_statement"].to_s.strip.present? %>
+            <div class="text-[12px] text-[#6B665F] mt-1"><%= fr["hospice_eligibility_statement"] %></div>
+          <% end %>
+        </section>
+      <% end %>
+    </div>
+
+    <% if @eval.status_draft? || @eval.status_final? %>
+      <div class="mt-6 flex items-center justify-end gap-2">
+        <%= link_to "Edit eval", edit_pre_admit_eval_path(@eval),
+              class: "inline-flex items-center gap-1 text-[13px] px-4 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white" %>
+      </div>
+    <% end %>
+  </div>
+</div>

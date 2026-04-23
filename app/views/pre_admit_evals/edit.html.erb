@@ -1,0 +1,144 @@
+<% content_for :title, "Edit pre-admit · #{@eval.patient.full_name}" %>
+<%
+  pae = @eval.raw_json["pre_admit_eval"] || {}
+  ic  = pae["informed_consent"]    || {}
+  eob = pae["election_of_benefit"] || {}
+  fc  = pae["financial_consent"]   || {}
+  dx  = pae["diagnosis"]            || {}
+  fr  = pae["final_review"]         || {}
+  input = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
+  label_cls = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4">
+  <div class="max-w-3xl mx-auto">
+    <a href="<%= pre_admit_eval_path(@eval) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to eval
+    </a>
+    <h1 class="font-serif text-2xl text-[#1D1C1A] mb-1">Review & finalize pre-admit eval</h1>
+    <div class="text-[12px] text-[#6B665F] mb-5">
+      <%= @eval.patient.full_name %> · <%= @eval.evaluator_name %>
+    </div>
+
+    <% if flash[:alert] %>
+      <div class="mb-4 px-4 py-3 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-[13px]"><%= flash[:alert] %></div>
+    <% end %>
+
+    <%= form_with url: pre_admit_eval_path(@eval), method: :patch, local: true, html: { class: "space-y-4" } do |f| %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Diagnosis</h2>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="<%= label_cls %>">ICD-10</label>
+            <input type="text" name="pre_admit_eval[diagnosis][primary_icd10]" value="<%= dx["primary_icd10"] %>" class="<%= input %> font-mono">
+          </div>
+          <div class="col-span-2">
+            <label class="<%= label_cls %>">Description</label>
+            <input type="text" name="pre_admit_eval[diagnosis][primary_icd10_description]" value="<%= dx["primary_icd10_description"] %>" class="<%= input %>">
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Informed consent</h2>
+        <div class="space-y-2 text-[13px]">
+          <% [
+            ["services_explained",                 "Services explained to family"],
+            ["levels_of_care_explained",           "Four Medicare levels of care explained (RHC / CHC / GIP / Respite)"],
+            ["curative_treatment_stop_explained",  "Explained that curative/aggressive treatment stops"],
+            ["family_agrees_to_stop_curative",     "Family AGREES to stop curative treatment (required)"],
+            ["questions_answered",                 "Family had opportunity to ask questions; all answered"],
+            ["family_wants_to_proceed",            "Family wants to proceed with hospice election"]
+          ].each do |key, label| %>
+            <label class="flex items-center gap-2">
+              <input type="hidden" name="pre_admit_eval[informed_consent][<%= key %>]" value="false">
+              <input type="checkbox" name="pre_admit_eval[informed_consent][<%= key %>]" value="true" <%= 'checked' if ic[key] == true %>>
+              <span><%= label %></span>
+            </label>
+          <% end %>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Election of Medicare Hospice Benefit</h2>
+        <div class="space-y-3 text-[13px]">
+          <label class="flex items-center gap-2">
+            <input type="hidden" name="pre_admit_eval[election_of_benefit][mhes_signed]" value="false">
+            <input type="checkbox" name="pre_admit_eval[election_of_benefit][mhes_signed]" value="true" <%= 'checked' if eob["mhes_signed"] == true %>>
+            <span>MHES signed (Medicare Hospice Election Statement)</span>
+          </label>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="<%= label_cls %>">Effective date</label>
+              <input type="date" name="pre_admit_eval[election_of_benefit][election_effective_date]" value="<%= eob["election_effective_date"] %>" class="<%= input %>">
+            </div>
+            <div>
+              <label class="<%= label_cls %>">Decision-maker name</label>
+              <input type="text" name="pre_admit_eval[election_of_benefit][primary_decision_maker_name]" value="<%= eob["primary_decision_maker_name"] %>" class="<%= input %>">
+            </div>
+            <div>
+              <label class="<%= label_cls %>">Relationship</label>
+              <input type="text" name="pre_admit_eval[election_of_benefit][primary_decision_maker_relationship]" value="<%= eob["primary_decision_maker_relationship"] %>" placeholder="son, spouse, POA" class="<%= input %>">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Financial consent</h2>
+        <div class="space-y-2 text-[13px]">
+          <label class="flex items-center gap-2">
+            <input type="hidden" name="pre_admit_eval[financial_consent][medicare_coverage_explained]" value="false">
+            <input type="checkbox" name="pre_admit_eval[financial_consent][medicare_coverage_explained]" value="true" <%= 'checked' if fc["medicare_coverage_explained"] == true %>>
+            <span>Medicare coverage explained (100% of hospice services, no copays)</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="hidden" name="pre_admit_eval[financial_consent][assignment_of_benefits_signed]" value="false">
+            <input type="checkbox" name="pre_admit_eval[financial_consent][assignment_of_benefits_signed]" value="true" <%= 'checked' if fc["assignment_of_benefits_signed"] == true %>>
+            <span>Assignment of Benefits signed</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="hidden" name="pre_admit_eval[financial_consent][aob_liability_acknowledged]" value="false">
+            <input type="checkbox" name="pre_admit_eval[financial_consent][aob_liability_acknowledged]" value="true" <%= 'checked' if fc["aob_liability_acknowledged"] == true %>>
+            <span>AOB signer acknowledged liability for any double-billing disputes</span>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="<%= label_cls %>">AOB signer name</label>
+              <input type="text" name="pre_admit_eval[financial_consent][aob_signer_name]" value="<%= fc["aob_signer_name"] %>" class="<%= input %>">
+            </div>
+            <div>
+              <label class="<%= label_cls %>">AOB signer relationship</label>
+              <input type="text" name="pre_admit_eval[financial_consent][aob_signer_relationship]" value="<%= fc["aob_signer_relationship"] %>" class="<%= input %>">
+            </div>
+          </div>
+          <label class="flex items-center gap-2 pt-1">
+            <input type="hidden" name="pre_admit_eval[financial_consent][medicaid_form_needed]" value="false">
+            <input type="checkbox" name="pre_admit_eval[financial_consent][medicaid_form_needed]" value="true" <%= 'checked' if fc["medicaid_form_needed"] == true %>>
+            <span>Patient going to a nursing facility → Medicaid R&B form is needed</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="hidden" name="pre_admit_eval[financial_consent][medicaid_form_signed]" value="false">
+            <input type="checkbox" name="pre_admit_eval[financial_consent][medicaid_form_signed]" value="true" <%= 'checked' if fc["medicaid_form_signed"] == true %>>
+            <span>Medicaid R&B form signed (required if needed)</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">RN recommendation</h2>
+        <textarea name="pre_admit_eval[final_review][rn_recommendation]" rows="3" class="<%= input %>"><%= fr["rn_recommendation"] %></textarea>
+      </section>
+
+      <div class="flex items-center justify-between pt-2">
+        <button type="submit" name="submit_action" value="save"
+                class="text-[13px] px-4 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white">
+          Save draft
+        </button>
+        <button type="submit" name="submit_action" value="finalize"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer">
+          <i class="ri-check-line"></i> Finalize & route to MD
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
