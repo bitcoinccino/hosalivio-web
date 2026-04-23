@@ -37,6 +37,9 @@ module Api
             urgency:        normalize_urgency(params[:urgency]),
             clinician_only: internal
           )
+
+          notify_mentioned_users(note, body, patient) if internal
+
           render json: { status: "ok", id: note.id, clinician_only: note.clinician_only }, status: :created
         end
       end
@@ -55,6 +58,29 @@ module Api
       def normalize_urgency(raw)
         v = raw.to_s.downcase
         %w[normal urgent crisis].include?(v) ? v : "normal"
+      end
+
+      # Scan an internal team message for @FirstName tokens, resolve each
+      # to a real user in the same agency, and write a Notification so
+      # their bell-icon badge increments. Skips the author so Esther
+      # doesn't ping herself by writing "@Esther" in her own message.
+      def notify_mentioned_users(note, body, patient)
+        first_names = body.to_s.scan(/@(\w+)/).flatten.map(&:downcase).uniq
+        return if first_names.empty?
+        first_names.each do |fn|
+          target = User.where(agency: patient.agency, active: true)
+                       .where("LOWER(full_name) LIKE ?", "#{fn} %")
+                       .where.not(id: @user.id)
+                       .first
+          next unless target
+          Notification.create!(
+            agency:  patient.agency,
+            user:    target,
+            kind:    "mentioned",
+            title:   "#{@user.full_name} mentioned you in #{patient.full_name}'s chart",
+            linked:  note
+          )
+        end
       end
 
       def render_err(status, code, **extra)

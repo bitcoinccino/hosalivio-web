@@ -155,11 +155,23 @@ class LuciaTriager
   # Resolve a role to a human label. Patient-assigned slot wins (assigned_rn,
   # assigned_md, etc.); otherwise pick the in-branch user with that role.
   # Falls back to the bare role label if nobody fits.
+  #
+  # Names are emitted with an "@" prefix so the audit-row helper can
+  # parse them into clickable mention buttons. Skips honorifics like
+  # "Dr." / "Mr." / "Ms." when picking the first name token, so we get
+  # @Esther instead of @Dr.
   def name_for_role(role)
     role_label = ROLE_LABELS[role] || role.humanize
     user = patient_assigned_user(role) || branch_user_for_role(role)
     return role_label unless user
-    "#{user.full_name.split.first} (#{role_label})"
+    "@#{first_name_for_mention(user)} (#{role_label})"
+  end
+
+  HONORIFICS = %w[dr. mr. mrs. ms. mx. rev. fr. sr.].freeze
+
+  def first_name_for_mention(user)
+    tokens = user.full_name.to_s.split.reject { |t| HONORIFICS.include?(t.downcase) }
+    tokens.first.presence || user.full_name.to_s.split.first
   end
 
   def patient_assigned_user(role)

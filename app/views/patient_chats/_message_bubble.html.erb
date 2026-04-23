@@ -159,7 +159,7 @@
       <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto"><%= in_patient_zone(note.created_at, @patient) %></span>
     </summary>
     <div class="ml-6 mt-1 mb-2 py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md">
-      <div class="text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= note.body %></div>
+      <div class="text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= render_audit_body(note.body) %></div>
     </div>
   </details>
 <% elsif is_system %>

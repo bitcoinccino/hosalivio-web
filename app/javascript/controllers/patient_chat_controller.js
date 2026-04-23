@@ -351,10 +351,52 @@ export default class extends Controller {
         <div data-role="body" class="text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"></div>
       </div>
     `
-    det.querySelector('[data-role="body"]').textContent = n.body
+    // Mirror the server-side render_audit_body helper: escape HTML,
+    // then turn @Name tokens into clickable mention buttons.
+    const bodyEl = det.querySelector('[data-role="body"]')
+    bodyEl.innerHTML = this._renderAuditBodyHTML(n.body)
     this.feedTarget.appendChild(det)
     requestAnimationFrame(() => { det.style.opacity = "1" })
     this._scrollToBottom()
+  }
+
+  // HTML-escape + wrap @Name tokens as clickable mention buttons.
+  // Mirrors app/helpers/application_helper.rb#render_audit_body.
+  _renderAuditBodyHTML(body) {
+    if (!body) return ""
+    const esc = String(body).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[c])
+    return esc.replace(/@(\w+)/g, (_, name) => {
+      return `<button type="button"
+                      class="font-medium text-[#D97757] hover:underline cursor-pointer"
+                      data-action="click->patient-chat#mention"
+                      data-mention="${name}"
+                      title="Reply to ${name} (private team note)">@${name}</button>`
+    })
+  }
+
+  // Stimulus action: clicking an @Name in an audit row inserts the
+  // mention into the input + flips the visibility toggle to internal.
+  // Esther sees "Notified: @Pascal (RN)" → taps @Pascal → input becomes
+  // "@Pascal " with audience locked to team-only, ready for the dose
+  // discussion she's about to type.
+  mention(event) {
+    const name = event.currentTarget?.dataset?.mention
+    if (!name || !this.hasInputTarget) return
+    if (this.hasAudienceToggleTarget && this.audienceToggleTarget.dataset.audience !== "team") {
+      this.toggleAudience()
+    }
+    const current = this.inputTarget.value.trimStart()
+    const prefix = `@${name} `
+    if (!current.startsWith(prefix)) {
+      this.inputTarget.value = prefix + current
+    }
+    this.inputTarget.focus()
+    // Move cursor to the end so they can just start typing.
+    const len = this.inputTarget.value.length
+    this.inputTarget.setSelectionRange(len, len)
+    this.refreshPlaceholderOverlay()
   }
 
   _appendDateSeparator(date) {

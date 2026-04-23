@@ -31,6 +31,26 @@ module ApplicationHelper
     end
   end
 
+  # Render an audit-trace body, escaping HTML and turning every @Name
+  # token into a clickable button. The button triggers the patient-chat
+  # Stimulus action `mention` which inserts "@Name " into the input
+  # and auto-flips the visibility toggle to "Internal team only".
+  def render_audit_body(body)
+    return "" if body.blank?
+    esc = ERB::Util.html_escape(body.to_s)
+    esc.gsub(/@(\w+)/) do |_|
+      name = Regexp.last_match(1)
+      ERB::Util.html_escape(name)
+      <<~HTML.delete("\n")
+        <button type="button"
+                class="font-medium text-[#D97757] hover:underline cursor-pointer"
+                data-action="click->patient-chat#mention"
+                data-mention="#{name}"
+                title="Reply to #{name} (private team note)">@#{name}</button>
+      HTML
+    end.html_safe
+  end
+
   # Human-friendly relative date label used to anchor chat-feed sections,
   # event timelines, and any other surface where "April 22" reads colder
   # than "Today" or "Yesterday".
