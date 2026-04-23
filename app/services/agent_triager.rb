@@ -42,7 +42,7 @@ class AgentTriager
       when "certify_pre_admit_eval" then certify_pre_admit_eval(params)
       when "file_noe"             then file_noe(params)
       when "handoff_to"           then emit_handoff(params, decision)
-      when "broadcast_reply"      then write_note(params.merge(author_role: @role))
+      when "broadcast_reply"      then broadcast_reply(params)
       when "no_action"            then nil
       else
         Rails.logger.warn("[AgentTriager:#{@role}] unknown action #{action.inspect}")
@@ -65,29 +65,43 @@ class AgentTriager
 
   private
 
+  # write_note has two distinct meanings depending on the role:
+  #
+  #   admissions  → family-facing chat reply (the canonical AI voice)
+  #   everyone else → CLINICAL CHART ENTRY (clinician_only documentation)
+  #
+  # The chart entry is what makes the MD / RN / SW / chaplain agents
+  # actually do work — they document assessments, plans, and rationale
+  # in the medical record. Family doesn't see chart entries. broadcast_reply
+  # is the separate action for "speak to the family" and is gated to
+  # admissions only.
   def write_note(p)
     patient_id = p[:patient_id] || fallback_patient_id
     return nil if patient_id.blank?
 
-    # Only the admissions front door speaks to the family in chat.
-    # Non-admissions role agents (RN/MD/SW/etc.) get their rationale
-    # captured by log_audit_note; the prose they draft is discarded
-    # entirely so Pascal doesn't see a redundant "This is Pascal..."
-    # audit row alongside the canonical admissions reply.
     effective_role = p[:author_role].presence || @role
-    unless effective_role.to_s == "admissions"
-      Rails.logger.info("[AgentTriager:#{@role}] discarding write_note for #{effective_role} (admissions is the single AI voice)")
-      return nil
-    end
+    is_chart_only  = effective_role.to_s != "admissions"
 
     Note.create!(
-      agency:      @agency,
-      patient_id:  patient_id,
-      author_role: effective_role,
-      body:        p[:body].to_s.strip,
-      urgency:     normalize_urgency(p[:urgency]),
-      source:      p[:source].presence || "system"
+      agency:         @agency,
+      patient_id:     patient_id,
+      author_role:    effective_role,
+      body:           p[:body].to_s.strip,
+      urgency:        normalize_urgency(p[:urgency]),
+      source:         p[:source].presence || "system",
+      clinician_only: is_chart_only
     )
+  end
+
+  # broadcast_reply is the "speak to the family" action. Only admissions
+  # may use it; any other role's broadcast_reply is dropped so we never
+  # get two AI bubbles (admissions + 'Pascal') in the family thread.
+  def broadcast_reply(p)
+    unless @role == "admissions"
+      Rails.logger.info("[AgentTriager:#{@role}] refused broadcast_reply (admissions is the single family-facing voice)")
+      return nil
+    end
+    write_note(p.merge(author_role: "admissions"))
   end
 
   def write_visit(p)
