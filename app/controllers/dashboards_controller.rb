@@ -23,6 +23,12 @@ class DashboardsController < ApplicationController
       @licenses_expired  = compliance_scope.where("license_expires_on < ?", Date.current).count
       @licenses_expiring = compliance_scope.where(license_expires_on: Date.current..(Date.current + 60.days)).count
 
+      # Pre-admit pipeline rollup (managers only)
+      @pending_certifications = PreAdmitEval.where(agency: @agency, status: :final).order(:evaluated_at).includes(:patient)
+      @pending_noe            = PreAdmitEval.where(agency: @agency, status: :certified).order(:noe_deadline_at).includes(:patient)
+      @noe_overdue            = @pending_noe.select(&:noe_overdue?)
+      @noe_due_today          = @pending_noe.select { |e| e.noe_deadline_at && e.noe_deadline_at.to_date <= Date.current + 1.day && !e.noe_overdue? }
+
       # IDs of currently "open" crisis notes (family crisis that isn't read/replied yet)
       @unresolved_note_ids = Note.where(author_role: "family", urgency: :crisis, read_at: nil).pluck(:id)
 

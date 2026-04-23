@@ -92,6 +92,51 @@
     <% else %>
       <% manager_roles = %w[admin don admissions ceo] %>
       <% is_manager = (current_user.role_names & manager_roles).any? %>
+      <% if is_manager && (@pending_certifications.any? || @pending_noe.any?) %>
+        <section class="mx-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <% if @pending_certifications.any? %>
+            <div class="rounded-2xl border border-[#2B4A7A] bg-[#F0F4FA] p-4">
+              <div class="flex items-center gap-2">
+                <i class="ri-stethoscope-line text-[#2B4A7A] text-lg"></i>
+                <div class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold">Awaiting MD certification</div>
+              </div>
+              <div class="text-[22px] font-serif text-[#1D1C1A] mt-1 leading-none"><%= @pending_certifications.size %></div>
+              <div class="text-[11px] text-[#6B665F] mt-1 space-y-0.5">
+                <% @pending_certifications.first(3).each do |pae| %>
+                  <div class="truncate">· <%= pae.patient.full_name %> — <%= pae.primary_icd10.presence || "dx pending" %></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if @noe_overdue.any? %>
+            <div class="rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] p-4">
+              <div class="flex items-center gap-2">
+                <i class="ri-alarm-warning-fill text-[#C1403A] text-lg"></i>
+                <div class="text-[11px] uppercase tracking-widest text-[#C1403A] font-bold">NOE OVERDUE</div>
+              </div>
+              <div class="text-[22px] font-serif text-[#C1403A] mt-1 leading-none"><%= @noe_overdue.size %></div>
+              <div class="text-[11px] text-[#6B665F] mt-1">Past the 5-day filing deadline. Medicare revenue at risk.</div>
+            </div>
+          <% end %>
+
+          <% if @noe_due_today.any? %>
+            <div class="rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4">
+              <div class="flex items-center gap-2">
+                <i class="ri-time-line text-[#D97757] text-lg"></i>
+                <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold">NOE due today / tomorrow</div>
+              </div>
+              <div class="text-[22px] font-serif text-[#1D1C1A] mt-1 leading-none"><%= @noe_due_today.size %></div>
+              <div class="text-[11px] text-[#6B665F] mt-1 space-y-0.5">
+                <% @noe_due_today.first(3).each do |pae| %>
+                  <div class="truncate">· <%= pae.patient.full_name %> — <%= pae.noe_deadline_at.strftime("%b %-d") %></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
+
       <% if is_manager && (@licenses_expired.to_i > 0 || @licenses_expiring.to_i > 0) %>
         <section class="mx-6 mt-6">
           <a href="/team_members" class="block rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 hover:bg-[#FFEDE2] transition">
