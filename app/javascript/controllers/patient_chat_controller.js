@@ -3,7 +3,11 @@ import { Controller } from "@hotwired/stimulus"
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
   static targets = ["input", "feed", "status", "quickActions", "mic"]
-  static values  = { patientId: String, lang: { type: String, default: "en-US" } }
+  static values  = {
+    patientId: String,
+    lang:      { type: String, default: "en-US" },
+    timezone:  { type: String, default: "America/New_York" }
+  }
 
   connect() {
     this._currentUrgency = "normal"
@@ -184,16 +188,19 @@ export default class extends Controller {
 
   // ── Date separators ─────────────────────────────────────────────
   _maybeInsertDateSeparator(iso) {
-    const noteDate = new Date(iso).toDateString()
+    // Use the patient's branch timezone so the day-boundary matches what
+    // the server-rendered separators decided.
+    const tz = this.timezoneValue
+    const noteDay = new Date(iso).toLocaleDateString("en-CA", { timeZone: tz })
     const last = this._lastNoteDate || this.feedTarget.dataset.lastDate
-    const lastNorm = last ? new Date(last).toDateString() : null
-    if (lastNorm === noteDate) return
+    const lastDay = last ? new Date(last).toLocaleDateString("en-CA", { timeZone: tz }) : null
+    if (lastDay === noteDay) return
     this._appendDateSeparator(new Date(iso))
-    this._lastNoteDate = noteDate
+    this._lastNoteDate = noteDay
   }
 
   _appendAuditLog(n) {
-    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
     const role = String(n.author_role || "").replace(/_/g, " ")
     const urgencyPill = n.urgency === "crisis"
       ? `<span class="inline-flex items-center gap-1 text-[9px] font-bold text-[#C1403A] uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-[#C1403A] animate-pulse"></span>crisis</span>`
@@ -229,18 +236,22 @@ export default class extends Controller {
   }
 
   _dateLabel(date) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const target = new Date(date)
-    target.setHours(0, 0, 0, 0)
+    const tz = this.timezoneValue
+    const fmt = (d) => d.toLocaleDateString("en-CA", { timeZone: tz })  // YYYY-MM-DD
+    const todayStr  = fmt(new Date())
+    const targetStr = fmt(date)
+    if (todayStr === targetStr) return "Today"
+    const today  = new Date(todayStr)
+    const target = new Date(targetStr)
     const diffDays = Math.round((today - target) / (1000 * 60 * 60 * 24))
-    if (diffDays === 0)  return "Today"
     if (diffDays === 1)  return "Yesterday"
-    if (diffDays > 1 && diffDays < 7) return target.toLocaleDateString([], { weekday: "long" })
-    const sameYear = target.getFullYear() === today.getFullYear()
-    return target.toLocaleDateString([], sameYear
-      ? { month: "long", day: "numeric" }
-      : { month: "long", day: "numeric", year: "numeric" })
+    if (diffDays > 1 && diffDays < 7) {
+      return date.toLocaleDateString([], { weekday: "long", timeZone: tz })
+    }
+    const sameYear = today.getFullYear() === target.getFullYear()
+    return date.toLocaleDateString([], sameYear
+      ? { month: "long", day: "numeric", timeZone: tz }
+      : { month: "long", day: "numeric", year: "numeric", timeZone: tz })
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -322,7 +333,7 @@ export default class extends Controller {
       speakerSub = "Automated reply on behalf of your care team"
     }
 
-    const timeLabel = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    const timeLabel = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
     const bubbleTitle = viewerIsFamily
       ? `Sent ${timeLabel}`
       : n.ai_authored
@@ -362,7 +373,7 @@ export default class extends Controller {
         ${urgencyPill}
       </div>
       <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"></p>
-      <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">${new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</div>
+      <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">${new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })}</div>
     `
     bubble.querySelector('[data-role="name"]').textContent = speakerName
     if (speakerSub) bubble.querySelector(`.text-\\[9px\\]`).textContent = speakerSub

@@ -113,6 +113,7 @@
         data-controller="patient-chat"
         data-patient-chat-patient-id-value="<%= @patient.id %>"
         data-patient-chat-lang-value="<%= spoken_lang %>"
+        data-patient-chat-timezone-value="<%= patient_timezone(@patient) %>"
         data-patient-chat-mobile-target="tab" data-tab-name="chat">
     <!-- Patient Banner -->
     <header class="px-6 py-4 border-b border-[#EFECE6] bg-white">
@@ -273,7 +274,7 @@
     <!-- Message Feed -->
     <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5"
          data-patient-chat-target="feed"
-         data-last-date="<%= @notes.last&.created_at&.to_date&.iso8601 %>">
+         data-last-date="<%= @notes.last&.created_at&.in_time_zone(patient_timezone(@patient))&.to_date&.iso8601 %>">
       <% if @notes.empty? %>
         <div class="text-center text-sm text-[#6B665F] py-20">
           No messages yet. Tap <i class="ri-add-line text-[#D97757]"></i> or <i class="ri-mic-line text-[#D97757]"></i> to start.
@@ -282,13 +283,19 @@
         <% last_date = nil %>
         <% @notes.each do |note| %>
           <% note_date = note.created_at.to_date %>
-          <% if note_date != last_date %>
+          <%
+            # Anchor the day-boundary to the patient's branch timezone so a
+            # midnight-Eastern message doesn't get a "Yesterday" pill for a
+            # clinician viewing in Pacific.
+            note_local_date = note.created_at.in_time_zone(patient_timezone(@patient)).to_date
+          %>
+          <% if note_local_date != last_date %>
             <div class="flex items-center justify-center pt-2 pb-1">
               <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">
-                <%= relative_date_label(note_date) %>
+                <%= relative_date_label(note_local_date) %>
               </div>
             </div>
-            <% last_date = note_date %>
+            <% last_date = note_local_date %>
           <% end %>
           <%= render "message_bubble", note: note %>
         <% end %>

@@ -1,4 +1,20 @@
 module ApplicationHelper
+  # Patient's branch timezone, falling back gracefully so we never crash
+  # when a patient is mid-onboarding without a branch yet.
+  def patient_timezone(patient)
+    patient&.branch&.timezone.presence ||
+      Current.agency&.branches&.first&.timezone.presence ||
+      "America/New_York"
+  end
+
+  # Render a Time/DateTime in the patient's branch timezone using the given
+  # strftime format. Replaces bare note.created_at.strftime calls in the
+  # chat feed so server-rendered times match Cable-streamed ones.
+  def in_patient_zone(time, patient, fmt = "%-l:%M %p")
+    return "" if time.nil?
+    time.in_time_zone(patient_timezone(patient)).strftime(fmt)
+  end
+
   # Human-friendly relative date label used to anchor chat-feed sections,
   # event timelines, and any other surface where "April 22" reads colder
   # than "Today" or "Yesterday".
