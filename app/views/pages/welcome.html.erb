@@ -202,7 +202,7 @@
     <!-- Partner carousel: same width as the Lucia form, three visible at a time -->
     <section class="pb-6 max-w-3xl mx-auto" data-controller="carousel">
       <% if @match[:agencies].empty? %>
-        <div class="max-w-2xl text-center py-16 mx-auto px-10">
+        <div class="max-w-2xl text-center py-16 mx-auto px-4 md:px-10">
           <div class="w-12 h-12 rounded-full bg-[#EFECE6] flex items-center justify-center mx-auto mb-4">
             <i class="ri-inbox-2-line text-xl text-[#6B665F]"></i>
           </div>
@@ -211,7 +211,7 @@
         </div>
       <% else %>
         <!-- Header: Explore partners (left) + What's new (slides in more) -->
-        <div class="flex items-baseline justify-between px-10 mb-4">
+        <div class="flex items-baseline justify-between px-4 md:px-10 mb-4">
           <h2 class="font-serif text-[20px] text-[#1D1C1A]">Explore partners</h2>
           <button type="button" data-action="click->carousel#showMore"
                   class="inline-flex items-center gap-1 text-[13px] text-[#6B665F] hover:text-[#1D1C1A] underline-offset-2 hover:underline">

@@ -8,9 +8,9 @@
   }[role] || "#6B665F"
 %>
 <div class="flex h-screen" data-controller="sidebar" data-sidebar-storage-key-value="myDaySidebar">
-  <!-- Left rail -->
+  <!-- Left rail (hidden on mobile; replaced by bottom tab bar) -->
   <aside data-sidebar-target="sidebar" data-collapsed="false"
-         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
+         class="group/sb hidden md:flex w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
     <div>
       <div class="flex items-center justify-between group-data-[collapsed=true]/sb:flex-col group-data-[collapsed=true]/sb:gap-2">
         <div class="flex items-center gap-2">
@@ -50,7 +50,7 @@
   </aside>
 
   <!-- Main -->
-  <main class="flex-1 flex flex-col overflow-hidden">
+  <main class="flex-1 flex flex-col overflow-hidden pb-14 md:pb-0">
     <header class="px-8 py-5 border-b border-[#EFECE6] bg-white">
       <div class="flex items-center justify-between">
         <div>
@@ -298,4 +298,28 @@
       </div>
     </div>
   </main>
+
+  <!-- Mobile bottom tab bar (visible only below md) -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch">
+    <a href="/dashboard" class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#D97757] bg-[#FBF9F5]">
+      <i class="ri-sun-line text-lg"></i>
+      <span class="uppercase tracking-wider mt-0.5">My Day</span>
+    </a>
+    <a href="/calendar" class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F]">
+      <i class="ri-calendar-line text-lg"></i>
+      <span class="uppercase tracking-wider mt-0.5">Calendar</span>
+    </a>
+    <a href="/notifications" class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F] relative">
+      <i class="ri-notification-3-line text-lg"></i>
+      <span class="uppercase tracking-wider mt-0.5">Inbox</span>
+      <% mobile_unread = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
+      <% if mobile_unread > 0 %>
+        <span class="absolute top-1 right-1/4 w-2 h-2 rounded-full bg-[#D97757]"></span>
+      <% end %>
+    </a>
+    <%= link_to edit_profile_path, class: "flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F]" do %>
+      <i class="ri-user-line text-lg"></i>
+      <span class="uppercase tracking-wider mt-0.5">Profile</span>
+    <% end %>
+  </nav>
 </div>
