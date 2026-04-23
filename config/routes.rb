@@ -45,6 +45,7 @@ Rails.application.routes.draw do
   resources :visits, only: [:new, :create, :show, :edit, :update, :destroy]
 
   # Per-agency team management (coordinator / DON / admin)
+  resource  :agency_features, only: [:edit, :update], controller: "agency_features"
   resources :branches, only: [:index, :new, :create, :edit, :update, :destroy]
   resources :team_members, only: [:index, :new, :create, :destroy] do
     member { post :reactivate }

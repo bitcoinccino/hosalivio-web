@@ -1,0 +1,97 @@
+<% content_for :title, "Agency features · HosAlivio" %>
+<%
+  whisper_cfg  = @agency.feature_config(:whisper_transcription)
+  whisper_on   = @agency.feature_enabled?(:whisper_transcription)
+  api_key_set  = ENV["OPENAI_API_KEY"].to_s.strip.present?
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-2xl mx-auto">
+    <a href="/dashboard" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Dashboard
+    </a>
+    <h1 class="font-serif text-2xl text-[#1D1C1A] mb-1">Agency features</h1>
+    <div class="text-[12px] text-[#6B665F] mb-6"><%= @agency.name %></div>
+
+    <% if flash[:notice] %>
+      <div class="mb-4 px-4 py-3 rounded-lg bg-[#EEF5EC] border border-[#9BBF93] text-[#2F6F4E] text-[13px]"><%= flash[:notice] %></div>
+    <% end %>
+    <% if flash[:alert] %>
+      <div class="mb-4 px-4 py-3 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-[13px]"><%= flash[:alert] %></div>
+    <% end %>
+
+    <%= form_with url: agency_features_path, method: :patch, local: true, html: { class: "space-y-5" } do |f| %>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1">
+            <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Voice transcription</div>
+            <h2 class="font-serif text-lg text-[#1D1C1A] mt-1">Whisper (multilingual, high-accuracy)</h2>
+            <p class="text-[12px] text-[#6B665F] mt-1 leading-relaxed">
+              Routes family-chat and visit-narrative dictation through OpenAI Whisper
+              instead of the browser's on-device Web Speech API. Dramatically better
+              Spanish, Haitian Creole, Portuguese, and Mandarin accuracy. Required
+              for agencies serving non-English-preferred families.
+            </p>
+            <div class="mt-3 text-[11px] space-y-1">
+              <div class="flex items-center gap-2">
+                <% if api_key_set %>
+                  <span class="text-[#2F6F4E]"><i class="ri-check-line"></i></span>
+                  <span class="text-[#6B665F]">Server API key configured</span>
+                <% else %>
+                  <span class="text-[#C1403A]"><i class="ri-close-line"></i></span>
+                  <span class="text-[#C1403A]">Server API key missing — set OPENAI_API_KEY before enabling</span>
+                <% end %>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[#D97757]"><i class="ri-alert-line"></i></span>
+                <span class="text-[#6B665F]">Requires an OpenAI BAA for PHI. Audio uploads to OpenAI; without a BAA this is a HIPAA exposure.</span>
+              </div>
+            </div>
+          </div>
+          <label class="inline-flex items-center cursor-pointer">
+            <%= check_box_tag "features[whisper_transcription][enabled]", "1", whisper_on,
+                  class: "sr-only peer" %>
+            <div class="w-11 h-6 bg-[#EFECE6] peer-checked:bg-[#2F6F4E] rounded-full relative transition-colors">
+              <div class="w-5 h-5 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform"></div>
+            </div>
+          </label>
+        </div>
+
+        <div class="mt-5 grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">BAA signed on</label>
+            <input type="date" name="features[whisper_transcription][baa_signed_on]"
+                   value="<%= whisper_cfg["baa_signed_on"] %>"
+                   class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Provider</label>
+            <select name="features[whisper_transcription][provider]"
+                    class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+              <% [["OpenAI Whisper", "openai"], ["AWS Transcribe Medical (planned)", "aws"], ["Azure Speech (planned)", "azure"]].each do |label, val| %>
+                <option value="<%= val %>" <%= "selected" if whisper_cfg["provider"] == val %>><%= label %></option>
+              <% end %>
+            </select>
+          </div>
+        </div>
+
+        <% if whisper_cfg["disabled_at"] %>
+          <div class="mt-3 text-[11px] text-[#6B665F]">
+            Last disabled: <%= Time.parse(whisper_cfg["disabled_at"]).strftime("%b %-d, %Y at %-l:%M %p") rescue whisper_cfg["disabled_at"] %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="flex items-center justify-end">
+        <button type="submit"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
+          <i class="ri-save-line"></i> Save changes
+        </button>
+      </div>
+    <% end %>
+
+    <div class="mt-6 text-[11px] text-[#6B665F]">
+      <i class="ri-information-line"></i>
+      Safe default: if the server has no OpenAI API key, the mic silently stays on free browser voice even with this toggle on. No surprise spend or broken UX.
+    </div>
+  </div>
+</div>
