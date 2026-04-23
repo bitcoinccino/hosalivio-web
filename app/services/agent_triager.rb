@@ -69,21 +69,24 @@ class AgentTriager
     patient_id = p[:patient_id] || fallback_patient_id
     return nil if patient_id.blank?
 
-    # Only the admissions front door is allowed to speak to the family in
-    # chat. When an RN/MD/SW/etc. agent drafts prose, surface it as a
-    # clinician-only audit note so families don't get two AI replies (one
-    # from admissions and one from "Pascal") for a single inbound message.
+    # Only the admissions front door speaks to the family in chat.
+    # Non-admissions role agents (RN/MD/SW/etc.) get their rationale
+    # captured by log_audit_note; the prose they draft is discarded
+    # entirely so Pascal doesn't see a redundant "This is Pascal..."
+    # audit row alongside the canonical admissions reply.
     effective_role = p[:author_role].presence || @role
-    clinician_only = effective_role.to_s != "admissions"
+    unless effective_role.to_s == "admissions"
+      Rails.logger.info("[AgentTriager:#{@role}] discarding write_note for #{effective_role} (admissions is the single AI voice)")
+      return nil
+    end
 
     Note.create!(
-      agency:         @agency,
-      patient_id:     patient_id,
-      author_role:    effective_role,
-      body:           p[:body].to_s.strip,
-      urgency:        normalize_urgency(p[:urgency]),
-      source:         p[:source].presence || "system",
-      clinician_only: clinician_only
+      agency:      @agency,
+      patient_id:  patient_id,
+      author_role: effective_role,
+      body:        p[:body].to_s.strip,
+      urgency:     normalize_urgency(p[:urgency]),
+      source:      p[:source].presence || "system"
     )
   end
 

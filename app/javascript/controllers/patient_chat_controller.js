@@ -102,6 +102,18 @@ export default class extends Controller {
     const isFamily = document.body.dataset.viewerFamily === "true"
     const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
 
+    // Clear the input + schedule the typing indicator BEFORE the await so
+    // the user gets immediate feedback that their message is in flight.
+    // The 800ms delay lets the user's own bubble Cable-echo land first.
+    // With the :inline job adapter the AI reply can arrive while the fetch
+    // is still pending; doing this after the await would race the reply
+    // and either show nothing or hang the dots forever.
+    this.inputTarget.value = ""
+    const sentUrgency = this._currentUrgency
+    this._currentUrgency = "normal"
+    this._usedVoice = false
+    if (isFamily) this._scheduleTyping(800)
+
     const resp = await fetch(url, {
       method: "POST",
       headers: {
@@ -112,7 +124,7 @@ export default class extends Controller {
       body: JSON.stringify({
         patient_id: this.patientIdValue,
         text:       text,
-        urgency:    this._currentUrgency,
+        urgency:    sentUrgency,
         source:     this._usedVoice ? "voice" : "text"
       })
     })
@@ -120,17 +132,8 @@ export default class extends Controller {
     if (!resp.ok) {
       const err = await resp.text()
       console.error("send failed:", resp.status, err)
-      return
+      this._clearTyping()
     }
-
-    // Clear input — the Cable subscription will drop the bubble in the feed.
-    this.inputTarget.value = ""
-    this._currentUrgency   = "normal"
-    this._usedVoice        = false
-
-    // Only family messages trigger an AI reply (Lucia triage).
-    // Clinician messages are conversational, so no typing indicator.
-    if (isFamily) this._scheduleTyping(400)
   }
 
   // ── Typing indicator ─────────────────────────────────────────────
