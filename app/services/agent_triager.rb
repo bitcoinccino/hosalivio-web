@@ -38,6 +38,9 @@ class AgentTriager
       when "write_med_order"      then write_med_order(params)
       when "write_pharm_delivery" then write_pharm_delivery(params)
       when "write_dme_order"      then write_dme_order(params)
+      when "write_pre_admit_eval" then write_pre_admit_eval(params)
+      when "certify_pre_admit_eval" then certify_pre_admit_eval(params)
+      when "file_noe"             then file_noe(params)
       when "handoff_to"           then emit_handoff(params, decision)
       when "broadcast_reply"      then write_note(params.merge(author_role: @role))
       when "no_action"            then nil
@@ -209,6 +212,120 @@ class AgentTriager
 
   def fallback_patient_id
     fallback_patient&.id
+  end
+
+  # ── Pre-admit eval workflow ─────────────────────────────────────
+  #
+  # Pascal → write_pre_admit_eval (status: final) → auto-handoff MD
+  # Esther → certify_pre_admit_eval                 → auto-handoff Insurance
+  # Kendra → file_noe                                → eval.status = noe_filed
+  #
+  # Each transition stamps an AgentEvent so the Mission Stage shows the
+  # full chain of custody from bedside assessment to Medicare filing.
+
+  def write_pre_admit_eval(p)
+    patient_id = p[:patient_id] || fallback_patient_id
+    return nil if patient_id.blank?
+
+    raw = p[:raw_json] || p[:pre_admit_eval] || p
+    raw = raw.to_h if raw.respond_to?(:to_h)
+    raw = { "pre_admit_eval" => raw } unless raw.is_a?(Hash) && raw.key?("pre_admit_eval")
+
+    validation = PreAdmitValidator.call(raw)
+    unless validation.ok?
+      Rails.logger.warn("[AgentTriager:#{@role}] pre_admit_eval validation failed: #{validation.errors.join('; ')}")
+      return nil
+    end
+
+    evaluator = user_for_role("rn")
+    eval_record = PreAdmitEval.create!(
+      agency:           @agency,
+      patient_id:       patient_id,
+      visit_id:         p[:visit_id],
+      evaluator:        evaluator,
+      evaluator_name:   evaluator&.full_name || p[:evaluator_name],
+      evaluator_license: evaluator&.license_number || p[:evaluator_license],
+      evaluator_role:   @role,
+      raw_json:         validation.cleaned_json,
+      status:           (p[:draft] ? :draft : :final),
+      evaluated_at:     Time.current,
+      finalized_at:     (p[:draft] ? nil : Time.current)
+    )
+
+    if eval_record.status_final?
+      # Auto-handoff to MD for certification.
+      AgentEvent.create!(
+        agency:           @agency,
+        agent_id:         @role,
+        agent_session_id: Current.agent_session_id,
+        action:           "handoff",
+        subject:          eval_record,
+        change_set: {
+          target_role:   "md",
+          intent:        "pre_admit_certification",
+          urgency:       "normal",
+          depth:         @depth + 1,
+          eval_id:       eval_record.id,
+          patient_name:  eval_record.patient.full_name,
+          primary_icd10: eval_record.primary_icd10,
+          warnings:      validation.warnings
+        },
+        happened_at: Time.current
+      )
+    end
+
+    eval_record
+  end
+
+  def certify_pre_admit_eval(p)
+    eval_id = p[:eval_id] || @event&.subject_id
+    return nil unless eval_id
+
+    certifier = user_for_role("md")
+    eval_record = PreAdmitEval.find(eval_id)
+    return nil unless eval_record.status_final?
+
+    eval_record.update!(
+      status:       :certified,
+      certified_at: Time.current,
+      certified_by: certifier
+    )
+
+    # Auto-handoff to Insurance for NOE filing.
+    AgentEvent.create!(
+      agency:           @agency,
+      agent_id:         @role,
+      agent_session_id: Current.agent_session_id,
+      action:           "handoff",
+      subject:          eval_record,
+      change_set: {
+        target_role:   "insurance",
+        intent:        "file_noe",
+        urgency:       "urgent",   # 5-day Medicare clock is ticking
+        depth:         @depth + 1,
+        eval_id:       eval_record.id,
+        patient_name:  eval_record.patient.full_name,
+        noe_deadline:  eval_record.noe_deadline_at&.iso8601
+      },
+      happened_at: Time.current
+    )
+
+    eval_record
+  end
+
+  def file_noe(p)
+    eval_id = p[:eval_id] || @event&.subject_id
+    return nil unless eval_id
+
+    eval_record = PreAdmitEval.find(eval_id)
+    return nil unless eval_record.status_certified?
+
+    eval_record.update!(
+      status:       :noe_filed,
+      noe_filed_at: Time.current
+    )
+
+    eval_record
   end
 
   # Find a clinician user holding the given role at this agency. Used when

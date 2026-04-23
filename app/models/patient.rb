@@ -46,6 +46,7 @@ class Patient < ApplicationRecord
   has_many :pharmacy_deliveries, dependent: :destroy
   has_many :dme_orders,          dependent: :destroy
   has_many :notes,               dependent: :destroy
+  has_many :pre_admit_evals,     dependent: :destroy
   has_many :family_users, class_name: "User"
 
   # --- Validations ---------------------------------------------------------

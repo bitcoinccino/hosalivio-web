@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_23_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -27,6 +27,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_090000) do
     t.string "city"
     t.datetime "created_at", null: false
     t.string "emoji", default: "🩺", null: false
+    t.jsonb "features", default: {}, null: false
     t.string "hero_color", default: "#D97757", null: false
     t.jsonb "insurance_accepted", default: [], null: false
     t.boolean "is_partner", default: false, null: false
@@ -43,6 +44,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_090000) do
     t.datetime "updated_at", null: false
     t.string "zip"
     t.index ["accepting_referrals"], name: "index_agencies_on_accepting_referrals"
+    t.index ["features"], name: "index_agencies_on_features", using: :gin
     t.index ["is_partner"], name: "index_agencies_on_is_partner"
     t.index ["medicare_provider_number"], name: "idx_agencies_on_medicare_number", unique: true, where: "(medicare_provider_number IS NOT NULL)"
     t.index ["npi"], name: "index_agencies_on_npi", unique: true, where: "(npi IS NOT NULL)"
@@ -291,6 +293,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_090000) do
     t.index ["patient_id"], name: "index_pharmacy_deliveries_on_patient_id"
   end
 
+  create_table "pre_admit_evals", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.datetime "certified_at"
+    t.uuid "certified_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "evaluated_at"
+    t.uuid "evaluator_id"
+    t.string "evaluator_license"
+    t.string "evaluator_name"
+    t.string "evaluator_role"
+    t.datetime "finalized_at"
+    t.boolean "lcd_criteria_supported", default: false, null: false
+    t.datetime "noe_deadline_at"
+    t.datetime "noe_filed_at"
+    t.uuid "patient_id", null: false
+    t.string "primary_icd10"
+    t.string "primary_icd10_description"
+    t.jsonb "raw_json", default: {}, null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "visit_id"
+    t.index ["agency_id"], name: "index_pre_admit_evals_on_agency_id"
+    t.index ["certified_by_id"], name: "index_pre_admit_evals_on_certified_by_id"
+    t.index ["evaluator_id"], name: "index_pre_admit_evals_on_evaluator_id"
+    t.index ["noe_deadline_at"], name: "index_pre_admit_evals_on_noe_deadline_at"
+    t.index ["patient_id"], name: "index_pre_admit_evals_on_patient_id"
+    t.index ["raw_json"], name: "index_pre_admit_evals_on_raw_json", using: :gin
+    t.index ["status"], name: "index_pre_admit_evals_on_status"
+    t.index ["visit_id"], name: "index_pre_admit_evals_on_visit_id"
+  end
+
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "label", null: false
@@ -416,6 +449,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_090000) do
   add_foreign_key "pharmacy_deliveries", "medication_orders"
   add_foreign_key "pharmacy_deliveries", "patients"
   add_foreign_key "pharmacy_deliveries", "users", column: "confirmed_by_id"
+  add_foreign_key "pre_admit_evals", "agencies"
+  add_foreign_key "pre_admit_evals", "patients"
+  add_foreign_key "pre_admit_evals", "users", column: "certified_by_id"
+  add_foreign_key "pre_admit_evals", "users", column: "evaluator_id"
+  add_foreign_key "pre_admit_evals", "visits"
   add_foreign_key "user_roles", "agencies"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"

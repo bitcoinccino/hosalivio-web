@@ -15,6 +15,7 @@ class Agency < ApplicationRecord
   has_many :pharmacy_deliveries, dependent: :restrict_with_error
   has_many :dme_orders,          dependent: :restrict_with_error
   has_many :agent_events,        dependent: :destroy
+  has_many :pre_admit_evals,     dependent: :restrict_with_error
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[A-Z0-9]{2,6}\z/ }
@@ -72,6 +73,36 @@ class Agency < ApplicationRecord
 
   def set_override(role, text)
     self.agent_overrides = (agent_overrides || {}).merge(role.to_s => text.to_s)
+  end
+
+  # ── Feature flags ────────────────────────────────────────────────────
+  # features is a jsonb column. Each key is a feature name, each value a hash:
+  #   { "enabled" => true, "baa_signed_on" => "2026-05-01", "provider" => "openai" }
+  # Safe defaults (everything off) so adding a new tenant never accidentally
+  # enables PHI-exposing features.
+
+  def feature_enabled?(name)
+    cfg = feature_config(name)
+    !!cfg["enabled"]
+  end
+
+  def feature_config(name)
+    (features.presence || {})[name.to_s] || {}
+  end
+
+  def set_feature(name, attrs)
+    existing = feature_config(name)
+    self.features = (features.presence || {}).merge(name.to_s => existing.merge(attrs.stringify_keys))
+  end
+
+  def enable_feature!(name, **attrs)
+    set_feature(name, attrs.merge(enabled: true))
+    save!
+  end
+
+  def disable_feature!(name)
+    set_feature(name, enabled: false, disabled_at: Time.current.iso8601)
+    save!
   end
 
   # MRN generator — sequential per agency. Called by Patient#set_mrn.
