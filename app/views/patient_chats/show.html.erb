@@ -354,18 +354,19 @@
         <%# Audience toggle: clinician chooses family-facing or team-only.
             State lives on the Stimulus controller; styling flips when armed. %>
         <div class="mb-2 flex items-center justify-end gap-2 text-[11px]">
-          <span class="text-[#6B665F]">Sending to</span>
+          <span class="text-[#6B665F]">Visibility</span>
           <button type="button"
                   data-action="click->patient-chat#toggleAudience"
                   data-patient-chat-target="audienceToggle"
                   data-audience="family"
                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border transition
                          data-[audience=family]:bg-[#FFF3EC] data-[audience=family]:border-[#D97757] data-[audience=family]:text-[#C1403A]
-                         data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:text-[#3A3936]">
+                         data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:text-[#3A3936]"
+                  title="Click to change who can see this message">
             <i class="ri-user-heart-line data-[audience=team]:hidden"></i>
             <i class="ri-team-line hidden data-[audience=team]:inline"></i>
-            <span class="data-[audience=team]:hidden">Family + care team</span>
-            <span class="hidden data-[audience=team]:inline">Care team only</span>
+            <span class="data-[audience=team]:hidden">Visible to family &amp; team</span>
+            <span class="hidden data-[audience=team]:inline">Internal team only</span>
           </button>
         </div>
       <% end %>
