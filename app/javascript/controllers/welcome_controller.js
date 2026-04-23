@@ -235,9 +235,10 @@ export default class extends Controller {
            </button>
          </div>`
 
+    const botSrcReply = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     el.innerHTML = `
-      <div class="w-10 h-10 rounded-full bg-[#1D1C1A] text-white flex items-center justify-center flex-shrink-0">
-        <span class="text-sm font-medium">L</span>
+      <div class="w-12 h-12 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+        <img src="${botSrcReply}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
       </div>
       <div class="flex-1 bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] p-4">
         <div class="text-[11px] uppercase tracking-[0.18em] font-bold text-[#1D1C1A] mb-2">
@@ -263,9 +264,10 @@ export default class extends Controller {
   }
 
   _luciaFreeformReply() {
+    const botSrcFree = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     return `
-      <div class="w-10 h-10 rounded-full bg-[#1D1C1A] text-white flex items-center justify-center flex-shrink-0">
-        <span class="text-sm font-medium">L</span>
+      <div class="w-12 h-12 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+        <img src="${botSrcFree}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
       </div>
       <div class="flex-1 bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] p-4">
         <div class="text-[11px] uppercase tracking-[0.18em] font-bold text-[#1D1C1A] mb-2">
