@@ -1,0 +1,47 @@
+<%# DME / Marcus — equipment queue + pickup schedule %>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6]">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-tools-line"></i> Open DME orders (<%= @dme_pending.to_a.size %>)</h3>
+    </div>
+    <% if @dme_pending.to_a.empty? %>
+      <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">Nothing pending dispatch.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @dme_pending.each do |d| %>
+          <li>
+            <%= link_to patient_path(d.patient), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <div class="flex items-baseline justify-between gap-2">
+                <div class="text-[13px] text-[#1D1C1A] truncate"><%= d.equipment_type.tr("_", " ") %><%= " ×#{d.quantity}" if d.quantity.to_i > 1 %></div>
+                <span class="text-[10px] uppercase tracking-wider text-[#D97757] font-bold flex-shrink-0"><%= d.status %></span>
+              </div>
+              <div class="text-[11px] text-[#6B665F] truncate"><%= d.patient.full_name %> · requested <%= d.requested_at&.strftime("%b %-d") %></div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+
+  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6]">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-truck-line"></i> Pickups due (<%= @dme_pickups.to_a.size %>)</h3>
+      <div class="text-[10px] text-[#6B665F] mt-0.5">Within 7 days post-death / discharge</div>
+    </div>
+    <% if @dme_pickups.to_a.empty? %>
+      <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No pickups scheduled.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @dme_pickups.each do |p| %>
+          <li class="px-5 py-3 text-[13px]">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-[#1D1C1A] truncate"><%= p.full_name %></span>
+              <span class="text-[10px] uppercase tracking-wider text-[#6B665F]"><%= p.status %></span>
+            </div>
+            <div class="text-[11px] text-[#6B665F] mt-0.5"><%= p.dme_orders.where.not(status: [:picked_up, :returned]).count %> items on site</div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>

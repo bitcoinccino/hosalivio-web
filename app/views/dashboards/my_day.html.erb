@@ -93,6 +93,12 @@
           </section>
         <% end %>
 
+        <!-- Role-specific priority panel (appears above shared sections) -->
+        <% role_partial = "dashboards/my_day_#{@primary_role}" %>
+        <% if lookup_context.exists?(role_partial, [], true) %>
+          <%= render role_partial %>
+        <% end %>
+
         <!-- Today's visits -->
         <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
           <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">

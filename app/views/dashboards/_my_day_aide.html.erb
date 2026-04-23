@@ -1,0 +1,42 @@
+<%# Aide / Flore — today's assigned tasks per plan of care (executes the plan Pascal set) %>
+<section class="rounded-2xl bg-white border border-[#AD7340] overflow-hidden">
+  <div class="px-5 py-3 bg-[#FBF5EF] border-b border-[#EFECE6]">
+    <h3 class="text-[11px] uppercase tracking-widest text-[#AD7340] font-bold"><i class="ri-user-heart-line"></i> Today's aide assignments (<%= @today_aide_plans.to_a.size %>)</h3>
+    <div class="text-[10px] text-[#6B665F] mt-0.5">Follow the plan of care. Report observations. Do not interpret clinically.</div>
+  </div>
+  <% if @today_aide_plans.to_a.empty? %>
+    <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">Nothing scheduled today.</div>
+  <% else %>
+    <ul class="divide-y divide-[#EFECE6]">
+      <% @today_aide_plans.each do |v| %>
+        <li class="px-5 py-3">
+          <div class="flex items-center gap-3">
+            <div class="text-[13px] font-mono text-[#1D1C1A] w-20 flex-shrink-0"><%= v.anchor_start&.strftime("%-l:%M %p") %></div>
+            <%= link_to patient_path(v.patient), class: "flex-1 min-w-0" do %>
+              <div class="text-[14px] text-[#1D1C1A] truncate"><%= v.patient&.full_name %></div>
+              <div class="text-[11px] text-[#6B665F] truncate">
+                <% if v.narrative.present? %>
+                  <%= v.narrative.to_s[0, 80] %>
+                <% else %>
+                  No plan documented — ask Pascal
+                <% end %>
+              </div>
+            <% end %>
+            <% if v.started_at && !v.ended_at %>
+              <%= link_to edit_visit_path(v),
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#C1403A] text-white font-medium flex-shrink-0" do %>
+                <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> In progress
+              <% end %>
+            <% elsif !v.started_at %>
+              <%= button_to begin_visit_path(v), method: :post,
+                    form: { class: "inline" },
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#AD7340] hover:bg-[#8B5A2B] text-white font-medium flex-shrink-0" do %>
+                <i class="ri-check-line"></i> Start
+              <% end %>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>

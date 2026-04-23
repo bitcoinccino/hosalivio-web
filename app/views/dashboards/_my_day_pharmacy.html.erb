@@ -1,0 +1,23 @@
+<%# Pharmacy / Simone — delivery queue %>
+<section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+  <div class="px-5 py-3 border-b border-[#EFECE6]">
+    <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-capsule-line"></i> Pharmacy queue (<%= @pharmacy_pending.to_a.size %>)</h3>
+  </div>
+  <% if @pharmacy_pending.to_a.empty? %>
+    <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">Nothing pending.</div>
+  <% else %>
+    <ul class="divide-y divide-[#EFECE6]">
+      <% @pharmacy_pending.each do |d| %>
+        <li>
+          <%= link_to patient_path(d.patient), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+            <div class="flex items-baseline justify-between gap-2">
+              <div class="text-[13px] text-[#1D1C1A] truncate"><%= d.kind.to_s.tr("_", " ").capitalize %></div>
+              <span class="text-[10px] uppercase tracking-wider text-[#D97757] font-bold"><%= d.status %></span>
+            </div>
+            <div class="text-[11px] text-[#6B665F] truncate"><%= d.patient.full_name %> · <%= d.created_at.strftime("%b %-d · %-l:%M %p") %></div>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>

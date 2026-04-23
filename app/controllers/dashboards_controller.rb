@@ -54,39 +54,35 @@ class DashboardsController < ApplicationController
     @stories = EventNarrator.stories_from(@recent_events, patient_lookup: patients_by_id)
   end
 
-  # Data for the clinician "My Day" home.
+  # Data for the clinician "My Day" home — loads shared panels + the
+  # role-specific priority data the partial will render above them.
   def load_my_day
     me = current_user
+    @primary_role = (me.role_names & CLINICAL_ROLES).first || "rn"
     today_start = Date.current.in_time_zone.beginning_of_day
     today_end   = Date.current.in_time_zone.end_of_day
 
-    # Today's visits on this clinician's calendar
     @todays_visits = Visit.where(user_id: me.id)
                           .where("COALESCE(scheduled_at, started_at) BETWEEN ? AND ?", today_start, today_end)
                           .order(Arel.sql("COALESCE(scheduled_at, started_at) ASC"))
                           .includes(:patient)
 
-    # Patients on my caseload — anyone where I'm any of the four assigned_* roles
     @caseload = Patient.where(agency: @agency).where(
       "assigned_rn_id = :id OR assigned_md_id = :id OR assigned_sw_id = :id OR assigned_chaplain_id = :id",
       id: me.id
     ).order(:created_at)
-
     caseload_ids = @caseload.pluck(:id)
 
-    # Open family crises on my caseload (unread, urgency=crisis, author=family)
     @open_crises = Note.where(patient_id: caseload_ids, author_role: "family",
                               urgency: :crisis, read_at: nil)
                        .order(created_at: :desc).limit(5).includes(:patient)
 
-    # Handoffs targeting my role that haven't been acted on yet
     @pending_handoffs = AgentEvent.where(agency: @agency, action: "handoff")
                                    .where("happened_at > ?", 7.days.ago)
                                    .order(happened_at: :desc)
                                    .select { |ev| ev.change_set.is_a?(Hash) && me.role_names.include?(ev.change_set["target_role"]) }
                                    .first(8)
 
-    # Overdue comfort meds on my caseload
     overdue = []
     active_orders = MedicationOrder.where(patient_id: caseload_ids, status: :active).includes(:patient)
     active_orders.find_each do |o|
@@ -96,6 +92,49 @@ class DashboardsController < ApplicationController
     @overdue_meds = overdue.sort_by { |r| r[:schedule][:minutes].to_i }.first(5)
 
     @my_license_status = me.license_status
+
+    # Role-specific priority data
+    case @primary_role
+    when "md"
+      @pending_certs = PreAdmitEval.where(agency: @agency, status: :final)
+                                    .order(:evaluated_at).includes(:patient)
+      @upcoming_recerts = Patient.where(agency: @agency)
+                                  .where.not(cert_period_end: nil)
+                                  .where(cert_period_end: Date.current..(Date.current + 14.days))
+                                  .order(:cert_period_end)
+    when "social_worker"
+      @psychosocial_due = Patient.where(agency: @agency, status: :active, assigned_sw_id: me.id)
+                                  .where("hospice_election_date >= ?", 5.days.ago).order(:hospice_election_date)
+      @bereavement_queue = Patient.where(agency: @agency, status: :deceased, assigned_sw_id: me.id)
+                                   .order(updated_at: :desc).limit(10)
+    when "chaplain"
+      @spiritual_due = Patient.where(agency: @agency, status: :active, assigned_chaplain_id: me.id)
+                               .where("hospice_election_date >= ?", 5.days.ago).order(:hospice_election_date)
+      @bereavement_queue = Patient.where(agency: @agency, status: :deceased, assigned_chaplain_id: me.id)
+                                   .order(updated_at: :desc).limit(10)
+    when "aide"
+      @today_aide_plans = @todays_visits
+    when "dme"
+      @dme_pending = DmeOrder.where(agency: @agency).where.not(status: [:picked_up, :returned])
+                             .order(requested_at: :desc).limit(12).includes(:patient)
+      @dme_pickups = Patient.where(agency: @agency, status: [:deceased, :discharged])
+                             .order(updated_at: :desc).limit(6)
+    when "pharmacy"
+      @pharmacy_pending = PharmacyDelivery.where(agency: @agency)
+                                           .where.not(status: [:delivered, :refused])
+                                           .order(created_at: :desc).limit(12).includes(:patient)
+    when "insurance"
+      @noe_due = PreAdmitEval.where(agency: @agency, status: :certified)
+                              .order(:noe_deadline_at).includes(:patient)
+      @bp_rollovers = Patient.where(agency: @agency)
+                              .where.not(cert_period_end: nil)
+                              .where(cert_period_end: Date.current..(Date.current + 14.days))
+                              .order(:cert_period_end)
+    when "billing"
+      # Placeholder buckets until the claims model lands
+      @claims_pending = []
+      @denials_pending = []
+    end
   end
 
   # Family users have no business on the mission stage — send them to their patient.

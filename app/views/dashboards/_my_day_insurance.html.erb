@@ -1,0 +1,90 @@
+<%# Insurance / Kendra — NOE filings are THE priority (5-day Medicare clock) %>
+<% overdue_noes = (@noe_due || []).select(&:noe_overdue?) %>
+<% near_deadline = (@noe_due || []).reject(&:noe_overdue?).select { |e| e.noe_deadline_at && e.days_until_noe_deadline.to_i <= 2 } %>
+<% healthy = (@noe_due || []) - overdue_noes - near_deadline %>
+
+<div class="space-y-3">
+  <% if overdue_noes.any? %>
+    <section class="rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
+      <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
+        <i class="ri-alarm-warning-fill"></i>
+        <span class="font-bold tracking-wider text-[12px]">NOE OVERDUE — FILE IMMEDIATELY (<%= overdue_noes.size %>)</span>
+      </div>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% overdue_noes.each do |eval_rec| %>
+          <li>
+            <%= link_to pre_admit_eval_path(eval_rec), class: "block px-4 py-3 hover:bg-[#FFEDE2] transition" do %>
+              <div class="flex items-baseline justify-between gap-2">
+                <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= eval_rec.patient.full_name %></div>
+                <span class="text-[11px] font-mono font-bold text-[#C1403A]"><%= -eval_rec.days_until_noe_deadline.to_i %>d past deadline</span>
+              </div>
+              <div class="text-[11px] text-[#6B665F] truncate">Election <%= eval_rec.evaluated_at&.strftime("%b %-d") %> · <%= eval_rec.primary_icd10 %></div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+
+  <% if near_deadline.any? %>
+    <section class="rounded-2xl border border-[#D97757] bg-[#FFF3EC] overflow-hidden">
+      <div class="px-4 py-2 flex items-center gap-2">
+        <i class="ri-time-line text-[#D97757]"></i>
+        <span class="font-bold tracking-wider text-[12px] text-[#D97757]">NOE DUE WITHIN 48 HOURS (<%= near_deadline.size %>)</span>
+      </div>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% near_deadline.each do |eval_rec| %>
+          <li>
+            <%= link_to pre_admit_eval_path(eval_rec), class: "block px-4 py-3 hover:bg-[#FFEDE2] transition" do %>
+              <div class="flex items-baseline justify-between gap-2">
+                <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= eval_rec.patient.full_name %></div>
+                <span class="text-[11px] font-mono text-[#D97757]"><%= eval_rec.days_until_noe_deadline %>d left</span>
+              </div>
+              <div class="text-[11px] text-[#6B665F] truncate">Deadline <%= eval_rec.noe_deadline_at.strftime("%b %-d, %-l:%M %p") %></div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+
+  <% if healthy.any? %>
+    <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+      <div class="px-5 py-3 border-b border-[#EFECE6]">
+        <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-shield-check-line"></i> NOEs pending (<%= healthy.size %>)</h3>
+      </div>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% healthy.each do |eval_rec| %>
+          <li>
+            <%= link_to pre_admit_eval_path(eval_rec), class: "flex items-center justify-between px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <div class="text-[13px] text-[#1D1C1A] truncate"><%= eval_rec.patient.full_name %></div>
+              <span class="text-[11px] text-[#6B665F] font-mono"><%= eval_rec.days_until_noe_deadline %>d until deadline</span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+
+  <% if @bp_rollovers&.any? %>
+    <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+      <div class="px-5 py-3 border-b border-[#EFECE6]">
+        <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-calendar-event-line"></i> Benefit period rollovers (<%= @bp_rollovers.size %>)</h3>
+      </div>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @bp_rollovers.each do |p| %>
+          <% days = (p.cert_period_end - Date.current).to_i %>
+          <li>
+            <%= link_to patient_path(p), class: "flex items-center justify-between px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <div class="min-w-0">
+                <div class="text-[13px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
+                <div class="text-[11px] text-[#6B665F]"><%= p.benefit_period&.upcase %> ends <%= p.cert_period_end.strftime("%b %-d") %></div>
+              </div>
+              <span class="text-[11px] font-mono <%= days <= 7 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>"><%= days %>d</span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+</div>

@@ -1,0 +1,56 @@
+<%# Social Worker priority: 5-day psychosocial assessments + bereavement %>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <section class="rounded-2xl bg-white border border-[#7A4A8C] overflow-hidden">
+    <div class="px-5 py-3 bg-[#F6F0F8] border-b border-[#EFECE6]">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#7A4A8C] font-bold"><i class="ri-team-line"></i> Psychosocial assessments due (<%= @psychosocial_due.to_a.size %>)</h3>
+      <div class="text-[10px] text-[#6B665F] mt-0.5">CMS requires within 5 days of admission</div>
+    </div>
+    <% if @psychosocial_due.to_a.empty? %>
+      <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">All recent admissions covered.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @psychosocial_due.each do |p| %>
+          <% days_since = p.hospice_election_date ? (Date.current - p.hospice_election_date).to_i : 0 %>
+          <li>
+            <%= link_to patient_path(p), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <div class="flex items-baseline justify-between gap-2">
+                <div class="text-[13px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
+                <span class="text-[11px] font-mono <%= days_since >= 4 ? 'text-[#C1403A] font-bold' : 'text-[#7A4A8C]' %>">day <%= days_since + 1 %></span>
+              </div>
+              <div class="text-[11px] text-[#6B665F] truncate">Elected <%= p.hospice_election_date&.strftime("%b %-d") %></div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+
+  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6]">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-heart-pulse-line"></i> Bereavement queue (<%= @bereavement_queue.to_a.size %>)</h3>
+      <div class="text-[10px] text-[#6B665F] mt-0.5">13-month cadence post-death</div>
+    </div>
+    <% if @bereavement_queue.to_a.empty? %>
+      <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No bereavement follow-ups.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @bereavement_queue.each do |p| %>
+          <% days = (Date.current - p.updated_at.to_date).to_i %>
+          <li class="px-5 py-3 text-[13px]">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-[#1D1C1A] truncate"><%= p.full_name %></span>
+              <span class="text-[11px] text-[#6B665F] font-mono">+<%= days %>d</span>
+            </div>
+            <div class="text-[11px] text-[#6B665F] mt-0.5">
+              <% if [14, 30, 90, 180, 365].any? { |d| (days - d).abs <= 3 } %>
+                <span class="text-[#D97757] font-bold">Contact window open</span>
+              <% else %>
+                Family check-in
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>
