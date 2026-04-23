@@ -44,6 +44,11 @@ Rails.application.routes.draw do
   get "calendar", to: "calendars#show", as: :calendar
   resources :visits, only: [:new, :create, :show, :edit, :update, :destroy]
 
+  # Self-serve profile editing (all signed-in users, including family)
+  resource :profile, only: [:edit, :update], controller: "profiles" do
+    delete :avatar, action: :remove_avatar
+  end
+
   # Per-agency team management (coordinator / DON / admin)
   resources :pre_admit_evals, only: [:show, :edit, :update]
   resource  :agency_features, only: [:edit, :update], controller: "agency_features"

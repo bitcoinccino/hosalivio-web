@@ -14,6 +14,27 @@ class User < ApplicationRecord
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
 
+  # Profile photo — optional. Images only, max 5 MB.
+  has_one_attached :avatar
+  validate :avatar_shape_and_size
+
+  AVATAR_MIMES = %w[image/jpeg image/png image/webp image/gif].freeze
+  AVATAR_MAX_BYTES = 5 * 1024 * 1024
+
+  def avatar_shape_and_size
+    return unless avatar.attached?
+    errors.add(:avatar, "must be a JPEG, PNG, WebP, or GIF") unless AVATAR_MIMES.include?(avatar.content_type)
+    errors.add(:avatar, "must be under 5 MB") if avatar.byte_size > AVATAR_MAX_BYTES
+  end
+
+  def initials
+    full_name.to_s.split.map(&:first).first(2).join.upcase
+  end
+
+  def has_avatar?
+    avatar.attached?
+  end
+
   has_many :visits,                           inverse_of: :user
   has_many :prescribed_medication_orders,     class_name: "MedicationOrder", foreign_key: :prescribed_by_id
   has_many :administered_medication_logs,     class_name: "MedicationLog",   foreign_key: :administered_by_id

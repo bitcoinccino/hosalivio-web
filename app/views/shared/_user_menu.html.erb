@@ -20,10 +20,16 @@
             data-action="click->user-menu#toggle"
             title="<%= u.full_name %> — account menu"
             class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white border border-[#EFECE6] hover:border-[#D9D5CD] hover:shadow-sm transition <%= button_cls %> group-data-[collapsed=true]/sb:p-0 group-data-[collapsed=true]/sb:border-0 group-data-[collapsed=true]/sb:bg-transparent group-data-[collapsed=true]/sb:hover:shadow-none group-data-[collapsed=true]/sb:w-auto group-data-[collapsed=true]/sb:justify-center">
-      <div class="w-7 h-7 rounded-full text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0"
-           style="background: <%= role_color %>;">
-        <%= initials %>
-      </div>
+      <% if u.has_avatar? %>
+        <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+          <%= image_tag u.avatar.variant(resize_to_fill: [56, 56]).processed, class: "w-full h-full object-cover" %>
+        </div>
+      <% else %>
+        <div class="w-7 h-7 rounded-full text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0"
+             style="background: <%= role_color %>;">
+          <%= initials %>
+        </div>
+      <% end %>
       <div class="text-[11px] leading-tight pr-1 text-left group-data-[collapsed=true]/sb:hidden">
         <div class="text-[#1D1C1A] truncate max-w-[140px]"><%= u.full_name %></div>
         <div class="text-[9px] text-[#6B665F] uppercase tracking-wider font-mono"><%= role %></div>
@@ -41,10 +47,16 @@
                 group-data-[collapsed=true]/sb:mt-0">
       <div class="px-4 py-3 border-b border-[#EFECE6]">
         <div class="flex items-center gap-2">
-          <div class="w-9 h-9 rounded-full text-white text-[12px] font-bold flex items-center justify-center"
-               style="background: <%= role_color %>;">
-            <%= initials %>
-          </div>
+          <% if u.has_avatar? %>
+            <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+              <%= image_tag u.avatar.variant(resize_to_fill: [72, 72]).processed, class: "w-full h-full object-cover" %>
+            </div>
+          <% else %>
+            <div class="w-9 h-9 rounded-full text-white text-[12px] font-bold flex items-center justify-center flex-shrink-0"
+                 style="background: <%= role_color %>;">
+              <%= initials %>
+            </div>
+          <% end %>
           <div class="min-w-0">
             <div class="text-[13px] text-[#1D1C1A] truncate"><%= u.full_name %></div>
             <div class="text-[11px] text-[#6B665F] truncate"><%= u.email %></div>
@@ -54,7 +66,7 @@
       </div>
 
       <nav class="py-1">
-        <%= link_to edit_user_registration_path,
+        <%= link_to edit_profile_path,
               class: "flex items-center gap-3 px-4 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
           <i class="ri-user-line text-[#6B665F]"></i> Profile
         <% end %>
