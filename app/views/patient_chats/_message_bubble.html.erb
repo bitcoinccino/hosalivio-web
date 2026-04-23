@@ -23,7 +23,35 @@
   # Display the REAL human's name when a user authored the note. Fall back to
   # the model's display helper for AI-written notes ("HosAlivio Assist").
   speaker_name = note.display_author_name
-  speaker_sub  = note.display_author_subtitle
+  viewer_is_family = current_user&.family_access?
+
+  # Warmer, personal subtitle for family viewers. Clinicians see the raw role.
+  family_role_label = {
+    "rn" => "Your RN", "md" => "Your doctor",
+    "social_worker" => "Your social worker", "chaplain" => "Your chaplain",
+    "aide" => "Your aide", "don" => "Your DON",
+    "admissions" => "Your care coordinator", "pharmacy" => "Your pharmacist",
+    "dme" => "Your equipment team", "insurance" => "Your benefits coordinator"
+  }
+
+  speaker_sub = if viewer_is_family && !is_ai
+                  family_role_label[role] || note.display_author_subtitle
+                elsif viewer_is_family && is_ai
+                  "Automated reply on behalf of your care team"
+                else
+                  note.display_author_subtitle
+                end
+
+  # Rich hover tooltip for clinicians (and a simple one for family).
+  bubble_title = if viewer_is_family
+                   note.created_at.strftime("Sent %b %-d at %-l:%M %p")
+                 elsif is_ai
+                   "AI auto-draft on #{role.upcase} role · #{note.created_at.strftime('%b %-d %-l:%M %p')}"
+                 elsif note.author_user
+                   "#{note.author_user.full_name} via #{role.upcase} role · #{note.created_at.strftime('%b %-d %-l:%M %p')}"
+                 else
+                   "System-authored · role: #{role} · #{note.created_at.strftime('%b %-d %-l:%M %p')}"
+                 end
 
   role_icon = is_ai ? "ri-robot-2-line" : {
     "family" => "ri-user-heart-line",
@@ -68,7 +96,8 @@
     <div class="text-[10px] text-[#6B665F] mt-1 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></div>
   </div>
 <% else %>
-  <div class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
+  <div title="<%= bubble_title %>"
+       class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
     <div class="flex items-center justify-between mb-1 gap-2">
       <div class="min-w-0 flex items-center gap-2">
         <% if note.author_user&.has_avatar? %>

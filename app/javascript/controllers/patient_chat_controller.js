@@ -162,7 +162,28 @@ export default class extends Controller {
     // Real-name-first: show the human's actual name when available; fall back
     // to the backend-supplied label ("HosAlivio Assist") only for AI notes.
     const speakerName = n.author_name || this._roleLabel(n.author_role)
-    const speakerSub  = n.author_subtitle || ""
+
+    // Warmer subtitle for family viewers; clinicians see the raw role.
+    const viewerIsFamily = document.body.dataset.viewerFamily === "true"
+    const familyLabels = {
+      rn: "Your RN", md: "Your doctor", social_worker: "Your social worker",
+      chaplain: "Your chaplain", aide: "Your aide", don: "Your DON",
+      admissions: "Your care coordinator", pharmacy: "Your pharmacist",
+      dme: "Your equipment team", insurance: "Your benefits coordinator"
+    }
+    let speakerSub = n.author_subtitle || ""
+    if (viewerIsFamily && !n.ai_authored && familyLabels[n.author_role]) {
+      speakerSub = familyLabels[n.author_role]
+    } else if (viewerIsFamily && n.ai_authored) {
+      speakerSub = "Automated reply on behalf of your care team"
+    }
+
+    const timeLabel = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    const bubbleTitle = viewerIsFamily
+      ? `Sent ${timeLabel}`
+      : n.ai_authored
+      ? `AI auto-draft on ${String(n.author_role).toUpperCase()} role · ${timeLabel}`
+      : `${speakerName} via ${String(n.author_role).toUpperCase()} role · ${timeLabel}`
 
     const urgencyPill = n.urgency === "crisis"
       ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
@@ -171,6 +192,7 @@ export default class extends Controller {
       : ""
 
     bubble.className = `max-w-2xl min-w-0 ${align} ${bg} ${aiRing} rounded-3xl px-5 py-4 opacity-0 transition-opacity duration-300`
+    bubble.setAttribute("title", bubbleTitle)
 
     const subEl = speakerSub
       ? `<div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F] font-mono mt-0.5"></div>`

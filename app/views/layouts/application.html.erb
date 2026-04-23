@@ -27,7 +27,8 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="bg-[#FBF9F5] text-[#1D1C1A] antialiased">
+  <body class="bg-[#FBF9F5] text-[#1D1C1A] antialiased"
+        data-viewer-family="<%= current_user&.family_access? ? 'true' : 'false' %>">
     <%= yield %>
   </body>
 </html>
