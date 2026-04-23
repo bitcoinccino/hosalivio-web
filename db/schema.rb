@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_110001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -227,6 +227,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_110001) do
     t.string "author_role", null: false
     t.uuid "author_user_id"
     t.text "body", null: false
+    t.boolean "clinician_only", default: false, null: false
     t.datetime "created_at", null: false
     t.uuid "patient_id", null: false
     t.datetime "read_at"
@@ -237,6 +238,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_110001) do
     t.index ["agency_id", "urgency", "read_at"], name: "idx_notes_on_agency_urgency_unread"
     t.index ["agency_id"], name: "index_notes_on_agency_id"
     t.index ["author_user_id"], name: "index_notes_on_author_user_id"
+    t.index ["clinician_only"], name: "index_notes_on_clinician_only"
     t.index ["patient_id"], name: "index_notes_on_patient_id"
   end
 

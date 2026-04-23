@@ -56,12 +56,13 @@ class LuciaTriager
 
     # 2 — INTERNAL TRIAGE NOTE (for clinicians; not family-facing)
     Note.create!(
-      agency:      @agency,
-      patient:     @patient,
-      author_role: "admissions",
-      body:        internal_triage_body(decision, roles),
-      urgency:     decision[:urgency],
-      source:      "system"
+      agency:         @agency,
+      patient:        @patient,
+      author_role:    "admissions",
+      body:           internal_triage_body(decision, roles),
+      urgency:        decision[:urgency],
+      source:         "system",
+      clinician_only: true
     )
 
     # 3 — HANDOFF EVENTS (one per target role; these surface on Mission Stage)

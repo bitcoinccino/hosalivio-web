@@ -186,12 +186,13 @@ class AgentTriager
     patient_id = decision.dig(:params, :patient_id) || fallback_patient_id
     return if patient_id.blank?
     Note.create!(
-      agency:      @agency,
-      patient_id:  patient_id,
-      author_role: @role,
-      body:        "[#{@role} rationale] #{decision[:reasoning]} (brain: #{decision[:source]})",
-      urgency:     :normal,
-      source:      :system
+      agency:         @agency,
+      patient_id:     patient_id,
+      author_role:    @role,
+      body:           "[#{@role} rationale] #{decision[:reasoning]} (brain: #{decision[:source]})",
+      urgency:        :normal,
+      source:         :system,
+      clinician_only: true
     )
   rescue ActiveRecord::RecordInvalid
     nil

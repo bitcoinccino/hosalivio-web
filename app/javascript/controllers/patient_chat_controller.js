@@ -242,6 +242,11 @@ export default class extends Controller {
   }
 
   _appendNote(n) {
+    // Skip clinician-only notes (audit logs, agent rationales) when the
+    // viewer is a family user — those belong on the Mission Stage and
+    // patient chart for clinicians, never in the family chat thread.
+    if (n.clinician_only && document.body.dataset.viewerFamily === "true") return
+
     // The next non-family message means a reply has arrived — clear the
     // typing indicator before rendering the actual bubble.
     if (n.author_role !== "family") this._clearTyping()

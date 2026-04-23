@@ -5,7 +5,9 @@ class PatientChatsController < ApplicationController
 
   def show
     ActsAsTenant.with_tenant(@agency) do
-      @notes      = @patient.notes.order(created_at: :desc).limit(50).to_a.reverse
+      base_notes = @patient.notes
+      base_notes = base_notes.family_visible if current_user.family_access?
+      @notes     = base_notes.order(created_at: :desc).limit(50).to_a.reverse
       @idg_roster = build_idg_roster(@patient)
 
       # Right-rail clinical context

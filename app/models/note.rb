@@ -16,8 +16,10 @@ class Note < ApplicationRecord
   validates :author_role, presence: true
   validates :body, presence: true
 
-  scope :unread, -> { where(read_at: nil) }
-  scope :recent, -> { order(created_at: :desc) }
+  scope :unread,         -> { where(read_at: nil) }
+  scope :recent,         -> { order(created_at: :desc) }
+  scope :family_visible, -> { where(clinician_only: false) }
+  scope :clinician_only_scope, -> { where(clinician_only: true) }
 
   after_create_commit :broadcast_to_patient_channel
 
@@ -64,6 +66,7 @@ class Note < ApplicationRecord
         author_name:       display_author_name,
         author_subtitle:   display_author_subtitle,
         ai_authored:       ai_authored?,
+        clinician_only:    clinician_only,        # JS filters family viewers
         urgency:           urgency,
         body:              body,                  # decrypted for the browser
         created_at:        created_at.iso8601
