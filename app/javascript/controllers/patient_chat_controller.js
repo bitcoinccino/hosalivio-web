@@ -15,6 +15,7 @@ export default class extends Controller {
   disconnect() {
     this._ws?.close()
     try { this._speech?.stop() } catch (_) {}
+    this._clearTyping()
   }
 
   toggleQuickActions() {
@@ -117,6 +118,64 @@ export default class extends Controller {
     this.inputTarget.value = ""
     this._currentUrgency   = "normal"
     this._usedVoice        = false
+
+    // Humanize the wait: show "HosAlivio is thinking…" 400ms after the message
+    // lands. Feels deliberate rather than robotic. Cleared automatically when
+    // the next non-family note arrives via Cable.
+    this._scheduleTyping(400)
+  }
+
+  // ── Typing indicator ─────────────────────────────────────────────
+  _scheduleTyping(delayMs) {
+    this._clearTyping()
+    this._typingTimer = setTimeout(() => this._showTyping(), delayMs)
+  }
+
+  _showTyping() {
+    if (this._typingEl) return
+    const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
+    const wrap = document.createElement("div")
+    wrap.className = "max-w-2xl mx-auto opacity-0 transition-opacity duration-300"
+    wrap.innerHTML = `
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#EFECE6] border border-[#EFECE6] ring-1 ring-dashed ring-[#B9B4AB]">
+        <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+          <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
+        </div>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-[#6B665F]">HosAlivio Assist</span>
+        <span class="text-[10px] text-[#6B665F]">is thinking</span>
+        <div class="flex items-center gap-1 ml-0.5">
+          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:0ms"></span>
+          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:150ms"></span>
+          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:300ms"></span>
+        </div>
+      </div>
+    `
+    this.feedTarget.appendChild(wrap)
+    requestAnimationFrame(() => { wrap.style.opacity = "1" })
+    this._scrollToBottom()
+    this._typingEl = wrap
+
+    // Fallback: if no reply lands within 30s, swap the dots for a calm message.
+    this._typingFallback = setTimeout(() => this._showTypingFallback(), 30000)
+  }
+
+  _showTypingFallback() {
+    if (!this._typingEl) return
+    const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
+    this._typingEl.innerHTML = `
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#EFECE6] border border-[#EFECE6] ring-1 ring-dashed ring-[#B9B4AB]">
+        <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+          <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
+        </div>
+        <span class="text-[12px] text-[#3A3936]">Your care team has been notified — we'll reply as soon as we can.</span>
+      </div>
+    `
+  }
+
+  _clearTyping() {
+    if (this._typingTimer) { clearTimeout(this._typingTimer); this._typingTimer = null }
+    if (this._typingFallback) { clearTimeout(this._typingFallback); this._typingFallback = null }
+    if (this._typingEl) { this._typingEl.remove(); this._typingEl = null }
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -151,6 +210,10 @@ export default class extends Controller {
   }
 
   _appendNote(n) {
+    // The next non-family message means a reply has arrived — clear the
+    // typing indicator before rendering the actual bubble.
+    if (n.author_role !== "family") this._clearTyping()
+
     const bubble      = document.createElement("div")
     const labelColor  = n.ai_authored ? "#6B665F" : this._labelColor(n.author_role)
     const roleIcon    = n.ai_authored ? "ri-robot-2-line" : this._roleIcon(n.author_role)
