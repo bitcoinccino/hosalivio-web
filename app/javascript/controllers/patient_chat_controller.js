@@ -189,11 +189,14 @@ export default class extends Controller {
   // ── Date separators ─────────────────────────────────────────────
   _maybeInsertDateSeparator(iso) {
     // Use the patient's branch timezone so the day-boundary matches what
-    // the server-rendered separators decided.
+    // the server-rendered separators decided. Both lastDay and noteDay are
+    // already YYYY-MM-DD strings — compare them directly. Re-parsing via
+    // `new Date(yyyy-mm-dd)` would treat the string as UTC midnight, which
+    // shifts to the previous day in any negative-offset timezone (EDT, etc.)
+    // and falsely triggers a "new day" separator on each Cable message.
     const tz = this.timezoneValue
     const noteDay = new Date(iso).toLocaleDateString("en-CA", { timeZone: tz })
-    const last = this._lastNoteDate || this.feedTarget.dataset.lastDate
-    const lastDay = last ? new Date(last).toLocaleDateString("en-CA", { timeZone: tz }) : null
+    const lastDay = this._lastNoteDate || this.feedTarget.dataset.lastDate
     if (lastDay === noteDay) return
     this._appendDateSeparator(new Date(iso))
     this._lastNoteDate = noteDay
