@@ -69,13 +69,21 @@ class AgentTriager
     patient_id = p[:patient_id] || fallback_patient_id
     return nil if patient_id.blank?
 
+    # Only the admissions front door is allowed to speak to the family in
+    # chat. When an RN/MD/SW/etc. agent drafts prose, surface it as a
+    # clinician-only audit note so families don't get two AI replies (one
+    # from admissions and one from "Pascal") for a single inbound message.
+    effective_role = p[:author_role].presence || @role
+    clinician_only = effective_role.to_s != "admissions"
+
     Note.create!(
-      agency:      @agency,
-      patient_id:  patient_id,
-      author_role: p[:author_role].presence || @role,
-      body:        p[:body].to_s.strip,
-      urgency:     normalize_urgency(p[:urgency]),
-      source:      p[:source].presence || "system"
+      agency:         @agency,
+      patient_id:     patient_id,
+      author_role:    effective_role,
+      body:           p[:body].to_s.strip,
+      urgency:        normalize_urgency(p[:urgency]),
+      source:         p[:source].presence || "system",
+      clinician_only: clinician_only
     )
   end
 
