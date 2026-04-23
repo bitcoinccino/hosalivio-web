@@ -16,8 +16,14 @@ production:
   visit_reminder_24h:
     class: VisitReminderJob
     schedule: at 4pm every day
+  overdue_med_sweep:
+    class: OverdueMedicationSweepJob
+    schedule: every 2 hours
 
 development:
   visit_reminder_24h:
     class: VisitReminderJob
     schedule: at 4pm every day
+  overdue_med_sweep:
+    class: OverdueMedicationSweepJob
+    schedule: every 2 hours

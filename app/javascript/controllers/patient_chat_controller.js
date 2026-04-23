@@ -144,9 +144,9 @@ export default class extends Controller {
         <span class="text-[10px] font-bold uppercase tracking-widest text-[#6B665F]">HosAlivio Assist</span>
         <span class="text-[10px] text-[#6B665F]">is thinking</span>
         <div class="flex items-center gap-1 ml-0.5">
-          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:0ms"></span>
-          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:150ms"></span>
-          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:300ms"></span>
+          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:0ms;animation-duration:1.4s"></span>
+          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:280ms;animation-duration:1.4s"></span>
+          <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:560ms;animation-duration:1.4s"></span>
         </div>
       </div>
     `
