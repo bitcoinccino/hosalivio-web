@@ -3,12 +3,13 @@
   is_family    = role == "family"
   is_system    = %w[admissions front_door_inbound system].include?(role)
   is_careteam  = !(is_family || is_system)
+  is_ai        = note.ai_authored?
 
   alignment = is_family   ? ""                : (is_careteam ? "ml-auto" : "mx-auto")
   bubble_bg = is_family   ? "bg-[#FFF3EC]"    : (is_careteam ? "bg-[#E6F0EE]" : "bg-[#EFECE6]")
   text_color = "text-[#1D1C1A]"
 
-  label_color = case role
+  label_color = is_ai ? "#6B665F" : case role
                 when "family"      then "#C1403A"
                 when "rn"          then "#2F6F4E"
                 when "md"          then "#2B4A7A"
@@ -18,19 +19,13 @@
                 when "admissions", "front_door_inbound" then "#6B665F"
                 else                    "#6B665F"
                 end
-  role_label = {
-    "family" => "Family",
-    "rn" => "RN",
-    "md" => "MD",
-    "social_worker" => "Social Worker",
-    "chaplain" => "Chaplain",
-    "pharmacy" => "Pharmacy",
-    "admissions" => "Front Door",
-    "front_door_inbound" => "Front Door",
-    "system" => "System"
-  }.fetch(role, role.to_s.upcase)
 
-  role_icon = {
+  # Display the REAL human's name when a user authored the note. Fall back to
+  # the model's display helper for AI-written notes ("HosAlivio Assist").
+  speaker_name = note.display_author_name
+  speaker_sub  = note.display_author_subtitle
+
+  role_icon = is_ai ? "ri-robot-2-line" : {
     "family" => "ri-user-heart-line",
     "rn" => "ri-nurse-line",
     "md" => "ri-stethoscope-line",
@@ -52,7 +47,7 @@
   <div class="w-full rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
     <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
       <i class="ri-alarm-warning-fill text-lg"></i>
-      <span class="font-bold tracking-wider text-[13px]">URGENT · <%= role_label.upcase %> FLAGGED</span>
+      <span class="font-bold tracking-wider text-[13px]">URGENT · <%= speaker_name.upcase %></span>
       <span class="ml-auto text-[10px] opacity-80 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></span>
     </div>
     <div class="px-5 py-4">
@@ -60,11 +55,11 @@
     </div>
   </div>
 <% elsif is_system %>
-  <%# System / Lucia triage: centered, subtle, with "TRIAGED" pill %>
+  <%# System / Lucia triage: centered, subtle %>
   <div class="max-w-xl mx-auto text-center">
     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %>">
       <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
-      <span class="text-[10px] font-bold uppercase tracking-widest" style="color: <%= label_color %>;">Triaged</span>
+      <span class="text-[10px] font-bold uppercase tracking-widest" style="color: <%= label_color %>;"><%= is_ai ? "HosAlivio Assist" : "Triaged" %></span>
       <span class="text-[12px] text-[#3A3936] break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></span>
       <% if note.urgency_urgent? %>
         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
@@ -73,17 +68,22 @@
     <div class="text-[10px] text-[#6B665F] mt-1 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></div>
   </div>
 <% else %>
-  <div class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> rounded-3xl px-5 py-4 overflow-hidden">
+  <div class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
     <div class="flex items-center justify-between mb-1 gap-2">
-      <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] font-bold" style="color: <%= label_color %>;">
-        <i class="<%= role_icon %> text-[12px]"></i>
-        <%= role_label %>
+      <div class="min-w-0">
+        <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: <%= label_color %>;">
+          <i class="<%= role_icon %> text-[14px]"></i>
+          <span class="truncate"><%= speaker_name %></span>
+        </div>
+        <% if speaker_sub.present? %>
+          <div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F] font-mono mt-0.5"><%= speaker_sub %></div>
+        <% end %>
       </div>
       <% if note.urgency_urgent? %>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider flex-shrink-0">URGENT</span>
       <% end %>
     </div>
-    <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
+    <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= explain_icd(note.body) %></p>
     <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">
       <%= note.created_at.strftime("%-l:%M %p") %>
     </div>

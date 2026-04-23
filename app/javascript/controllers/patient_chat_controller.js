@@ -151,13 +151,18 @@ export default class extends Controller {
   }
 
   _appendNote(n) {
-    const bubble = document.createElement("div")
-    const roleLabel = this._roleLabel(n.author_role)
-    const labelColor = this._labelColor(n.author_role)
-    const roleIcon  = this._roleIcon(n.author_role)
-    const isFamily = n.author_role === "family"
-    const align = isFamily ? "ml-auto" : ""
-    const bg    = isFamily ? "bg-white" : "bg-[#EFECE6]"
+    const bubble      = document.createElement("div")
+    const labelColor  = n.ai_authored ? "#6B665F" : this._labelColor(n.author_role)
+    const roleIcon    = n.ai_authored ? "ri-robot-2-line" : this._roleIcon(n.author_role)
+    const isFamily    = n.author_role === "family"
+    const align       = isFamily ? "" : "ml-auto"
+    const bg          = isFamily ? "bg-[#FFF3EC]" : "bg-[#E6F0EE]"
+    const aiRing      = n.ai_authored ? "ring-1 ring-dashed ring-[#B9B4AB]" : ""
+
+    // Real-name-first: show the human's actual name when available; fall back
+    // to the backend-supplied label ("HosAlivio Assist") only for AI notes.
+    const speakerName = n.author_name || this._roleLabel(n.author_role)
+    const speakerSub  = n.author_subtitle || ""
 
     const urgencyPill = n.urgency === "crisis"
       ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
@@ -165,17 +170,28 @@ export default class extends Controller {
       ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>`
       : ""
 
-    bubble.className = `max-w-2xl ${align} ${bg} rounded-3xl px-6 py-5 border border-[#EFECE6] shadow-sm opacity-0 transition-opacity duration-300`
+    bubble.className = `max-w-2xl min-w-0 ${align} ${bg} ${aiRing} rounded-3xl px-5 py-4 opacity-0 transition-opacity duration-300`
+
+    const subEl = speakerSub
+      ? `<div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F] font-mono mt-0.5"></div>`
+      : ""
+
     bubble.innerHTML = `
-      <div class="flex items-center justify-between mb-1">
-        <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] font-bold" style="color: ${labelColor};">
-          <i class="${roleIcon} text-[12px]"></i>${roleLabel}
+      <div class="flex items-center justify-between mb-1 gap-2">
+        <div class="min-w-0">
+          <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: ${labelColor};">
+            <i class="${roleIcon} text-[14px]"></i>
+            <span class="truncate" data-role="name"></span>
+          </div>
+          ${subEl}
         </div>
         ${urgencyPill}
       </div>
-      <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"></p>
+      <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"></p>
       <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">${new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</div>
     `
+    bubble.querySelector('[data-role="name"]').textContent = speakerName
+    if (speakerSub) bubble.querySelector(`.text-\\[9px\\]`).textContent = speakerSub
     bubble.querySelector("p").textContent = n.body
     this.feedTarget.appendChild(bubble)
     requestAnimationFrame(() => { bubble.style.opacity = "1" })
