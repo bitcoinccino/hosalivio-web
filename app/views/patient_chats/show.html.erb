@@ -383,15 +383,16 @@
 
         <%# Styled-placeholder pattern: invisible native placeholder + an
             absolutely-positioned overlay so we can bold the patient's first
-            name in orange. The peer/peer-placeholder-shown trick hides the
-            overlay as soon as the user types or focuses the input. %>
+            name in orange. Visibility is driven by Stimulus on input events,
+            since peer-placeholder-shown isn't reliably scanned by Tailwind v4. %>
         <div class="relative flex-1">
           <input type="text" name="text" data-patient-chat-target="input"
                  autocomplete="off"
                  placeholder=" "
-                 class="peer w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-transparent py-2">
-          <div class="pointer-events-none absolute inset-0 hidden items-center text-[15px] text-[#6B665F]
-                      peer-placeholder-shown:flex peer-focus:opacity-40 transition-opacity">
+                 data-action="input->patient-chat#refreshPlaceholderOverlay"
+                 class="w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-transparent py-2">
+          <div data-patient-chat-target="placeholderOverlay"
+               class="pointer-events-none absolute inset-0 flex items-center text-[15px] text-[#6B665F]">
             <%# Family-mode overlay — patient salutation in bold orange. %>
             <span class="group-data-[audience=team]/audience:hidden">
               <span>How is&nbsp;</span>

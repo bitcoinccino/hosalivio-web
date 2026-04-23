@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
-  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form"]
+  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form", "placeholderOverlay"]
   static values  = {
     patientId: String,
     lang:      { type: String, default: "en-US" },
@@ -24,6 +24,13 @@ export default class extends Controller {
 
   toggleQuickActions() {
     this.quickActionsTarget.classList.toggle("hidden")
+  }
+
+  // Hide the styled placeholder overlay as soon as the user types, show
+  // it again when the input is empty. Bound to the input's `input` event.
+  refreshPlaceholderOverlay() {
+    if (!this.hasPlaceholderOverlayTarget || !this.hasInputTarget) return
+    this.placeholderOverlayTarget.classList.toggle("hidden", this.inputTarget.value.length > 0)
   }
 
   // Audience toggle: clinicians flip between family-facing and team-only.
@@ -52,12 +59,18 @@ export default class extends Controller {
   }
 
   // ── Voice input (Web Speech API) ─────────────────────────────────
+  // Tap-to-start / tap-to-pause toggle. Transcribes continuously so the
+  // user can talk in full sentences without it cutting off. Resume picks
+  // up where they left off (the previous transcript becomes the new
+  // start-text on the next start).
   toggleMic() {
     if (!this._speech) return
     if (this._listening) {
-      this._speech.stop()
+      this._userStopped = true   // signal: don't auto-restart from onend
+      try { this._speech.stop() } catch (_) {}
     } else {
       this._micStartText = this.inputTarget.value
+      this._userStopped  = false
       try { this._speech.start() } catch (_) { /* already running */ }
     }
   }
@@ -71,22 +84,35 @@ export default class extends Controller {
     const r = new SR()
     r.lang           = this.langValue || "en-US"
     r.interimResults = true
-    r.continuous     = false
+    r.continuous     = true   // keep listening until the user taps to stop
 
     r.onstart  = () => { this._listening = true;  this._paintMic(true)  }
-    r.onend    = () => { this._listening = false; this._paintMic(false); this._usedVoice = true }
     r.onerror  = (e) => { this._listening = false; this._paintMic(false); console.warn("speech error:", e.error) }
+    r.onend    = () => {
+      this._listening = false
+      this._paintMic(false)
+      this._usedVoice = true
+      // Continuous mode can end on a long silence even when the user
+      // didn't tap stop. If they didn't tap stop, restart so the session
+      // feels like a single uninterrupted recording.
+      if (!this._userStopped) {
+        try { r.start() } catch (_) {}
+      }
+    }
     r.onresult = (e) => {
+      // Build the full transcript from every result so interim updates
+      // correctly replace earlier interim text within the same session.
       let transcript = ""
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let i = 0; i < e.results.length; i++) {
         transcript += e.results[i][0].transcript
       }
       this.inputTarget.value = (this._micStartText ? this._micStartText + " " : "") + transcript
+      this.refreshPlaceholderOverlay()
     }
     this._speech = r
     if (this.hasMicTarget) {
       this.micTarget.disabled = false
-      this.micTarget.title = "Hold to speak — click again to stop"
+      this.micTarget.title = "Tap to start dictating — tap again to pause"
       this.micTarget.classList.remove("cursor-not-allowed", "text-[#B9B4AB]")
       this.micTarget.classList.add("text-[#D97757]", "hover:bg-[#FBF9F5]")
     }
@@ -127,6 +153,7 @@ export default class extends Controller {
     // is still pending; doing this after the await would race the reply
     // and either show nothing or hang the dots forever.
     this.inputTarget.value = ""
+    this.refreshPlaceholderOverlay()
     const sentUrgency = this._currentUrgency
     const wasVoice    = this._usedVoice
     this._currentUrgency = "normal"
