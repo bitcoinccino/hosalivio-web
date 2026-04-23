@@ -285,6 +285,32 @@ class AgentTriager
     eval_record = PreAdmitEval.find(eval_id)
     return nil unless eval_record.status_final?
 
+    # Consent + LCD gate: Esther cannot sign until Pascal has captured the
+    # informed consent, election, AOB, and a supported diagnosis. Handing
+    # back to Pascal instead of forcing a certification avoids the "fake
+    # consent" audit finding that fails every CMS recertification survey.
+    unless eval_record.can_certify?
+      Rails.logger.warn("[AgentTriager:#{@role}] refusing to certify eval=#{eval_id}; blockers: #{eval_record.certification_blockers.join('; ')}")
+      AgentEvent.create!(
+        agency:           @agency,
+        agent_id:         @role,
+        agent_session_id: Current.agent_session_id,
+        action:           "handoff",
+        subject:          eval_record,
+        change_set: {
+          target_role:   "rn",
+          intent:        "pre_admit_completion_needed",
+          urgency:       "urgent",
+          depth:         @depth + 1,
+          eval_id:       eval_record.id,
+          patient_name:  eval_record.patient.full_name,
+          blockers:      eval_record.certification_blockers
+        },
+        happened_at: Time.current
+      )
+      return nil
+    end
+
     eval_record.update!(
       status:       :certified,
       certified_at: Time.current,

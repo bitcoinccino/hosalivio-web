@@ -8,7 +8,8 @@ class PreAdmitValidator
 
   REQUIRED_SECTIONS = %w[general functional_decline nutritional_decline cognitive_decline
                           other_symptoms equipment diagnosis medicare_lcd_criteria
-                          billing final_review].freeze
+                          billing final_review
+                          informed_consent election_of_benefit financial_consent].freeze
 
   ICD10_FORMAT = /\A[A-Z]\d{2}(?:\.\w{1,4})?\z/
 
@@ -34,6 +35,9 @@ class PreAdmitValidator
     check_primary_icd10
     check_lcd_support
     check_billing_level
+    check_informed_consent
+    check_election_of_benefit
+    check_financial_consent
 
     Result.new(
       ok?:          @errors.empty?,
@@ -98,6 +102,55 @@ class PreAdmitValidator
       @errors << "At least one level of care must be true in billing (routine_home_care defaults true)."
     elsif chosen.size > 1 && !chosen.include?("routine_home_care")
       @warnings << "Multiple elevated levels of care flagged: #{chosen.inspect}. Confirm with MD before certifying."
+    end
+  end
+
+  # Consent predicate: family must have AGREED to stop curative treatment.
+  # This is the core of the Medicare Hospice Benefit trade-off. Esther cannot
+  # certify without it. Missing or false = blocking error.
+  def check_informed_consent
+    ic = eval_root["informed_consent"] || {}
+    if ic["family_agrees_to_stop_curative"] != true
+      @errors << "informed_consent.family_agrees_to_stop_curative must be true. This is the core of the Medicare Hospice Benefit and the legal predicate for MD certification."
+    end
+    if ic["services_explained"] != true
+      @warnings << "informed_consent.services_explained not confirmed. CMS COPs require documented service explanation."
+    end
+    if ic["levels_of_care_explained"] != true
+      @warnings << "informed_consent.levels_of_care_explained not confirmed. Family must be told about RHC / CHC / GIP / Respite."
+    end
+    if ic["questions_answered"] != true
+      @warnings << "informed_consent.questions_answered not confirmed. 'Opportunity to ask questions' is a specific CMS element."
+    end
+  end
+
+  # Election of Benefit: Medicare Hospice Election Statement (MHES) must be
+  # signed and a concrete election date captured. NOE filing depends on this.
+  def check_election_of_benefit
+    eob = eval_root["election_of_benefit"] || {}
+    if eob["mhes_signed"] != true
+      @errors << "election_of_benefit.mhes_signed must be true before certification. The Medicare Hospice Election Statement is the legal admission document."
+    end
+    if eob["election_effective_date"].to_s.strip.empty?
+      @errors << "election_of_benefit.election_effective_date is required. NOE filing deadline starts from this date."
+    end
+    if eob["primary_decision_maker_name"].to_s.strip.empty?
+      @warnings << "election_of_benefit.primary_decision_maker_name is empty. Capture who signed (patient, spouse, POA, etc.) for audit trail."
+    end
+  end
+
+  # Financial consent: Assignment of Benefits signed, and if the patient is
+  # heading to a facility, the Medicaid room-and-board form is flagged.
+  def check_financial_consent
+    fc = eval_root["financial_consent"] || {}
+    if fc["assignment_of_benefits_signed"] != true
+      @errors << "financial_consent.assignment_of_benefits_signed must be true. Without AOB the agency cannot bill Medicare directly and the signer is unprotected on double-billing."
+    end
+    if fc["aob_liability_acknowledged"] != true
+      @warnings << "financial_consent.aob_liability_acknowledged not confirmed. Confirm signer understood they are liable for billing disputes."
+    end
+    if fc["medicaid_form_needed"] == true && fc["medicaid_form_signed"] != true
+      @errors << "financial_consent.medicaid_form_signed must be true when medicaid_form_needed is true. Patient going to a nursing facility needs the R&B form to avoid self-pay bills."
     end
   end
 

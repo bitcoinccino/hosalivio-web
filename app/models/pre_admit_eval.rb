@@ -42,6 +42,60 @@ class PreAdmitEval < ApplicationRecord
     noe_deadline_at && Time.current > noe_deadline_at && !status_noe_filed?
   end
 
+  # ── Consent / certification gate ────────────────────────────────
+  # Esther cannot certify until informed consent + election + financial
+  # consent are documented. This mirrors the CMS COP requirements and
+  # prevents an NOE from being filed on a patient who didn't actually
+  # agree to elect the hospice benefit.
+
+  def informed_consent
+    raw_json.dig("pre_admit_eval", "informed_consent") || {}
+  end
+
+  def election_of_benefit
+    raw_json.dig("pre_admit_eval", "election_of_benefit") || {}
+  end
+
+  def financial_consent
+    raw_json.dig("pre_admit_eval", "financial_consent") || {}
+  end
+
+  def consent_complete?
+    informed_consent["family_agrees_to_stop_curative"] == true &&
+      election_of_benefit["mhes_signed"] == true &&
+      election_of_benefit["election_effective_date"].to_s.strip.present? &&
+      financial_consent["assignment_of_benefits_signed"] == true
+  end
+
+  def medicaid_needed?
+    financial_consent["medicaid_form_needed"] == true
+  end
+
+  def medicaid_complete?
+    !medicaid_needed? || financial_consent["medicaid_form_signed"] == true
+  end
+
+  def aob_signed?
+    financial_consent["assignment_of_benefits_signed"] == true
+  end
+
+  # Returns an array of specific blockers; empty array means certify-ready.
+  def certification_blockers
+    blockers = []
+    blockers << "family has not agreed to stop curative treatment" unless informed_consent["family_agrees_to_stop_curative"] == true
+    blockers << "Medicare Hospice Election Statement not signed"    unless election_of_benefit["mhes_signed"] == true
+    blockers << "election effective date missing"                   if election_of_benefit["election_effective_date"].to_s.strip.empty?
+    blockers << "Assignment of Benefits not signed"                 unless aob_signed?
+    blockers << "Medicaid R&B form needed but not signed"           if medicaid_needed? && !medicaid_complete?
+    blockers << "primary diagnosis ICD-10 missing"                  if primary_icd10.blank?
+    blockers << "LCD criteria not supported"                        unless lcd_criteria_supported
+    blockers
+  end
+
+  def can_certify?
+    certification_blockers.empty?
+  end
+
   # Human-readable summary for Mission Stage cards
   def headline
     dx = primary_icd10_description.presence || primary_icd10.presence || "diagnosis pending"
