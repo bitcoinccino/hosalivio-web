@@ -5,6 +5,13 @@ class Visit < ApplicationRecord
 
   encrypts :narrative
 
+  # Optional bedside audio capture — raw recording of the visit for the
+  # chart (patient breath sounds, family voice, exact phrasing of goals
+  # of care). Distinct from the narrative text field which is the
+  # clinician's structured documentation. Played back by anyone with
+  # chart access.
+  has_one_attached :audio_note
+
   enum :discipline, {
     rn: 0, md: 1, sw: 2, chaplain: 3, aide: 4, don: 5
   }, prefix: true, validate: true

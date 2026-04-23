@@ -105,6 +105,15 @@
           </div>
         <% end %>
 
+        <% if @visit.audio_note.attached? %>
+          <div class="mb-4">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1 flex items-center gap-1">
+              <i class="ri-mic-line"></i> Bedside audio
+            </div>
+            <%= audio_tag url_for(@visit.audio_note), controls: true, class: "w-full h-9" %>
+          </div>
+        <% end %>
+
         <% if @visit.pain_score.present? || @visit.vitals.present? %>
           <div class="grid grid-cols-5 gap-2 pb-4 mb-4 border-b border-[#EFECE6] text-center">
             <% [["Pain", @visit.pain_score ? "#{@visit.pain_score}/10" : nil],

@@ -156,6 +156,7 @@ class VisitsController < ApplicationController
       :scheduled_at, :started_at, :ended_at,
       :service_location, :facility_name,
       :narrative, :pain_score, :billable, :visit_code,
+      :audio_note,
       vitals: [:bp, :temp, :pulse, :resp, :o2]
     )
   end
