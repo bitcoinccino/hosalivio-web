@@ -1,7 +1,7 @@
 class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
-  before_action :set_visit, only: [:show, :edit, :update, :destroy]
+  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -65,6 +65,32 @@ class VisitsController < ApplicationController
     @visit.destroy
     redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
                 notice: "Visit removed from the schedule."
+  end
+
+  # Pascal clicks "Start visit" on My Day → stamps started_at if not already
+  # set, then drops him into the documentation form with dictation ready.
+  def begin
+    ActsAsTenant.with_tenant(current_user.agency) do
+      if @visit.started_at.nil?
+        @visit.update!(started_at: Time.current)
+        flash[:notice] = "Visit started at #{Time.current.strftime('%-l:%M %p')}. Dictate your narrative below."
+      else
+        flash[:notice] = "Already in progress — pick up where you left off."
+      end
+    end
+    redirect_to edit_visit_path(@visit)
+  end
+
+  # Finish button on the documentation form: stamps ended_at and returns to the
+  # calendar so he can move on to the next visit.
+  def finish
+    ActsAsTenant.with_tenant(current_user.agency) do
+      if @visit.started_at && @visit.ended_at.nil?
+        @visit.update!(ended_at: Time.current)
+        flash[:notice] = "Visit completed. Thank you."
+      end
+    end
+    redirect_to dashboard_path
   end
 
   private

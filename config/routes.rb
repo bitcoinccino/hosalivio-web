@@ -42,7 +42,12 @@ Rails.application.routes.draw do
 
   # Calendar + visit CRUD (clinician-facing scheduling)
   get "calendar", to: "calendars#show", as: :calendar
-  resources :visits, only: [:new, :create, :show, :edit, :update, :destroy]
+  resources :visits, only: [:new, :create, :show, :edit, :update, :destroy] do
+    member do
+      post :begin
+      post :finish
+    end
+  end
 
   # Self-serve profile editing (all signed-in users, including family)
   resource :profile, only: [:edit, :update], controller: "profiles" do

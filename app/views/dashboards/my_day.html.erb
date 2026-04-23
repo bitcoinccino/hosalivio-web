@@ -123,10 +123,24 @@
                   <% if v.agent_authored %>
                     <span title="AI-scheduled" class="text-[#6B665F] flex-shrink-0">🤖</span>
                   <% end %>
-                  <%= link_to edit_visit_path(v),
-                        class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium flex-shrink-0",
-                        title: "Open visit form with dictation ready" do %>
-                    <i class="ri-mic-line"></i> Start visit
+                  <% if v.ended_at %>
+                    <%= link_to edit_visit_path(v),
+                          class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white font-medium flex-shrink-0" do %>
+                      <i class="ri-edit-2-line"></i> Completed
+                    <% end %>
+                  <% elsif v.started_at %>
+                    <%= link_to edit_visit_path(v),
+                          class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#C1403A] hover:bg-[#a5342f] text-white font-medium flex-shrink-0",
+                          title: "Continue recording this visit" do %>
+                      <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> Recording
+                    <% end %>
+                  <% else %>
+                    <%= button_to begin_visit_path(v), method: :post,
+                          form: { class: "inline" },
+                          class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium flex-shrink-0",
+                          title: "Start timer + open documentation" do %>
+                      <i class="ri-mic-line"></i> Start visit
+                    <% end %>
                   <% end %>
                 </li>
               <% end %>

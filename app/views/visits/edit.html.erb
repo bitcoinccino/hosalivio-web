@@ -1,12 +1,48 @@
-<% content_for :title, "Edit visit · HosAlivio" %>
+<%
+  # Visit lifecycle states drive the entire page language:
+  #   scheduled    — start time in the future, not yet begun
+  #   ready        — scheduled time is now or passed, not yet begun
+  #   recording    — started_at set, ended_at nil (actively documenting)
+  #   completed    — both timestamps set (editing a past visit)
+  now      = Time.current
+  state = if @visit.ended_at
+            :completed
+          elsif @visit.started_at
+            :recording
+          elsif @visit.scheduled_at && @visit.scheduled_at <= now
+            :ready
+          else
+            :scheduled
+          end
+
+  page_title, header_label, header_icon, header_color = case state
+    when :completed
+      ["Edit visit · HosAlivio",      "Edit completed visit",    "ri-edit-2-line",    "#6B665F"]
+    when :recording
+      ["Recording visit · HosAlivio", "Recording visit",         "ri-mic-fill",       "#C1403A"]
+    when :ready
+      ["Record visit · HosAlivio",    "Record visit",            "ri-calendar-check-line", "#D97757"]
+    else
+      ["Edit visit · HosAlivio",      "Edit scheduled visit",    "ri-calendar-event-line", "#D97757"]
+    end
+%>
+<% content_for :title, page_title %>
 <div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
   <div class="max-w-xl mx-auto">
-    <a href="<%= calendar_path(date: @visit.scheduled_at&.to_date) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
-      <i class="ri-arrow-left-line"></i> Back to calendar
+    <a href="<%= current_user.role_names.include?("don") ? dashboard_path : dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to My Day
     </a>
     <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm p-6">
-      <div class="text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-2">
-        <i class="ri-calendar-event-line"></i> Edit visit
+      <div class="flex items-center justify-between mb-2">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] font-bold" style="color: <%= header_color %>;">
+          <i class="<%= header_icon %>"></i> <%= header_label %>
+        </div>
+        <% if state == :recording %>
+          <div class="inline-flex items-center gap-1.5 text-[11px] text-[#C1403A]">
+            <span class="w-2 h-2 rounded-full bg-[#C1403A] animate-pulse"></span>
+            Started <%= @visit.started_at.strftime("%-l:%M %p") %>
+          </div>
+        <% end %>
       </div>
       <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">
         <%= @visit.patient&.full_name %>
@@ -15,6 +51,17 @@
         <%= @visit.agent_authored ? "🤖 Originally scheduled by AI" : "👤 Originally scheduled by a human" %>
       </div>
       <%= render "form" %>
+
+      <% if state == :recording %>
+        <div class="mt-5 pt-5 border-t border-[#EFECE6]">
+          <%= button_to finish_visit_path(@visit), method: :post,
+                data: { turbo_confirm: "Finish this visit for #{@visit.patient&.full_name}?" },
+                class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium" do %>
+            <i class="ri-check-double-line"></i> Finish visit
+          <% end %>
+          <span class="text-[11px] text-[#6B665F] ml-2">Stamps the end time and returns to My Day.</span>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>
