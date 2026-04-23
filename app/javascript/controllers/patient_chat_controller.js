@@ -178,6 +178,38 @@ export default class extends Controller {
     if (this._typingEl) { this._typingEl.remove(); this._typingEl = null }
   }
 
+  // ── Date separators ─────────────────────────────────────────────
+  _maybeInsertDateSeparator(iso) {
+    const noteDate = new Date(iso).toDateString()
+    const last = this._lastNoteDate || this.feedTarget.dataset.lastDate
+    const lastNorm = last ? new Date(last).toDateString() : null
+    if (lastNorm === noteDate) return
+    this._appendDateSeparator(new Date(iso))
+    this._lastNoteDate = noteDate
+  }
+
+  _appendDateSeparator(date) {
+    const sep = document.createElement("div")
+    sep.className = "flex items-center justify-center pt-2 pb-1"
+    sep.innerHTML = `<div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">${this._dateLabel(date)}</div>`
+    this.feedTarget.appendChild(sep)
+  }
+
+  _dateLabel(date) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const target = new Date(date)
+    target.setHours(0, 0, 0, 0)
+    const diffDays = Math.round((today - target) / (1000 * 60 * 60 * 24))
+    if (diffDays === 0)  return "Today"
+    if (diffDays === 1)  return "Yesterday"
+    if (diffDays > 1 && diffDays < 7) return target.toLocaleDateString([], { weekday: "long" })
+    const sameYear = target.getFullYear() === today.getFullYear()
+    return target.toLocaleDateString([], sameYear
+      ? { month: "long", day: "numeric" }
+      : { month: "long", day: "numeric", year: "numeric" })
+  }
+
   // ──────────────────────────────────────────────────────────────────
   _openCable() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:"
@@ -213,6 +245,10 @@ export default class extends Controller {
     // The next non-family message means a reply has arrived — clear the
     // typing indicator before rendering the actual bubble.
     if (n.author_role !== "family") this._clearTyping()
+
+    // Day-change separator — drop a "Today / Yesterday / Monday / Apr 22"
+    // pill in the feed when this note crosses into a new calendar day.
+    this._maybeInsertDateSeparator(n.created_at)
 
     const bubble      = document.createElement("div")
     const labelColor  = n.ai_authored ? "#6B665F" : this._labelColor(n.author_role)

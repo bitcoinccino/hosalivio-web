@@ -271,13 +271,25 @@
     <% end %>
 
     <!-- Message Feed -->
-    <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5" data-patient-chat-target="feed">
+    <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5"
+         data-patient-chat-target="feed"
+         data-last-date="<%= @notes.last&.created_at&.to_date&.iso8601 %>">
       <% if @notes.empty? %>
         <div class="text-center text-sm text-[#6B665F] py-20">
           No messages yet. Tap <i class="ri-add-line text-[#D97757]"></i> or <i class="ri-mic-line text-[#D97757]"></i> to start.
         </div>
       <% else %>
+        <% last_date = nil %>
         <% @notes.each do |note| %>
+          <% note_date = note.created_at.to_date %>
+          <% if note_date != last_date %>
+            <div class="flex items-center justify-center pt-2 pb-1">
+              <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">
+                <%= relative_date_label(note_date) %>
+              </div>
+            </div>
+            <% last_date = note_date %>
+          <% end %>
           <%= render "message_bubble", note: note %>
         <% end %>
       <% end %>
