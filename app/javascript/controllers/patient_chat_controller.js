@@ -198,14 +198,22 @@ export default class extends Controller {
       ? `<div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F] font-mono mt-0.5"></div>`
       : ""
 
+    const aiAvatar = n.ai_authored
+      ? `<div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
+           <img src="${document.body.dataset.hosalivioBotSrc || '/assets/hosalivio_assistant.png'}" class="w-full h-full object-cover" alt="HosAlivio Assistant">
+         </div>`
+      : `<i class="${roleIcon} text-[14px]"></i>`
+
     bubble.innerHTML = `
       <div class="flex items-center justify-between mb-1 gap-2">
-        <div class="min-w-0">
-          <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: ${labelColor};">
-            <i class="${roleIcon} text-[14px]"></i>
-            <span class="truncate" data-role="name"></span>
+        <div class="min-w-0 flex items-center gap-2">
+          ${aiAvatar}
+          <div class="min-w-0">
+            <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: ${labelColor};">
+              <span class="truncate" data-role="name"></span>
+            </div>
+            ${subEl}
           </div>
-          ${subEl}
         </div>
         ${urgencyPill}
       </div>
