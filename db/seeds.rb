@@ -40,17 +40,17 @@ ActsAsTenant.with_tenant(agency) do
   puts "== Seeding users (one per role) =="
   USERS = {
     "admin"         => { email: "admin@hosalivio.com",      name: "System Admin" },
-    "rn"            => { email: "rn@hosalivio.com",         name: "Pascal (RN)" },
-    "md"            => { email: "md@hosalivio.com",         name: "Dr. Esther (MD)" },
-    "don"           => { email: "don@hosalivio.com",        name: "Diaphnie (DON)" },
-    "admissions"    => { email: "admissions@hosalivio.com", name: "Lucia (Admissions)" },
-    "dme"           => { email: "dme@hosalivio.com",        name: "Marcus (DME)" },
-    "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Simone (Pharmacy)" },
-    "insurance"     => { email: "insurance@hosalivio.com",  name: "Kendra (Insurance)" },
-    "billing"       => { email: "billing@hosalivio.com",    name: "Wolfwide (Billing)" },
-    "chaplain"      => { email: "chaplain@hosalivio.com",   name: "Geoginio (Chaplain)" },
-    "social_worker" => { email: "sw@hosalivio.com",         name: "Nickla (SW)" },
-    "aide"          => { email: "aide@hosalivio.com",       name: "Flore (Aide)" }
+    "rn"            => { email: "rn@hosalivio.com",         name: "Pascal Benoit" },
+    "md"            => { email: "md@hosalivio.com",         name: "Dr. Esther Nguyen" },
+    "don"           => { email: "don@hosalivio.com",        name: "Diaphnie Casimir" },
+    "admissions"    => { email: "admissions@hosalivio.com", name: "Lucia Morales" },
+    "dme"           => { email: "dme@hosalivio.com",        name: "Marcus Brown" },
+    "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Simone Wallace" },
+    "insurance"     => { email: "insurance@hosalivio.com",  name: "Kendra Foster" },
+    "billing"       => { email: "billing@hosalivio.com",    name: "Wolfwide Smith" },
+    "chaplain"      => { email: "chaplain@hosalivio.com",   name: "Geoginio Rousseau" },
+    "social_worker" => { email: "sw@hosalivio.com",         name: "Nickla Paul" },
+    "aide"          => { email: "aide@hosalivio.com",       name: "Flore Dupont" }
   }
 
   USERS.each do |role_name, info|
