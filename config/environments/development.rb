@@ -57,6 +57,11 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
+  # Run background jobs in-process for development. Removes the need for a
+  # separate `bin/jobs` worker terminal and means LuciaTriageJob fires
+  # immediately when a family message lands. SolidQueue is used in production.
+  config.active_job.queue_adapter = :inline
+
   # Highlight code that triggered redirect in logs.
   config.action_dispatch.verbose_redirect_logs = true
 
