@@ -44,6 +44,7 @@ module Api
 
           note = patient.notes.create!(
             agency:      patient.agency,
+            author_user: @family_user,
             author_role: "family",
             body:        body,
             source:      (params[:source].presence || "text"),

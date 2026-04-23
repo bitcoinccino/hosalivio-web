@@ -205,6 +205,38 @@ export default class extends Controller {
     this._lastNoteDate = noteDay
   }
 
+  _appendActionBanner(n) {
+    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
+    const label  = n.action_payload.label
+    const detail = n.action_payload.detail
+    const role   = String(n.author_role || "").replace(/_/g, " ").toUpperCase()
+    const urgencyTag = n.urgency === "crisis"
+      ? `<span class="ml-1 text-[#C1403A]">· Crisis</span>`
+      : n.urgency === "urgent"
+      ? `<span class="ml-1 text-[#D97757]">· Urgent</span>`
+      : ""
+
+    const wrap = document.createElement("div")
+    wrap.className = "max-w-3xl flex items-center gap-3 px-4 py-2.5 rounded-xl border border-[#7FB99A] bg-[#E6F0EA] opacity-0 transition-opacity duration-300"
+    wrap.title = `Action by ${role} · ${time}`
+    wrap.innerHTML = `
+      <i class="ri-checkbox-circle-fill text-[#2F6F4E] text-[18px] flex-shrink-0"></i>
+      <div class="min-w-0 flex-1">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-[#2F6F4E] font-bold">
+          <span data-role="label"></span>${urgencyTag}
+        </div>
+        <div data-role="detail" class="text-[13px] text-[#1D1C1A] truncate mt-0.5"></div>
+      </div>
+      <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0">${time}</div>
+    `
+    wrap.querySelector('[data-role="label"]').textContent = label
+    const detailEl = wrap.querySelector('[data-role="detail"]')
+    if (detail) { detailEl.textContent = detail } else { detailEl.remove() }
+    this.feedTarget.appendChild(wrap)
+    requestAnimationFrame(() => { wrap.style.opacity = "1" })
+    this._scrollToBottom()
+  }
+
   _appendAuditLog(n) {
     const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
     const role = String(n.author_role || "").replace(/_/g, " ")
@@ -297,10 +329,16 @@ export default class extends Controller {
     // patient chart for clinicians, never in the family chat thread.
     if (n.clinician_only && document.body.dataset.viewerFamily === "true") return
 
-    // Clinician-only notes for clinicians: render as a compact audit log
-    // row, not as a chat bubble. Different visual language entirely.
+    // Clinician-only notes for clinicians: render as either a green
+    // success banner (when the body is an [ACTION:...] marker) or a
+    // collapsed audit row (rationale prose). Banners surface results
+    // at a glance; audits stay tucked away.
     if (n.clinician_only) {
-      this._appendAuditLog(n)
+      if (n.action_payload) {
+        this._appendActionBanner(n)
+      } else {
+        this._appendAuditLog(n)
+      }
       return
     }
 
@@ -365,6 +403,12 @@ export default class extends Controller {
          </div>`
       : `<i class="${roleIcon} text-[14px]"></i>`
 
+    const sentToFamilyChip = (n.ai_authored && !viewerIsFamily)
+      ? `<span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-2 py-0.5" title="This message was sent to the family — they've already read it.">
+           <i class="ri-send-plane-line text-[10px]"></i> Sent to family
+         </span>`
+      : `<span></span>`
+
     bubble.innerHTML = `
       <div class="flex items-center justify-between mb-1 gap-2">
         <div class="min-w-0 flex items-center gap-2">
@@ -379,7 +423,10 @@ export default class extends Controller {
         ${urgencyPill}
       </div>
       <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"></p>
-      <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">${new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })}</div>
+      <div class="flex items-center justify-between mt-2 gap-2">
+        ${sentToFamilyChip}
+        <div class="text-[10px] text-[#6B665F] font-mono">${new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })}</div>
+      </div>
     `
     bubble.querySelector('[data-role="name"]').textContent = speakerName
     if (speakerSub) bubble.querySelector(`.text-\\[9px\\]`).textContent = speakerSub

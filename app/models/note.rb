@@ -21,6 +21,23 @@ class Note < ApplicationRecord
   scope :family_visible, -> { where(clinician_only: false) }
   scope :clinician_only_scope, -> { where(clinician_only: true) }
 
+  # Action banners — short, human-friendly labels for "the system did X".
+  # Emitted by AgentTriager when a real-world action lands (pharmacy
+  # dispatched, med ordered, DME requested, etc.). Rendered as a green
+  # success bar so Pascal sees the result at a glance instead of reading
+  # rationale prose to figure out what happened.
+  ACTION_LABELS = {
+    "pharmacy_dispatched" => "Pharmacy Dispatched",
+    "med_ordered"         => "Medication Ordered",
+    "dme_requested"       => "DME Requested",
+    "visit_scheduled"     => "Visit Scheduled",
+    "noe_filed"           => "NOE Filed",
+    "pre_admit_certified" => "Hospice Election Certified",
+    "pre_admit_drafted"   => "Pre-Admit Eval Drafted"
+  }.freeze
+
+  ACTION_BODY_RE = /\A\[ACTION:([a-z_]+)\]\s*(.*)\z/m
+
   after_create_commit :broadcast_to_patient_channel
 
   def mark_read!(user = nil)
@@ -46,9 +63,33 @@ class Note < ApplicationRecord
   end
 
   # Role sub-label shown in parentheses under the speaker's name.
-  # For humans it's their clinical role ("RN", "MD"). For AI it's flagged.
+  # For family it's their relationship to the patient ("Son of Maria");
+  # for clinicians it's the clinical role ("RN", "MD"); AI is flagged.
+  # Returns { type:, label:, detail: } when this note is an action banner,
+  # nil otherwise. Body convention: "[ACTION:pharmacy_dispatched] Comfort Kit Refill".
+  def action_payload
+    return nil unless body.is_a?(String)
+    m = body.match(ACTION_BODY_RE)
+    return nil unless m
+    type = m[1]
+    {
+      type:   type,
+      label:  ACTION_LABELS[type] || type.tr("_", " ").capitalize,
+      detail: m[2].to_s.strip
+    }
+  end
+
+  def action_banner?
+    action_payload.present?
+  end
+
   def display_author_subtitle
-    return nil if author_role == "family"
+    if author_role == "family"
+      rel  = author_user&.relationship.to_s.strip
+      name = author_user&.patient&.first_name
+      return nil if rel.blank? || name.blank?
+      return "#{rel.capitalize} of #{name}"
+    end
     role_up = author_role.to_s.tr("_", " ").upcase
     ai_authored? ? "AI auto-reply · #{role_up}" : role_up
   end
@@ -67,6 +108,7 @@ class Note < ApplicationRecord
         author_subtitle:   display_author_subtitle,
         ai_authored:       ai_authored?,
         clinician_only:    clinician_only,        # JS filters family viewers
+        action_payload:    action_payload,        # nil unless body is "[ACTION:...]"
         urgency:           urgency,
         body:              body,                  # decrypted for the browser
         created_at:        created_at.iso8601

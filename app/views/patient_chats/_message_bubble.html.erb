@@ -77,7 +77,30 @@
   }.fetch(role, "ri-user-line")
 %>
 
-<% if note.clinician_only? %>
+<% if note.clinician_only? && (action = note.action_payload) %>
+  <%# Action banner — green success bar, always visible. Pascal sees the
+      result at a glance instead of reading rationale prose. %>
+  <% role_label = role.tr("_", " ").upcase %>
+  <% urgency_pulse = note.urgency_urgent? || note.urgency_crisis? %>
+  <div class="max-w-3xl flex items-center gap-3 px-4 py-2.5 rounded-xl border border-[#7FB99A] bg-[#E6F0EA]"
+       title="Action by <%= role_label %> · <%= in_patient_zone(note.created_at, @patient) %>">
+    <i class="ri-checkbox-circle-fill text-[#2F6F4E] text-[18px] flex-shrink-0"></i>
+    <div class="min-w-0 flex-1">
+      <div class="text-[10px] uppercase tracking-[0.18em] text-[#2F6F4E] font-bold">
+        <%= action[:label] %>
+        <% if note.urgency_urgent? %>
+          <span class="ml-1 text-[#D97757]">· Urgent</span>
+        <% elsif note.urgency_crisis? %>
+          <span class="ml-1 text-[#C1403A]">· Crisis</span>
+        <% end %>
+      </div>
+      <% if action[:detail].present? %>
+        <div class="text-[13px] text-[#1D1C1A] truncate mt-0.5"><%= action[:detail] %></div>
+      <% end %>
+    </div>
+    <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= in_patient_zone(note.created_at, @patient) %></div>
+  </div>
+<% elsif note.clinician_only? %>
   <%# Clinician-only audit log — collapsed by default. Pascal expands when
       he wants to audit the AI reasoning, otherwise it stays out of his way. %>
   <details class="group max-w-3xl">
@@ -166,8 +189,18 @@
       <% end %>
     </div>
     <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= explain_icd(note.body) %></p>
-    <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">
-      <%= in_patient_zone(note.created_at, @patient) %>
+    <div class="flex items-center justify-between mt-2 gap-2">
+      <% if is_ai && !viewer_is_family %>
+        <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-2 py-0.5"
+              title="This message was sent to the family — they've already read it.">
+          <i class="ri-send-plane-line text-[10px]"></i> Sent to family
+        </span>
+      <% else %>
+        <span></span>
+      <% end %>
+      <div class="text-[10px] text-[#6B665F] font-mono">
+        <%= in_patient_zone(note.created_at, @patient) %>
+      </div>
     </div>
   </div>
 <% end %>

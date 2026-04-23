@@ -123,7 +123,7 @@ class AgentTriager
       return nil
     end
 
-    MedicationOrder.create!(
+    order = MedicationOrder.create!(
       agency:           @agency,
       patient_id:       patient_id,
       prescribed_by_id: p[:prescribed_by_id] || user_for_role("md")&.id,
@@ -137,13 +137,16 @@ class AgentTriager
       end_date:         p[:end_date],
       status:           :active
     )
+    label = "#{order.drug_name} #{order.dose}".strip
+    emit_action_banner(patient_id, "med_ordered", label, urgency: p[:urgency])
+    order
   end
 
   def write_pharm_delivery(p)
     patient_id = p[:patient_id] || fallback_patient_id
     return nil if patient_id.blank?
 
-    PharmacyDelivery.create!(
+    delivery = PharmacyDelivery.create!(
       agency:              @agency,
       patient_id:          patient_id,
       medication_order_id: p[:medication_order_id],
@@ -151,13 +154,15 @@ class AgentTriager
       status:              p[:status].presence || "requested",
       delivered_at:        p[:delivered_at]
     )
+    emit_action_banner(patient_id, "pharmacy_dispatched", delivery.kind.to_s.tr("_", " ").titleize, urgency: p[:urgency])
+    delivery
   end
 
   def write_dme_order(p)
     patient_id = p[:patient_id] || fallback_patient_id
     return nil if patient_id.blank?
 
-    DmeOrder.create!(
+    dme = DmeOrder.create!(
       agency:         @agency,
       patient_id:     patient_id,
       equipment_type: p[:equipment_type].presence || "other",
@@ -167,6 +172,10 @@ class AgentTriager
       requested_at:   Time.current,
       notes:          p[:notes]
     )
+    label = dme.equipment_type.to_s.tr("_", " ").titleize
+    label += " ×#{dme.quantity}" if dme.quantity > 1
+    emit_action_banner(patient_id, "dme_requested", label, urgency: p[:urgency])
+    dme
   end
 
   def emit_handoff(p, decision)
@@ -189,6 +198,25 @@ class AgentTriager
       },
       happened_at: Time.current
     )
+  end
+
+  # Emit a structured "action landed" note. The chat UI detects the
+  # [ACTION:...] prefix and renders this as a green success banner so
+  # Pascal can see at-a-glance what the agent did, instead of reading
+  # through the rationale prose.
+  def emit_action_banner(patient_id, action_type, label, urgency: nil)
+    return if patient_id.blank?
+    Note.create!(
+      agency:         @agency,
+      patient_id:     patient_id,
+      author_role:    @role,
+      body:           "[ACTION:#{action_type}] #{label}",
+      urgency:        normalize_urgency(urgency),
+      source:         :system,
+      clinician_only: true
+    )
+  rescue ActiveRecord::RecordInvalid
+    nil
   end
 
   # Compact internal trace note so a human auditor can follow every brain
