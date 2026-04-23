@@ -18,7 +18,7 @@
       </div>
 
       <p class="mt-6 pb-5 border-b border-[#D9D5CD] text-[13px] text-[#3A3936] leading-relaxed">
-        Gentle, expert hospice care. Let Lucia help you find the right partner.
+        Gentle, expert hospice care. Let HosAlivio help you find the right partner.
       </p>
 
       <%= form_with(url: root_path, method: :get, local: true, class: "mt-6 space-y-5") do %>
@@ -123,13 +123,13 @@
     <section class="px-10 pt-4 pb-4">
       <div class="max-w-3xl mx-auto text-center">
         <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-3">
-          <i class="ri-sparkling-2-line"></i> Hospice Discovery · Concierge by Lucia
+          <i class="ri-sparkling-2-line"></i> Hospice Discovery · Concierge by HosAlivio
         </div>
         <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-2">
           Find a hospice partner near you.
         </h1>
         <p class="text-[15px] text-[#3A3936] mx-auto max-w-2xl">
-          Tell Lucia what you need in plain English, or filter on the left. She will match you with the best two or three of our vetted partners.
+          Tell HosAlivio what you need in plain English, or filter on the left. We will match you with the best two or three of our vetted partners.
         </p>
       </div>
     </section>
@@ -158,7 +158,7 @@
                  class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
                  placeholder="e.g. Miami agency with dementia care that accepts Medicare">
           <button type="submit" class="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
-            <i class="ri-search-line"></i> Ask Lucia
+            <i class="ri-search-line"></i> Ask HosAlivio
           </button>
         </div>
 
@@ -173,7 +173,7 @@
             <i class="ri-inbox-2-line text-xl text-[#6B665F]"></i>
           </div>
           <div class="font-serif text-lg text-[#1D1C1A]">No partners match those filters.</div>
-          <div class="text-[13px] text-[#6B665F] mt-2">Try fewer filters, a broader zip, or let Lucia handle it via the bar above.</div>
+          <div class="text-[13px] text-[#6B665F] mt-2">Try fewer filters, a broader zip, or let HosAlivio handle it via the bar above.</div>
         </div>
       <% else %>
         <!-- Header: Explore partners (left) + What's new (slides in more) -->
@@ -278,11 +278,11 @@
     <% if @match[:agencies].any? || @active_query.present? %>
       <section class="px-10 pb-10">
         <div class="max-w-3xl mx-auto flex items-start gap-3">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1D1C1A] text-white flex items-center justify-center">
-            <span class="text-[11px] font-medium">L</span>
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-[#EFECE6] overflow-hidden">
+            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover", alt: "HosAlivio Assistant" %>
           </div>
           <div class="bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] px-4 py-2.5 text-[13px] text-[#1D1C1A]">
-            <span class="font-bold">Lucia:</span> <%= @match[:explanation] %>
+            <span class="font-bold">HosAlivio:</span> <%= @match[:explanation] %>
           </div>
         </div>
       </section>

@@ -182,13 +182,14 @@ export default class extends Controller {
   async _appendLuciaTyping() {
     const wrap = document.createElement("div")
     wrap.className = "flex items-start gap-3"
+    const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     wrap.innerHTML = `
-      <div class="w-10 h-10 rounded-full bg-[#1D1C1A] text-white flex items-center justify-center flex-shrink-0">
-        <span class="text-sm font-medium">L</span>
+      <div class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+        <img src="${botSrc}" class="w-full h-full object-cover" alt="HosAlivio Assistant">
       </div>
       <div class="flex-1 bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] p-4">
         <div class="text-[11px] uppercase tracking-[0.18em] font-bold text-[#1D1C1A] mb-1">
-          Lucia <span class="text-[10px] text-[#6B665F] font-normal normal-case tracking-normal">· typing…</span>
+          HosAlivio <span class="text-[10px] text-[#6B665F] font-normal normal-case tracking-normal">· typing…</span>
         </div>
         <div class="flex gap-1 py-1">
           <span class="w-1.5 h-1.5 rounded-full bg-[#D9D5CD] animate-bounce" style="animation-delay:0ms"></span>
@@ -240,7 +241,7 @@ export default class extends Controller {
       </div>
       <div class="flex-1 bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] p-4">
         <div class="text-[11px] uppercase tracking-[0.18em] font-bold text-[#1D1C1A] mb-2">
-          Lucia <span class="text-[10px] text-[#6B665F] font-normal normal-case tracking-normal">· Admissions</span>
+          HosAlivio <span class="text-[10px] text-[#6B665F] font-normal normal-case tracking-normal">· Admissions concierge</span>
         </div>
         <div class="font-serif text-[14px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap">${renderAnswer(prompt.answer)}</div>
         ${cta}
@@ -268,13 +269,13 @@ export default class extends Controller {
       </div>
       <div class="flex-1 bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] p-4">
         <div class="text-[11px] uppercase tracking-[0.18em] font-bold text-[#1D1C1A] mb-2">
-          Lucia <span class="text-[10px] text-[#6B665F] font-normal normal-case tracking-normal">· Admissions</span>
+          HosAlivio <span class="text-[10px] text-[#6B665F] font-normal normal-case tracking-normal">· Admissions concierge</span>
         </div>
         <div class="font-serif text-[14px] text-[#1D1C1A] leading-relaxed">
           Thank you for sharing — that deserves a real person, not a canned answer. Leave a zip code and a way to reach you just below, and a coordinator will call back shortly. I'll make sure they have your question in front of them before they dial.
         </div>
         <div class="mt-4 pt-3 border-t border-[#EFECE6] text-[11px] text-[#6B665F]">
-          <i class="ri-shield-check-line"></i> What you just wrote stays with Lucia. Nothing is shared beyond the admissions coordinator who calls you back.
+          <i class="ri-shield-check-line"></i> Your message stays within HosAlivio. Nothing is shared beyond the admissions coordinator who calls you back.
         </div>
       </div>`
   }
