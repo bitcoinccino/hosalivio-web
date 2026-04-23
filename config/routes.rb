@@ -49,6 +49,13 @@ Rails.application.routes.draw do
     delete :avatar, action: :remove_avatar
   end
 
+  # Quick clinician actions from the My Day overdue-meds card
+  resources :medication_logs, only: [:create] do
+    collection do
+      post :escalate
+    end
+  end
+
   # Per-agency team management (coordinator / DON / admin)
   resources :pre_admit_evals, only: [:show, :edit, :update]
   resource  :agency_features, only: [:edit, :update], controller: "agency_features"
