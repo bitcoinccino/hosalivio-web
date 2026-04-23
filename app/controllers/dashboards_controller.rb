@@ -1,3 +1,7 @@
+class DashboardsController < ApplicationController
+  before_action :authenticate_user!
+  before_action :redirect_family_users
+
   MANAGER_ROLES = %w[admin don admissions ceo].freeze
   CLINICAL_ROLES = %w[rn md social_worker chaplain aide dme pharmacy insurance billing].freeze
 
@@ -93,8 +97,6 @@
 
     @my_license_status = me.license_status
   end
-
-  public
 
   # Family users have no business on the mission stage — send them to their patient.
   def redirect_family_users
