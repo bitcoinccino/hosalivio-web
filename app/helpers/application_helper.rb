@@ -21,10 +21,13 @@ module ApplicationHelper
   def patient_salutation(patient)
     first = patient&.first_name.to_s.strip
     return "" if first.blank?
-    case patient.gender.to_s.downcase
-    when "female" then "Ms. #{first}"
-    when "male"   then "Mr. #{first}"
-    else               first
+    g = patient.gender.to_s.downcase.strip
+    if g.start_with?("f")
+      "Ms. #{first}"
+    elsif g.start_with?("m")
+      "Mr. #{first}"
+    else
+      first
     end
   end
 
