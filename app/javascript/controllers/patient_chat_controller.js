@@ -188,6 +188,27 @@ export default class extends Controller {
     this._lastNoteDate = noteDate
   }
 
+  _appendAuditLog(n) {
+    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    const role = String(n.author_role || "").replace(/_/g, " ")
+    const log = document.createElement("div")
+    log.className = "flex items-start gap-2 max-w-3xl py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md text-[12px] opacity-0 transition-opacity duration-300"
+    log.innerHTML = `
+      <i class="ri-file-list-3-line text-[#B9B4AB] text-[14px] mt-0.5 flex-shrink-0"></i>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-0.5">
+          <span class="text-[9px] uppercase tracking-[0.18em] font-bold text-[#6B665F]">Internal · ${role} trace</span>
+          <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto">${time}</span>
+        </div>
+        <div data-role="body" class="text-[12px] text-[#3A3936] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono"></div>
+      </div>
+    `
+    log.querySelector('[data-role="body"]').textContent = n.body
+    this.feedTarget.appendChild(log)
+    requestAnimationFrame(() => { log.style.opacity = "1" })
+    this._scrollToBottom()
+  }
+
   _appendDateSeparator(date) {
     const sep = document.createElement("div")
     sep.className = "flex items-center justify-center pt-2 pb-1"
@@ -246,6 +267,13 @@ export default class extends Controller {
     // viewer is a family user — those belong on the Mission Stage and
     // patient chart for clinicians, never in the family chat thread.
     if (n.clinician_only && document.body.dataset.viewerFamily === "true") return
+
+    // Clinician-only notes for clinicians: render as a compact audit log
+    // row, not as a chat bubble. Different visual language entirely.
+    if (n.clinician_only) {
+      this._appendAuditLog(n)
+      return
+    }
 
     // The next non-family message means a reply has arrived — clear the
     // typing indicator before rendering the actual bubble.

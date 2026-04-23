@@ -66,11 +66,27 @@
   }.fetch(role, "ri-user-line")
 %>
 
-<% if is_system %>
+<% if note.clinician_only? %>
+  <%# Clinician-only audit log entry. Visibly distinct from chat bubbles —
+      no avatar, no dashed ring, no "AI auto-reply" header. Reads as a
+      system trace: muted text, left border, info icon, role label. %>
+  <div class="flex items-start gap-2 max-w-3xl py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md text-[12px]">
+    <i class="ri-file-list-3-line text-[#B9B4AB] text-[14px] mt-0.5 flex-shrink-0"></i>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 mb-0.5">
+        <span class="text-[9px] uppercase tracking-[0.18em] font-bold text-[#6B665F]">
+          Internal · <%= role.tr("_", " ") %> trace
+        </span>
+        <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto"><%= note.created_at.strftime("%-l:%M %p") %></span>
+      </div>
+      <div class="text-[12px] text-[#3A3936] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono"><%= note.body %></div>
+    </div>
+  </div>
+<% elsif is_system %>
   <%# System/Lucia notes ALWAYS render as the quiet triaged pill, even when
       urgency=crisis (those are audit breadcrumbs, not family-facing alarms). %>
 <% end %>
-<% if !is_system && note.urgency_crisis? %>
+<% if !note.clinician_only? && !is_system && note.urgency_crisis? %>
   <%# Full-width crisis highlight bar — only for family + care-team notes %>
   <div class="w-full rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
     <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
@@ -82,7 +98,7 @@
       <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
     </div>
   </div>
-<% elsif is_system %>
+<% elsif !note.clinician_only? && is_system %>
   <%# System / Lucia triage: centered, subtle %>
   <div class="max-w-xl mx-auto text-center">
     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %> border border-[#EFECE6]">
@@ -101,7 +117,7 @@
     </div>
     <div class="text-[10px] text-[#6B665F] mt-1 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></div>
   </div>
-<% else %>
+<% elsif !note.clinician_only? %>
   <div title="<%= bubble_title %>"
        class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> border border-[#EFECE6] rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
     <div class="flex items-center justify-between mb-1 gap-2">
