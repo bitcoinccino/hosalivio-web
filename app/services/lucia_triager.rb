@@ -23,6 +23,34 @@ class LuciaTriager
     "other"              => %w[rn]
   }.freeze
 
+  # Human-readable labels used in audit-trace bodies. Avoids exposing the
+  # snake_case enum keys ("med_refill", "pain_crisis") to clinicians.
+  INTENT_LABELS = {
+    "pain_crisis"        => "Pain crisis",
+    "dyspnea"            => "Breathing difficulty",
+    "decline"            => "Patient declining",
+    "caregiver_distress" => "Caregiver distress",
+    "transitioning"      => "End-of-life transition",
+    "med_refill"         => "Medication refill",
+    "spiritual"          => "Spiritual support",
+    "logistics"          => "Logistics request",
+    "status_question"    => "Status check",
+    "other"              => "General message"
+  }.freeze
+
+  ROLE_LABELS = {
+    "rn"            => "RN",
+    "md"            => "MD",
+    "social_worker" => "Social Worker",
+    "chaplain"     => "Chaplain",
+    "pharmacy"      => "Pharmacy",
+    "dme"           => "DME",
+    "insurance"     => "Insurance",
+    "aide"          => "Aide",
+    "don"           => "DON",
+    "admissions"    => "Admissions"
+  }.freeze
+
   # Run one pass over every agency, triaging any unread family notes.
   # Useful for cron; day-to-day triage runs inline via LuciaTriageJob.
   def self.tick
@@ -114,12 +142,14 @@ class LuciaTriager
   end
 
   def internal_triage_body(d, roles)
-    [
-      "Triaged: #{d[:intent]} (urgency: #{d[:urgency]})",
-      "→ #{roles.join(', ')}",
-      d[:reasoning].present? ? "Reasoning: #{d[:reasoning]}" : nil,
-      "Source: #{d[:source]}"
-    ].compact.join("\n")
+    intent_label = INTENT_LABELS[d[:intent]] || d[:intent].to_s.humanize
+    role_labels  = roles.map { |r| ROLE_LABELS[r] || r.humanize }
+    urgency_word = d[:urgency].to_s.capitalize
+
+    parts = ["#{intent_label} · #{urgency_word}",
+             "Notified: #{role_labels.join(', ')}"]
+    parts << "" << d[:reasoning].to_s.strip if d[:reasoning].present?
+    parts.join("\n")
   end
 
   def emit_handoff(role, intent, urgency)

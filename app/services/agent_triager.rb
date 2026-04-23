@@ -196,11 +196,12 @@ class AgentTriager
   def log_audit_note(decision)
     patient_id = decision.dig(:params, :patient_id) || fallback_patient_id
     return if patient_id.blank?
+    role_label = LuciaTriager::ROLE_LABELS[@role] || @role.humanize
     Note.create!(
       agency:         @agency,
       patient_id:     patient_id,
       author_role:    @role,
-      body:           "[#{@role} rationale] #{decision[:reasoning]} (brain: #{decision[:source]})",
+      body:           "#{role_label} rationale\n\n#{decision[:reasoning].to_s.strip}",
       urgency:        :normal,
       source:         :system,
       clinician_only: true

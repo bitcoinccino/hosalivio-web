@@ -225,7 +225,7 @@ export default class extends Controller {
         <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto">${time}</span>
       </summary>
       <div class="ml-6 mt-1 mb-2 py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md">
-        <div data-role="body" class="text-[12px] text-[#3A3936] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono"></div>
+        <div data-role="body" class="text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"></div>
       </div>
     `
     det.querySelector('[data-role="body"]').textContent = n.body
