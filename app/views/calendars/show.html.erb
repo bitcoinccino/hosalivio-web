@@ -44,7 +44,18 @@
     </div>
   </header>
 
-  <main class="max-w-[1400px] mx-auto px-6 py-6">
+  <!-- Mobile-only nudge: the week grid is dense; My Day is faster for daily flow -->
+  <div class="md:hidden bg-[#FFF3EC] border-b border-[#EFECE6] px-4 py-3">
+    <div class="text-[12px] text-[#1D1C1A]">
+      <i class="ri-information-line text-[#D97757]"></i>
+      The week grid is built for desktops. On a phone, swipe left/right to see other days, or
+      <a href="/dashboard" class="text-[#D97757] font-medium hover:underline">open My Day</a>
+      for your visits at a glance.
+    </div>
+  </div>
+
+  <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
+    <div class="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
     <% if @clinicians.empty? %>
       <div class="text-center py-20 text-[#6B665F]">
         <div class="w-12 h-12 rounded-full bg-[#EFECE6] flex items-center justify-center mx-auto mb-3">
@@ -136,6 +147,8 @@
           <% end %>
         </div>
       <% end %>
+
+    </div>
 
       <!-- Legend -->
       <div class="mt-6 flex items-center gap-4 text-[11px] text-[#6B665F] flex-wrap">
