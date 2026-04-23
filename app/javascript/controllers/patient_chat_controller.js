@@ -199,8 +199,8 @@ export default class extends Controller {
       : ""
 
     const aiAvatar = n.ai_authored
-      ? `<div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
-           <img src="${document.body.dataset.hosalivioBotSrc || '/assets/hosalivio_assistant.png'}" class="w-full h-full object-cover" alt="HosAlivio Assistant">
+      ? `<div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
+           <img src="${document.body.dataset.hosalivioBotSrc || '/assets/hosalivio_assistant.png'}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio Assistant">
          </div>`
       : `<i class="${roleIcon} text-[14px]"></i>`
 

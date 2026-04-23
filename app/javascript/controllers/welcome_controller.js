@@ -184,8 +184,8 @@ export default class extends Controller {
     wrap.className = "flex items-start gap-3"
     const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     wrap.innerHTML = `
-      <div class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
-        <img src="${botSrc}" class="w-full h-full object-cover" alt="HosAlivio Assistant">
+      <div class="w-12 h-12 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+        <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio Assistant">
       </div>
       <div class="flex-1 bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] p-4">
         <div class="text-[11px] uppercase tracking-[0.18em] font-bold text-[#1D1C1A] mb-1">

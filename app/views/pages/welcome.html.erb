@@ -185,8 +185,8 @@
         <% end %>
 
         <div class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-3 pr-2 py-2">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden bg-white border border-[#EFECE6]">
-            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover", alt: "HosAlivio" %>
+          <div class="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-white border border-[#EFECE6]">
+            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio" %>
           </div>
           <input type="text" name="q" value="<%= @active_query %>"
                  class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
@@ -312,8 +312,8 @@
     <% if @match[:agencies].any? || @active_query.present? %>
       <section class="px-4 md:px-10 pb-10">
         <div class="max-w-3xl mx-auto flex items-start gap-3">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-[#EFECE6] overflow-hidden">
-            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover", alt: "HosAlivio Assistant" %>
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-[#EFECE6] overflow-hidden">
+            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio Assistant" %>
           </div>
           <div class="bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] px-4 py-2.5 text-[13px] text-[#1D1C1A]">
             <span class="font-bold">HosAlivio:</span> <%= @match[:explanation] %>

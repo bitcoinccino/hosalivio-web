@@ -21,11 +21,11 @@
             title="<%= u.full_name %> — account menu"
             class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white border border-[#EFECE6] hover:border-[#D9D5CD] hover:shadow-sm transition <%= button_cls %> group-data-[collapsed=true]/sb:p-0 group-data-[collapsed=true]/sb:border-0 group-data-[collapsed=true]/sb:bg-transparent group-data-[collapsed=true]/sb:hover:shadow-none group-data-[collapsed=true]/sb:w-auto group-data-[collapsed=true]/sb:justify-center">
       <% if u.has_avatar? %>
-        <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-          <%= image_tag u.avatar.variant(resize_to_fill: [56, 56]).processed, class: "w-full h-full object-cover" %>
+        <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+          <%= image_tag u.avatar.variant(resize_to_fill: [120, 120]).processed, class: "w-full h-full object-cover" %>
         </div>
       <% else %>
-        <div class="w-7 h-7 rounded-full text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0"
+        <div class="w-9 h-9 rounded-full text-white text-[12px] font-bold flex items-center justify-center flex-shrink-0"
              style="background: <%= role_color %>;">
           <%= initials %>
         </div>
@@ -48,11 +48,11 @@
       <div class="px-4 py-3 border-b border-[#EFECE6]">
         <div class="flex items-center gap-2">
           <% if u.has_avatar? %>
-            <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-              <%= image_tag u.avatar.variant(resize_to_fill: [72, 72]).processed, class: "w-full h-full object-cover" %>
+            <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+              <%= image_tag u.avatar.variant(resize_to_fill: [160, 160]).processed, class: "w-full h-full object-cover" %>
             </div>
           <% else %>
-            <div class="w-9 h-9 rounded-full text-white text-[12px] font-bold flex items-center justify-center flex-shrink-0"
+            <div class="w-12 h-12 rounded-full text-white text-[14px] font-bold flex items-center justify-center flex-shrink-0"
                  style="background: <%= role_color %>;">
               <%= initials %>
             </div>

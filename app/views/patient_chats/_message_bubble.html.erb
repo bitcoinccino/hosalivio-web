@@ -87,8 +87,8 @@
   <div class="max-w-xl mx-auto text-center">
     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %> border border-[#EFECE6]">
       <% if is_ai %>
-        <div class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
-          <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover", alt: "HosAlivio Assistant" %>
+        <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
+          <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio Assistant" %>
         </div>
       <% else %>
         <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
@@ -105,14 +105,14 @@
   <div title="<%= bubble_title %>"
        class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> border border-[#EFECE6] rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
     <div class="flex items-center justify-between mb-1 gap-2">
-      <div class="min-w-0 flex items-center gap-2">
+      <div class="min-w-0 flex items-center gap-2.5">
         <% if is_ai %>
-          <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
-            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover", alt: "HosAlivio Assistant" %>
+          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
+            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio Assistant" %>
           </div>
         <% elsif note.author_user&.has_avatar? %>
-          <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-            <%= image_tag note.author_user.avatar.variant(resize_to_fill: [56, 56]).processed, class: "w-full h-full object-cover" %>
+          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+            <%= image_tag note.author_user.avatar.variant(resize_to_fill: [120, 120]).processed, class: "w-full h-full object-cover" %>
           </div>
         <% end %>
         <div class="min-w-0">

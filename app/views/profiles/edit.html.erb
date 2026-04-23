@@ -35,10 +35,10 @@
       <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
         <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Photo</h2>
         <div class="flex items-center gap-4">
-          <div class="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
+          <div class="w-28 h-28 rounded-full overflow-hidden flex items-center justify-center text-white text-2xl font-bold flex-shrink-0"
                style="background: <%= role_color %>;">
             <% if u.has_avatar? %>
-              <%= image_tag u.avatar.variant(resize_to_fill: [160, 160]).processed, class: "w-full h-full object-cover" %>
+              <%= image_tag u.avatar.variant(resize_to_fill: [320, 320]).processed, class: "w-full h-full object-cover" %>
             <% else %>
               <%= u.initials %>
             <% end %>
