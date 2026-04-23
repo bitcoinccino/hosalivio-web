@@ -150,9 +150,9 @@
           <%= hidden_field_tag :zip, params[:zip] %>
         <% end %>
 
-        <div class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-4 pr-2 py-2">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1D1C1A] text-white flex items-center justify-center">
-            <span class="text-[11px] font-medium">L</span>
+        <div class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-3 pr-2 py-2">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden bg-white border border-[#EFECE6]">
+            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover", alt: "HosAlivio" %>
           </div>
           <input type="text" name="q" value="<%= @active_query %>"
                  class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
