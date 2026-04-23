@@ -16,6 +16,10 @@
                 when "social_worker" then "#7A4A8C"
                 when "chaplain"    then "#8C6A2F"
                 when "pharmacy"    then "#5A2F7A"
+                when "aide"        then "#3A6B6B"
+                when "don"         then "#1D1C1A"
+                when "dme"         then "#6B5A2F"
+                when "insurance"   then "#4A4A6B"
                 when "admissions", "front_door_inbound" then "#6B665F"
                 else                    "#6B665F"
                 end
@@ -42,15 +46,18 @@
                   note.display_author_subtitle
                 end
 
-  # Rich hover tooltip for clinicians (and a simple one for family).
+  # Rich hover tooltip for clinicians (and a simple one for family). All
+  # times rendered in the patient's branch timezone so the title matches
+  # the bubble timestamp (and matches what Cable will stream).
+  ts_long = in_patient_zone(note.created_at, @patient, "%b %-d %-l:%M %p")
   bubble_title = if viewer_is_family
-                   note.created_at.strftime("Sent %b %-d at %-l:%M %p")
+                   "Sent #{ts_long}"
                  elsif is_ai
-                   "AI auto-draft on #{role.upcase} role · #{note.created_at.strftime('%b %-d %-l:%M %p')}"
+                   "AI auto-draft on #{role.upcase} role · #{ts_long}"
                  elsif note.author_user
-                   "#{note.author_user.full_name} via #{role.upcase} role · #{note.created_at.strftime('%b %-d %-l:%M %p')}"
+                   "#{note.author_user.full_name} via #{role.upcase} role · #{ts_long}"
                  else
-                   "System-authored · role: #{role} · #{note.created_at.strftime('%b %-d %-l:%M %p')}"
+                   "System-authored · role: #{role} · #{ts_long}"
                  end
 
   role_icon = is_ai ? "ri-robot-2-line" : {
@@ -60,6 +67,10 @@
     "social_worker" => "ri-team-line",
     "chaplain" => "ri-hand-heart-line",
     "pharmacy" => "ri-capsule-line",
+    "aide" => "ri-user-2-line",
+    "don" => "ri-award-line",
+    "dme" => "ri-tools-line",
+    "insurance" => "ri-bank-card-line",
     "admissions" => "ri-customer-service-2-line",
     "front_door_inbound" => "ri-customer-service-2-line",
     "system" => "ri-flashlight-line"
@@ -85,7 +96,7 @@
           urgent
         </span>
       <% end %>
-      <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto"><%= note.created_at.strftime("%-l:%M %p") %></span>
+      <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto"><%= in_patient_zone(note.created_at, @patient) %></span>
     </summary>
     <div class="ml-6 mt-1 mb-2 py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md">
       <div class="text-[12px] text-[#3A3936] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono"><%= note.body %></div>
@@ -101,7 +112,7 @@
     <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
       <i class="ri-alarm-warning-fill text-lg"></i>
       <span class="font-bold tracking-wider text-[13px]">URGENT · <%= speaker_name.upcase %></span>
-      <span class="ml-auto text-[10px] opacity-80 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></span>
+      <span class="ml-auto text-[10px] opacity-80 font-mono"><%= in_patient_zone(note.created_at, @patient) %></span>
     </div>
     <div class="px-5 py-4">
       <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
@@ -124,7 +135,7 @@
         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
       <% end %>
     </div>
-    <div class="text-[10px] text-[#6B665F] mt-1 font-mono"><%= note.created_at.strftime("%-l:%M %p") %></div>
+    <div class="text-[10px] text-[#6B665F] mt-1 font-mono"><%= in_patient_zone(note.created_at, @patient) %></div>
   </div>
 <% elsif !note.clinician_only? %>
   <div title="<%= bubble_title %>"
@@ -156,7 +167,7 @@
     </div>
     <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= explain_icd(note.body) %></p>
     <div class="text-[10px] text-[#6B665F] mt-2 text-right font-mono">
-      <%= note.created_at.strftime("%-l:%M %p") %>
+      <%= in_patient_zone(note.created_at, @patient) %>
     </div>
   </div>
 <% end %>

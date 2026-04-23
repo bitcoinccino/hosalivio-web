@@ -261,7 +261,7 @@
                 <div class="flex-1 min-w-0">
                   <div class="text-[13px] text-[#1D1C1A] break-words"><%= pn.body %></div>
                   <div class="text-[10px] text-[#6B665F] font-mono mt-0.5">
-                    <%= pn.created_at.strftime("%a %b %-d · %-l:%M %p") %>
+                    <%= in_patient_zone(pn.created_at, @patient, "%a %b %-d · %-l:%M %p") %>
                   </div>
                 </div>
               </div>
