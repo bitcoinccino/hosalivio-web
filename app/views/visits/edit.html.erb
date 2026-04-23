@@ -17,14 +17,16 @@
 
   page_title, header_label, header_icon, header_color = case state
     when :completed
-      ["Edit visit · HosAlivio",      "Edit completed visit",    "ri-edit-2-line",    "#6B665F"]
+      ["Edit visit · HosAlivio",        "Edit completed visit",    "ri-edit-2-line",          "#6B665F"]
     when :recording
-      ["Recording visit · HosAlivio", "Recording visit",         "ri-mic-fill",       "#C1403A"]
+      ["Visit in progress · HosAlivio", "Visit in progress",       "ri-time-line",            "#C1403A"]
     when :ready
-      ["Record visit · HosAlivio",    "Record visit",            "ri-calendar-check-line", "#D97757"]
+      ["Start visit · HosAlivio",       "Start visit",             "ri-calendar-check-line",  "#D97757"]
     else
-      ["Edit visit · HosAlivio",      "Edit scheduled visit",    "ri-calendar-event-line", "#D97757"]
+      ["Edit visit · HosAlivio",        "Edit scheduled visit",    "ri-calendar-event-line",  "#D97757"]
     end
+  is_admission = @visit.visit_type.to_s == "admission"
+  linked_eval  = @visit.pre_admit_eval
 %>
 <% content_for :title, page_title %>
 <div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
@@ -50,6 +52,34 @@
       <div class="text-[11px] text-[#6B665F] mb-5">
         <%= @visit.agent_authored ? "🤖 Originally scheduled by AI" : "👤 Originally scheduled by a human" %>
       </div>
+
+      <% if is_admission && linked_eval %>
+        <div class="mb-5 rounded-2xl border border-[#2B4A7A] bg-[#F0F4FA] p-4">
+          <div class="flex items-start gap-3">
+            <i class="ri-clipboard-line text-[#2B4A7A] text-lg mt-0.5"></i>
+            <div class="flex-1">
+              <div class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold">Admission assessment linked</div>
+              <div class="text-[12px] text-[#1D1C1A] mt-1">
+                Dictate Maria's head-to-toe, PPS, consent language, and election details below.
+                When ready, one tap runs HosAlivio Assist over the narrative to populate the
+                structured pre-admit eval.
+              </div>
+              <div class="mt-3 flex items-center gap-2 flex-wrap">
+                <%= button_to sync_to_eval_visit_path(@visit), method: :post,
+                      class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#223d66] text-white font-medium" do %>
+                  <i class="ri-magic-line"></i> Sync to Eval
+                <% end %>
+                <%= link_to edit_pre_admit_eval_path(linked_eval),
+                      class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-white" do %>
+                  <i class="ri-external-link-line"></i> Open pre-admit eval
+                <% end %>
+                <span class="text-[10px] text-[#6B665F]">Status: <strong><%= linked_eval.status.to_s.tr("_", " ") %></strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <%= render "form" %>
 
       <% if state == :recording %>

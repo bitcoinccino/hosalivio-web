@@ -69,16 +69,60 @@ class VisitsController < ApplicationController
 
   # Pascal clicks "Start visit" on My Day → stamps started_at if not already
   # set, then drops him into the documentation form with dictation ready.
+  # For admission visits, also auto-drafts a PreAdmitEval so the narrative
+  # bridges straight into the structured assessment when he hits Sync.
   def begin
     ActsAsTenant.with_tenant(current_user.agency) do
       if @visit.started_at.nil?
         @visit.update!(started_at: Time.current)
-        flash[:notice] = "Visit started at #{Time.current.strftime('%-l:%M %p')}. Dictate your narrative below."
-      else
-        flash[:notice] = "Already in progress — pick up where you left off."
+        flash[:notice] = "Visit in progress. Clock started at #{Time.current.strftime('%-l:%M %p')}."
+      end
+
+      if @visit.visit_type_admission? && @visit.pre_admit_eval.nil? &&
+         PreAdmitEval.where(patient_id: @visit.patient_id, status: [:draft, :final]).none?
+        PreAdmitEval.create!(
+          agency:            current_user.agency,
+          patient:           @visit.patient,
+          visit:             @visit,
+          evaluator:         current_user,
+          evaluator_name:    current_user.full_name,
+          evaluator_license: current_user.license_number,
+          evaluator_role:    (current_user.role_names.first || "rn"),
+          status:            :draft,
+          evaluated_at:      Time.current,
+          raw_json:          { "pre_admit_eval" => {} }
+        )
+        flash[:notice] = "#{flash[:notice]} Admission draft created — dictate your head-to-toe, then tap Sync to Eval."
       end
     end
     redirect_to edit_visit_path(@visit)
+  end
+
+  # "Sync to Eval" — runs the narrative through PreAdmitNarrativeExtractor
+  # and merges extracted fields into the linked (or freshly-created) draft.
+  def sync_to_eval
+    ActsAsTenant.with_tenant(current_user.agency) do
+      eval_rec = @visit.pre_admit_eval
+      eval_rec ||= PreAdmitEval.where(patient_id: @visit.patient_id, status: :draft).first
+      unless eval_rec
+        redirect_to edit_visit_path(@visit),
+                    alert: "No admission eval linked to this visit. Only admission visits auto-create one on Start."
+        return
+      end
+
+      result = PreAdmitNarrativeExtractor.call(
+        narrative:     @visit.narrative.to_s,
+        existing_json: eval_rec.raw_json
+      )
+      eval_rec.update!(raw_json: result.json)
+
+      if result.fields_updated.any?
+        flash[:notice] = "Synced #{result.fields_updated.size} field#{'s' if result.fields_updated.size != 1} to the pre-admit eval. Review and finalize before routing to MD."
+      else
+        flash[:alert] = "No extractable signals found in the narrative yet. Keep documenting and try again."
+      end
+      redirect_to edit_pre_admit_eval_path(eval_rec)
+    end
   end
 
   # Finish button on the documentation form: stamps ended_at and returns to the

@@ -46,6 +46,7 @@ Rails.application.routes.draw do
     member do
       post :begin
       post :finish
+      post :sync_to_eval
     end
   end
 

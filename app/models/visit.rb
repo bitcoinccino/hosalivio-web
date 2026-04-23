@@ -37,6 +37,7 @@ class Visit < ApplicationRecord
   belongs_to :agency
   belongs_to :patient
   belongs_to :user  # clinician who visited
+  has_one    :pre_admit_eval, dependent: :nullify
 
   validates :pain_score, inclusion: { in: 0..10, allow_nil: true }
   validate  :ended_after_started
