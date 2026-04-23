@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
-  static targets = ["input", "feed", "status", "quickActions", "mic"]
+  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form"]
   static values  = {
     patientId: String,
     lang:      { type: String, default: "en-US" },
@@ -24,6 +24,26 @@ export default class extends Controller {
 
   toggleQuickActions() {
     this.quickActionsTarget.classList.toggle("hidden")
+  }
+
+  // Audience toggle: clinicians flip between family-facing and team-only.
+  // The button + the wrapping form both carry data-audience so Tailwind
+  // data-* variants restyle the input as the audience changes (warm orange
+  // for family, dashed grey for the team-only "side channel").
+  toggleAudience() {
+    if (!this.hasAudienceToggleTarget) return
+    const next = this.audienceToggleTarget.dataset.audience === "team" ? "family" : "team"
+    this.audienceToggleTarget.dataset.audience = next
+    if (this.hasFormTarget) this.formTarget.dataset.audience = next
+    if (this.hasInputTarget) {
+      this.inputTarget.placeholder = next === "team"
+        ? "Note to the care team — family won't see this…"
+        : "Type a message — or tell us what's happening…"
+    }
+  }
+
+  _isInternal() {
+    return this.hasAudienceToggleTarget && this.audienceToggleTarget.dataset.audience === "team"
   }
 
   quickAction(event) {
@@ -101,6 +121,7 @@ export default class extends Controller {
     // post to /clinician_messages (saved as themselves with their real name).
     const isFamily = document.body.dataset.viewerFamily === "true"
     const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
+    const internal = this._isInternal()
 
     // Clear the input + schedule the typing indicator BEFORE the await so
     // the user gets immediate feedback that their message is in flight.
@@ -110,9 +131,11 @@ export default class extends Controller {
     // and either show nothing or hang the dots forever.
     this.inputTarget.value = ""
     const sentUrgency = this._currentUrgency
+    const wasVoice    = this._usedVoice
     this._currentUrgency = "normal"
     this._usedVoice = false
-    if (isFamily) this._scheduleTyping(800)
+    // Internal team notes don't need an AI reply — skip the typing dots.
+    if (isFamily && !internal) this._scheduleTyping(800)
 
     const resp = await fetch(url, {
       method: "POST",
@@ -125,7 +148,8 @@ export default class extends Controller {
         patient_id: this.patientIdValue,
         text:       text,
         urgency:    sentUrgency,
-        source:     this._usedVoice ? "voice" : "text"
+        source:     wasVoice ? "voice" : "text",
+        internal:   internal
       })
     })
 
@@ -203,6 +227,49 @@ export default class extends Controller {
     if (lastDay === noteDay) return
     this._appendDateSeparator(new Date(iso))
     this._lastNoteDate = noteDay
+  }
+
+  _appendHuddleBubble(n) {
+    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
+    const speakerName = n.author_name || this._roleLabel(n.author_role)
+    const speakerSub  = n.author_subtitle || ""
+    const labelColor  = this._labelColor(n.author_role)
+    const roleIcon    = this._roleIcon(n.author_role)
+    const urgencyPill = n.urgency === "urgent"
+      ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider flex-shrink-0">URGENT</span>`
+      : ""
+
+    const bubble = document.createElement("div")
+    bubble.className = "max-w-2xl ml-auto bg-[#FBF9F5] border border-dashed border-[#B9B4AB] rounded-3xl px-5 py-4 opacity-0 transition-opacity duration-300"
+    bubble.title = `Internal note · ${speakerName} · ${time}`
+    bubble.innerHTML = `
+      <div class="flex items-center justify-between mb-1 gap-2">
+        <div class="min-w-0 flex items-center gap-2.5">
+          <i class="${roleIcon} text-[14px]" style="color: ${labelColor};"></i>
+          <div class="min-w-0">
+            <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: ${labelColor};">
+              <span class="truncate" data-role="name"></span>
+            </div>
+            ${speakerSub ? `<div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F] font-mono mt-0.5" data-role="sub"></div>` : ""}
+          </div>
+        </div>
+        ${urgencyPill}
+      </div>
+      <p class="font-serif text-[15px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"></p>
+      <div class="flex items-center justify-between mt-2 gap-2">
+        <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-white border border-[#B9B4AB] rounded-full px-2 py-0.5"
+              title="Hidden from the family — only the IDG sees this.">
+          <i class="ri-team-line text-[10px]"></i> Team only
+        </span>
+        <div class="text-[10px] text-[#6B665F] font-mono">${time}</div>
+      </div>
+    `
+    bubble.querySelector('[data-role="name"]').textContent = speakerName
+    if (speakerSub) bubble.querySelector('[data-role="sub"]').textContent = speakerSub
+    bubble.querySelector("p").textContent = n.body
+    this.feedTarget.appendChild(bubble)
+    requestAnimationFrame(() => { bubble.style.opacity = "1" })
+    this._scrollToBottom()
   }
 
   _appendActionBanner(n) {
@@ -329,13 +396,15 @@ export default class extends Controller {
     // patient chart for clinicians, never in the family chat thread.
     if (n.clinician_only && document.body.dataset.viewerFamily === "true") return
 
-    // Clinician-only notes for clinicians: render as either a green
-    // success banner (when the body is an [ACTION:...] marker) or a
-    // collapsed audit row (rationale prose). Banners surface results
-    // at a glance; audits stay tucked away.
+    // Clinician-only notes for clinicians, in priority order:
+    //   1. action banner ([ACTION:...] marker) — green success bar
+    //   2. IDG huddle bubble (real human author) — dashed muted bubble
+    //   3. audit rationale (no human author) — collapsed audit row
     if (n.clinician_only) {
       if (n.action_payload) {
         this._appendActionBanner(n)
+      } else if (n.author_user_id) {
+        this._appendHuddleBubble(n)
       } else {
         this._appendAuditLog(n)
       }

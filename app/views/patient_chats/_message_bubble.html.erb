@@ -77,7 +77,44 @@
   }.fetch(role, "ri-user-line")
 %>
 
-<% if note.clinician_only? && (action = note.action_payload) %>
+<% if note.clinician_only? && note.author_user_id.present? && note.action_payload.blank? %>
+  <%# IDG huddle bubble — a real human posting privately to the care team.
+      Family doesn't see this (server scope + JS guard). Visually distinct
+      from the family-facing thread: dashed border, muted bg, "Team only" chip. %>
+  <div class="max-w-2xl ml-auto bg-[#FBF9F5] border border-dashed border-[#B9B4AB] rounded-3xl px-5 py-4"
+       title="Internal note · <%= note.author_user&.full_name %> · <%= in_patient_zone(note.created_at, @patient, "%b %-d %-l:%M %p") %>">
+    <div class="flex items-center justify-between mb-1 gap-2">
+      <div class="min-w-0 flex items-center gap-2.5">
+        <% if note.author_user&.has_avatar? %>
+          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+            <%= image_tag note.author_user.avatar.variant(resize_to_fill: [120, 120]).processed, class: "w-full h-full object-cover" %>
+          </div>
+        <% else %>
+          <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
+        <% end %>
+        <div class="min-w-0">
+          <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: <%= label_color %>;">
+            <span class="truncate"><%= speaker_name %></span>
+          </div>
+          <% if speaker_sub.present? %>
+            <div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F] font-mono mt-0.5"><%= speaker_sub %></div>
+          <% end %>
+        </div>
+      </div>
+      <% if note.urgency_urgent? %>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider flex-shrink-0">URGENT</span>
+      <% end %>
+    </div>
+    <p class="font-serif text-[15px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= note.body %></p>
+    <div class="flex items-center justify-between mt-2 gap-2">
+      <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-white border border-[#B9B4AB] rounded-full px-2 py-0.5"
+            title="Hidden from the family — only the IDG sees this.">
+        <i class="ri-team-line text-[10px]"></i> Team only
+      </span>
+      <div class="text-[10px] text-[#6B665F] font-mono"><%= in_patient_zone(note.created_at, @patient) %></div>
+    </div>
+  </div>
+<% elsif note.clinician_only? && (action = note.action_payload) %>
   <%# Action banner — green success bar, always visible. Pascal sees the
       result at a glance instead of reading rationale prose. %>
   <% role_label = role.tr("_", " ").upcase %>

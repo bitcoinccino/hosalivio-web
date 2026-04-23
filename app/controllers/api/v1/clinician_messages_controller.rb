@@ -27,15 +27,17 @@ module Api
           Current.agent_id         = (@user.role_names.first || "rn")
           Current.agent_session_id = "clin-#{SecureRandom.hex(3)}"
 
+          internal = ActiveModel::Type::Boolean.new.cast(params[:internal])
           note = patient.notes.create!(
-            agency:      patient.agency,
-            author_user: @user,
-            author_role: (@user.role_names.first || "rn"),
-            body:        body,
-            source:      :text,
-            urgency:     normalize_urgency(params[:urgency])
+            agency:         patient.agency,
+            author_user:    @user,
+            author_role:    (@user.role_names.first || "rn"),
+            body:           body,
+            source:         :text,
+            urgency:        normalize_urgency(params[:urgency]),
+            clinician_only: internal
           )
-          render json: { status: "ok", id: note.id }, status: :created
+          render json: { status: "ok", id: note.id, clinician_only: note.clinician_only }, status: :created
         end
       end
 

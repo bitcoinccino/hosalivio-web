@@ -350,7 +350,31 @@
         </div>
       </div>
 
-      <form data-action="submit->patient-chat#send" class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
+      <% unless current_user.family_access? %>
+        <%# Audience toggle: clinician chooses family-facing or team-only.
+            State lives on the Stimulus controller; styling flips when armed. %>
+        <div class="mb-2 flex items-center justify-end gap-2 text-[11px]">
+          <span class="text-[#6B665F]">Sending to</span>
+          <button type="button"
+                  data-action="click->patient-chat#toggleAudience"
+                  data-patient-chat-target="audienceToggle"
+                  data-audience="family"
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border transition
+                         data-[audience=family]:bg-[#FFF3EC] data-[audience=family]:border-[#D97757] data-[audience=family]:text-[#C1403A]
+                         data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:text-[#3A3936]">
+            <i class="ri-user-heart-line data-[audience=team]:hidden"></i>
+            <i class="ri-team-line hidden data-[audience=team]:inline"></i>
+            <span class="data-[audience=team]:hidden">Family + care team</span>
+            <span class="hidden data-[audience=team]:inline">Care team only</span>
+          </button>
+        </div>
+      <% end %>
+
+      <form data-action="submit->patient-chat#send"
+            data-patient-chat-target="form"
+            data-audience="family"
+            class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
+                   data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:border-dashed">
         <button type="button" data-action="click->patient-chat#toggleQuickActions"
                 title="Quick actions"
                 class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
