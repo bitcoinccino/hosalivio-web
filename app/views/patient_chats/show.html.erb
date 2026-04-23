@@ -373,7 +373,7 @@
       <form data-action="submit->patient-chat#send"
             data-patient-chat-target="form"
             data-audience="family"
-            class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
+            class="group/audience flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
                    data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:border-dashed">
         <button type="button" data-action="click->patient-chat#toggleQuickActions"
                 title="Quick actions"
@@ -381,10 +381,29 @@
           <i class="ri-add-line"></i>
         </button>
 
-        <input type="text" name="text" data-patient-chat-target="input"
-               autocomplete="off"
-               class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
-               placeholder="Type a message — or tell us what's happening…">
+        <%# Styled-placeholder pattern: invisible native placeholder + an
+            absolutely-positioned overlay so we can bold the patient's first
+            name in orange. The peer/peer-placeholder-shown trick hides the
+            overlay as soon as the user types or focuses the input. %>
+        <div class="relative flex-1">
+          <input type="text" name="text" data-patient-chat-target="input"
+                 autocomplete="off"
+                 placeholder=" "
+                 class="peer w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-transparent py-2">
+          <div class="pointer-events-none absolute inset-0 flex items-center text-[15px] text-[#6B665F]
+                      peer-not-placeholder-shown:hidden peer-focus:opacity-40 transition-opacity">
+            <%# Family-mode overlay — patient salutation in bold orange. %>
+            <span class="group-data-[audience=team]/audience:hidden">
+              <span>How is&nbsp;</span>
+              <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>
+              <span>&nbsp;doing?</span>
+            </span>
+            <%# Team-mode overlay — quiet, indicates the message is private. %>
+            <span class="hidden group-data-[audience=team]/audience:inline italic">
+              Note to the care team — family won't see this…
+            </span>
+          </div>
+        </div>
 
         <button type="button" data-patient-chat-target="mic" data-action="click->patient-chat#toggleMic"
                 disabled

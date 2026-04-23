@@ -35,11 +35,8 @@ export default class extends Controller {
     const next = this.audienceToggleTarget.dataset.audience === "team" ? "family" : "team"
     this.audienceToggleTarget.dataset.audience = next
     if (this.hasFormTarget) this.formTarget.dataset.audience = next
-    if (this.hasInputTarget) {
-      this.inputTarget.placeholder = next === "team"
-        ? "Note to the care team — family won't see this…"
-        : "Type a message — or tell us what's happening…"
-    }
+    // Placeholder text swaps via CSS (group-data-[audience=team]/audience:*)
+    // so we don't touch the input here — keeps the styled overlay in sync.
   }
 
   _isInternal() {

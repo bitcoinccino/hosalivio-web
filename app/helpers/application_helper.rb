@@ -15,6 +15,19 @@ module ApplicationHelper
     time.in_time_zone(patient_timezone(patient)).strftime(fmt)
   end
 
+  # Respectful "Ms. Maria" / "Mr. Robert" form for greeting copy. Falls
+  # back to plain first name when gender is unknown (or other) so we never
+  # mislabel.
+  def patient_salutation(patient)
+    first = patient&.first_name.to_s.strip
+    return "" if first.blank?
+    case patient.gender.to_s.downcase
+    when "female" then "Ms. #{first}"
+    when "male"   then "Mr. #{first}"
+    else               first
+    end
+  end
+
   # Human-friendly relative date label used to anchor chat-feed sections,
   # event timelines, and any other surface where "April 22" reads colder
   # than "Today" or "Yesterday".
