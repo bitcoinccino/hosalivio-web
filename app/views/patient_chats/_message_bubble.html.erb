@@ -85,7 +85,7 @@
 <% elsif is_system %>
   <%# System / Lucia triage: centered, subtle %>
   <div class="max-w-xl mx-auto text-center">
-    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %>">
+    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %> border border-[#EFECE6]">
       <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
       <span class="text-[10px] font-bold uppercase tracking-widest" style="color: <%= label_color %>;"><%= is_ai ? "HosAlivio Assist" : "Triaged" %></span>
       <span class="text-[12px] text-[#3A3936] break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></span>
@@ -97,7 +97,7 @@
   </div>
 <% else %>
   <div title="<%= bubble_title %>"
-       class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
+       class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> border border-[#EFECE6] rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
     <div class="flex items-center justify-between mb-1 gap-2">
       <div class="min-w-0 flex items-center gap-2">
         <% if note.author_user&.has_avatar? %>

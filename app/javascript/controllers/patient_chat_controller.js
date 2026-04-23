@@ -191,7 +191,7 @@ export default class extends Controller {
       ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>`
       : ""
 
-    bubble.className = `max-w-2xl min-w-0 ${align} ${bg} ${aiRing} rounded-3xl px-5 py-4 opacity-0 transition-opacity duration-300`
+    bubble.className = `max-w-2xl min-w-0 ${align} ${bg} border border-[#EFECE6] ${aiRing} rounded-3xl px-5 py-4 opacity-0 transition-opacity duration-300`
     bubble.setAttribute("title", bubbleTitle)
 
     const subEl = speakerSub
