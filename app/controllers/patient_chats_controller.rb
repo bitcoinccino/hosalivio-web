@@ -37,6 +37,7 @@ class PatientChatsController < ApplicationController
 
       # Family users linked to this patient (for the sidebar Family section)
       @family_users = User.where(patient_id: @patient.id, family_access: true).order(active: :desc, full_name: :asc)
+      @pre_admit_eval = PreAdmitEval.where(patient: @patient).order(created_at: :desc).first
       @can_invite_family =
         !current_user.family_access? &&
         ((current_user.role_names & PatientFamiliesController::PRIVILEGED_ROLES).any? ||

@@ -412,6 +412,67 @@
         </div>
       </details>
 
+      <% if @pre_admit_eval %>
+        <% fam = current_user.family_access? %>
+        <details class="group" <%= 'open' if @pre_admit_eval.status_final? || @pre_admit_eval.noe_overdue? %>>
+          <%= acc_header("ri-file-shield-2-line", "Admission", @pre_admit_eval.status.to_s.tr("_", " ").upcase) %>
+          <div class="px-5 pb-4 pt-2">
+            <%
+              status_color = case @pre_admit_eval.status.to_s
+                             when "draft"      then "#6B665F"
+                             when "final"      then "#2B4A7A"
+                             when "certified"  then "#2F6F4E"
+                             when "noe_filed"  then "#2F6F4E"
+                             when "revoked"    then "#C1403A"
+                             else                   "#6B665F"
+                             end
+            %>
+            <div class="flex items-center gap-2 text-[12px] mb-2">
+              <span class="w-2 h-2 rounded-full" style="background: <%= status_color %>;"></span>
+              <span class="text-[#1D1C1A] font-medium"><%= @pre_admit_eval.status.to_s.tr("_", " ").capitalize %></span>
+              <span class="text-[10px] text-[#6B665F] ml-auto font-mono"><%= @pre_admit_eval.evaluated_at&.strftime("%b %-d") %></span>
+            </div>
+
+            <div class="text-[11px] text-[#6B665F] space-y-1">
+              <% if @pre_admit_eval.primary_icd10.present? %>
+                <div>Diagnosis: <span class="font-mono text-[#1D1C1A]"><%= @pre_admit_eval.primary_icd10 %></span> <%= @pre_admit_eval.primary_icd10_description %></div>
+              <% end %>
+              <% if @pre_admit_eval.evaluator_name.present? %>
+                <div>By: <%= @pre_admit_eval.evaluator_name %></div>
+              <% end %>
+
+              <% unless fam %>
+                <% if @pre_admit_eval.noe_overdue? %>
+                  <div class="mt-2 text-[11px] text-[#C1403A] font-bold">
+                    <i class="ri-alarm-warning-fill"></i> NOE OVERDUE — file immediately
+                  </div>
+                <% elsif @pre_admit_eval.status_certified? && @pre_admit_eval.noe_deadline_at %>
+                  <div class="mt-2 text-[11px] text-[#D97757]">
+                    NOE due in <%= @pre_admit_eval.days_until_noe_deadline %>d
+                    (<%= @pre_admit_eval.noe_deadline_at.strftime("%b %-d") %>)
+                  </div>
+                <% elsif @pre_admit_eval.status_final? %>
+                  <div class="mt-2 text-[11px] text-[#2B4A7A]">Awaiting MD certification</div>
+                <% elsif @pre_admit_eval.status_noe_filed? %>
+                  <div class="mt-2 text-[11px] text-[#2F6F4E]"><i class="ri-check-line"></i> NOE filed <%= @pre_admit_eval.noe_filed_at&.strftime("%b %-d") %></div>
+                <% end %>
+
+                <% blockers = @pre_admit_eval.certification_blockers %>
+                <% if blockers.any? %>
+                  <div class="mt-2 text-[10px] text-[#C1403A]">Needs: <%= blockers.first(2).join("; ") %></div>
+                <% end %>
+              <% end %>
+            </div>
+
+            <% if fam && @pre_admit_eval.status_noe_filed? %>
+              <div class="mt-2 text-[11px] text-[#2F6F4E]">
+                <i class="ri-shield-check-line"></i> <%= @patient.first_name %> is officially on the hospice benefit. Medicare covers her care.
+              </div>
+            <% end %>
+          </div>
+        </details>
+      <% end %>
+
       <!-- Care Snapshot (days / recert / BP / crises) — open by default -->
       <details class="group" open>
         <%= acc_header("ri-dashboard-3-line", "Care Snapshot") %>
