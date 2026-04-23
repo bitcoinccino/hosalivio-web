@@ -44,7 +44,20 @@ class LuciaTriager
     @agency  = note.agency
   end
 
+  # If a real clinician replied to this patient in the last N minutes, the
+  # AI should stay out of the conversation. Carlos saying "thank you" to
+  # Pascal's "I'm on my way" message shouldn't kick the brain into a fresh
+  # triage chain.
+  HUMAN_CONVERSATION_WINDOW = 30.minutes
+
   def triage!
+    # 0 — SUPPRESS if a human clinician is actively in this thread
+    if human_clinician_recently_active? && !@note.urgency_crisis?
+      Rails.logger.info("[LuciaTriager] suppressing AI — human clinician active in thread for patient=#{@patient.id}")
+      @note.mark_read!
+      return
+    end
+
     # 1 — ASK THE BRAIN (never raises; returns fallback on failure)
     decision = LuciaBrain.call(note: @note)
     roles    = ESCALATION_ROLES.fetch(decision[:intent], ESCALATION_ROLES["other"])
@@ -85,6 +98,20 @@ class LuciaTriager
   end
 
   private
+
+  # Was the most recent non-family note authored by a real human user
+  # (not an AI / system note) within the conversation window? If so,
+  # there's a live human-to-family thread in progress and the AI should
+  # not interject. Crisis messages bypass this — those always trigger.
+  def human_clinician_recently_active?
+    @patient.notes
+            .where("created_at > ?", HUMAN_CONVERSATION_WINDOW.ago)
+            .where.not(id: @note.id)
+            .where.not(author_role: "family")
+            .where.not(author_user_id: nil)
+            .where(clinician_only: false)
+            .exists?
+  end
 
   def internal_triage_body(d, roles)
     [
