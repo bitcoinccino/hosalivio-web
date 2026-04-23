@@ -143,13 +143,43 @@ class LuciaTriager
 
   def internal_triage_body(d, roles)
     intent_label = INTENT_LABELS[d[:intent]] || d[:intent].to_s.humanize
-    role_labels  = roles.map { |r| ROLE_LABELS[r] || r.humanize }
+    role_targets = roles.map { |r| name_for_role(r) }
     urgency_word = d[:urgency].to_s.capitalize
 
     parts = ["#{intent_label} · #{urgency_word}",
-             "Notified: #{role_labels.join(', ')}"]
+             "Notified: #{role_targets.join(', ')}"]
     parts << "" << d[:reasoning].to_s.strip if d[:reasoning].present?
     parts.join("\n")
+  end
+
+  # Resolve a role to a human label. Patient-assigned slot wins (assigned_rn,
+  # assigned_md, etc.); otherwise pick the in-branch user with that role.
+  # Falls back to the bare role label if nobody fits.
+  def name_for_role(role)
+    role_label = ROLE_LABELS[role] || role.humanize
+    user = patient_assigned_user(role) || branch_user_for_role(role)
+    return role_label unless user
+    "#{user.full_name.split.first} (#{role_label})"
+  end
+
+  def patient_assigned_user(role)
+    case role
+    when "rn"            then @patient.assigned_rn
+    when "md"            then @patient.assigned_md
+    when "social_worker" then @patient.respond_to?(:assigned_sw) ? @patient.assigned_sw : nil
+    when "chaplain"      then @patient.respond_to?(:assigned_chaplain) ? @patient.assigned_chaplain : nil
+    end
+  end
+
+  def branch_user_for_role(role)
+    base = User.joins(user_roles: :role)
+               .where(agency: @agency, active: true)
+               .where(roles: { name: role })
+    base = base.where(branch_id: @patient.branch_id) if @patient.branch_id
+    base.first || User.joins(user_roles: :role)
+                      .where(agency: @agency, active: true)
+                      .where(roles: { name: role })
+                      .first
   end
 
   def emit_handoff(role, intent, urgency)
