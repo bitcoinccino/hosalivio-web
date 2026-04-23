@@ -93,7 +93,12 @@ export default class extends Controller {
     const csrfMeta = document.querySelector("meta[name='csrf-token']")
     const csrf     = csrfMeta ? csrfMeta.content : ""
 
-    const resp = await fetch("/api/v1/family_messages", {
+    // Family viewers post to /family_messages (Lucia-triaged); clinicians
+    // post to /clinician_messages (saved as themselves with their real name).
+    const isFamily = document.body.dataset.viewerFamily === "true"
+    const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
+
+    const resp = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -119,10 +124,9 @@ export default class extends Controller {
     this._currentUrgency   = "normal"
     this._usedVoice        = false
 
-    // Humanize the wait: show "HosAlivio is thinking…" 400ms after the message
-    // lands. Feels deliberate rather than robotic. Cleared automatically when
-    // the next non-family note arrives via Cable.
-    this._scheduleTyping(400)
+    // Only family messages trigger an AI reply (Lucia triage).
+    // Clinician messages are conversational, so no typing indicator.
+    if (isFamily) this._scheduleTyping(400)
   }
 
   // ── Typing indicator ─────────────────────────────────────────────
@@ -191,21 +195,29 @@ export default class extends Controller {
   _appendAuditLog(n) {
     const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
     const role = String(n.author_role || "").replace(/_/g, " ")
-    const log = document.createElement("div")
-    log.className = "flex items-start gap-2 max-w-3xl py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md text-[12px] opacity-0 transition-opacity duration-300"
-    log.innerHTML = `
-      <i class="ri-file-list-3-line text-[#B9B4AB] text-[14px] mt-0.5 flex-shrink-0"></i>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-0.5">
-          <span class="text-[9px] uppercase tracking-[0.18em] font-bold text-[#6B665F]">Internal · ${role} trace</span>
-          <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto">${time}</span>
-        </div>
+    const urgencyPill = n.urgency === "crisis"
+      ? `<span class="inline-flex items-center gap-1 text-[9px] font-bold text-[#C1403A] uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-[#C1403A] animate-pulse"></span>crisis</span>`
+      : n.urgency === "urgent"
+      ? `<span class="inline-flex items-center gap-1 text-[9px] font-bold text-[#D97757] uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-[#D97757]"></span>urgent</span>`
+      : ""
+
+    const det = document.createElement("details")
+    det.className = "group max-w-3xl opacity-0 transition-opacity duration-300"
+    det.innerHTML = `
+      <summary class="cursor-pointer list-none flex items-center gap-2 py-1.5 px-3 text-[11px] text-[#6B665F] hover:bg-[#FBF9F5] rounded-md transition [&::-webkit-details-marker]:hidden">
+        <i class="ri-arrow-right-s-line group-open:rotate-90 transition-transform"></i>
+        <i class="ri-file-list-3-line text-[#B9B4AB]"></i>
+        <span class="uppercase tracking-[0.18em] text-[9px] font-bold">Internal · ${role} trace</span>
+        ${urgencyPill}
+        <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto">${time}</span>
+      </summary>
+      <div class="ml-6 mt-1 mb-2 py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md">
         <div data-role="body" class="text-[12px] text-[#3A3936] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono"></div>
       </div>
     `
-    log.querySelector('[data-role="body"]').textContent = n.body
-    this.feedTarget.appendChild(log)
-    requestAnimationFrame(() => { log.style.opacity = "1" })
+    det.querySelector('[data-role="body"]').textContent = n.body
+    this.feedTarget.appendChild(det)
+    requestAnimationFrame(() => { det.style.opacity = "1" })
     this._scrollToBottom()
   }
 

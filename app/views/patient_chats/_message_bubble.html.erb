@@ -67,21 +67,30 @@
 %>
 
 <% if note.clinician_only? %>
-  <%# Clinician-only audit log entry. Visibly distinct from chat bubbles —
-      no avatar, no dashed ring, no "AI auto-reply" header. Reads as a
-      system trace: muted text, left border, info icon, role label. %>
-  <div class="flex items-start gap-2 max-w-3xl py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md text-[12px]">
-    <i class="ri-file-list-3-line text-[#B9B4AB] text-[14px] mt-0.5 flex-shrink-0"></i>
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 mb-0.5">
-        <span class="text-[9px] uppercase tracking-[0.18em] font-bold text-[#6B665F]">
-          Internal · <%= role.tr("_", " ") %> trace
+  <%# Clinician-only audit log — collapsed by default. Pascal expands when
+      he wants to audit the AI reasoning, otherwise it stays out of his way. %>
+  <details class="group max-w-3xl">
+    <summary class="cursor-pointer list-none flex items-center gap-2 py-1.5 px-3 text-[11px] text-[#6B665F] hover:bg-[#FBF9F5] rounded-md transition [&::-webkit-details-marker]:hidden">
+      <i class="ri-arrow-right-s-line group-open:rotate-90 transition-transform"></i>
+      <i class="ri-file-list-3-line text-[#B9B4AB]"></i>
+      <span class="uppercase tracking-[0.18em] text-[9px] font-bold">Internal · <%= role.tr("_", " ") %> trace</span>
+      <% if note.urgency_crisis? %>
+        <span title="Contains a CRISIS-flagged trace" class="inline-flex items-center gap-1 text-[9px] font-bold text-[#C1403A] uppercase tracking-wider">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#C1403A] animate-pulse"></span>
+          crisis
         </span>
-        <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto"><%= note.created_at.strftime("%-l:%M %p") %></span>
-      </div>
+      <% elsif note.urgency_urgent? %>
+        <span class="inline-flex items-center gap-1 text-[9px] font-bold text-[#D97757] uppercase tracking-wider">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#D97757]"></span>
+          urgent
+        </span>
+      <% end %>
+      <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto"><%= note.created_at.strftime("%-l:%M %p") %></span>
+    </summary>
+    <div class="ml-6 mt-1 mb-2 py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md">
       <div class="text-[12px] text-[#3A3936] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono"><%= note.body %></div>
     </div>
-  </div>
+  </details>
 <% elsif is_system %>
   <%# System/Lucia notes ALWAYS render as the quiet triaged pill, even when
       urgency=crisis (those are audit breadcrumbs, not family-facing alarms). %>

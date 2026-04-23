@@ -22,7 +22,8 @@ Rails.application.routes.draw do
       end
 
       # Family UI inbound — requires authenticated family session (see controller)
-      post "family_messages", to: "family_messages#create"
+      post "family_messages",   to: "family_messages#create"
+      post "clinician_messages", to: "clinician_messages#create"
 
       # Whisper transcription for voice dictation (family chat, visit narratives).
       # Dormant until OPENAI_API_KEY is set; falls back to browser Web Speech.
