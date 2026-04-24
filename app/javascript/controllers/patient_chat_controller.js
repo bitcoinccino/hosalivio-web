@@ -361,13 +361,19 @@ export default class extends Controller {
   }
 
   // HTML-escape + wrap @Name tokens as clickable mention buttons.
-  // Mirrors app/helpers/application_helper.rb#render_audit_body.
+  // Mirrors app/helpers/application_helper.rb#render_audit_body — and
+  // skips the viewer's own name (rendered as a muted span) so they
+  // can't tap to ping themselves.
   _renderAuditBodyHTML(body) {
     if (!body) return ""
+    const me = (document.body.dataset.viewerFirstName || "").toLowerCase()
     const esc = String(body).replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     })[c])
     return esc.replace(/@(\w+)/g, (_, name) => {
+      if (me && name.toLowerCase() === me) {
+        return `<span class="font-medium text-[#6B665F]" title="That's you">@${name}</span>`
+      }
       return `<button type="button"
                       class="font-medium text-[#D97757] hover:underline cursor-pointer"
                       data-action="click->patient-chat#mention"
@@ -380,10 +386,13 @@ export default class extends Controller {
   // mention into the input + flips the visibility toggle to internal.
   // Esther sees "Notified: @Pascal (RN)" → taps @Pascal → input becomes
   // "@Pascal " with audience locked to team-only, ready for the dose
-  // discussion she's about to type.
+  // discussion she's about to type. No-ops on self-mention as defense
+  // (server should already render those as plain spans).
   mention(event) {
     const name = event.currentTarget?.dataset?.mention
     if (!name || !this.hasInputTarget) return
+    const me = (document.body.dataset.viewerFirstName || "").toLowerCase()
+    if (me && name.toLowerCase() === me) return
     if (this.hasAudienceToggleTarget && this.audienceToggleTarget.dataset.audience !== "team") {
       this.toggleAudience()
     }

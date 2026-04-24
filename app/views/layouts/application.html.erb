@@ -29,6 +29,7 @@
 
   <body class="bg-[#FBF9F5] text-[#1D1C1A] antialiased"
         data-viewer-family="<%= current_user&.family_access? ? 'true' : 'false' %>"
+        data-viewer-first-name="<%= viewer_mention_name %>"
         data-hosalivio-bot-src="<%= asset_path('hosalivio_assistant.png') %>">
     <%= yield %>
   </body>
