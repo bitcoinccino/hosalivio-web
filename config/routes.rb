@@ -1,5 +1,5 @@
 Rails.application.routes.draw do
-  devise_for :users
+  devise_for :users, controllers: { sessions: "users/sessions" }
 
   # Universal 6-digit email-code sign-in — available alongside the
   # standard Devise password flow for every user (admin, clinician,
