@@ -11,10 +11,14 @@
         <i class="ri-key-2-line text-[#D97757] text-[22px]"></i>
       </div>
 
-      <h1 class="font-serif text-[24px] text-[#1D1C1A] leading-tight">Check your email</h1>
-      <p class="text-[13px] text-[#6B665F] mt-2 leading-relaxed">
-        If <span class="font-medium text-[#1D1C1A]"><%= @email %></span> matches a HosAlivio account,
-        we just sent a 6-digit code. It expires in 15 minutes.
+      <h1 class="font-serif text-[28px] text-[#1D1C1A] leading-tight font-bold">Check your email</h1>
+      <p class="text-[13px] text-[#6B665F] mt-3 leading-relaxed">
+        If
+        <span class="font-mono text-[12px] text-[#3A3936] bg-[#FBF9F5] border border-[#EFECE6] rounded px-1.5 py-0.5">
+          <%= mask_email(@email) %>
+        </span>
+        matches a HosAlivio account, we just sent a 6-digit code.
+        <span class="block mt-1 text-[11px] text-[#B9B4AB]">The code expires in 15 minutes.</span>
       </p>
 
       <% if flash[:alert] %>

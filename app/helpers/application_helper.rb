@@ -31,6 +31,22 @@ module ApplicationHelper
     end
   end
 
+  # Privacy-mask an email for display on sign-in confirmation pages.
+  # Keeps the first and last character of the local part + the full
+  # domain, so 'family@hosalivio.com' reads as 'f****y@hosalivio.com'.
+  def mask_email(email)
+    s = email.to_s.strip
+    return "" if s.empty?
+    local, domain = s.split("@", 2)
+    return s if domain.blank?
+    if local.length <= 2
+      masked_local = "#{local[0]}*"
+    else
+      masked_local = "#{local[0]}#{"*" * [local.length - 2, 4].min}#{local[-1]}"
+    end
+    "#{masked_local}@#{domain}"
+  end
+
   # Render an audit-trace body, escaping HTML and turning every @Name
   # token into a clickable button. The button triggers the patient-chat
   # Stimulus action `mention` which inserts "@Name " into the input
