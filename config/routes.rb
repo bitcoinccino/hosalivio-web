@@ -83,6 +83,15 @@ Rails.application.routes.draw do
   # 'Coming soon' upsell page for the agency-admin Upgrade link in the menu
   get "upgrade", to: "pages#upgrade", as: :upgrade
 
+  # Public 3-step partner-signup wizard. Session-backed until step 3 so
+  # abandoning the flow never creates a half-provisioned Agency.
+  get    "partners/new",         to: "partners#new",      as: :new_partner
+  post   "partners",             to: "partners#create"
+  get    "partners/step_2",      to: "partners#step_2",   as: :partner_step_2
+  post   "partners/step_2",      to: "partners#save_step_2"
+  get    "partners/step_3",      to: "partners#step_3",   as: :partner_step_3
+  post   "partners/complete",    to: "partners#complete", as: :complete_partner
+
   # Inquiries: public create, authenticated management
   resources :inquiries, only: [:index, :create] do
     member do

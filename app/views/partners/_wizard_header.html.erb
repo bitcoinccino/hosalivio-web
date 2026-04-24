@@ -1,0 +1,28 @@
+<%# Shared wizard chrome: logo, progress indicator, step title.
+    Takes local vars: step (1..3), title, subtitle. %>
+<div class="mb-8">
+  <%= link_to welcome_path, class: "inline-flex items-center gap-2 text-[#6B665F] hover:text-[#1D1C1A] text-[12px] mb-6" do %>
+    <i class="ri-arrow-left-line"></i> Back to HosAlivio
+  <% end %>
+
+  <div class="flex items-center gap-2 mb-6">
+    <div class="w-8 h-8 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+      <i class="ri-heart-pulse-line text-sm"></i>
+    </div>
+    <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio · Partner Signup</h1>
+  </div>
+
+  <div class="flex items-center gap-2 mb-6">
+    <% 3.times do |i| %>
+      <% idx = i + 1 %>
+      <div class="flex-1 h-1.5 rounded-full <%= idx <= step ? 'bg-[#D97757]' : 'bg-[#EFECE6]' %>"></div>
+    <% end %>
+  </div>
+  <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">
+    Step <%= step %> of 3
+  </div>
+  <h2 class="font-serif text-[28px] text-[#1D1C1A] leading-tight"><%= title %></h2>
+  <% if local_assigns[:subtitle].present? %>
+    <p class="text-[14px] text-[#6B665F] mt-2 leading-relaxed"><%= subtitle %></p>
+  <% end %>
+</div>

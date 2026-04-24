@@ -4,6 +4,21 @@ class Agency < ApplicationRecord
   # Tiering for future plans / feature gating
   enum :billing_tier, { starter: 0, pro: 1, enterprise: 2 }, validate: true
 
+  # Operational configuration captured during partner signup. All optional —
+  # agencies that skip a field just opt out of the corresponding agent's
+  # specialized behavior (e.g., no pharmacy_partner means Simone can't
+  # auto-route refills to a vendor API; she falls back to generic email).
+  enum :accreditation_body, { joint_commission: 0, chap: 1, achc: 2, state_only: 3 },
+       prefix: :accredited_by, validate: { allow_nil: true }
+  enum :mac_region, { palmetto_gba: 0, cgs: 1, ngs: 2, noridian: 3 },
+       prefix: :mac, validate: { allow_nil: true }
+  enum :emr_system, { hchb: 0, netsmart: 1, matrixcare: 2, wellsky: 3, standalone: 4 },
+       prefix: :emr, validate: { allow_nil: true }
+  enum :pharmacy_partner, { optum: 0, enclara: 1, local_pharmacy: 2 },
+       prefix: :pharmacy_vendor, validate: { allow_nil: true }
+  enum :dme_partner, { stateserv: 0, qualis: 1, local_dme: 2 },
+       prefix: :dme_vendor, validate: { allow_nil: true }
+
   # Children
   has_many :branches,    dependent: :destroy
   has_many :users,       dependent: :restrict_with_error

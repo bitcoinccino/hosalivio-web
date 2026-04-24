@@ -1,0 +1,86 @@
+<% content_for :title, "Partner signup · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5] px-6 py-12">
+  <div class="max-w-2xl mx-auto">
+    <%= render "wizard_header",
+          step: 1,
+          title: "Tell us about your agency",
+          subtitle: "The legal anchor — how Medicare and CMS know you. This configures the Billing and Compliance agents." %>
+
+    <%= form_with url: partners_path, method: :post, local: true, html: { class: "space-y-5 bg-white rounded-3xl border border-[#EFECE6] p-8" } do |f| %>
+      <% s1 = (@form && @form[:step1].presence) || {} %>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Legal business name</label>
+          <%= f.text_field :legal_name, value: s1[:legal_name], required: true,
+                placeholder: "Mercy Care, LLC",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">DBA (what families see)</label>
+          <%= f.text_field :dba_name, value: s1[:dba_name],
+                placeholder: "Mercy Home Hospice",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Short code (for URLs)</label>
+        <%= f.text_field :slug, value: s1[:slug], required: true, pattern: "[A-Z0-9]{2,6}",
+              placeholder: "MERCY",
+              class: "w-28 px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono uppercase" %>
+        <p class="text-[11px] text-[#6B665F] mt-1">2–6 uppercase letters/digits. Used in URLs and report headers.</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Corporate NPI</label>
+          <%= f.text_field :npi, value: s1[:npi],
+                placeholder: "1234567890", pattern: "[0-9]{10}",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+          <p class="text-[11px] text-[#6B665F] mt-1">10-digit Medicare provider ID.</p>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">CMS Certification Number (CCN)</label>
+          <%= f.text_field :medicare_provider_number, value: s1[:medicare_provider_number],
+                placeholder: "10-1234",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+          <p class="text-[11px] text-[#6B665F] mt-1">6-digit "Provider Number" from CMS.</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">State license number</label>
+        <%= f.text_field :state_license_number, value: s1[:state_license_number],
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Accreditation body</label>
+        <%= f.select :accreditation_body,
+              [["Joint Commission", "joint_commission"],
+               ["CHAP", "chap"],
+               ["ACHC", "achc"],
+               ["State-licensed only", "state_only"]],
+              { include_blank: "— Select —", selected: s1[:accreditation_body] },
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+        <p class="text-[11px] text-[#6B665F] mt-1">Controls which compliance rule set the DON agent enforces.</p>
+      </div>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Administrator's full name</label>
+        <%= f.text_field :administrator_name, value: s1[:administrator_name],
+              placeholder: "Jane Doe",
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+        <p class="text-[11px] text-[#6B665F] mt-1">The C-suite officer legally responsible for the agency.</p>
+      </div>
+
+      <div class="flex justify-end pt-4 border-t border-[#EFECE6]">
+        <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
+          Continue to Operations <i class="ri-arrow-right-line"></i>
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>

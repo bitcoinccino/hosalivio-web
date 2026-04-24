@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_24_225509) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -45,25 +45,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
 
   create_table "agencies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "accepting_referrals", default: true, null: false
+    t.integer "accreditation_body"
     t.boolean "active", default: true, null: false
     t.string "address_line1"
     t.string "address_line2"
+    t.string "administrator_name"
+    t.string "after_hours_instructions"
     t.jsonb "agent_overrides", default: {}, null: false
     t.jsonb "agent_personas", default: {}, null: false
     t.integer "billing_tier", default: 0, null: false
     t.text "bio"
     t.string "city"
     t.datetime "created_at", null: false
+    t.string "dba_name"
+    t.integer "dme_partner"
     t.string "emoji", default: "🩺", null: false
+    t.integer "emr_system"
     t.jsonb "features", default: {}, null: false
     t.string "hero_color", default: "#D97757", null: false
     t.jsonb "insurance_accepted", default: [], null: false
     t.boolean "is_partner", default: false, null: false
     t.jsonb "languages", default: ["en"], null: false
+    t.integer "mac_region"
     t.string "medicare_provider_number"
     t.string "name", null: false
     t.string "npi"
+    t.integer "pharmacy_partner"
     t.string "phone"
+    t.jsonb "pricing_tiers", default: {}, null: false
     t.integer "response_sla_hours", default: 24, null: false
     t.jsonb "service_area_zips", default: [], null: false
     t.string "slug", null: false

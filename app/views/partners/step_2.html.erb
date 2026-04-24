@@ -1,0 +1,104 @@
+<% content_for :title, "Partner signup · Operations · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5] px-6 py-12">
+  <div class="max-w-2xl mx-auto">
+    <%= render "wizard_header",
+          step: 2,
+          title: "Your first branch",
+          subtitle: "Where the boots-on-the-ground nurses live. You can add more branches later. This configures the triage-routing Agent (Lucia) to send inquiries to the right location." %>
+
+    <%= form_with url: partners_step_2_path, method: :post, local: true, html: { class: "space-y-5 bg-white rounded-3xl border border-[#EFECE6] p-8" } do |f| %>
+      <% s2 = (@form && @form[:step2].presence) || {} %>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Branch name</label>
+        <%= f.text_field :branch_name, value: s2[:branch_name], required: true,
+              placeholder: "Orlando Main Office",
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Street address</label>
+        <%= f.text_field :address_line1, value: s2[:address_line1],
+              placeholder: "123 Main St, Suite 200",
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2">
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">City</label>
+          <%= f.text_field :city, value: s2[:city], required: true,
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">State</label>
+          <%= f.text_field :state, value: s2[:state], required: true, maxlength: 2, pattern: "[A-Za-z]{2}",
+                placeholder: "FL",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] uppercase font-mono" %>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">ZIP</label>
+          <%= f.text_field :zip, value: s2[:zip], pattern: "[0-9]{5}",
+                placeholder: "32801",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Main phone</label>
+          <%= f.text_field :phone, value: s2[:phone],
+                placeholder: "(407) 555-0199",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Time zone</label>
+        <%= f.select :timezone,
+              [["Eastern (America/New_York)",  "America/New_York"],
+               ["Central (America/Chicago)",   "America/Chicago"],
+               ["Mountain (America/Denver)",   "America/Denver"],
+               ["Pacific (America/Los_Angeles)","America/Los_Angeles"],
+               ["Arizona (America/Phoenix)",   "America/Phoenix"],
+               ["Alaska (America/Anchorage)",  "America/Anchorage"],
+               ["Hawaii (Pacific/Honolulu)",   "Pacific/Honolulu"]],
+              { selected: s2[:timezone].presence || "America/New_York" },
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+        <p class="text-[11px] text-[#6B665F] mt-1">Sets the clock for all agent reminders and visit timestamps.</p>
+      </div>
+
+      <div>
+        <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Service area (ZIP codes)</label>
+        <%= f.text_area :service_area_zips, value: Array(s2[:service_area_zips]).join(", "), rows: 2,
+              placeholder: "32801, 32802, 32803, 32804",
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+        <p class="text-[11px] text-[#6B665F] mt-1">Comma- or space-separated. Lucia uses this to auto-accept or reject family inquiries.</p>
+      </div>
+
+      <div class="rounded-xl bg-[#FBF9F5] p-4 border border-dashed border-[#D9D5CD] space-y-3">
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-medium">After-hours protocol</div>
+        <div>
+          <label class="block text-[11px] text-[#6B665F] mb-1">24/7 triage phone</label>
+          <%= f.text_field :after_hours_phone, value: s2[:after_hours_phone],
+                placeholder: "(407) 555-0100",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+        </div>
+        <div>
+          <label class="block text-[11px] text-[#6B665F] mb-1">Lucia's after-hours instructions</label>
+          <%= f.text_area :after_hours_instructions, value: s2[:after_hours_instructions], rows: 3,
+                placeholder: "If a family messages after 5 PM on weekdays or anytime on weekends, tell them a nurse will call back within 15 minutes.",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+          <p class="text-[11px] text-[#6B665F] mt-1">Plain English — Lucia reads this before drafting family-facing replies after hours.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-4 border-t border-[#EFECE6]">
+        <%= link_to "Back", new_partner_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+        <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
+          Continue to Clinical Config <i class="ri-arrow-right-line"></i>
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
