@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_24_225509) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_24_232329) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -191,6 +191,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_24_225509) do
     t.index ["claimed_by_id"], name: "index_inquiries_on_claimed_by_id"
     t.index ["converted_patient_id"], name: "index_inquiries_on_converted_patient_id"
     t.index ["status", "created_at"], name: "index_inquiries_on_status_and_created_at"
+  end
+
+  create_table "login_codes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "code_digest", null: false
+    t.datetime "consumed_at"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "ip"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["code_digest"], name: "index_login_codes_on_code_digest"
+    t.index ["expires_at"], name: "index_login_codes_on_expires_at"
+    t.index ["user_id"], name: "index_login_codes_on_user_id"
   end
 
   create_table "medication_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -469,6 +482,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_24_225509) do
   add_foreign_key "inquiries", "agencies"
   add_foreign_key "inquiries", "patients", column: "converted_patient_id"
   add_foreign_key "inquiries", "users", column: "claimed_by_id"
+  add_foreign_key "login_codes", "users"
   add_foreign_key "medication_logs", "agencies"
   add_foreign_key "medication_logs", "medication_orders"
   add_foreign_key "medication_logs", "users", column: "administered_by_id"

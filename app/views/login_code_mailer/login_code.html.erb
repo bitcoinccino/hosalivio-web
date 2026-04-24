@@ -1,0 +1,19 @@
+<div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1D1C1A;">
+  <h1 style="font-size: 18px; letter-spacing: 0.2em; text-transform: uppercase; color: #D97757; margin: 0 0 24px 0;">HosAlivio</h1>
+
+  <p style="font-size: 15px; line-height: 1.5; color: #3A3936;">Hi <%= @user.full_name.to_s.split.first.presence || "there" %>,</p>
+
+  <p style="font-size: 15px; line-height: 1.5; color: #3A3936;">Your one-time sign-in code is:</p>
+
+  <div style="background: #FBF9F5; border: 1px solid #EFECE6; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+    <div style="font-family: Menlo, Consolas, monospace; font-size: 34px; letter-spacing: 0.3em; color: #D97757; font-weight: bold;"><%= @code %></div>
+  </div>
+
+  <p style="font-size: 13px; line-height: 1.5; color: #6B665F;">
+    This code expires in 15 minutes. It can only be used once. If you didn't request it, you can safely ignore this email.
+  </p>
+
+  <p style="font-size: 12px; line-height: 1.5; color: #B9B4AB; margin-top: 40px;">
+    HosAlivio · Care that listens
+  </p>
+</div>

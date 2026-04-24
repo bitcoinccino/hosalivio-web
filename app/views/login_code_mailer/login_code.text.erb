@@ -1,0 +1,10 @@
+Hi <%= @user.full_name.to_s.split.first.presence || "there" %>,
+
+Your one-time HosAlivio sign-in code is:
+
+    <%= @code %>
+
+It expires in 15 minutes and can only be used once.
+If you didn't request it, you can safely ignore this email.
+
+— HosAlivio

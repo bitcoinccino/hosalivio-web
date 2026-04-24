@@ -1,6 +1,14 @@
 Rails.application.routes.draw do
   devise_for :users
 
+  # Universal 6-digit email-code sign-in — available alongside the
+  # standard Devise password flow for every user (admin, clinician,
+  # family).
+  get  "users/sign_in_code",        to: "passwordless#new",     as: :new_passwordless
+  post "users/sign_in_code",        to: "passwordless#create",  as: :passwordless
+  get  "users/sign_in_code/verify", to: "passwordless#verify",  as: :verify_passwordless
+  post "users/sign_in_code/verify", to: "passwordless#consume"
+
   get "up" => "rails/health#show", as: :rails_health_check
 
   namespace :api do
