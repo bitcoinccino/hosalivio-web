@@ -617,22 +617,33 @@
         <details class="group" open>
           <%= acc_header("ri-flashlight-line", "Quick Actions") %>
           <div class="px-5 pb-4 space-y-2">
+            <% viewer_roles = current_user.role_names %>
+            <%# Schedule visit — every clinician role does visits. %>
             <a href="<%= new_visit_path %>"
                class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
               <i class="ri-calendar-line text-[#D97757]"></i> Schedule visit
             </a>
-            <button type="button"
-                    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-              <i class="ri-stethoscope-line text-[#2B4A7A]"></i> Handoff to MD
-            </button>
-            <button type="button"
-                    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-              <i class="ri-medicine-bottle-line text-[#7A4A8C]"></i> Order comfort kit
-            </button>
-            <button type="button"
-                    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-              <i class="ri-hand-heart-line text-[#8C6A2F]"></i> Request chaplain
-            </button>
+            <%# Handoff to MD — hidden when the viewer IS the MD. %>
+            <% unless viewer_roles.include?("md") %>
+              <button type="button"
+                      class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
+                <i class="ri-stethoscope-line text-[#2B4A7A]"></i> Handoff to MD
+              </button>
+            <% end %>
+            <%# Order comfort kit — only the MD prescribes. %>
+            <% if viewer_roles.include?("md") %>
+              <button type="button"
+                      class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
+                <i class="ri-medicine-bottle-line text-[#7A4A8C]"></i> Order comfort kit
+              </button>
+            <% end %>
+            <%# Request chaplain — hidden when the viewer IS the chaplain. %>
+            <% unless viewer_roles.include?("chaplain") %>
+              <button type="button"
+                      class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
+                <i class="ri-hand-heart-line text-[#8C6A2F]"></i> Request chaplain
+              </button>
+            <% end %>
           </div>
         </details>
       <% end %>
