@@ -79,9 +79,10 @@
             # Presence dot: green = on call now, grey = assigned but off,
             # no dot = slot unassigned. Don't show a dot at all when there's
             # no clinician to be 'present'.
-            dot_title = row[:user].nil?    ? "Unassigned"
-                      : (row[:present]     ? "#{row[:user].first_name} is on call now"
-                                           : "#{row[:user].first_name} — assigned, not on call right now")
+            user_first = row[:user]&.full_name.to_s.split.first
+            dot_title  = row[:user].nil? ? "Unassigned"
+                       : (row[:present]  ? "#{user_first} is on call now"
+                                         : "#{user_first} — assigned, not on call right now")
           %>
           <div class="flex items-center gap-3 text-sm group-data-[collapsed=true]/sb:justify-center" title="<%= row[:name] %> (<%= row[:role].tr("_", " ") %>)">
             <span class="relative flex items-center justify-center w-7 h-7 rounded-full bg-white border border-[#D9D5CD] text-[#6B665F] flex-shrink-0">
