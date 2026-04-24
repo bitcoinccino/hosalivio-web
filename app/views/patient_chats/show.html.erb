@@ -304,51 +304,55 @@
 
     <!-- Input Bar -->
     <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]">
-      <!-- Always-visible family quick-reply chips -->
-      <div class="mb-2 flex gap-1.5 flex-wrap">
-        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="crisis"
-                data-template="Pain is out of control. She's hurting badly.">
-          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] hover:bg-[#FFEDE2] transition">
-            <i class="ri-alarm-warning-line"></i> Pain still bad
-          </span>
-        </button>
-        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
-                data-template="She's resting now, breathing is calm.">
-          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
-            <i class="ri-moon-line"></i> She's resting now
-          </span>
-        </button>
-        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
-                data-template="Please call me as soon as you can.">
-          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
-            <i class="ri-phone-line"></i> Call me
-          </span>
-        </button>
-        <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
-                data-template="We're running low on comfort kit supplies — please send a refill.">
-          <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
-            <i class="ri-medicine-bottle-line"></i> Need comfort kit refill
-          </span>
-        </button>
-      </div>
-
-      <!-- Expandable full quick-action bar (urgency-flagged templates) -->
-      <div class="mb-2 hidden" data-patient-chat-target="quickActions">
-        <div class="flex gap-2 flex-wrap">
-          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
-                  data-template="Requesting chaplain / spiritual support.">
-            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
-              <i class="ri-hand-heart-line"></i> Spiritual support
+      <% if current_user.family_access? %>
+        <!-- Family-only quick-reply chips: phrasing assumes a family voice
+             ("She's resting", "Need comfort kit refill"), so clinicians
+             never see them. -->
+        <div class="mb-2 flex gap-1.5 flex-wrap">
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="crisis"
+                  data-template="Pain is out of control. She's hurting badly.">
+            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] hover:bg-[#FFEDE2] transition">
+              <i class="ri-alarm-warning-line"></i> Pain still bad
             </span>
           </button>
           <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
-                  data-template="Quick status check — how is everything going?">
-            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
-              <i class="ri-chat-3-line"></i> Status check
+                  data-template="She's resting now, breathing is calm.">
+            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+              <i class="ri-moon-line"></i> She's resting now
+            </span>
+          </button>
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
+                  data-template="Please call me as soon as you can.">
+            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+              <i class="ri-phone-line"></i> Call me
+            </span>
+          </button>
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
+                  data-template="We're running low on comfort kit supplies — please send a refill.">
+            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+              <i class="ri-medicine-bottle-line"></i> Need comfort kit refill
             </span>
           </button>
         </div>
-      </div>
+
+        <!-- Expandable full quick-action bar (urgency-flagged templates) -->
+        <div class="mb-2 hidden" data-patient-chat-target="quickActions">
+          <div class="flex gap-2 flex-wrap">
+            <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
+                    data-template="Requesting chaplain / spiritual support.">
+              <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
+                <i class="ri-hand-heart-line"></i> Spiritual support
+              </span>
+            </button>
+            <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
+                    data-template="Quick status check — how is everything going?">
+              <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] hover:bg-[#D9D5CD] transition">
+                <i class="ri-chat-3-line"></i> Status check
+              </span>
+            </button>
+          </div>
+        </div>
+      <% end %>
 
       <% unless current_user.family_access? %>
         <%# Audience toggle: clinician chooses family-facing or team-only.
@@ -376,11 +380,15 @@
             data-audience="family"
             class="group/audience flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
                    data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:border-dashed">
-        <button type="button" data-action="click->patient-chat#toggleQuickActions"
-                title="Quick actions"
-                class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
-          <i class="ri-add-line"></i>
-        </button>
+        <% if current_user.family_access? %>
+          <%# Quick-actions toggle is family-only — opens the templates
+              panel above. Clinicians get the visibility toggle instead. %>
+          <button type="button" data-action="click->patient-chat#toggleQuickActions"
+                  title="Quick actions"
+                  class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+            <i class="ri-add-line"></i>
+          </button>
+        <% end %>
 
         <%# Styled-placeholder pattern: invisible native placeholder + an
             absolutely-positioned overlay so we can bold the patient's first
