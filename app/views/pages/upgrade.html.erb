@@ -1,0 +1,53 @@
+<% content_for :title, "Upgrade to VHAS · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5] flex items-center justify-center px-6 py-12">
+  <div class="w-full max-w-xl">
+    <%= link_to dashboard_path,
+          class: "inline-flex items-center gap-1.5 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-6" do %>
+      <i class="ri-arrow-left-line"></i> Back to dashboard
+    <% end %>
+
+    <div class="bg-white rounded-3xl border border-[#EFECE6] p-10 text-center shadow-sm">
+      <div class="w-16 h-16 rounded-full bg-[#FFF3EC] mx-auto flex items-center justify-center mb-6">
+        <i class="ri-sparkling-2-fill text-[#D97757] text-[28px]"></i>
+      </div>
+
+      <div class="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-[#D97757] mb-2">
+        VHAS · Pro
+      </div>
+      <h1 class="font-serif text-[28px] text-[#1D1C1A] leading-tight">
+        Coming soon
+      </h1>
+      <p class="text-[14px] text-[#6B665F] mt-3 leading-relaxed">
+        VHAS — the Virtual Hospice Agency Suite — adds advanced compliance
+        automation, multi-branch oversight, and white-glove integrations
+        for agencies running at scale.
+      </p>
+
+      <div class="mt-6 grid grid-cols-2 gap-3 text-left">
+        <div class="rounded-xl bg-[#FBF9F5] p-3">
+          <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Compliance</div>
+          <div class="text-[12px] text-[#1D1C1A] mt-1">CMS audit packs auto-generated for ADR / TPE / UPIC.</div>
+        </div>
+        <div class="rounded-xl bg-[#FBF9F5] p-3">
+          <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Oversight</div>
+          <div class="text-[12px] text-[#1D1C1A] mt-1">Cross-branch dashboards for the DON and quality team.</div>
+        </div>
+        <div class="rounded-xl bg-[#FBF9F5] p-3">
+          <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Integrations</div>
+          <div class="text-[12px] text-[#1D1C1A] mt-1">EHR + pharmacy + DME bridges to your existing stack.</div>
+        </div>
+        <div class="rounded-xl bg-[#FBF9F5] p-3">
+          <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Support</div>
+          <div class="text-[12px] text-[#1D1C1A] mt-1">Dedicated implementation lead, on-call SLA, surge response.</div>
+        </div>
+      </div>
+
+      <div class="mt-8 text-[11px] text-[#6B665F]">
+        We'll reach out to <%= current_user.full_name %> at
+        <span class="text-[#1D1C1A] font-mono"><%= current_user.email %></span>
+        when VHAS opens for early access.
+      </div>
+    </div>
+  </div>
+</div>

@@ -24,6 +24,13 @@ class PagesController < ApplicationController
     end
   end
 
+  # 'Coming soon' destination for the Upgrade to VHAS link in the user
+  # menu. Authenticated + admin-only is enforced at the link level (the
+  # menu only renders the link for admins); this just serves the page.
+  def upgrade
+    head(:forbidden) and return unless user_signed_in? && current_user.role_names.include?("admin")
+  end
+
   # Left intact from earlier FAQ tree (still used by the educational prompts
   # in the side panel — we keep them as a secondary layer under the directory).
   HOSPICE_FAQS = [].freeze

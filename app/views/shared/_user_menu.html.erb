@@ -74,17 +74,16 @@
               class: "flex items-center gap-3 px-4 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
           <i class="ri-settings-3-line text-[#6B665F]"></i> Settings
         <% end %>
-        <% if (u.role_names & %w[admin don billing]).any? %>
-          <%# SaaS upgrade is an agency-level decision tied to billing
-              authority — only admin / DON / billing see it. Bedside
-              clinicians (rn, md, sw, chaplain, aide, etc.) don't approve
-              agency purchases. %>
-          <a href="#"
-             class="flex items-center gap-3 px-4 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+        <% if u.role_names.include?("admin") %>
+          <%# SaaS upgrade is the hospice partner admin's call alone.
+              DON/billing handle clinical and financial ops but the
+              account-level Pro tier is the admin's decision. %>
+          <%= link_to upgrade_path,
+                class: "flex items-center gap-3 px-4 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
             <i class="ri-sparkling-2-line text-[#D97757]"></i>
             <span>Upgrade to VHAS</span>
             <span class="ml-auto text-[9px] font-bold text-white bg-[#D97757] rounded-full px-1.5 py-0.5 uppercase tracking-wider">Pro</span>
-          </a>
+          <% end %>
         <% end %>
       </nav>
 

@@ -80,6 +80,9 @@ Rails.application.routes.draw do
   # Public landing
   get "welcome", to: "pages#welcome", as: :welcome
 
+  # 'Coming soon' upsell page for the agency-admin Upgrade link in the menu
+  get "upgrade", to: "pages#upgrade", as: :upgrade
+
   # Inquiries: public create, authenticated management
   resources :inquiries, only: [:index, :create] do
     member do
