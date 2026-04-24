@@ -375,10 +375,16 @@
         </div>
       <% end %>
 
+      <%# Composer wrapper — Stimulus flips data-recording between 'false'
+          and 'true'; the form is hidden and the 'Living Wave' recording
+          bar takes its place while audio capture is active. %>
+      <div data-patient-chat-target="composer" data-recording="false" class="group/composer">
+
       <form data-action="submit->patient-chat#send"
             data-patient-chat-target="form"
             data-audience="family"
             class="group/audience flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
+                   group-data-[recording=true]/composer:hidden
                    data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:border-dashed">
         <% if current_user.family_access? %>
           <%# Quick-actions toggle is family-only — opens the templates
@@ -433,8 +439,6 @@
                 class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#FFEDE2] text-[#C1403A] text-lg flex items-center justify-center transition">
           <i class="ri-voiceprint-line"></i>
         </button>
-        <span data-patient-chat-target="recordTimer" class="text-[11px] font-mono text-[#C1403A] hidden min-w-[3ch]"></span>
-
         <button type="submit"
                 title="Send"
                 class="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
@@ -442,6 +446,41 @@
           <span>Send</span>
         </button>
       </form>
+
+      <%# 'Living Wave' recording UI — replaces the input row while
+          MediaRecorder is active. Cancel (trash) discards; Send (plane)
+          stops + sends. Bars animate via CSS keyframes with staggered
+          delays to mimic voice frequency without real audio analysis. %>
+      <div class="hidden group-data-[recording=true]/composer:flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#D97757] shadow-sm transition-all">
+        <button type="button"
+                data-action="click->patient-chat#cancelRecord"
+                title="Cancel recording"
+                class="w-9 h-9 rounded-full hover:bg-[#FFF3EC] text-[#6B665F] hover:text-[#C1403A] flex items-center justify-center transition">
+          <i class="ri-delete-bin-line text-lg"></i>
+        </button>
+
+        <div class="flex items-center gap-[3px] h-8 flex-1 justify-center">
+          <span class="w-1 bg-[#D97757] rounded-full h-3 animate-voice-wave" style="animation-delay:0s"></span>
+          <span class="w-1 bg-[#D97757] rounded-full h-5 animate-voice-wave" style="animation-delay:-0.15s"></span>
+          <span class="w-1 bg-[#D97757] rounded-full h-8 animate-voice-wave" style="animation-delay:-0.3s"></span>
+          <span class="w-1 bg-[#D97757] rounded-full h-4 animate-voice-wave" style="animation-delay:-0.45s"></span>
+          <span class="w-1 bg-[#D97757] rounded-full h-6 animate-voice-wave" style="animation-delay:-0.6s"></span>
+          <span class="w-1 bg-[#D97757] rounded-full h-3 animate-voice-wave" style="animation-delay:-0.75s"></span>
+          <span class="w-1 bg-[#D97757] rounded-full h-5 animate-voice-wave" style="animation-delay:-0.9s"></span>
+          <span class="w-1 bg-[#D97757] rounded-full h-7 animate-voice-wave" style="animation-delay:-1.05s"></span>
+        </div>
+
+        <span data-patient-chat-target="recordTimer" class="font-mono text-[13px] text-[#D97757] font-bold tracking-wider min-w-[45px] text-right">0:00</span>
+
+        <button type="button"
+                data-action="click->patient-chat#toggleRecord"
+                title="Stop recording &amp; send"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-sm active:scale-95 transition">
+          <i class="ri-send-plane-fill text-[16px]"></i>
+        </button>
+      </div>
+
+      </div>
 
       <div class="mt-2 text-[11px] text-[#6B665F] text-center">
         Messages go through HosAlivio. We triage and loop in your nurse or doctor instantly.

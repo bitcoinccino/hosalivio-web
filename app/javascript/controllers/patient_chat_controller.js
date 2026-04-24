@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
-  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form", "placeholderOverlay", "recordButton", "recordTimer"]
+  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer"]
   static values  = {
     patientId: String,
     lang:      { type: String, default: "en-US" },
@@ -48,6 +48,7 @@ export default class extends Controller {
     }
     this._mediaStream = stream
     this._audioChunks = []
+    this._cancelRequested = false
     const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
                    .find((c) => MediaRecorder.isTypeSupported(c)) || ""
     this._mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
@@ -55,7 +56,7 @@ export default class extends Controller {
     this._mediaRecorder.onstop = () => this._finalizeRecording()
     this._mediaRecorder.start(1000)
     this._recordStartMs = Date.now()
-    this._paintRecord("recording")
+    this._setComposerRecording(true)
     this._startRecordTimer()
   }
 
@@ -66,26 +67,43 @@ export default class extends Controller {
     this._stopRecordTimer()
   }
 
+  // Discard the in-progress recording without sending. Wired to the
+  // trash button in the 'Living Wave' recording bar.
+  cancelRecord() {
+    if (!this._mediaRecorder || this._mediaRecorder.state === "inactive") return
+    this._cancelRequested = true
+    this._stopRecording()
+  }
+
   _finalizeRecording() {
     const type = this._mediaRecorder.mimeType || "audio/webm"
     const ext  = type.includes("ogg") ? "ogg" : (type.includes("mp4") ? "m4a" : "webm")
     const blob = new Blob(this._audioChunks, { type })
-    this._pendingAudio = new File([blob], `voice-${Date.now()}.${ext}`, { type })
+    const cancelled = this._cancelRequested
+    this._cancelRequested = false
     if (this._mediaStream) {
       this._mediaStream.getTracks().forEach((t) => { try { t.stop() } catch (_) {} })
       this._mediaStream = null
     }
-    this._paintRecord("idle")
+    this._setComposerRecording(false)
+    if (cancelled) {
+      this._pendingAudio = null
+      return
+    }
+    this._pendingAudio = new File([blob], `voice-${Date.now()}.${ext}`, { type })
     // Auto-send the voice note immediately — same UX as iMessage / WhatsApp.
-    // The user already had a chance to "cancel" by re-tapping while recording.
+    // Cancel button gives the user a non-send exit.
     this.send(new Event("submit", { cancelable: true }))
   }
 
-  _startRecordTimer() {
-    if (this.hasRecordTimerTarget) {
-      this.recordTimerTarget.classList.remove("hidden")
-      this.recordTimerTarget.textContent = "0:00"
+  _setComposerRecording(recording) {
+    if (this.hasComposerTarget) {
+      this.composerTarget.dataset.recording = recording ? "true" : "false"
     }
+  }
+
+  _startRecordTimer() {
+    if (this.hasRecordTimerTarget) this.recordTimerTarget.textContent = "0:00"
     this._recordTimerInterval = setInterval(() => {
       if (!this.hasRecordTimerTarget) return
       const sec = Math.floor((Date.now() - this._recordStartMs) / 1000)
@@ -96,10 +114,6 @@ export default class extends Controller {
   _stopRecordTimer() {
     if (this._recordTimerInterval) clearInterval(this._recordTimerInterval)
     this._recordTimerInterval = null
-    if (this.hasRecordTimerTarget) {
-      this.recordTimerTarget.classList.add("hidden")
-      this.recordTimerTarget.textContent = ""
-    }
   }
 
   _paintRecord(state) {

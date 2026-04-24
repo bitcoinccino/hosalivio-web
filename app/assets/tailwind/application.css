@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+/* Voice-note recording — the 'Living Wave' bars in the chat composer.
+   Each bar uses the same keyframe but a different animation-delay so
+   they bounce out of sync, mimicking voice frequency without doing any
+   real audio analysis. */
+@keyframes voice-wave {
+  0%, 100% { transform: scaleY(0.3); opacity: 0.55; }
+  50%      { transform: scaleY(1);   opacity: 1; }
+}
+.animate-voice-wave {
+  animation: voice-wave 1.2s infinite ease-in-out;
+  transform-origin: center;
+}
