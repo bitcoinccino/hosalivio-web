@@ -13,8 +13,16 @@ class Note < ApplicationRecord
   belongs_to :patient
   belongs_to :author_user, class_name: "User", optional: true
 
+  # Optional voice recording attached to a chat message — Carlos can hold
+  # the phone near Maria and capture her breathing for Pascal to hear,
+  # not just describe it in words. Distinct from `body` (typed/dictated
+  # text); both can be present on the same Note.
+  has_one_attached :audio
+
   validates :author_role, presence: true
-  validates :body, presence: true
+  # Body is required unless an audio recording is attached — Carlos
+  # holding the phone near Maria for breath sounds doesn't need to type.
+  validates :body, presence: true, unless: -> { audio.attached? }
 
   scope :unread,         -> { where(read_at: nil) }
   scope :recent,         -> { order(created_at: :desc) }
@@ -97,6 +105,10 @@ class Note < ApplicationRecord
   private
 
   def broadcast_to_patient_channel
+    audio_url = nil
+    if audio.attached?
+      audio_url = Rails.application.routes.url_helpers.rails_blob_path(audio, only_path: true)
+    end
     ActionCable.server.broadcast(
       "patient:#{patient_id}",
       {
@@ -111,6 +123,7 @@ class Note < ApplicationRecord
         action_payload:    action_payload,        # nil unless body is "[ACTION:...]"
         urgency:           urgency,
         body:              body,                  # decrypted for the browser
+        audio_url:         audio_url,             # nil unless an audio recording is attached
         created_at:        created_at.iso8601
       }
     )

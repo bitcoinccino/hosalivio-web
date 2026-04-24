@@ -22,13 +22,14 @@ module Api
           return render_err(:forbidden, "not_your_patient")
         end
 
-        body = note_body
+        body  = note_body
+        audio = params[:audio]
         if body.length > MAX_BODY_LENGTH
           return render_err(:unprocessable_entity, "message_too_long",
                             limit: MAX_BODY_LENGTH, length: body.length,
                             hint: "Family messages should be short. For longer notes, call the branch triage line.")
         end
-        return render_err(:unprocessable_entity, "message_empty") if body.blank?
+        return render_err(:unprocessable_entity, "message_empty") if body.blank? && audio.blank?
 
         # Reject the known developer-transcript fingerprint outright. `❯` and
         # `⏺` are Claude Code CLI markers; a real family member doesn't type them.
@@ -42,14 +43,19 @@ module Api
           Current.agent_id         = "front_door_inbound"
           Current.agent_session_id = request.headers["X-HosAlivio-Session"] || "family-ui"
 
-          note = patient.notes.create!(
+          # Build + attach + save (in that order) so the body-presence
+          # validation can see audio.attached? before deciding whether
+          # body is required.
+          note = patient.notes.build(
             agency:      patient.agency,
             author_user: @family_user,
             author_role: "family",
             body:        body,
-            source:      (params[:source].presence || "text"),
+            source:      (audio.present? ? "voice" : (params[:source].presence || "text")),
             urgency:     (params[:urgency].presence || "normal")
           )
+          note.audio.attach(audio) if audio.present?
+          note.save!
 
           # Nudge Lucia (Front Door) and any other listeners with a typed broadcast.
           # Clients already subscribed to patient:{id} will receive this immediately.

@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
-  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form", "placeholderOverlay"]
+  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form", "placeholderOverlay", "recordButton", "recordTimer"]
   static values  = {
     patientId: String,
     lang:      { type: String, default: "en-US" },
@@ -24,6 +24,98 @@ export default class extends Controller {
 
   toggleQuickActions() {
     this.quickActionsTarget.classList.toggle("hidden")
+  }
+
+  // ── Voice-note recording (MediaRecorder) ─────────────────────────
+  // Tap once to start recording, tap again to stop + send. The pending
+  // audio Blob lives on the controller until send() picks it up and ships
+  // it as part of a multipart FormData submit (instead of the usual JSON).
+  async toggleRecord() {
+    if (this._mediaRecorder && this._mediaRecorder.state === "recording") {
+      this._stopRecording()
+    } else {
+      await this._startRecording()
+    }
+  }
+
+  async _startRecording() {
+    let stream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch (err) {
+      console.warn("[patient-chat] mic permission denied:", err)
+      return
+    }
+    this._mediaStream = stream
+    this._audioChunks = []
+    const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
+                   .find((c) => MediaRecorder.isTypeSupported(c)) || ""
+    this._mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
+    this._mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) this._audioChunks.push(e.data) }
+    this._mediaRecorder.onstop = () => this._finalizeRecording()
+    this._mediaRecorder.start(1000)
+    this._recordStartMs = Date.now()
+    this._paintRecord("recording")
+    this._startRecordTimer()
+  }
+
+  _stopRecording() {
+    if (this._mediaRecorder) {
+      try { this._mediaRecorder.stop() } catch (_) {}
+    }
+    this._stopRecordTimer()
+  }
+
+  _finalizeRecording() {
+    const type = this._mediaRecorder.mimeType || "audio/webm"
+    const ext  = type.includes("ogg") ? "ogg" : (type.includes("mp4") ? "m4a" : "webm")
+    const blob = new Blob(this._audioChunks, { type })
+    this._pendingAudio = new File([blob], `voice-${Date.now()}.${ext}`, { type })
+    if (this._mediaStream) {
+      this._mediaStream.getTracks().forEach((t) => { try { t.stop() } catch (_) {} })
+      this._mediaStream = null
+    }
+    this._paintRecord("idle")
+    // Auto-send the voice note immediately — same UX as iMessage / WhatsApp.
+    // The user already had a chance to "cancel" by re-tapping while recording.
+    this.send(new Event("submit", { cancelable: true }))
+  }
+
+  _startRecordTimer() {
+    if (this.hasRecordTimerTarget) {
+      this.recordTimerTarget.classList.remove("hidden")
+      this.recordTimerTarget.textContent = "0:00"
+    }
+    this._recordTimerInterval = setInterval(() => {
+      if (!this.hasRecordTimerTarget) return
+      const sec = Math.floor((Date.now() - this._recordStartMs) / 1000)
+      this.recordTimerTarget.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`
+    }, 250)
+  }
+
+  _stopRecordTimer() {
+    if (this._recordTimerInterval) clearInterval(this._recordTimerInterval)
+    this._recordTimerInterval = null
+    if (this.hasRecordTimerTarget) {
+      this.recordTimerTarget.classList.add("hidden")
+      this.recordTimerTarget.textContent = ""
+    }
+  }
+
+  _paintRecord(state) {
+    if (!this.hasRecordButtonTarget) return
+    const btn  = this.recordButtonTarget
+    const icon = btn.querySelector("i")
+    btn.dataset.state = state
+    if (state === "recording") {
+      btn.classList.add("bg-[#C1403A]", "text-white", "animate-pulse")
+      btn.classList.remove("bg-[#FBF9F5]", "text-[#C1403A]")
+      if (icon) { icon.classList.remove("ri-record-circle-line"); icon.classList.add("ri-stop-circle-line") }
+    } else {
+      btn.classList.remove("bg-[#C1403A]", "text-white", "animate-pulse")
+      btn.classList.add("bg-[#FBF9F5]", "text-[#C1403A]")
+      if (icon) { icon.classList.remove("ri-stop-circle-line"); icon.classList.add("ri-record-circle-line") }
+    }
   }
 
   // Hide the styled placeholder overlay as soon as the user types, show
@@ -134,8 +226,9 @@ export default class extends Controller {
 
   async send(event) {
     event.preventDefault()
-    const text = this.inputTarget.value.trim()
-    if (!text) return
+    const text  = this.inputTarget.value.trim()
+    const audio = this._pendingAudio
+    if (!text && !audio) return
 
     const csrfMeta = document.querySelector("meta[name='csrf-token']")
     const csrf     = csrfMeta ? csrfMeta.content : ""
@@ -146,36 +239,51 @@ export default class extends Controller {
     const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
     const internal = this._isInternal()
 
-    // Clear the input + schedule the typing indicator BEFORE the await so
-    // the user gets immediate feedback that their message is in flight.
-    // The 800ms delay lets the user's own bubble Cable-echo land first.
-    // With the :inline job adapter the AI reply can arrive while the fetch
-    // is still pending; doing this after the await would race the reply
-    // and either show nothing or hang the dots forever.
+    // Clear input + clear pending audio + schedule typing dots BEFORE
+    // the await so feedback is immediate. The 800ms delay lets the user's
+    // own bubble Cable-echo land first.
     this.inputTarget.value = ""
     this.refreshPlaceholderOverlay()
+    this._pendingAudio = null
     const sentUrgency = this._currentUrgency
-    const wasVoice    = this._usedVoice
+    const wasVoice    = this._usedVoice || !!audio
     this._currentUrgency = "normal"
     this._usedVoice = false
-    // Internal team notes don't need an AI reply — skip the typing dots.
     if (isFamily && !internal) this._scheduleTyping(800)
 
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept":       "application/json",
-        "X-CSRF-Token": csrf
-      },
-      body: JSON.stringify({
-        patient_id: this.patientIdValue,
-        text:       text,
-        urgency:    sentUrgency,
-        source:     wasVoice ? "voice" : "text",
-        internal:   internal
+    let resp
+    if (audio) {
+      // Multipart: voice note (with optional text caption).
+      const fd = new FormData()
+      fd.append("patient_id", this.patientIdValue)
+      fd.append("text",       text)
+      fd.append("urgency",    sentUrgency)
+      fd.append("source",     "voice")
+      fd.append("internal",   internal ? "true" : "false")
+      fd.append("audio",      audio, audio.name)
+      resp = await fetch(url, {
+        method:  "POST",
+        headers: { "Accept": "application/json", "X-CSRF-Token": csrf },
+        body:    fd
       })
-    })
+    } else {
+      // JSON path — no audio, normal typed message.
+      resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept":       "application/json",
+          "X-CSRF-Token": csrf
+        },
+        body: JSON.stringify({
+          patient_id: this.patientIdValue,
+          text:       text,
+          urgency:    sentUrgency,
+          source:     wasVoice ? "voice" : "text",
+          internal:   internal
+        })
+      })
+    }
 
     if (!resp.ok) {
       const err = await resp.text()
@@ -566,7 +674,8 @@ export default class extends Controller {
         </div>
         ${urgencyPill}
       </div>
-      <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"></p>
+      <p data-role="body" class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"></p>
+      ${n.audio_url ? `<audio src="${n.audio_url}" controls class="w-full h-9 mt-2"></audio>` : ""}
       <div class="flex items-center justify-between mt-2 gap-2">
         ${sentToFamilyChip}
         <div class="text-[10px] text-[#6B665F] font-mono">${new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })}</div>
@@ -574,7 +683,12 @@ export default class extends Controller {
     `
     bubble.querySelector('[data-role="name"]').textContent = speakerName
     if (speakerSub) bubble.querySelector(`.text-\\[9px\\]`).textContent = speakerSub
-    bubble.querySelector("p").textContent = n.body
+    const bodyEl = bubble.querySelector('[data-role="body"]')
+    if (n.body) {
+      bodyEl.textContent = n.body
+    } else {
+      bodyEl.remove()
+    }
     this.feedTarget.appendChild(bubble)
     requestAnimationFrame(() => { bubble.style.opacity = "1" })
     this._scrollToBottom()

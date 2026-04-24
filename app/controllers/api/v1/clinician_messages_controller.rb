@@ -15,8 +15,9 @@ module Api
       before_action :authorize_clinician_session!
 
       def create
-        body = params[:text].to_s.strip
-        return render_err(:unprocessable_entity, "message_empty")    if body.blank?
+        body  = params[:text].to_s.strip
+        audio = params[:audio]
+        return render_err(:unprocessable_entity, "message_empty") if body.blank? && audio.blank?
         return render_err(:unprocessable_entity, "message_too_long", limit: MAX_BODY_LENGTH) if body.length > MAX_BODY_LENGTH
 
         patient = Patient.unscoped.find(params[:patient_id])
@@ -28,15 +29,17 @@ module Api
           Current.agent_session_id = "clin-#{SecureRandom.hex(3)}"
 
           internal = ActiveModel::Type::Boolean.new.cast(params[:internal])
-          note = patient.notes.create!(
+          note = patient.notes.build(
             agency:         patient.agency,
             author_user:    @user,
             author_role:    (@user.role_names.first || "rn"),
             body:           body,
-            source:         :text,
+            source:         (audio.present? ? :voice : :text),
             urgency:        normalize_urgency(params[:urgency]),
             clinician_only: internal
           )
+          note.audio.attach(audio) if audio.present?
+          note.save!
 
           notify_mentioned_users(note, body, patient) if internal
 

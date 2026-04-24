@@ -175,7 +175,12 @@
       <span class="ml-auto text-[10px] opacity-80 font-mono"><%= in_patient_zone(note.created_at, @patient) %></span>
     </div>
     <div class="px-5 py-4">
-      <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
+      <% if note.body.present? %>
+        <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
+      <% end %>
+      <% if note.audio.attached? %>
+        <%= audio_tag url_for(note.audio), controls: true, class: "w-full h-9 mt-2" %>
+      <% end %>
     </div>
   </div>
 <% elsif !note.clinician_only? && is_system %>
@@ -225,7 +230,12 @@
         <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider flex-shrink-0">URGENT</span>
       <% end %>
     </div>
-    <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= explain_icd(note.body) %></p>
+    <% if note.body.present? %>
+      <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= explain_icd(note.body) %></p>
+    <% end %>
+    <% if note.audio.attached? %>
+      <%= audio_tag url_for(note.audio), controls: true, class: "w-full h-9 mt-2" %>
+    <% end %>
     <div class="flex items-center justify-between mt-2 gap-2">
       <% if is_ai && !viewer_is_family %>
         <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-2 py-0.5"
