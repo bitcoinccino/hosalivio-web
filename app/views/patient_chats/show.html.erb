@@ -75,17 +75,27 @@
       <nav class="mt-6 space-y-3">
         <div class="text-[11px] uppercase tracking-widest text-[#6B665F] mb-2 group-data-[collapsed=true]/sb:hidden">IDG Team</div>
         <% @idg_roster.each do |row| %>
+          <%
+            # Presence dot: green = on call now, grey = assigned but off,
+            # no dot = slot unassigned. Don't show a dot at all when there's
+            # no clinician to be 'present'.
+            dot_title = row[:user].nil?    ? "Unassigned"
+                      : (row[:present]     ? "#{row[:user].first_name} is on call now"
+                                           : "#{row[:user].first_name} — assigned, not on call right now")
+          %>
           <div class="flex items-center gap-3 text-sm group-data-[collapsed=true]/sb:justify-center" title="<%= row[:name] %> (<%= row[:role].tr("_", " ") %>)">
             <span class="relative flex items-center justify-center w-7 h-7 rounded-full bg-white border border-[#D9D5CD] text-[#6B665F] flex-shrink-0">
               <i class="<%=
                 {
-                  'admissions'    => 'ri-customer-service-2-line',
                   'rn'            => 'ri-nurse-line',
                   'md'            => 'ri-stethoscope-line',
                   'social_worker' => 'ri-team-line',
                   'chaplain'      => 'ri-hand-heart-line'
                 }.fetch(row[:role], 'ri-user-line') %> text-sm"></i>
-              <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#EFECE6] <%= row[:present] ? 'bg-emerald-500' : 'bg-[#B9B4AB]' %>"></span>
+              <% if row[:user] %>
+                <span title="<%= dot_title %>"
+                      class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#EFECE6] <%= row[:present] ? 'bg-emerald-500' : 'bg-[#B9B4AB]' %>"></span>
+              <% end %>
             </span>
             <div class="group-data-[collapsed=true]/sb:hidden">
               <div class="text-[13px] text-[#1D1C1A] leading-tight"><%= row[:name] %></div>

@@ -65,18 +65,24 @@ class PatientChatsController < ApplicationController
 
   private
 
-  # Returns one row per IDG discipline for the left sidebar.
+  # Returns one row per IDG discipline for the left sidebar. Admissions
+  # is intentionally excluded — per CMS, the Interdisciplinary Group is
+  # clinical only (RN, MD, SW, Chaplain). Admissions is a separate
+  # operational function and HosAlivio Assist handles it.
+  #
+  # The green "present" dot means the clinician is ACTUALLY on call right
+  # now (User#on_call == true), not just that they're assigned. A grey dot
+  # = assigned but off-duty; slot with no user = role unassigned.
   def build_idg_roster(patient)
     roster = [
-      { role: "admissions",    name: "Lucia (Front Door)",       user: nil },
-      { role: "rn",            name: nil,                         user: patient.assigned_rn },
-      { role: "md",            name: nil,                         user: patient.assigned_md },
-      { role: "social_worker", name: nil,                         user: patient.assigned_sw },
-      { role: "chaplain",      name: nil,                         user: patient.assigned_chaplain }
+      { role: "rn",            user: patient.assigned_rn },
+      { role: "md",            user: patient.assigned_md },
+      { role: "social_worker", user: patient.assigned_sw },
+      { role: "chaplain",      user: patient.assigned_chaplain }
     ]
     roster.map do |row|
-      row[:name] ||= row[:user]&.full_name || humanize_role(row[:role])
-      row[:present] = row[:user].present? || row[:role] == "admissions"
+      row[:name]    = row[:user]&.full_name || humanize_role(row[:role])
+      row[:present] = row[:user]&.on_call == true
       row
     end
   end
