@@ -110,11 +110,11 @@ export default class extends Controller {
     if (state === "recording") {
       btn.classList.add("bg-[#C1403A]", "text-white", "animate-pulse")
       btn.classList.remove("bg-[#FBF9F5]", "text-[#C1403A]")
-      if (icon) { icon.classList.remove("ri-record-circle-line"); icon.classList.add("ri-stop-circle-line") }
+      if (icon) { icon.classList.remove("ri-voiceprint-line"); icon.classList.add("ri-stop-circle-line") }
     } else {
       btn.classList.remove("bg-[#C1403A]", "text-white", "animate-pulse")
       btn.classList.add("bg-[#FBF9F5]", "text-[#C1403A]")
-      if (icon) { icon.classList.remove("ri-stop-circle-line"); icon.classList.add("ri-record-circle-line") }
+      if (icon) { icon.classList.remove("ri-stop-circle-line"); icon.classList.add("ri-voiceprint-line") }
     }
   }
 
