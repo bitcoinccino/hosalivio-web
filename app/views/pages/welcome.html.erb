@@ -219,7 +219,7 @@
         The Medicare Hospice Benefit (6-month terminal prognosis) is the only legal
         path the platform supports. =================================================== %>
 
-    <!-- Benefits — slide toggle between patients & partners -->
+    <!-- Benefits: slide toggle between patients and partners -->
     <section class="group/aud px-4 md:px-10 pt-2 pb-12 max-w-5xl mx-auto"
              data-controller="faq-toggle"
              data-audience="family">
@@ -253,13 +253,13 @@
         </div>
       </div>
 
-      <%# Family panel — shown when audience=family, hidden when partner. %>
+      <%# Family panel: shown when audience=family, hidden when partner. %>
       <div class="group-data-[audience=partner]/aud:hidden">
         <div class="text-center mb-8">
           <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Hospice care that actually picks up at 2 a.m.</h2>
           <p class="text-[14px] text-[#6B665F] mt-3 max-w-2xl mx-auto leading-relaxed">
             When the morphine isn't working or you just need someone to hear what's happening,
-            HosAlivio puts your nurse, doctor, chaplain, and aide one message away — voice or text.
+            HosAlivio puts your nurse, doctor, chaplain, and aide one message away by voice or text.
             Covered by the Medicare Hospice Benefit. No out-of-pocket cost.
           </p>
         </div>
@@ -267,7 +267,7 @@
           <%
             family_benefits = [
               { icon: "ri-mic-line",          title: "Voice notes for breath sounds",
-                body: "Hold the phone near Mom — your nurse hears the exact rasp instead of you trying to describe it." },
+                body: "Hold the phone near Mom. Your nurse hears the exact rasp instead of you trying to describe it." },
               { icon: "ri-customer-service-2-line", title: "Real humans, named on every reply",
                 body: "Pascal, RN. Dr. Esther. Geoginio, chaplain. You see who picked up your message and when." },
               { icon: "ri-shield-check-line", title: "Medicare-covered, no bill",
@@ -288,7 +288,7 @@
         </div>
       </div>
 
-      <%# Partner panel — shown when audience=partner. %>
+      <%# Partner panel: shown when audience=partner. %>
       <div class="hidden group-data-[audience=partner]/aud:block">
         <div class="text-center mb-8">
           <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Run your agency without burning out your nurses.</h2>
@@ -304,16 +304,16 @@
               { icon: "ri-customer-service-2-line", title: "AI front-door triage 24/7",
                 body: "HosAlivio answers family chats in under a minute, classifies urgency, and only pages your on-call when it actually has to." },
               { icon: "ri-file-shield-2-line",      title: "Audit-proof charting on autopilot",
-                body: "Visit narratives, pre-admit eval JSON, and recert justifications generated in CMS-compliant phrasing — survey-ready." },
+                body: "Visit narratives, pre-admit eval JSON, and recert justifications generated in CMS-compliant phrasing. Survey-ready." },
               { icon: "ri-time-line",               title: "Notice of Election deadlines, defended",
                 body: "5-day NOE clock auto-tracked the moment the MD certifies. Insurance agent files before the window closes." },
               { icon: "ri-stack-line",              title: "Plays nice with your stack",
-                body: "Hooks into Homecare Homebase, Netsmart, MatrixCare, and WellSky — or runs standalone if you want." }
+                body: "Hooks into Homecare Homebase, Netsmart, MatrixCare, and WellSky. Or runs standalone if you want." }
             ]
           %>
           <% partner_benefits.each do |b| %>
-            <div class="rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] p-5 hover:shadow-sm transition">
-              <div class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] text-[#2F6F4E] flex items-center justify-center mb-3">
+            <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 hover:shadow-sm transition">
+              <div class="w-10 h-10 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[#2F6F4E] flex items-center justify-center mb-3">
                 <i class="<%= b[:icon] %> text-lg"></i>
               </div>
               <div class="font-serif text-[16px] text-[#1D1C1A] mb-1"><%= b[:title] %></div>
@@ -330,7 +330,7 @@
       </div>
     </section>
 
-    <!-- FAQ — toggle between Family/Patient and Hospice Partner -->
+    <!-- FAQ: toggle between Family/Patient and Hospice Partner -->
     <section class="px-4 md:px-10 py-12 max-w-3xl mx-auto"
              data-controller="faq-toggle"
              data-audience="family">
@@ -361,14 +361,14 @@
         </button>
       </div>
 
-      <%# Family/patient FAQ — visible when data-audience="family" %>
+      <%# Family/patient FAQ: visible when data-audience="family" %>
       <div class="space-y-2 group-data-[audience=partner]/faq:hidden">
         <%
           family_faq = [
             ["What is hospice care?",
-             "Hospice is comfort-focused care for someone with a terminal illness when curative treatment is no longer the goal. The team — nurse, doctor, social worker, chaplain, aide — comes to your home and manages pain, breathing, and the family experience together."],
+             "Hospice is comfort-focused care for someone with a terminal illness when curative treatment is no longer the goal. The team (nurse, doctor, social worker, chaplain, aide) comes to your home and manages pain, breathing, and the family experience together."],
             ["Who pays for hospice?",
-             "Medicare's Hospice Benefit covers it 100% — the nurse, the doctor, the medications related to the terminal diagnosis, oxygen, hospital beds, and chaplain visits. There's no copay or deductible. Medicaid and most private insurers cover it the same way."],
+             "Medicare's Hospice Benefit covers it 100%: the nurse, the doctor, the medications related to the terminal diagnosis, oxygen, hospital beds, and chaplain visits. There's no copay or deductible. Medicaid and most private insurers cover it the same way."],
             ["Do I have to give up my regular doctor?",
              "No. Your primary doctor can stay involved. You also get a hospice physician (HosAlivio's Dr. Esther in our demo) who oversees the comfort plan. The two coordinate."],
             ["Can I change my mind?",
@@ -376,7 +376,7 @@
             ["How fast can someone start?",
              "If a doctor signs off on a six-month prognosis today, an admissions visit is usually the same day or next day. Crisis symptoms (pain, breathing) get a phone-call response within minutes once you're enrolled."],
             ["Is HosAlivio my hospice?",
-             "No — HosAlivio is the platform your hospice agency uses to run their care. You'll pick a real local agency (or be referred to one); HosAlivio is what makes their nurse, doctor, and chaplain feel one tap away."]
+             "No. HosAlivio is the platform your hospice agency uses to run their care. You'll pick a real local agency (or be referred to one); HosAlivio is what makes their nurse, doctor, and chaplain feel one tap away."]
           ]
         %>
         <% family_faq.each do |q, a| %>
@@ -390,24 +390,24 @@
         <% end %>
       </div>
 
-      <%# Partner FAQ — visible when data-audience="partner" %>
+      <%# Partner FAQ: visible when data-audience="partner" %>
       <div class="space-y-2 hidden group-data-[audience=partner]/faq:block">
         <%
           partner_faq = [
             ["Is the AI replacing our admissions coordinator?",
-             "No. HosAlivio is the front-door triage layer — it acknowledges every family message in seconds, classifies urgency, and pages the right human. Your coordinator stops drowning in 2 a.m. pages and gets to focus on the cases that actually need a human."],
+             "No. HosAlivio is the front-door triage layer; it acknowledges every family message in seconds, classifies urgency, and pages the right human. Your coordinator stops drowning in 2 a.m. pages and gets to focus on the cases that actually need a human."],
             ["How does HosAlivio handle PHI / HIPAA?",
              "Patient data is encrypted at rest with Active Record Encryption (chart fields, notes, addresses), audit-logged via PaperTrail on every write, and scoped per-agency via ActsAsTenant. We sign a BAA before any agency goes live."],
             ["Does it integrate with our EMR?",
-             "Yes — Homecare Homebase, Netsmart, MatrixCare, and WellSky are first-class. You can also run HosAlivio standalone if you'd rather not bridge a System of Record."],
+             "Yes. Homecare Homebase, Netsmart, MatrixCare, and WellSky are first-class. You can also run HosAlivio standalone if you'd rather not bridge a System of Record."],
             ["What about the Notice of Election deadline?",
              "The 5-day NOE clock starts the moment the MD certifies. HosAlivio's insurance agent watches it, flags overdue at 4 days, and auto-files when authorized. No more late submissions costing you the benefit period."],
             ["What does it cost the agency?",
              "Tiered by patient census. The starter tier covers small agencies free during pilot; VHAS Pro adds compliance automation and multi-branch oversight. Pricing is on the partner contract."],
             ["What if the AI gets a clinical question wrong?",
-             "It doesn't give clinical advice — it routes. Every triage decision is logged, every prose draft is gated through a documentation discipline block, and any actual order requires the MD agent (which only proposes inside protocol)."],
+             "It doesn't give clinical advice; it routes. Every triage decision is logged, every prose draft is gated through a documentation discipline block, and any actual order requires the MD agent (which only proposes inside protocol)."],
             ["How long is implementation?",
-             "Self-serve signup is the wizard you just saw — 3 minutes from Sign up to a populated dashboard. Full integration with an existing EMR + BAA + clinical team onboarding usually 1-2 weeks."]
+             "Self-serve signup is the wizard you just saw: 3 minutes from Sign up to a populated dashboard. Full integration with an existing EMR + BAA + clinical team onboarding usually 1-2 weeks."]
           ]
         %>
         <% partner_faq.each do |q, a| %>
@@ -422,8 +422,8 @@
       </div>
     </section>
 
-    <%# === Original carousel + Q&A code below intentionally removed —
-        kept the modal at the very bottom so the contact-callback flow
+    <%# === Original carousel + Q&A code below intentionally removed.
+        Kept the modal at the very bottom so the contact-callback flow
         still works when triggered from the partner-signup page. =========== %>
     <% if false %>
     <section class="pb-6 max-w-3xl mx-auto" data-controller="carousel">
