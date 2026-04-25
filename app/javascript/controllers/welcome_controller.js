@@ -17,16 +17,29 @@ export default class extends Controller {
     this._sourcePrompt   = "capture"
   }
 
-  // Sidebar nav: each row reveals exactly one section in the main
-  // column and hides the others, then smooth-scrolls to it. The page
-  // boots with the search form alone; clicking here is what surfaces
-  // the benefits or FAQ blocks underneath.
+  // Sidebar nav: each row hides the hero (the centered search form)
+  // and reveals exactly one section in the main column, hiding the
+  // others. The whole landing then reads as a single full-page view
+  // of whichever topic the user picked. Brand/logo click brings the
+  // hero back via showHome.
   showFamily(event)  { this._reveal(event, "benefits", { audience: "family" }) }
   showPartner(event) { this._reveal(event, "benefits", { audience: "partner" }) }
   showFaq(event)     { this._reveal(event, "faq") }
 
+  // Reset to the boot state: hero + form visible, all topical
+  // sections hidden. Wired to the sidebar brand/logo.
+  showHome(event) {
+    event?.preventDefault()
+    document.getElementById("hero")?.classList.remove("hidden")
+    ;["benefits", "faq"].forEach((id) => {
+      document.getElementById(id)?.classList.add("hidden")
+    })
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   _reveal(event, sectionId, opts = {}) {
     event?.preventDefault()
+    document.getElementById("hero")?.classList.add("hidden")
     const sections = ["benefits", "faq"]
     sections.forEach((id) => {
       const el = document.getElementById(id)

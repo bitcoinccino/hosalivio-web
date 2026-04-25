@@ -18,15 +18,21 @@
                 data-[open=true]:flex data-[open=true]:fixed data-[open=true]:inset-y-0 data-[open=true]:left-0 data-[open=true]:z-50 data-[open=true]:w-[88vw] data-[open=true]:max-w-[320px] data-[open=true]:overflow-y-auto">
     <div>
       <div class="flex items-center justify-between gap-2 group-data-[collapsed=true]/sb:flex-col group-data-[collapsed=true]/sb:gap-2">
-        <div class="flex items-center gap-2">
+        <%# Brand acts as the 'Home' button. Clicking it hides any
+            currently-revealed section and brings the hero + search
+            form back. %>
+        <button type="button"
+                data-action="click->welcome#showHome"
+                title="Back to home"
+                class="flex items-center gap-2 hover:opacity-80 transition">
           <div class="w-9 h-9 group-data-[collapsed=true]/sb:w-7 group-data-[collapsed=true]/sb:h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
             <i class="ri-heart-pulse-line text-lg group-data-[collapsed=true]/sb:text-sm"></i>
           </div>
-          <div class="group-data-[collapsed=true]/sb:hidden">
+          <div class="group-data-[collapsed=true]/sb:hidden text-left">
             <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</h1>
             <div class="text-[10px] text-[#6B665F] italic -mt-0.5">Comfort Care on the Go</div>
           </div>
-        </div>
+        </button>
         <%# Desktop sidebar collapse toggle: matches the in-app patient sidebar. %>
         <button type="button"
                 data-action="click->sidebar#toggle"
@@ -132,12 +138,12 @@
       <% end %>
     </div>
 
-    <%# Wrapper that vertically centers the hero + search form in
-        whatever vertical space is left between the top nav and the
-        footer. When the user clicks 'For families' / 'For partners' /
-        'FAQ' below, the un-hidden section pushes this wrapper upward
-        naturally; until then the form sits in the middle of the page. %>
-    <div class="flex-1 flex flex-col items-center justify-center w-full">
+    <%# Hero + search form. Vertically centered in whatever vertical
+        space is left between the top nav and the footer. Welcome
+        controller hides this whole block (#hero) when a sidebar nav
+        row is clicked, so only the chosen section is visible. The
+        sidebar brand/logo brings it back. %>
+    <div id="hero" class="flex-1 flex flex-col items-center justify-center w-full">
 
     <!-- Hero -->
     <section class="px-4 md:px-10 pt-4 pb-4 w-full">
