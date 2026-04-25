@@ -313,37 +313,50 @@
     </section>
 
     <!-- FAQ: toggle between Family/Patient and Hospice Partner -->
-    <%# Hidden by default; sidebar nav (welcome#showFaq) un-hides. %>
+    <%# Hidden by default; sidebar nav (welcome#showFaq) un-hides.
+        Outer section spans full main width; an inner wrapper handles
+        the max-width so the toggle pill below can center-flex
+        properly without inline-margin-auto getting in its way. %>
     <section id="faq"
-             class="hidden px-4 md:px-10 py-12 max-w-3xl mx-auto scroll-mt-8"
+             class="hidden px-4 md:px-10 py-12 scroll-mt-8 group/faq"
              data-controller="faq-toggle"
              data-audience="family">
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold mb-3">
-          <i class="ri-question-answer-line"></i> Frequently asked
+      <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold mb-3">
+            <i class="ri-question-answer-line"></i> Frequently asked
+          </div>
+          <h2 class="font-serif text-[26px] text-[#1D1C1A] leading-tight">Common questions, plain answers.</h2>
         </div>
-        <h2 class="font-serif text-[26px] text-[#1D1C1A] leading-tight">Common questions, plain answers.</h2>
-      </div>
 
-      <%# Two-tab switcher %>
-      <div class="group/faq relative inline-flex w-full md:w-auto mx-auto rounded-full bg-[#FBF9F5] border border-[#EFECE6] p-1 mb-6 text-[13px]">
-        <button type="button"
-                data-action="click->faq-toggle#show"
-                data-audience="family"
-                class="flex-1 md:flex-none px-5 py-1.5 rounded-full transition
-                       group-data-[audience=family]/faq:bg-[#1D1C1A] group-data-[audience=family]/faq:text-white
-                       group-data-[audience=partner]/faq:text-[#6B665F] group-data-[audience=partner]/faq:hover:text-[#1D1C1A]">
-          For families &amp; patients
-        </button>
-        <button type="button"
-                data-action="click->faq-toggle#show"
-                data-audience="partner"
-                class="flex-1 md:flex-none px-5 py-1.5 rounded-full transition
-                       group-data-[audience=partner]/faq:bg-[#1D1C1A] group-data-[audience=partner]/faq:text-white
-                       group-data-[audience=family]/faq:text-[#6B665F] group-data-[audience=family]/faq:hover:text-[#1D1C1A]">
-          For hospice partners
-        </button>
-      </div>
+        <%# Two-tab switcher: outer flex wrapper centers the inline pill
+            (mx-auto on inline-flex doesn't behave). Animated background
+            indicator slides between the two tabs as data-audience flips. %>
+        <div class="flex justify-center mb-6">
+          <div class="relative inline-flex w-[340px] max-w-full rounded-full bg-[#FBF9F5] border border-[#EFECE6] p-1 text-[13px]">
+            <span aria-hidden="true"
+                  class="absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-[#1D1C1A] shadow-sm transition-transform duration-300 ease-out
+                         group-data-[audience=partner]/faq:translate-x-full"></span>
+            <button type="button"
+                    data-action="click->faq-toggle#show"
+                    data-audience="family"
+                    class="relative z-10 flex-1 px-4 py-1.5 rounded-full transition-colors
+                           group-data-[audience=family]/faq:text-white
+                           group-data-[audience=partner]/faq:text-[#6B665F]
+                           group-data-[audience=partner]/faq:hover:text-[#1D1C1A]">
+              Families &amp; patients
+            </button>
+            <button type="button"
+                    data-action="click->faq-toggle#show"
+                    data-audience="partner"
+                    class="relative z-10 flex-1 px-4 py-1.5 rounded-full transition-colors
+                           group-data-[audience=partner]/faq:text-white
+                           group-data-[audience=family]/faq:text-[#6B665F]
+                           group-data-[audience=family]/faq:hover:text-[#1D1C1A]">
+              Hospice partners
+            </button>
+          </div>
+        </div>
 
       <%# Family/patient FAQ: visible when data-audience="family" %>
       <div class="space-y-2 group-data-[audience=partner]/faq:hidden">
@@ -404,6 +417,7 @@
           </details>
         <% end %>
       </div>
+      </div><%# end max-w-3xl wrapper %>
     </section>
 
     <%# === Original carousel + Q&A code below intentionally removed.
