@@ -17,6 +17,23 @@ export default class extends Controller {
     this._sourcePrompt   = "capture"
   }
 
+  // Sidebar nav: "For families" jumps to the benefits section AND flips
+  // the slide toggle to family so the family panel renders by the time
+  // the scroll lands.
+  showFamily(event)  { this._jumpToBenefits(event, "family") }
+  showPartner(event) { this._jumpToBenefits(event, "partner") }
+  showFaq(event) {
+    event?.preventDefault()
+    document.getElementById("faq")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  _jumpToBenefits(event, audience) {
+    event?.preventDefault()
+    const el = document.getElementById("benefits")
+    if (el) el.dataset.audience = audience
+    el?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
   // Clicked the "Contact" button on a partner card. Set the partner context
   // so submitCapture knows which agency to route to, then open the modal.
   contactPartner(event) {
