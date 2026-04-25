@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Public landing-page conversation. Stateless: nothing is persisted
 // to the clinical backend until the user explicitly submits the capture form.
 export default class extends Controller {
-  static targets = ["thread", "chips", "capture", "captureDialog", "captureThanks", "anythingInput", "partnerBanner", "partnerBannerName"]
+  static targets = ["thread", "chips", "capture", "captureDialog", "captureThanks", "anythingInput", "partnerBanner", "partnerBannerName", "nav"]
   static values  = { prompts: Object }
 
   connect() {
@@ -22,9 +22,9 @@ export default class extends Controller {
   // others. The whole landing then reads as a single full-page view
   // of whichever topic the user picked. Brand/logo click brings the
   // hero back via showHome.
-  showFamily(event)  { this._reveal(event, "benefits", { audience: "family" }) }
-  showPartner(event) { this._reveal(event, "benefits", { audience: "partner" }) }
-  showFaq(event)     { this._reveal(event, "faq") }
+  showFamily(event)  { this._reveal(event, "benefits", { audience: "family", active: "family"  }) }
+  showPartner(event) { this._reveal(event, "benefits", { audience: "partner", active: "partner" }) }
+  showFaq(event)     { this._reveal(event, "faq",      { active: "faq" }) }
 
   // Reset to the boot state: hero + form visible, all topical
   // sections hidden. Wired to the sidebar brand/logo.
@@ -34,6 +34,7 @@ export default class extends Controller {
     ;["benefits", "faq"].forEach((id) => {
       document.getElementById(id)?.classList.add("hidden")
     })
+    this._setActiveNav("home")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -51,7 +52,15 @@ export default class extends Controller {
         el.classList.add("hidden")
       }
     })
+    if (opts.active) this._setActiveNav(opts.active)
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  // Sidebar nav highlight. Sets the active-section attribute on the
+  // <nav> so each button's group-data-[active-section=...]/nav: variant
+  // can paint the matching row in HosAlivio terracotta.
+  _setActiveNav(name) {
+    if (this.hasNavTarget) this.navTarget.dataset.activeSection = name
   }
 
   // Clicked the "Contact" button on a partner card. Set the partner context

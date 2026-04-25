@@ -54,14 +54,20 @@
 
       <%# Section nav: each row reveals the matching content section in
           the main column. Sections are hidden until a row is clicked.
-          When the sidebar is collapsed (data-collapsed=true on parent),
-          each row shrinks to just its icon and centers. %>
-      <nav class="mt-6 space-y-1">
+          The nav carries data-active-section, which the per-row
+          group-data-[active-section=…]/nav: variants use to paint the
+          active row in HosAlivio terracotta. %>
+      <nav data-welcome-target="nav"
+           data-active-section="home"
+           class="group/nav mt-6 space-y-1">
         <button type="button"
                 data-action="click->welcome#showHome"
                 title="Home"
-                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#1D1C1A] flex-shrink-0">
+                class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
+                       group-data-[active-section=home]/nav:bg-[#FFF3EC] group-data-[active-section=home]/nav:text-[#D97757]
+                       group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#1D1C1A]
+                       group-data-[active-section=home]/nav:text-[#D97757] group-data-[active-section=home]/nav:border-[#D97757]">
             <i class="ri-home-4-line"></i>
           </span>
           <span class="flex-1 group-data-[collapsed=true]/sb:hidden">Home</span>
@@ -70,8 +76,11 @@
         <button type="button"
                 data-action="click->welcome#showFamily"
                 title="For families"
-                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#D97757] flex-shrink-0">
+                class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
+                       group-data-[active-section=family]/nav:bg-[#FFF3EC] group-data-[active-section=family]/nav:text-[#D97757]
+                       group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#D97757]
+                       group-data-[active-section=family]/nav:border-[#D97757]">
             <i class="ri-user-heart-line"></i>
           </span>
           <span class="flex-1 group-data-[collapsed=true]/sb:hidden">For families</span>
@@ -80,8 +89,11 @@
         <button type="button"
                 data-action="click->welcome#showPartner"
                 title="For partners"
-                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#2F6F4E] flex-shrink-0">
+                class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
+                       group-data-[active-section=partner]/nav:bg-[#FFF3EC] group-data-[active-section=partner]/nav:text-[#D97757]
+                       group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#2F6F4E]
+                       group-data-[active-section=partner]/nav:text-[#D97757] group-data-[active-section=partner]/nav:border-[#D97757]">
             <i class="ri-hospital-line"></i>
           </span>
           <span class="flex-1 group-data-[collapsed=true]/sb:hidden">For partners</span>
@@ -90,8 +102,11 @@
         <button type="button"
                 data-action="click->welcome#showFaq"
                 title="FAQ"
-                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#6B665F] flex-shrink-0">
+                class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
+                       group-data-[active-section=faq]/nav:bg-[#FFF3EC] group-data-[active-section=faq]/nav:text-[#D97757]
+                       group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#6B665F]
+                       group-data-[active-section=faq]/nav:text-[#D97757] group-data-[active-section=faq]/nav:border-[#D97757]">
             <i class="ri-question-answer-line"></i>
           </span>
           <span class="flex-1 group-data-[collapsed=true]/sb:hidden">FAQ</span>
