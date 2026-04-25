@@ -1,27 +1,29 @@
-# Lucia's brain. Routes a family message through an ordered chain of providers
-# until one responds: Anthropic Claude, then OpenAI, then a regex fallback.
+# HosAlivio's brain. Routes a family message through an ordered chain of
+# providers until one responds: Anthropic Claude, then OpenAI, then a
+# regex fallback.
 #
 # Contract: always returns a hash with these five keys (never raises).
 #   { intent:, urgency:, reasoning:, reply:, source: }
 #
-# The triager doesn't know or care which provider answered. The `source` field
-# records it for audit (e.g. "claude:claude-sonnet-4-6", "openai:gpt-4o",
-# "fallback:regex") and flows into agent_session_id on every downstream write.
+# The triager doesn't know or care which provider answered. The `source`
+# field records it for audit (e.g. "claude:claude-sonnet-4-6",
+# "openai:gpt-4o", "fallback:regex") and flows into agent_session_id on
+# every downstream write.
 
 require "net/http"
 require "json"
 
-class LuciaBrain
+class HosalivioBrain
   SOUL_PATH = File.expand_path("~/.openclaw/agents/admission_coordinator/SOUL.md")
 
   # Claude primary config
   CLAUDE_URL     = "https://api.anthropic.com/v1/messages"
   CLAUDE_VERSION = "2023-06-01"
-  CLAUDE_MODEL   = ENV.fetch("HOSALIVIO_LUCIA_MODEL", "claude-sonnet-4-6")
+  CLAUDE_MODEL   = ENV.fetch("HOSALIVIO_BRAIN_MODEL", ENV.fetch("HOSALIVIO_LUCIA_MODEL", "claude-sonnet-4-6"))
 
   # OpenAI fallback config
   OPENAI_URL   = "https://api.openai.com/v1/chat/completions"
-  OPENAI_MODEL = ENV.fetch("HOSALIVIO_LUCIA_OPENAI_MODEL", "gpt-4o")
+  OPENAI_MODEL = ENV.fetch("HOSALIVIO_BRAIN_OPENAI_MODEL", ENV.fetch("HOSALIVIO_LUCIA_OPENAI_MODEL", "gpt-4o"))
 
   INTENTS = %w[
     pain_crisis dyspnea decline caregiver_distress transitioning
@@ -71,7 +73,7 @@ class LuciaBrain
         return attempt(provider)
       rescue => e
         attempts << "#{provider}=#{e.class}"
-        Rails.logger.warn("[LuciaBrain:#{provider}] #{e.class}: #{e.message}")
+        Rails.logger.warn("[HosalivioBrain:#{provider}] #{e.class}: #{e.message}")
       end
     end
     fallback(reason: attempts.empty? ? "no_providers_configured" : attempts.join(","))
@@ -160,7 +162,7 @@ class LuciaBrain
 
   def soul_md
     @soul_md ||= File.exist?(SOUL_PATH) ? File.read(SOUL_PATH) :
-      "You are Lucia, an experienced hospice admissions coordinator. Warm, specific, unhurried."
+      "You are HosAlivio, an experienced hospice admissions coordinator. Warm, specific, unhurried."
   end
 
   def instruction_block
@@ -221,7 +223,7 @@ class LuciaBrain
     USR
   end
 
-  # Regex fallback. Same return shape so LuciaTriager doesn't know the difference.
+  # Regex fallback. Same return shape so HosalivioTriager doesn't know the difference.
   def fallback(reason:)
     text = @note.body.to_s.downcase
     intent =

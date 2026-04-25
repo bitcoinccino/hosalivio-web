@@ -1,4 +1,4 @@
-# Lucia the matchmaker.
+# HosAlivio's matchmaker.
 # Parses a natural-language query from the public landing page into a set of
 # structured filters against the Agency partner directory, then returns:
 #
@@ -11,7 +11,7 @@
 require "net/http"
 require "json"
 
-class LuciaMatchmaker
+class HosalivioMatchmaker
   CITY_TO_ZIP_PREFIX = {
     "miami"            => "331",
     "hialeah"          => "330",
@@ -112,7 +112,7 @@ class LuciaMatchmaker
     parsed = keyword_parse(@query)
     merged = deep_merge_filters(explicit, parsed)
     [merged, "heuristic"]
-    # TODO: when LLM credits land, call LuciaBrain for structured extraction
+    # TODO: when LLM credits land, call HosalivioBrain for structured extraction
     # and return source = "claude:..." or "openai:..." here.
   end
 

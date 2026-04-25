@@ -58,7 +58,7 @@ Rails.application.configure do
   config.active_job.verbose_enqueue_logs = true
 
   # Run background jobs in-process for development. Removes the need for a
-  # separate `bin/jobs` worker terminal and means LuciaTriageJob fires
+  # separate `bin/jobs` worker terminal and means HosalivioTriageJob fires
   # immediately when a family message lands. SolidQueue is used in production.
   config.active_job.queue_adapter = :inline
 

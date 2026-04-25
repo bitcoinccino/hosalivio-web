@@ -247,7 +247,7 @@ export default class extends Controller {
     const csrfMeta = document.querySelector("meta[name='csrf-token']")
     const csrf     = csrfMeta ? csrfMeta.content : ""
 
-    // Family viewers post to /family_messages (Lucia-triaged); clinicians
+    // Family viewers post to /family_messages (HosAlivio-triaged); clinicians
     // post to /clinician_messages (saved as themselves with their real name).
     const isFamily = document.body.dataset.viewerFamily === "true"
     const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
@@ -322,7 +322,7 @@ export default class extends Controller {
         <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
           <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
         </div>
-        <span class="text-[10px] font-bold uppercase tracking-widest text-[#6B665F]">HosAlivio Assist</span>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-[#6B665F]">HosAlivio</span>
         <span class="text-[10px] text-[#6B665F]">is thinking</span>
         <div class="flex items-center gap-1 ml-0.5">
           <span class="w-1.5 h-1.5 bg-[#6B665F] rounded-full animate-bounce" style="animation-delay:0ms;animation-duration:1.4s"></span>
@@ -625,7 +625,7 @@ export default class extends Controller {
     const aiRing      = n.ai_authored ? "ring-1 ring-dashed ring-[#B9B4AB]" : ""
 
     // Real-name-first: show the human's actual name when available; fall back
-    // to the backend-supplied label ("HosAlivio Assist") only for AI notes.
+    // to the backend-supplied label ("HosAlivio") only for AI notes.
     const speakerName = n.author_name || this._roleLabel(n.author_role)
 
     // Warmer subtitle for family viewers; clinicians see the raw role.
@@ -665,7 +665,7 @@ export default class extends Controller {
 
     const aiAvatar = n.ai_authored
       ? `<div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
-           <img src="${document.body.dataset.hosalivioBotSrc || '/assets/hosalivio_assistant.png'}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio Assistant">
+           <img src="${document.body.dataset.hosalivioBotSrc || '/assets/hosalivio_assistant.png'}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
          </div>`
       : `<i class="${roleIcon} text-[14px]"></i>`
 

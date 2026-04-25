@@ -1,4 +1,4 @@
-class LuciaTriageJob < ApplicationJob
+class HosalivioTriageJob < ApplicationJob
   queue_as :default
 
   def perform(note_id)
@@ -7,7 +7,7 @@ class LuciaTriageJob < ApplicationJob
     return unless note.author_role == "family" && note.read_at.nil?
 
     ActsAsTenant.with_tenant(note.agency) do
-      LuciaTriager.new(note).triage!
+      HosalivioTriager.new(note).triage!
     end
   end
 end

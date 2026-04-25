@@ -76,7 +76,7 @@ module ApplicationHelper
   end
 
   # First-name token of the current viewer with honorifics stripped, used
-  # to suppress self-mention buttons. Mirrors LuciaTriager's
+  # to suppress self-mention buttons. Mirrors HosalivioTriager's
   # first_name_for_mention so server and audit emitters agree on what
   # "Esther" looks like.
   HONORIFIC_TOKENS = %w[dr. mr. mrs. ms. mx. rev. fr. sr.].freeze

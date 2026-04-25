@@ -43,7 +43,7 @@ ActsAsTenant.with_tenant(agency) do
     "rn"            => { email: "rn@hosalivio.com",         name: "Pascal Benoit" },
     "md"            => { email: "md@hosalivio.com",         name: "Dr. Esther Nguyen" },
     "don"           => { email: "don@hosalivio.com",        name: "Diaphnie Casimir" },
-    "admissions"    => { email: "admissions@hosalivio.com", name: "Lucia Morales" },
+    "admissions"    => { email: "admissions@hosalivio.com", name: "HosAlivio" },
     "dme"           => { email: "dme@hosalivio.com",        name: "Marcus Brown" },
     "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Simone Wallace" },
     "insurance"     => { email: "insurance@hosalivio.com",  name: "Kendra Foster" },

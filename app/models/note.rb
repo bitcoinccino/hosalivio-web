@@ -54,7 +54,7 @@ class Note < ApplicationRecord
 
   # True when no identifiable human authored this note — i.e. an AI agent
   # produced it via AgentTriager with Current.agent_id set and no user.
-  # Used by the chat UI to label bubbles "HosAlivio Assist" instead of
+  # Used by the chat UI to label bubbles "HosAlivio" instead of
   # passing off automated replies as a named clinician.
   def ai_authored?
     author_user_id.blank? && source_system?
@@ -67,7 +67,7 @@ class Note < ApplicationRecord
   def display_author_name
     return author_user.full_name if author_user&.full_name.present?
     return "Family" if author_role == "family"
-    ai_authored? ? "HosAlivio Assist" : author_role.to_s.upcase
+    ai_authored? ? "HosAlivio" : author_role.to_s.upcase
   end
 
   # Role sub-label shown in parentheses under the speaker's name.

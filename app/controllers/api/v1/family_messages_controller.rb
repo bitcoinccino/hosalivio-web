@@ -57,11 +57,11 @@ module Api
           note.audio.attach(audio) if audio.present?
           note.save!
 
-          # Nudge Lucia (Front Door) and any other listeners with a typed broadcast.
+          # Nudge HosAlivio (Front Door) and any other listeners with a typed broadcast.
           # Clients already subscribed to patient:{id} will receive this immediately.
           # Note model auto-broadcasts to patient:{id} on create_commit.
-          # Wake Lucia — she classifies, escalates, and replies in a background job.
-          LuciaTriageJob.perform_later(note.id)
+          # Wake HosAlivio — classifies, escalates, and replies in a background job.
+          HosalivioTriageJob.perform_later(note.id)
 
           render json: { status: "ok", id: note.id, urgency: note.urgency }, status: :created
         end

@@ -1,8 +1,8 @@
 namespace :hosalivio do
-  desc "Run Lucia's triage loop once — reads unread family notes, escalates, replies"
+  desc "Run HosAlivio's triage loop once — reads unread family notes, escalates, replies"
   task triage: :environment do
-    n = LuciaTriager.tick
-    puts "Lucia triaged #{n} note#{n == 1 ? '' : 's'}."
+    n = HosalivioTriager.tick
+    puts "HosAlivio triaged #{n} note#{n == 1 ? '' : 's'}."
   end
 
   desc "Print API tokens for each agent role (for the first agency)"

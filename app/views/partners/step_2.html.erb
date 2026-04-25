@@ -5,7 +5,7 @@
     <%= render "wizard_header",
           step: 2,
           title: "Your first branch",
-          subtitle: "Where the boots-on-the-ground nurses live. You can add more branches later. This configures the triage-routing Agent (Lucia) to send inquiries to the right location." %>
+          subtitle: "Where the boots-on-the-ground nurses live. You can add more branches later. This configures HosAlivio's triage routing to send inquiries to the right location." %>
 
     <%= form_with url: partners_step_2_path, method: :post, local: true, html: { class: "space-y-5 bg-white rounded-3xl border border-[#EFECE6] p-8" } do |f| %>
       <% s2 = (@form && @form[:step2].presence) || {} %>
@@ -73,7 +73,7 @@
         <%= f.text_area :service_area_zips, value: Array(s2[:service_area_zips]).join(", "), rows: 2,
               placeholder: "32801, 32802, 32803, 32804",
               class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
-        <p class="text-[11px] text-[#6B665F] mt-1">Comma- or space-separated. Lucia uses this to auto-accept or reject family inquiries.</p>
+        <p class="text-[11px] text-[#6B665F] mt-1">Comma- or space-separated. HosAlivio uses this to auto-accept or reject family inquiries.</p>
       </div>
 
       <div class="rounded-xl bg-[#FBF9F5] p-4 border border-dashed border-[#D9D5CD] space-y-3">
@@ -85,11 +85,11 @@
                 class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
         </div>
         <div>
-          <label class="block text-[11px] text-[#6B665F] mb-1">Lucia's after-hours instructions</label>
+          <label class="block text-[11px] text-[#6B665F] mb-1">HosAlivio's after-hours instructions</label>
           <%= f.text_area :after_hours_instructions, value: s2[:after_hours_instructions], rows: 3,
                 placeholder: "If a family messages after 5 PM on weekdays or anytime on weekends, tell them a nurse will call back within 15 minutes.",
                 class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-          <p class="text-[11px] text-[#6B665F] mt-1">Plain English — Lucia reads this before drafting family-facing replies after hours.</p>
+          <p class="text-[11px] text-[#6B665F] mt-1">Plain English — HosAlivio reads this before drafting family-facing replies after hours.</p>
         </div>
       </div>
 

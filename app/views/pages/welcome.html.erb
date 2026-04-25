@@ -183,7 +183,7 @@
       </div>
     </section>
 
-    <!-- Lucia Co-Pilot search -->
+    <!-- HosAlivio Co-Pilot search -->
     <section class="px-4 md:px-10 pt-4 pb-6">
       <%= form_with(url: root_path, method: :get, local: true, html: { class: "max-w-3xl mx-auto" }) do %>
         <% Array(params[:specialty]).each { |v| %>
@@ -214,7 +214,7 @@
       <% end %>
     </section>
 
-    <!-- Partner carousel: same width as the Lucia form, three visible at a time -->
+    <!-- Partner carousel: same width as the HosAlivio form, three visible at a time -->
     <section class="pb-6 max-w-3xl mx-auto" data-controller="carousel">
       <% if @match[:agencies].empty? %>
         <div class="max-w-2xl text-center py-16 mx-auto px-4 md:px-10">
@@ -323,12 +323,12 @@
       <% end %>
     </section>
 
-    <!-- Lucia's explanation bubble (after the cards + chips) -->
+    <!-- HosAlivio's explanation bubble (after the cards + chips) -->
     <% if @match[:agencies].any? || @active_query.present? %>
       <section class="px-4 md:px-10 pb-10">
         <div class="max-w-3xl mx-auto flex items-start gap-3">
           <div class="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-[#EFECE6] overflow-hidden">
-            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio Assistant" %>
+            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio" %>
           </div>
           <div class="bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] px-4 py-2.5 text-[13px] text-[#1D1C1A]">
             <span class="font-bold">HosAlivio:</span> <%= @match[:explanation] %>

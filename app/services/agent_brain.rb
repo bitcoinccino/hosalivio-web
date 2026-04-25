@@ -9,7 +9,7 @@
 # Returns (never raises):
 #   { action:, params:, reply:, reasoning:, source: }
 #
-# Same Claude → OpenAI → no_action fallback chain as LuciaBrain. If the role's
+# Same Claude → OpenAI → no_action fallback chain as HosalivioBrain. If the role's
 # SOUL.md is still the stock OpenClaw template, short-circuits with no_action
 # so handoffs to unconfigured agents stay quiet instead of emitting garbage.
 

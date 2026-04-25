@@ -1,5 +1,5 @@
 # Landing-page prompt tree.
-# Clicking a chip yields a warm, specific answer from "Lucia" plus
+# Clicking a chip yields a warm, specific answer from HosAlivio plus
 # 2–3 follow-up chips and a soft CTA. No persistence; privacy wall holds.
 #
 # Add/edit prompts here only — the view and Stimulus controller render

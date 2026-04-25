@@ -16,7 +16,7 @@ class PagesController < ApplicationController
         insurance: Array(params[:insurance]).compact_blank,
         language:  Array(params[:language]).compact_blank
       }
-      @match = LuciaMatchmaker.call(query: query, filters: filters)
+      @match = HosalivioMatchmaker.call(query: query, filters: filters)
       @all_specialties = Agency::SPECIALTY_CATALOG
       @all_insurance   = Agency::INSURANCE_CATALOG
       @all_languages   = Agency::LANGUAGE_CATALOG

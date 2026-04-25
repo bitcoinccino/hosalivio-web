@@ -74,7 +74,7 @@ export default class extends Controller {
 
     this._seen.add(id)
     this._appendUserBubble(prompt.label)
-    this._appendLuciaTyping().then(el => {
+    this._appendHosalivioTyping().then(el => {
       // Small delay so it *feels* conversational.
       setTimeout(() => this._swapTypingForAnswer(el, prompt), 450)
     })
@@ -89,7 +89,7 @@ export default class extends Controller {
     const fd   = new FormData(form)
 
     const payload = {
-      agency_id:     this._partnerId,          // null for "Ask Lucia anything" / general
+      agency_id:     this._partnerId,          // null for "Ask HosAlivio anything" / general
       source_prompt: this._sourcePrompt,
       name:          fd.get("name"),
       contact:       fd.get("contact"),
@@ -134,16 +134,16 @@ export default class extends Controller {
     this._sourcePrompt = "capture"
   }
 
-  // Bottom "Ask Lucia Anything" textarea — freeform question that drops into
+  // Bottom "Ask HosAlivio Anything" textarea — freeform question that drops into
   // the same conversation thread above and reveals the capture form.
   askAnything(event) {
     event.preventDefault()
     const text = this.anythingInputTarget.value.trim()
     if (!text) return
 
-    // Scroll the Lucia stage into view so the user sees their question land there
+    // Scroll the HosAlivio stage into view so the user sees their question land there
     const thread = this.threadTarget
-    thread.closest("section#lucia")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    thread.closest("section#hosalivio")?.scrollIntoView({ behavior: "smooth", block: "start" })
 
     // Remember their free-form text so submitCapture can include it.
     this._question     = text
@@ -153,10 +153,10 @@ export default class extends Controller {
     this._appendUserBubble(text)
     this.anythingInputTarget.value = ""
 
-    // Lucia's freeform reply, then open the modal so the user can leave contact info.
-    this._appendLuciaTyping().then(el => {
+    // HosAlivio's freeform reply, then open the modal so the user can leave contact info.
+    this._appendHosalivioTyping().then(el => {
       setTimeout(() => {
-        el.innerHTML = this._luciaFreeformReply(text)
+        el.innerHTML = this._hosalivioFreeformReply(text)
         this._openCaptureModal()
       }, 500)
     })
@@ -179,13 +179,13 @@ export default class extends Controller {
     this._scroll(wrap)
   }
 
-  async _appendLuciaTyping() {
+  async _appendHosalivioTyping() {
     const wrap = document.createElement("div")
     wrap.className = "flex items-start gap-3"
     const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     wrap.innerHTML = `
       <div class="w-12 h-12 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
-        <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio Assistant">
+        <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
       </div>
       <div class="flex-1 bg-white rounded-2xl rounded-tl-md border border-[#EFECE6] p-4">
         <div class="text-[11px] uppercase tracking-[0.18em] font-bold text-[#1D1C1A] mb-1">
@@ -263,7 +263,7 @@ export default class extends Controller {
     setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 60)
   }
 
-  _luciaFreeformReply() {
+  _hosalivioFreeformReply() {
     const botSrcFree = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     return `
       <div class="w-12 h-12 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">

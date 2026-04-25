@@ -1,14 +1,14 @@
-# LuciaTriager — the action-taker.
+# HosalivioTriager — the action-taker behind the family chat.
 #
-# Delegates all classification and reply composition to LuciaBrain.
-# Its own job is stateful: create notes, emit agent events, mark inbound
+# Delegates classification + reply composition to HosalivioBrain. Its
+# own job is stateful: create notes, emit agent events, mark inbound
 # messages as handled. No decisions made here.
 #
-# Contract: LuciaBrain returns { intent, urgency, reasoning, reply, source }.
+# Contract: HosalivioBrain returns { intent, urgency, reasoning, reply, source }.
 # This class maps intent -> which roles to ping, then executes.
 
-class LuciaTriager
-  # Escalation routing by intent. URGENCY comes from LuciaBrain (context-aware);
+class HosalivioTriager
+  # Escalation routing by intent. URGENCY comes from HosalivioBrain (context-aware);
   # this table only decides WHO gets pinged for each category.
   ESCALATION_ROLES = {
     "pain_crisis"        => %w[rn md],
@@ -52,7 +52,7 @@ class LuciaTriager
   }.freeze
 
   # Run one pass over every agency, triaging any unread family notes.
-  # Useful for cron; day-to-day triage runs inline via LuciaTriageJob.
+  # Useful for cron; day-to-day triage runs inline via HosalivioTriageJob.
   def self.tick
     count = 0
     Agency.find_each do |agency|
@@ -81,19 +81,19 @@ class LuciaTriager
   def triage!
     # 0 — SUPPRESS if a human clinician is actively in this thread
     if human_clinician_recently_active? && !@note.urgency_crisis?
-      Rails.logger.info("[LuciaTriager] suppressing AI — human clinician active in thread for patient=#{@patient.id}")
+      Rails.logger.info("[HosalivioTriager] suppressing AI — human clinician active in thread for patient=#{@patient.id}")
       @note.mark_read!
       return
     end
 
     # 1 — ASK THE BRAIN (never raises; returns fallback on failure)
-    decision = LuciaBrain.call(note: @note)
+    decision = HosalivioBrain.call(note: @note)
     roles    = ESCALATION_ROLES.fetch(decision[:intent], ESCALATION_ROLES["other"])
 
-    # Stamp Current so AgentAuditable attributes every write to Lucia's session.
+    # Stamp Current so AgentAuditable attributes every write to HosAlivio's session.
     Current.agency           = @agency
     Current.agent_id         = "admissions"
-    Current.agent_session_id = "lucia-#{brain_suffix(decision[:source])}-#{SecureRandom.hex(4)}"
+    Current.agent_session_id = "hosalivio-#{brain_suffix(decision[:source])}-#{SecureRandom.hex(4)}"
 
     # 2 — INTERNAL TRIAGE NOTE (for clinicians; not family-facing)
     Note.create!(

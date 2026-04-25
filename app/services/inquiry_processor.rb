@@ -20,10 +20,10 @@ class InquiryProcessor
 
     Current.agency           = @inquiry.agency
     Current.agent_id         = "admissions"
-    Current.agent_session_id = "lucia-inquiry-#{SecureRandom.hex(4)}"
+    Current.agent_session_id = "hosalivio-inquiry-#{SecureRandom.hex(4)}"
 
     # Resolve which branch inside this agency should own the inquiry based on
-    # the caller's ZIP. Lucia reads this off the AgentEvent and routes the
+    # the caller's ZIP. HosAlivio reads this off the AgentEvent and routes the
     # admission conversation into that branch's queue.
     routed_branch = Branch.route_for_zip(@inquiry.agency, @inquiry.zip)
 

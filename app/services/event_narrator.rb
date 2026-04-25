@@ -6,7 +6,7 @@
 
 class EventNarrator
   PERSONA = {
-    "admissions"         => { name: "Lucia",      title: "Admissions",   initials: "L", color: "#1D1C1A", icon: "ri-customer-service-2-line" },
+    "admissions"         => { name: "HosAlivio",  title: "Admissions",   initials: "H", color: "#1D1C1A", icon: "ri-customer-service-2-line" },
     "front_door_inbound" => { name: "Care Portal", title: "Family-facing", initials: "⌂", color: "#D97757", icon: "ri-feedback-line" },
     "rn"                 => { name: "Pascal",     title: "RN",           initials: "P", color: "#2F6F4E", icon: "ri-nurse-line" },
     "md"                 => { name: "Dr. Esther", title: "MD",           initials: "E", color: "#2B4A7A", icon: "ri-stethoscope-line" },
@@ -84,7 +84,7 @@ class EventNarrator
 
     # Returns { before:, after:, icon: }.
     # The caller renders: "<persona> <before> <patient_link> <after>"
-    # Example: "Lucia (Admissions) | assigned | Maria Alvarez | to the RN + MD team"
+    # Example: "HosAlivio (Admissions) | assigned | Maria Alvarez | to the RN + MD team"
     def narrate
       case [event.agent_id, event.action, event.subject_type]
       in ["admissions", "handoff", "Patient"]

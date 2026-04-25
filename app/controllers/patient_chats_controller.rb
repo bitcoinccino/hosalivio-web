@@ -68,7 +68,7 @@ class PatientChatsController < ApplicationController
   # Returns one row per IDG discipline for the left sidebar. Admissions
   # is intentionally excluded — per CMS, the Interdisciplinary Group is
   # clinical only (RN, MD, SW, Chaplain). Admissions is a separate
-  # operational function and HosAlivio Assist handles it.
+  # operational function and HosAlivio handles it.
   #
   # The green "present" dot means the clinician is ACTUALLY on call right
   # now (User#on_call == true), not just that they're assigned. A grey dot
