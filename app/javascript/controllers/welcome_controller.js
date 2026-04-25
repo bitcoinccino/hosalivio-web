@@ -17,21 +17,28 @@ export default class extends Controller {
     this._sourcePrompt   = "capture"
   }
 
-  // Sidebar nav: "For families" jumps to the benefits section AND flips
-  // the slide toggle to family so the family panel renders by the time
-  // the scroll lands.
-  showFamily(event)  { this._jumpToBenefits(event, "family") }
-  showPartner(event) { this._jumpToBenefits(event, "partner") }
-  showFaq(event) {
-    event?.preventDefault()
-    document.getElementById("faq")?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
+  // Sidebar nav: each row reveals exactly one section in the main
+  // column and hides the others, then smooth-scrolls to it. The page
+  // boots with the search form alone; clicking here is what surfaces
+  // the benefits or FAQ blocks underneath.
+  showFamily(event)  { this._reveal(event, "benefits", { audience: "family" }) }
+  showPartner(event) { this._reveal(event, "benefits", { audience: "partner" }) }
+  showFaq(event)     { this._reveal(event, "faq") }
 
-  _jumpToBenefits(event, audience) {
+  _reveal(event, sectionId, opts = {}) {
     event?.preventDefault()
-    const el = document.getElementById("benefits")
-    if (el) el.dataset.audience = audience
-    el?.scrollIntoView({ behavior: "smooth", block: "start" })
+    const sections = ["benefits", "faq"]
+    sections.forEach((id) => {
+      const el = document.getElementById(id)
+      if (!el) return
+      if (id === sectionId) {
+        el.classList.remove("hidden")
+        if (opts.audience) el.dataset.audience = opts.audience
+      } else {
+        el.classList.add("hidden")
+      }
+    })
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
   // Clicked the "Contact" button on a partner card. Set the partner context

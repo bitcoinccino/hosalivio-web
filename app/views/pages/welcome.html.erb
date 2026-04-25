@@ -1,7 +1,8 @@
 <% content_for :title, "HosAlivio · Find a hospice partner" %>
 
 <div class="flex min-h-screen"
-     data-controller="welcome mobile-filters"
+     data-controller="welcome mobile-filters sidebar"
+     data-sidebar-storage-key-value="welcomeSidebar"
      data-welcome-prompts-value='<%= @prompts_js.to_json %>'>
 
   <!-- Mobile filter sheet backdrop (hidden by default) -->
@@ -11,19 +12,29 @@
 
   <!-- ─── Left Sidebar (returning) ─────────────────────────────── -->
   <aside data-mobile-filters-target="panel"
-         class="hidden md:flex w-72 bg-[#EFECE6] border-r border-[#D9D5CD] flex-col justify-between p-6 sticky top-0 h-screen
+         data-sidebar-target="sidebar"
+         data-collapsed="false"
+         class="group/sb hidden md:flex w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex-col justify-between p-6 data-[collapsed=true]:p-3 sticky top-0 h-screen transition-[width,padding] duration-200
                 data-[open=true]:flex data-[open=true]:fixed data-[open=true]:inset-y-0 data-[open=true]:left-0 data-[open=true]:z-50 data-[open=true]:w-[88vw] data-[open=true]:max-w-[320px] data-[open=true]:overflow-y-auto">
     <div>
-      <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center justify-between gap-2 group-data-[collapsed=true]/sb:flex-col group-data-[collapsed=true]/sb:gap-2">
         <div class="flex items-center gap-2">
-          <div class="w-9 h-9 rounded-full bg-[#D97757] text-white flex items-center justify-center">
-            <i class="ri-heart-pulse-line text-lg"></i>
+          <div class="w-9 h-9 group-data-[collapsed=true]/sb:w-7 group-data-[collapsed=true]/sb:h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+            <i class="ri-heart-pulse-line text-lg group-data-[collapsed=true]/sb:text-sm"></i>
           </div>
-          <div>
+          <div class="group-data-[collapsed=true]/sb:hidden">
             <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">HosAlivio</h1>
             <div class="text-[10px] text-[#6B665F] italic -mt-0.5">Comfort Care on the Go</div>
           </div>
         </div>
+        <%# Desktop sidebar collapse toggle: matches the in-app patient sidebar. %>
+        <button type="button"
+                data-action="click->sidebar#toggle"
+                title="Toggle sidebar"
+                class="hidden md:flex w-7 h-7 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] items-center justify-center flex-shrink-0 transition">
+          <i class="ri-side-bar-line text-[15px]"></i>
+        </button>
+        <%# Mobile-only close (the filter sheet panel). %>
         <button type="button" data-action="click->mobile-filters#close"
                 class="md:hidden w-8 h-8 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] flex items-center justify-center"
                 title="Close filters">
@@ -31,46 +42,47 @@
         </button>
       </div>
 
-      <p class="mt-6 pb-5 border-b border-[#D9D5CD] text-[13px] text-[#3A3936] leading-relaxed">
+      <p class="mt-6 pb-5 border-b border-[#D9D5CD] text-[13px] text-[#3A3936] leading-relaxed group-data-[collapsed=true]/sb:hidden">
         Gentle, expert hospice care. Covered by Medicare. Always at home.
       </p>
 
-      <%# Section nav: matches the in-app patient sidebar style. Each link
-          jumps the main content to the matching section and (for the
-          benefits links) flips the slide toggle to the right audience. %>
+      <%# Section nav: each row reveals the matching content section in
+          the main column. Sections are hidden until a row is clicked.
+          When the sidebar is collapsed (data-collapsed=true on parent),
+          each row shrinks to just its icon and centers. %>
       <nav class="mt-6 space-y-1">
         <button type="button"
                 data-action="click->welcome#showFamily"
-                class="group w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#D9D5CD] text-left text-[13px] text-[#1D1C1A] transition">
+                title="For families"
+                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#D97757] flex-shrink-0">
             <i class="ri-user-heart-line"></i>
           </span>
-          <span class="flex-1">For families</span>
-          <i class="ri-arrow-right-s-line text-[#6B665F] opacity-0 group-hover:opacity-100 transition"></i>
+          <span class="flex-1 group-data-[collapsed=true]/sb:hidden">For families</span>
         </button>
 
         <button type="button"
                 data-action="click->welcome#showPartner"
-                class="group w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#D9D5CD] text-left text-[13px] text-[#1D1C1A] transition">
+                title="For partners"
+                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#2F6F4E] flex-shrink-0">
             <i class="ri-hospital-line"></i>
           </span>
-          <span class="flex-1">For partners</span>
-          <i class="ri-arrow-right-s-line text-[#6B665F] opacity-0 group-hover:opacity-100 transition"></i>
+          <span class="flex-1 group-data-[collapsed=true]/sb:hidden">For partners</span>
         </button>
 
         <button type="button"
                 data-action="click->welcome#showFaq"
-                class="group w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#D9D5CD] text-left text-[13px] text-[#1D1C1A] transition">
+                title="FAQ"
+                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#6B665F] flex-shrink-0">
             <i class="ri-question-answer-line"></i>
           </span>
-          <span class="flex-1">FAQ</span>
-          <i class="ri-arrow-right-s-line text-[#6B665F] opacity-0 group-hover:opacity-100 transition"></i>
+          <span class="flex-1 group-data-[collapsed=true]/sb:hidden">FAQ</span>
         </button>
       </nav>
 
-      <div class="mt-6 rounded-lg bg-[#FBF9F5] border border-[#D9D5CD] p-3">
+      <div class="mt-6 rounded-lg bg-[#FBF9F5] border border-[#D9D5CD] p-3 group-data-[collapsed=true]/sb:hidden">
         <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#6B665F] mb-1 font-bold">
           <i class="ri-shield-check-line"></i> Private
         </div>
@@ -82,14 +94,18 @@
 
     <div class="space-y-2">
       <%= link_to new_user_session_path,
-            class: "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition" do %>
-        <i class="ri-login-box-line"></i> Sign in
+            title: "Sign in",
+            class: "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition group-data-[collapsed=true]/sb:p-2 group-data-[collapsed=true]/sb:text-base" do %>
+        <i class="ri-login-box-line"></i>
+        <span class="group-data-[collapsed=true]/sb:hidden">Sign in</span>
       <% end %>
       <%= link_to new_partner_path,
-            class: "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] transition" do %>
-        <i class="ri-user-add-line text-[#D97757]"></i> Sign up
+            title: "Sign up your agency",
+            class: "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] transition group-data-[collapsed=true]/sb:p-2 group-data-[collapsed=true]/sb:text-base" do %>
+        <i class="ri-user-add-line text-[#D97757]"></i>
+        <span class="group-data-[collapsed=true]/sb:hidden">Sign up</span>
       <% end %>
-      <div class="text-[10px] text-[#6B665F] text-center leading-relaxed">
+      <div class="text-[10px] text-[#6B665F] text-center leading-relaxed group-data-[collapsed=true]/sb:hidden">
         Families &amp; clinicians sign in.<br>
         Hospice agencies sign up to join.
       </div>
@@ -186,8 +202,10 @@
         path the platform supports. =================================================== %>
 
     <!-- Benefits: slide toggle between patients and partners -->
+    <%# Hidden by default; sidebar nav (welcome#showFamily / showPartner)
+        un-hides this and sets data-audience to the right panel. %>
     <section id="benefits"
-             class="group/aud px-4 md:px-10 pt-2 pb-12 max-w-5xl mx-auto scroll-mt-8"
+             class="hidden group/aud px-4 md:px-10 pt-2 pb-12 max-w-5xl mx-auto scroll-mt-8"
              data-controller="faq-toggle"
              data-audience="family">
 
@@ -298,8 +316,9 @@
     </section>
 
     <!-- FAQ: toggle between Family/Patient and Hospice Partner -->
+    <%# Hidden by default; sidebar nav (welcome#showFaq) un-hides. %>
     <section id="faq"
-             class="px-4 md:px-10 py-12 max-w-3xl mx-auto scroll-mt-8"
+             class="hidden px-4 md:px-10 py-12 max-w-3xl mx-auto scroll-mt-8"
              data-controller="faq-toggle"
              data-audience="family">
       <div class="text-center mb-8">
