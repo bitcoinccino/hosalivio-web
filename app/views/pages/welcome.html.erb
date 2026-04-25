@@ -58,6 +58,16 @@
           each row shrinks to just its icon and centers. %>
       <nav class="mt-6 space-y-1">
         <button type="button"
+                data-action="click->welcome#showHome"
+                title="Home"
+                class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center text-[#1D1C1A] flex-shrink-0">
+            <i class="ri-home-4-line"></i>
+          </span>
+          <span class="flex-1 group-data-[collapsed=true]/sb:hidden">Home</span>
+        </button>
+
+        <button type="button"
                 data-action="click->welcome#showFamily"
                 title="For families"
                 class="hover:bg-[#D9D5CD] w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] transition group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
