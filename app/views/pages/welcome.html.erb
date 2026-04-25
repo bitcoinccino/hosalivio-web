@@ -219,85 +219,114 @@
         The Medicare Hospice Benefit (6-month terminal prognosis) is the only legal
         path the platform supports. =================================================== %>
 
-    <!-- For Patients & Families -->
-    <section class="px-4 md:px-10 pt-2 pb-12 max-w-5xl mx-auto">
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-3">
-          <i class="ri-user-heart-line"></i> For patients &amp; families
-        </div>
-        <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Hospice care that actually picks up at 2 a.m.</h2>
-        <p class="text-[14px] text-[#6B665F] mt-3 max-w-2xl mx-auto leading-relaxed">
-          When the morphine isn't working or you just need someone to hear what's happening,
-          HosAlivio puts your nurse, doctor, chaplain, and aide one message away — voice or text.
-          Covered by the Medicare Hospice Benefit. No out-of-pocket cost.
-        </p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <%
-          family_benefits = [
-            { icon: "ri-mic-line",          title: "Voice notes for breath sounds",
-              body: "Hold the phone near Mom — your nurse hears the exact rasp instead of you trying to describe it." },
-            { icon: "ri-customer-service-2-line", title: "Real humans, named on every reply",
-              body: "Pascal, RN. Dr. Esther. Geoginio, chaplain. You see who picked up your message and when." },
-            { icon: "ri-shield-check-line", title: "Medicare-covered, no bill",
-              body: "If a doctor says six months or less, the Medicare Hospice Benefit covers care, meds, and equipment." },
-            { icon: "ri-home-heart-line",   title: "At home, with your people",
-              body: "Hospice keeps you in your bed, in your room, surrounded by who you want there." }
-          ]
-        %>
-        <% family_benefits.each do |b| %>
-          <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 hover:shadow-sm transition">
-            <div class="w-10 h-10 rounded-full bg-[#FFF3EC] text-[#D97757] flex items-center justify-center mb-3">
-              <i class="<%= b[:icon] %> text-lg"></i>
-            </div>
-            <div class="font-serif text-[16px] text-[#1D1C1A] mb-1"><%= b[:title] %></div>
-            <p class="text-[13px] text-[#3A3936] leading-relaxed"><%= b[:body] %></p>
-          </div>
-        <% end %>
-      </div>
-    </section>
+    <!-- Benefits — slide toggle between patients & partners -->
+    <section class="group/aud px-4 md:px-10 pt-2 pb-12 max-w-5xl mx-auto"
+             data-controller="faq-toggle"
+             data-audience="family">
 
-    <!-- For Hospice Partners -->
-    <section class="px-4 md:px-10 py-12 max-w-5xl mx-auto bg-white border-t border-b border-[#EFECE6]">
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#2F6F4E] font-bold mb-3">
-          <i class="ri-hospital-line"></i> For hospice partners
+      <%# Slide toggle: animated background pill slides between the two
+          options as data-audience flips. Track is fixed-width (300px)
+          so the indicator math is exact. %>
+      <div class="flex justify-center mb-6">
+        <div class="relative inline-flex w-[300px] rounded-full bg-[#FBF9F5] border border-[#EFECE6] p-1 text-[13px]">
+          <span aria-hidden="true"
+                class="absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-[#1D1C1A] shadow-sm transition-transform duration-300 ease-out
+                       group-data-[audience=partner]/aud:translate-x-full"></span>
+          <button type="button"
+                  data-action="click->faq-toggle#show"
+                  data-audience="family"
+                  class="relative z-10 flex-1 px-4 py-2 rounded-full font-medium transition-colors
+                         group-data-[audience=family]/aud:text-white
+                         group-data-[audience=partner]/aud:text-[#6B665F]
+                         group-data-[audience=partner]/aud:hover:text-[#1D1C1A]">
+            <i class="ri-user-heart-line mr-1"></i> For families
+          </button>
+          <button type="button"
+                  data-action="click->faq-toggle#show"
+                  data-audience="partner"
+                  class="relative z-10 flex-1 px-4 py-2 rounded-full font-medium transition-colors
+                         group-data-[audience=partner]/aud:text-white
+                         group-data-[audience=family]/aud:text-[#6B665F]
+                         group-data-[audience=family]/aud:hover:text-[#1D1C1A]">
+            <i class="ri-hospital-line mr-1"></i> For partners
+          </button>
         </div>
-        <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Run your agency without burning out your nurses.</h2>
-        <p class="text-[14px] text-[#6B665F] mt-3 max-w-2xl mx-auto leading-relaxed">
-          HosAlivio handles the front door so your clinicians focus on the bedside.
-          AI triages every family message, routes to the right human, drafts CMS-compliant
-          documentation, and keeps the Notice of Election clock from running out.
-        </p>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <%
-          partner_benefits = [
-            { icon: "ri-customer-service-2-line", title: "AI front-door triage 24/7",
-              body: "HosAlivio answers family chats in under a minute, classifies urgency, and only pages your on-call when it actually has to." },
-            { icon: "ri-file-shield-2-line",      title: "Audit-proof charting on autopilot",
-              body: "Visit narratives, pre-admit eval JSON, and recert justifications generated in CMS-compliant phrasing — survey-ready." },
-            { icon: "ri-time-line",               title: "Notice of Election deadlines, defended",
-              body: "5-day NOE clock auto-tracked the moment the MD certifies. Insurance agent files before the window closes." },
-            { icon: "ri-stack-line",              title: "Plays nice with your stack",
-              body: "Hooks into Homecare Homebase, Netsmart, MatrixCare, and WellSky — or runs standalone if you want." }
-          ]
-        %>
-        <% partner_benefits.each do |b| %>
-          <div class="rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] p-5 hover:shadow-sm transition">
-            <div class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] text-[#2F6F4E] flex items-center justify-center mb-3">
-              <i class="<%= b[:icon] %> text-lg"></i>
+
+      <%# Family panel — shown when audience=family, hidden when partner. %>
+      <div class="group-data-[audience=partner]/aud:hidden">
+        <div class="text-center mb-8">
+          <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Hospice care that actually picks up at 2 a.m.</h2>
+          <p class="text-[14px] text-[#6B665F] mt-3 max-w-2xl mx-auto leading-relaxed">
+            When the morphine isn't working or you just need someone to hear what's happening,
+            HosAlivio puts your nurse, doctor, chaplain, and aide one message away — voice or text.
+            Covered by the Medicare Hospice Benefit. No out-of-pocket cost.
+          </p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <%
+            family_benefits = [
+              { icon: "ri-mic-line",          title: "Voice notes for breath sounds",
+                body: "Hold the phone near Mom — your nurse hears the exact rasp instead of you trying to describe it." },
+              { icon: "ri-customer-service-2-line", title: "Real humans, named on every reply",
+                body: "Pascal, RN. Dr. Esther. Geoginio, chaplain. You see who picked up your message and when." },
+              { icon: "ri-shield-check-line", title: "Medicare-covered, no bill",
+                body: "If a doctor says six months or less, the Medicare Hospice Benefit covers care, meds, and equipment." },
+              { icon: "ri-home-heart-line",   title: "At home, with your people",
+                body: "Hospice keeps you in your bed, in your room, surrounded by who you want there." }
+            ]
+          %>
+          <% family_benefits.each do |b| %>
+            <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 hover:shadow-sm transition">
+              <div class="w-10 h-10 rounded-full bg-[#FFF3EC] text-[#D97757] flex items-center justify-center mb-3">
+                <i class="<%= b[:icon] %> text-lg"></i>
+              </div>
+              <div class="font-serif text-[16px] text-[#1D1C1A] mb-1"><%= b[:title] %></div>
+              <p class="text-[13px] text-[#3A3936] leading-relaxed"><%= b[:body] %></p>
             </div>
-            <div class="font-serif text-[16px] text-[#1D1C1A] mb-1"><%= b[:title] %></div>
-            <p class="text-[13px] text-[#3A3936] leading-relaxed"><%= b[:body] %></p>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
       </div>
-      <div class="text-center mt-8">
-        <%= link_to new_partner_path,
-              class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
-          <i class="ri-user-add-line"></i> Sign up your agency
-        <% end %>
+
+      <%# Partner panel — shown when audience=partner. %>
+      <div class="hidden group-data-[audience=partner]/aud:block">
+        <div class="text-center mb-8">
+          <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Run your agency without burning out your nurses.</h2>
+          <p class="text-[14px] text-[#6B665F] mt-3 max-w-2xl mx-auto leading-relaxed">
+            HosAlivio handles the front door so your clinicians focus on the bedside.
+            AI triages every family message, routes to the right human, drafts CMS-compliant
+            documentation, and keeps the Notice of Election clock from running out.
+          </p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <%
+            partner_benefits = [
+              { icon: "ri-customer-service-2-line", title: "AI front-door triage 24/7",
+                body: "HosAlivio answers family chats in under a minute, classifies urgency, and only pages your on-call when it actually has to." },
+              { icon: "ri-file-shield-2-line",      title: "Audit-proof charting on autopilot",
+                body: "Visit narratives, pre-admit eval JSON, and recert justifications generated in CMS-compliant phrasing — survey-ready." },
+              { icon: "ri-time-line",               title: "Notice of Election deadlines, defended",
+                body: "5-day NOE clock auto-tracked the moment the MD certifies. Insurance agent files before the window closes." },
+              { icon: "ri-stack-line",              title: "Plays nice with your stack",
+                body: "Hooks into Homecare Homebase, Netsmart, MatrixCare, and WellSky — or runs standalone if you want." }
+            ]
+          %>
+          <% partner_benefits.each do |b| %>
+            <div class="rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] p-5 hover:shadow-sm transition">
+              <div class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] text-[#2F6F4E] flex items-center justify-center mb-3">
+                <i class="<%= b[:icon] %> text-lg"></i>
+              </div>
+              <div class="font-serif text-[16px] text-[#1D1C1A] mb-1"><%= b[:title] %></div>
+              <p class="text-[13px] text-[#3A3936] leading-relaxed"><%= b[:body] %></p>
+            </div>
+          <% end %>
+        </div>
+        <div class="text-center mt-8">
+          <%= link_to new_partner_path,
+                class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
+            <i class="ri-user-add-line"></i> Sign up your agency
+          <% end %>
+        </div>
       </div>
     </section>
 
