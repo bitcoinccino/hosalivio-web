@@ -119,7 +119,14 @@
             class: "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition" do %>
         <i class="ri-login-box-line"></i> Sign in
       <% end %>
-      <div class="text-[10px] text-[#6B665F] text-center">For families already in care</div>
+      <%= link_to new_partner_path,
+            class: "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] transition" do %>
+        <i class="ri-user-add-line text-[#D97757]"></i> Sign up
+      <% end %>
+      <div class="text-[10px] text-[#6B665F] text-center leading-relaxed">
+        Families &amp; clinicians sign in.<br>
+        Hospice agencies sign up to join.
+      </div>
     </div>
   </aside>
 
@@ -142,14 +149,22 @@
               class: "inline-flex items-center gap-1 text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5]" do %>
           <i class="ri-login-box-line"></i> Sign in
         <% end %>
+        <%= link_to new_partner_path,
+              class: "inline-flex items-center gap-1 text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#D97757] text-white" do %>
+          <i class="ri-user-add-line"></i> Sign up
+        <% end %>
       </div>
     </div>
 
-    <!-- Top-right sign-in bar (desktop only) -->
-    <div class="hidden md:flex justify-end px-10 pt-4">
+    <!-- Top-right sign-in / sign-up bar (desktop only) -->
+    <div class="hidden md:flex justify-end items-center gap-2 px-10 pt-4">
       <%= link_to new_user_session_path,
             class: "inline-flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-full bg-[#1D1C1A] text-[#FBF9F5] hover:bg-[#3A3936] transition" do %>
         <i class="ri-login-box-line"></i> Sign in
+      <% end %>
+      <%= link_to new_partner_path,
+            class: "inline-flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b] transition" do %>
+        <i class="ri-user-add-line"></i> Sign up
       <% end %>
     </div>
 
