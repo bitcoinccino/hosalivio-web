@@ -45,6 +45,11 @@ module Api
 
           decision = HosalivioBrain.classify_clinician_message(note: note, requester: @user)
           note.clinician_only = (decision[:audience] == "team")
+          # If the brain rewrote the body (e.g. 'let Carlos know that …'
+          # → 'I just left, she is resting comfortably'), use the cleaned
+          # version so Carlos sees a direct DM-style note from Pascal,
+          # not Pascal's instruction-to-HosAlivio prefix.
+          note.body = decision[:body_rewrite] if decision[:body_rewrite].present?
           note.audio.attach(audio) if audio.present?
           note.save!
 

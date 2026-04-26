@@ -272,15 +272,18 @@ class HosalivioBrain
       Output ONLY a JSON object (no preamble, no markdown fences) with these keys:
 
       {
-        "audience": one of ["family", "team"],
-        "action":   one of #{CLINICIAN_ACTIONS.inspect},
-        "ack":      short confirmation string OR null,
-        "reasoning": one sentence
+        "audience":   one of ["family", "team"],
+        "action":     one of #{CLINICIAN_ACTIONS.inspect},
+        "body_rewrite": cleaned message body, or null,
+        "ack":        short confirmation string OR null,
+        "reasoning":  one sentence
       }
 
       audience
-        family : the clinician is updating the family member directly
-                 ('I am on my way', 'she is resting', 'call me if')
+        family : the clinician is updating the family member, or asking
+                 HosAlivio to relay something to them
+                 ('let Carlos know …', 'tell the family …', 'I am on my way',
+                  'she is resting', 'call me if')
         team   : coordination among clinicians, addressed to a teammate, or
                  a delegation request to HosAlivio. Default to team when
                  you are not certain.
@@ -294,6 +297,29 @@ class HosalivioBrain
         noe_file             : file the Notice of Election with insurance
         no_action            : the clinician is not asking for anything to
                                be dispatched. Most messages are no_action.
+
+      body_rewrite
+        Use this ONLY when the clinician phrased their message as an
+        instruction TO YOU rather than as the message itself. Strip the
+        relay prefix and rewrite as a direct first-person note from the
+        clinician. If the original message already reads cleanly, leave
+        body_rewrite null even if you classified it as audience=family.
+
+        Style rules for the rewrite:
+          - Plain English, conversational, first-person.
+          - Use commas, periods, colons, or parentheses for clause
+            separation. NEVER use em-dashes (—) or en-dashes (–).
+          - Keep the clinician's voice. Do not add new information.
+
+        Examples:
+          "let Carlos know that I just left Maria and she is resting"
+            → "I just left Maria, she is resting comfortably."
+          "tell the family the morphine is on the way"
+            → "Morphine is on the way."
+          "Just left Maria, she is resting comfortably."
+            → null (already clean, no rewrite needed)
+          "ping the team that I am running 15 min late"
+            → null (stays a team note, no rewrite needed)
 
       ack
         Required when action != no_action. Short, calm, names the role you
@@ -367,12 +393,18 @@ class HosalivioBrain
     audience = AUDIENCES.include?(parsed[:audience]) ? parsed[:audience] : "team"
     action   = CLINICIAN_ACTIONS.include?(parsed[:action]) ? parsed[:action] : "no_action"
     ack      = action == "no_action" ? nil : parsed[:ack].to_s.strip.presence
+    rewrite  = parsed[:body_rewrite].to_s.strip
+    rewrite  = nil if rewrite.empty? || rewrite.casecmp("null").zero?
+    # Belt-and-suspenders: scrub em/en-dashes the LLM might slip in
+    # despite the prompt rule. Replace with comma + space.
+    rewrite  = rewrite.gsub(/\s*[—–]\s*/, ", ") if rewrite
     {
-      audience:  audience,
-      action:    action,
-      ack:       ack,
-      reasoning: parsed[:reasoning].to_s.strip,
-      source:    source
+      audience:     audience,
+      action:       action,
+      ack:          ack,
+      body_rewrite: rewrite,
+      reasoning:    parsed[:reasoning].to_s.strip,
+      source:       source
     }
   end
 
@@ -389,11 +421,12 @@ class HosalivioBrain
       end
     end
     {
-      audience:  audience,
-      action:    action_intent || "no_action",
-      ack:       action_intent ? "Routing your request to the right team member." : nil,
-      reasoning: "Regex fallback (no LLM configured).",
-      source:    "fallback:regex"
+      audience:     audience,
+      action:       action_intent || "no_action",
+      ack:          action_intent ? "Routing your request to the right team member." : nil,
+      body_rewrite: nil,
+      reasoning:    "Regex fallback (no LLM configured).",
+      source:       "fallback:regex"
     }
   end
 
