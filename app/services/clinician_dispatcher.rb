@@ -52,6 +52,29 @@ class ClinicianDispatcher
 
   Result = Struct.new(:dispatched, :intent, :reason, :note_id, keyword_init: true)
 
+  # Brain-driven entry point. Takes a HosalivioBrain.classify_clinician_message
+  # result and dispatches the matching agent action.
+  def self.execute(note:, requester:, action:, ack: nil)
+    return Result.new(dispatched: false, reason: "no_action") if action.blank? || action == "no_action"
+    d = new(note, requester)
+    intent = action.to_sym
+    case intent
+    when :pharmacy_comfort_kit, :pharmacy_refill
+      d.send(:dispatch_pharmacy, intent, ack: ack)
+    when :dme_order
+      d.send(:dispatch_dme, ack: ack)
+    when :chaplain_request
+      d.send(:dispatch_role_handoff, "chaplain", "chaplain_request", ack: ack)
+    when :sw_request
+      d.send(:dispatch_role_handoff, "social_worker", "sw_request", ack: ack)
+    when :noe_file
+      d.send(:dispatch_role_handoff, "insurance", "noe_file", ack: ack)
+    else
+      return Result.new(dispatched: false, reason: "unknown_action:#{action}")
+    end
+    Result.new(dispatched: true, intent: action.to_s)
+  end
+
   def self.call(note:, requester:)
     new(note, requester).call
   end
@@ -99,7 +122,7 @@ class ClinicianDispatcher
 
   # Pharmacy intents materialize the actual PharmacyDelivery record so
   # the green 'Pharmacy Dispatched' banner shows up in the audit trail.
-  def dispatch_pharmacy(intent)
+  def dispatch_pharmacy(intent, ack: nil)
     kind = intent == :pharmacy_comfort_kit ? "comfort_kit" : "refill"
     AgentTriager.new(role: "pharmacy", agency: @agency, depth: 1).apply({
       action:    "write_pharm_delivery",
@@ -107,25 +130,28 @@ class ClinicianDispatcher
       reasoning: "Dispatched by #{@requester.full_name} via team chat",
       source:    "dispatch:clinician"
     })
-    post_ack("Pharmacy notified, #{kind.tr('_', ' ')} on the way.")
+    post_ack(ack || "Pharmacy notified, #{kind.tr('_', ' ')} on the way.")
     Result.new(dispatched: true, intent: intent.to_s)
   end
 
-  def dispatch_dme
+  def dispatch_dme(ack: nil)
     AgentTriager.new(role: "dme", agency: @agency, depth: 1).apply({
       action:    "write_dme_order",
       params:    { patient_id: @patient.id, equipment_type: "other", quantity: 1, urgency: "urgent" },
       reasoning: "Dispatched by #{@requester.full_name} via team chat",
       source:    "dispatch:clinician"
     })
-    post_ack("DME notified, equipment request on the way.")
+    post_ack(ack || "DME notified, equipment request on the way.")
     Result.new(dispatched: true, intent: :dme_order.to_s)
   end
 
   # Role handoffs that don't have a one-line action yet (chaplain visits,
   # SW meetings, NOE filings) just emit the handoff event + an ack note
   # so the right human role sees it on the Mission Stage queue.
-  def dispatch_role_handoff(role, intent_label)
+  def dispatch_role_handoff(role, intent_label, ack: nil)
+    Current.agency           ||= @agency
+    Current.agent_id         ||= "admissions"
+    Current.agent_session_id ||= "hosalivio-dispatch-#{SecureRandom.hex(4)}"
     AgentEvent.create!(
       agency:           @agency,
       agent_id:         "admissions",
@@ -136,10 +162,10 @@ class ClinicianDispatcher
                           requested_by: @requester.full_name },
       happened_at:      Time.current
     )
-    label_map = { "chaplain" => "Chaplain visit requested",
-                  "social_worker" => "Social work request sent",
-                  "insurance" => "NOE filing queued" }
-    post_ack(label_map[role] || "Routed to #{role}.")
+    label_map = { "chaplain" => "Chaplain visit requested.",
+                  "social_worker" => "Social work request sent.",
+                  "insurance" => "NOE filing queued." }
+    post_ack(ack || label_map[role] || "Routed to #{role}.")
     Result.new(dispatched: true, intent: intent_label)
   end
 

@@ -49,6 +49,16 @@ class HosalivioBrain
       new(note).call
     end
 
+    # Reads a clinician-authored message and decides:
+    #   audience  → "family" or "team" (sets clinician_only)
+    #   action    → which agent to dispatch (or "no_action")
+    #   ack       → short HosAlivio confirmation to post in the team
+    #               trail when an action fires
+    # Synchronous and never raises (returns a fallback shape).
+    def classify_clinician_message(note:, requester:)
+      new(note).classify_for(requester)
+    end
+
     private
 
     def valid_key?(k)
@@ -77,6 +87,24 @@ class HosalivioBrain
       end
     end
     fallback(reason: attempts.empty? ? "no_providers_configured" : attempts.join(","))
+  end
+
+  # Clinician-message classification path. Reuses Claude/OpenAI chain
+  # but with a different prompt + return shape. Falls back to a regex
+  # classifier when no LLM is configured so dev keeps working.
+  def classify_for(requester)
+    @requester = requester
+    PROVIDER_CHAIN.each do |provider|
+      next unless self.class.enabled?(provider)
+      begin
+        raw    = (provider == :claude) ? request_claude_clinician : request_openai_clinician
+        parsed = parse(raw).transform_keys(&:to_sym)
+        return sanitize_clinician(parsed, "claude:#{CLAUDE_MODEL}".sub("claude", provider.to_s))
+      rescue => e
+        Rails.logger.warn("[HosalivioBrain.classify_for:#{provider}] #{e.class}: #{e.message}")
+      end
+    end
+    classify_for_regex_fallback
   end
 
   private
@@ -221,6 +249,152 @@ class HosalivioBrain
       FAMILY MESSAGE (source: #{@note.source}, family-declared urgency: #{@note.urgency})
         #{@note.body}
     USR
+  end
+
+  # ── Clinician message classifier (LLM) ────────────────────────────
+
+  CLINICIAN_ACTIONS = %w[
+    no_action
+    pharmacy_comfort_kit
+    pharmacy_refill
+    chaplain_request
+    sw_request
+    dme_order
+    noe_file
+  ].freeze
+
+  def clinician_system_prompt
+    <<~SYS
+      You are HosAlivio, a hospice care coordination AI. You sit between the
+      clinical team and the family inside the patient chat. A clinician just
+      typed a message. Your job: classify what to do.
+
+      Output ONLY a JSON object (no preamble, no markdown fences) with these keys:
+
+      {
+        "audience": one of ["family", "team"],
+        "action":   one of #{CLINICIAN_ACTIONS.inspect},
+        "ack":      short confirmation string OR null,
+        "reasoning": one sentence
+      }
+
+      audience
+        family : the clinician is updating the family member directly
+                 ('I am on my way', 'she is resting', 'call me if')
+        team   : coordination among clinicians, addressed to a teammate, or
+                 a delegation request to HosAlivio. Default to team when
+                 you are not certain.
+
+      action
+        pharmacy_comfort_kit : new comfort kit for the patient
+        pharmacy_refill      : refill an existing PRN medication
+        chaplain_request     : send the chaplain to the patient
+        sw_request           : send the social worker
+        dme_order            : equipment (hospital bed, oxygen, walker, etc.)
+        noe_file             : file the Notice of Election with insurance
+        no_action            : the clinician is not asking for anything to
+                               be dispatched. Most messages are no_action.
+
+      ack
+        Required when action != no_action. Short, calm, names the role you
+        notified. e.g. "Pharmacy notified, refill on the way." or
+        "Chaplain handoff queued for tomorrow."
+        Use null when action is no_action.
+
+      reasoning
+        One sentence for the audit trail explaining your choices.
+    SYS
+  end
+
+  def clinician_user_prompt
+    <<~USR
+      PATIENT
+        #{@patient.full_name} (#{@patient.mrn})
+        Diagnosis: #{@patient.primary_diagnosis}
+        Code status: #{@patient.code_status}
+        Assigned RN: #{@patient.assigned_rn&.full_name || "(unassigned)"}
+        Assigned MD: #{@patient.assigned_md&.full_name || "(unassigned)"}
+        Chaplain:    #{@patient.assigned_chaplain&.full_name || "(unassigned)"}
+        Social worker: #{@patient.assigned_sw&.full_name || "(unassigned)"}
+
+      CLINICIAN (sender)
+        #{@requester&.full_name} (#{(@requester&.role_names || []).join(', ')})
+
+      MESSAGE
+        #{@note.body}
+    USR
+  end
+
+  def request_claude_clinician
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = {
+      model:      CLAUDE_MODEL,
+      max_tokens: 400,
+      system:     [{ type: "text", text: clinician_system_prompt }],
+      messages:   [{ role: "user", content: clinician_user_prompt }]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
+    raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  def request_openai_clinician
+    uri = URI(OPENAI_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req.body = {
+      model: OPENAI_MODEL,
+      max_tokens: 400,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: clinician_system_prompt },
+        { role: "user",   content: clinician_user_prompt }
+      ]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
+    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
+
+  AUDIENCES = %w[family team].freeze
+
+  def sanitize_clinician(parsed, source)
+    audience = AUDIENCES.include?(parsed[:audience]) ? parsed[:audience] : "team"
+    action   = CLINICIAN_ACTIONS.include?(parsed[:action]) ? parsed[:action] : "no_action"
+    ack      = action == "no_action" ? nil : parsed[:ack].to_s.strip.presence
+    {
+      audience:  audience,
+      action:    action,
+      ack:       ack,
+      reasoning: parsed[:reasoning].to_s.strip,
+      source:    source
+    }
+  end
+
+  # Last-resort regex classifier when no LLM is configured. Matches the
+  # ClinicianDispatcher heuristics so dev still works without API keys.
+  def classify_for_regex_fallback
+    body = @note.body.to_s
+    audience = ClinicianDispatcher::FAMILY_UPDATE_RE.match?(body) ? "family" : "team"
+    action_intent = nil
+    ClinicianDispatcher::INTENT_MAP.each do |pattern, intent|
+      if body.match?(pattern)
+        action_intent = intent.to_s
+        break
+      end
+    end
+    {
+      audience:  audience,
+      action:    action_intent || "no_action",
+      ack:       action_intent ? "Routing your request to the right team member." : nil,
+      reasoning: "Regex fallback (no LLM configured).",
+      source:    "fallback:regex"
+    }
   end
 
   # Regex fallback. Same return shape so HosalivioTriager doesn't know the difference.
