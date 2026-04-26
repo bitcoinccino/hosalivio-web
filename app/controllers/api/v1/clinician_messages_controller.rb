@@ -29,6 +29,12 @@ module Api
           Current.agent_session_id = "clin-#{SecureRandom.hex(3)}"
 
           internal = ActiveModel::Type::Boolean.new.cast(params[:internal])
+          # Delegation messages ('@HosAlivio please…') are internal
+          # coordination, never family-facing. Auto-mark clinician_only
+          # regardless of the user's visibility toggle so Carlos doesn't
+          # see Pascal's '@HosAlivio please send a comfort kit refill'
+          # in his family chat.
+          internal ||= ClinicianDispatcher.mentions_hosalivio?(body)
           note = patient.notes.build(
             agency:         patient.agency,
             author_user:    @user,
