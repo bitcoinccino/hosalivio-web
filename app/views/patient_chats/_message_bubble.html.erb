@@ -138,13 +138,25 @@
     <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= in_patient_zone(note.created_at, @patient) %></div>
   </div>
 <% elsif note.clinician_only? %>
-  <%# Clinician-only audit log — collapsed by default. Pascal expands when
-      he wants to audit the AI reasoning, otherwise it stays out of his way. %>
+  <%# Clinician-only audit log — collapsed by default. Header label
+      depends on note.audit_kind so chart entries read differently
+      from rationale prose, and the admissions triage row gets its
+      own framing. %>
+  <%
+    role_label = role.tr("_", " ").upcase
+    audit_summary, audit_icon =
+      case note.audit_kind
+      when :triage    then ["HosAlivio · triage",                  "ri-radar-line"]
+      when :chart     then ["#{role_label} chart entry",            "ri-file-text-line"]
+      when :rationale then ["Why the #{role_label} agent acted",    "ri-lightbulb-line"]
+      else                  ["Internal · #{role.tr('_', ' ')}",     "ri-file-list-3-line"]
+      end
+  %>
   <details class="group max-w-3xl">
     <summary class="cursor-pointer list-none flex items-center gap-2 py-1.5 px-3 text-[11px] text-[#6B665F] hover:bg-[#FBF9F5] rounded-md transition [&::-webkit-details-marker]:hidden">
       <i class="ri-arrow-right-s-line group-open:rotate-90 transition-transform"></i>
-      <i class="ri-file-list-3-line text-[#B9B4AB]"></i>
-      <span class="uppercase tracking-[0.18em] text-[9px] font-bold">Internal · <%= role.tr("_", " ") %> trace</span>
+      <i class="<%= audit_icon %> text-[#B9B4AB]"></i>
+      <span class="uppercase tracking-[0.18em] text-[9px] font-bold"><%= audit_summary %></span>
       <% if note.urgency_crisis? %>
         <span title="Contains a CRISIS-flagged trace" class="inline-flex items-center gap-1 text-[9px] font-bold text-[#C1403A] uppercase tracking-wider">
           <span class="w-1.5 h-1.5 rounded-full bg-[#C1403A] animate-pulse"></span>
@@ -159,7 +171,7 @@
       <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto"><%= in_patient_zone(note.created_at, @patient) %></span>
     </summary>
     <div class="ml-6 mt-1 mb-2 py-2 px-3 bg-[#FBF9F5] border-l-2 border-[#D9D5CD] rounded-r-md">
-      <div class="text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= render_audit_body(note.body) %></div>
+      <div class="text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= render_audit_body(note.display_audit_body) %></div>
     </div>
   </details>
 <% elsif is_system %>

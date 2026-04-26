@@ -73,6 +73,28 @@ class Note < ApplicationRecord
   # Role sub-label shown in parentheses under the speaker's name.
   # For family it's their relationship to the patient ("Son of Maria");
   # for clinicians it's the clinical role ("RN", "MD"); AI is flagged.
+  # Classifies a clinician_only note into a render-shape:
+  #   :action     — '[ACTION:…]' marker; rendered as a green success banner
+  #   :triage     — admissions intent + 'Notified:' line; rendered as a triage row
+  #   :rationale  — '<Role> rationale\n\n<why>' from log_audit_note
+  #   :chart      — anything else; treated as a clinical chart entry
+  RATIONALE_BODY_RE = /\A[A-Z][\w ]+ rationale\n\n/.freeze
+  def audit_kind
+    return :action    if action_banner?
+    txt = body.to_s
+    return :triage    if txt.lines.any? { |l| l.start_with?("Notified:") }
+    return :rationale if txt.match?(RATIONALE_BODY_RE)
+    :chart
+  end
+
+  # Strip the redundant '<Role> rationale\n\n' header from a rationale
+  # note so we don't render the same label twice (once in the audit
+  # summary header, once at the top of the body block).
+  def display_audit_body
+    return body unless audit_kind == :rationale
+    body.to_s.sub(RATIONALE_BODY_RE, "")
+  end
+
   # Returns { type:, label:, detail: } when this note is an action banner,
   # nil otherwise. Body convention: "[ACTION:pharmacy_dispatched] Comfort Kit Refill".
   def action_payload
@@ -121,6 +143,7 @@ class Note < ApplicationRecord
         ai_authored:       ai_authored?,
         clinician_only:    clinician_only,        # JS filters family viewers
         action_payload:    action_payload,        # nil unless body is "[ACTION:...]"
+        audit_kind:        clinician_only ? audit_kind.to_s : nil,
         urgency:           urgency,
         body:              body,                  # decrypted for the browser
         audio_url:         audio_url,             # nil unless an audio recording is attached

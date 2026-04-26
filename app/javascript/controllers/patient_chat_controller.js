@@ -452,20 +452,41 @@ export default class extends Controller {
 
   _appendAuditLog(n) {
     const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
-    const role = String(n.author_role || "").replace(/_/g, " ")
+    const roleLabel = String(n.author_role || "").replace(/_/g, " ").toUpperCase()
     const urgencyPill = n.urgency === "crisis"
       ? `<span class="inline-flex items-center gap-1 text-[9px] font-bold text-[#C1403A] uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-[#C1403A] animate-pulse"></span>crisis</span>`
       : n.urgency === "urgent"
       ? `<span class="inline-flex items-center gap-1 text-[9px] font-bold text-[#D97757] uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-[#D97757]"></span>urgent</span>`
       : ""
 
+    // Pick the summary label + icon based on the audit_kind classifier
+    // (mirrors Note#audit_kind on the server). Also strip the redundant
+    // 'Role rationale\n\n' prefix from the body when audit_kind=rationale.
+    const kind = n.audit_kind || "chart"
+    let label, icon, body = n.body || ""
+    switch (kind) {
+      case "triage":
+        label = "HosAlivio · triage"
+        icon  = "ri-radar-line"
+        break
+      case "rationale":
+        label = `Why the ${roleLabel} agent acted`
+        icon  = "ri-lightbulb-line"
+        body  = body.replace(/^[A-Z][\w ]+ rationale\n\n/, "")
+        break
+      case "chart":
+      default:
+        label = `${roleLabel} chart entry`
+        icon  = "ri-file-text-line"
+    }
+
     const det = document.createElement("details")
     det.className = "group max-w-3xl opacity-0 transition-opacity duration-300"
     det.innerHTML = `
       <summary class="cursor-pointer list-none flex items-center gap-2 py-1.5 px-3 text-[11px] text-[#6B665F] hover:bg-[#FBF9F5] rounded-md transition [&::-webkit-details-marker]:hidden">
         <i class="ri-arrow-right-s-line group-open:rotate-90 transition-transform"></i>
-        <i class="ri-file-list-3-line text-[#B9B4AB]"></i>
-        <span class="uppercase tracking-[0.18em] text-[9px] font-bold">Internal · ${role} trace</span>
+        <i class="${icon} text-[#B9B4AB]"></i>
+        <span class="uppercase tracking-[0.18em] text-[9px] font-bold">${label}</span>
         ${urgencyPill}
         <span class="text-[10px] text-[#B9B4AB] font-mono ml-auto">${time}</span>
       </summary>
@@ -473,10 +494,8 @@ export default class extends Controller {
         <div data-role="body" class="text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"></div>
       </div>
     `
-    // Mirror the server-side render_audit_body helper: escape HTML,
-    // then turn @Name tokens into clickable mention buttons.
     const bodyEl = det.querySelector('[data-role="body"]')
-    bodyEl.innerHTML = this._renderAuditBodyHTML(n.body)
+    bodyEl.innerHTML = this._renderAuditBodyHTML(body)
     this.feedTarget.appendChild(det)
     requestAnimationFrame(() => { det.style.opacity = "1" })
     this._scrollToBottom()
