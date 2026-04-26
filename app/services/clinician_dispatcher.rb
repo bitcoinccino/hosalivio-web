@@ -24,10 +24,31 @@ class ClinicianDispatcher
     [/\b(comfort\s*kit|comfort-kit)\b/i,                       :pharmacy_comfort_kit],
     [/\b(refill|out\s*of|running\s*low|need\s*more)\b/i,       :pharmacy_refill],
     [/\b(chaplain|spiritual)\b/i,                              :chaplain_request],
-    [/\b(social\s*work(er)?|sw\b|psychosocial)\b/i,            :sw_request],
+    [/\b(social\s*work(er)?|psychosocial)\b/i,                 :sw_request],
     [/\b(dme|equipment|hospital\s*bed|wheelchair|walker|oxygen|commode)\b/i, :dme_order],
     [/\b(noe|notice\s*of\s*election|insurance\s*file)\b/i,     :noe_file]
   ].freeze
+
+  # Phrases that read like a clinician update for the family member
+  # (status, ETA, reassurance). Anything matching auto-promotes the
+  # message visibility to family-visible. Default is team-only.
+  FAMILY_UPDATE_RE = /\b(i'?m on my way|on my way|i'?ll be (there|over)|coming over|arriving|just left|stopping by|see you in|ETA \d|she'?s resting|he'?s resting|comfortable now|sleeping peacefully|all calm|everything is calm|doing okay now|call me if|reach out if|let me know if anything changes)\b/i
+
+  # Returns :family or :team. Default :team — most clinician chatter
+  # is coordination. Auto-promotes to :family on phrasing patterns
+  # that read like an update FOR the family member.
+  def self.classify_audience(body)
+    return :family if body.to_s.match?(FAMILY_UPDATE_RE)
+    :team
+  end
+
+  # Should this clinician message wake an agent? Either an explicit
+  # @HosAlivio mention OR an action verb (refill, dispatch, equipment,
+  # NOE) shows up in the body.
+  def self.should_dispatch?(body)
+    return true if body.to_s.match?(MENTION_RE)
+    INTENT_MAP.any? { |pattern, _| body.to_s.match?(pattern) }
+  end
 
   Result = Struct.new(:dispatched, :intent, :reason, :note_id, keyword_init: true)
 

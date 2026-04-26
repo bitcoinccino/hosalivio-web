@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
-  static targets = ["input", "feed", "status", "quickActions", "mic", "audienceToggle", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer"]
+  static targets = ["input", "feed", "status", "quickActions", "mic", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer"]
   static values  = {
     patientId: String,
     lang:      { type: String, default: "en-US" },
@@ -139,22 +139,9 @@ export default class extends Controller {
     this.placeholderOverlayTarget.classList.toggle("hidden", this.inputTarget.value.length > 0)
   }
 
-  // Audience toggle: clinicians flip between family-facing and team-only.
-  // The button + the wrapping form both carry data-audience so Tailwind
-  // data-* variants restyle the input as the audience changes (warm orange
-  // for family, dashed grey for the team-only "side channel").
-  toggleAudience() {
-    if (!this.hasAudienceToggleTarget) return
-    const next = this.audienceToggleTarget.dataset.audience === "team" ? "family" : "team"
-    this.audienceToggleTarget.dataset.audience = next
-    if (this.hasFormTarget) this.formTarget.dataset.audience = next
-    // Placeholder text swaps via CSS (group-data-[audience=team]/audience:*)
-    // so we don't touch the input here — keeps the styled overlay in sync.
-  }
-
-  _isInternal() {
-    return this.hasAudienceToggleTarget && this.audienceToggleTarget.dataset.audience === "team"
-  }
+  // No more audience toggle. HosAlivio classifies every clinician
+  // message server-side and decides clinician_only vs family-visible.
+  // Old toggleAudience() / _isInternal() helpers removed.
 
   quickAction(event) {
     const btn = event.currentTarget
@@ -251,7 +238,6 @@ export default class extends Controller {
     // post to /clinician_messages (saved as themselves with their real name).
     const isFamily = document.body.dataset.viewerFamily === "true"
     const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
-    const internal = this._isInternal()
 
     // Clear input + clear pending audio + schedule typing dots BEFORE
     // the await so feedback is immediate. The 800ms delay lets the user's
@@ -263,7 +249,7 @@ export default class extends Controller {
     const wasVoice    = this._usedVoice || !!audio
     this._currentUrgency = "normal"
     this._usedVoice = false
-    if (isFamily && !internal) this._scheduleTyping(800)
+    if (isFamily) this._scheduleTyping(800)
 
     let resp
     if (audio) {
@@ -273,7 +259,6 @@ export default class extends Controller {
       fd.append("text",       text)
       fd.append("urgency",    sentUrgency)
       fd.append("source",     "voice")
-      fd.append("internal",   internal ? "true" : "false")
       fd.append("audio",      audio, audio.name)
       resp = await fetch(url, {
         method:  "POST",
@@ -293,8 +278,7 @@ export default class extends Controller {
           patient_id: this.patientIdValue,
           text:       text,
           urgency:    sentUrgency,
-          source:     wasVoice ? "voice" : "text",
-          internal:   internal
+          source:     wasVoice ? "voice" : "text"
         })
       })
     }

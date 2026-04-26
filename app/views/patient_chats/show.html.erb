@@ -366,24 +366,10 @@
       <% end %>
 
       <% unless current_user.family_access? %>
-        <%# Audience toggle: clinician chooses family-facing or team-only.
-            State lives on the Stimulus controller; styling flips when armed. %>
-        <div class="mb-2 flex items-center justify-end gap-2 text-[11px]">
-          <span class="text-[#6B665F]">Visibility</span>
-          <button type="button"
-                  data-action="click->patient-chat#toggleAudience"
-                  data-patient-chat-target="audienceToggle"
-                  data-audience="family"
-                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border transition
-                         data-[audience=family]:bg-[#FFF3EC] data-[audience=family]:border-[#D97757] data-[audience=family]:text-[#C1403A]
-                         data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:text-[#3A3936]"
-                  title="Click to change who can see this message">
-            <i class="ri-user-heart-line data-[audience=team]:hidden"></i>
-            <i class="ri-team-line hidden data-[audience=team]:inline"></i>
-            <span class="data-[audience=team]:hidden">Visible to family &amp; team</span>
-            <span class="hidden data-[audience=team]:inline">Internal team only</span>
-          </button>
-        </div>
+        <%# No more visibility toggle — HosAlivio classifies every
+            clinician message and routes it to the right audience. The
+            cognitive load was the wrong direction for a tool meant to
+            reduce work for clinicians. %>
       <% end %>
 
       <%# Composer wrapper — Stimulus flips data-recording between 'false'
@@ -393,10 +379,8 @@
 
       <form data-action="submit->patient-chat#send"
             data-patient-chat-target="form"
-            data-audience="family"
-            class="group/audience flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
-                   group-data-[recording=true]/composer:hidden
-                   data-[audience=team]:bg-[#FBF9F5] data-[audience=team]:border-[#B9B4AB] data-[audience=team]:border-dashed">
+            class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
+                   group-data-[recording=true]/composer:hidden">
         <% if current_user.family_access? %>
           <%# Quick-actions toggle is family-only — opens the templates
               panel above. Clinicians get the visibility toggle instead. %>
@@ -429,17 +413,13 @@
                 <span>&nbsp;doing?</span>
               </span>
             <% else %>
-              <%# Clinician viewer: prompt mirrors the chat-as-dispatch
-                  model — they can chart-note OR ask HosAlivio to take
-                  an agent action. Team-only mode swaps in a private-
-                  note framing. %>
-              <span class="group-data-[audience=team]/audience:hidden">
+              <%# Clinician viewer: HosAlivio routes every message
+                  automatically. They just type whatever they need;
+                  no toggle to think about. %>
+              <span>
                 <span>Note about&nbsp;</span>
                 <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>
                 <span>, or ask HosAlivio.</span>
-              </span>
-              <span class="hidden group-data-[audience=team]/audience:inline italic">
-                Note to the care team — family won't see this…
               </span>
             <% end %>
           </div>

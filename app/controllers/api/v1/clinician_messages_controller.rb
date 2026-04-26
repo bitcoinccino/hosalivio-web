@@ -28,13 +28,13 @@ module Api
           Current.agent_id         = (@user.role_names.first || "rn")
           Current.agent_session_id = "clin-#{SecureRandom.hex(3)}"
 
-          internal = ActiveModel::Type::Boolean.new.cast(params[:internal])
-          # Delegation messages ('@HosAlivio please…') are internal
-          # coordination, never family-facing. Auto-mark clinician_only
-          # regardless of the user's visibility toggle so Carlos doesn't
-          # see Pascal's '@HosAlivio please send a comfort kit refill'
-          # in his family chat.
-          internal ||= ClinicianDispatcher.mentions_hosalivio?(body)
+          # HosAlivio routes every clinician message automatically.
+          # Default audience is :team (most clinician chatter is
+          # coordination); auto-promote to :family when the body reads
+          # like an update intended for the family member.
+          audience = ClinicianDispatcher.classify_audience(body)
+          clinician_only = (audience == :team)
+
           note = patient.notes.build(
             agency:         patient.agency,
             author_user:    @user,
@@ -42,25 +42,25 @@ module Api
             body:           body,
             source:         (audio.present? ? :voice : :text),
             urgency:        normalize_urgency(params[:urgency]),
-            clinician_only: internal
+            clinician_only: clinician_only
           )
           note.audio.attach(audio) if audio.present?
           note.save!
 
-          notify_mentioned_users(note, body, patient) if internal
+          notify_mentioned_users(note, body, patient) if clinician_only
 
-          # Chat-as-dispatch: when the clinician explicitly tags
-          # @HosAlivio in their message, classify the intent and fire
-          # the matching agent action (pharmacy, DME, chaplain, SW,
-          # NOE). Same green action banner the family-triggered path
-          # produces.
+          # Chat-as-dispatch: any clinician message matching a known
+          # action verb (refill, comfort kit, chaplain, equipment, NOE)
+          # OR an explicit @HosAlivio mention enqueues the dispatcher.
+          # Same green banner the family-triggered triage produces.
           dispatched = false
-          if ClinicianDispatcher.mentions_hosalivio?(body)
+          if ClinicianDispatcher.should_dispatch?(body)
             HosalivioDispatchJob.perform_later(note.id, @user.id)
             dispatched = true
           end
 
-          render json: { status: "ok", id: note.id, clinician_only: note.clinician_only, dispatched: dispatched }, status: :created
+          render json: { status: "ok", id: note.id, clinician_only: note.clinician_only,
+                         audience: audience.to_s, dispatched: dispatched }, status: :created
         end
       end
 
