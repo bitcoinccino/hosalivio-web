@@ -419,16 +419,29 @@
                  class="w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-transparent py-2">
           <div data-patient-chat-target="placeholderOverlay"
                class="pointer-events-none absolute inset-0 flex items-center text-[15px] text-[#6B665F]">
-            <%# Family-mode overlay — patient salutation in bold orange. %>
-            <span class="group-data-[audience=team]/audience:hidden">
-              <span>How is&nbsp;</span>
-              <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>
-              <span>&nbsp;doing?</span>
-            </span>
-            <%# Team-mode overlay — quiet, indicates the message is private. %>
-            <span class="hidden group-data-[audience=team]/audience:inline italic">
-              Note to the care team — family won't see this…
-            </span>
+            <% if current_user.family_access? %>
+              <%# Family viewer: warm 'How is …' prompt with the patient's
+                  salutation in bold orange. Family doesn't have an
+                  audience toggle so this is the only state they see. %>
+              <span>
+                <span>How is&nbsp;</span>
+                <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>
+                <span>&nbsp;doing?</span>
+              </span>
+            <% else %>
+              <%# Clinician viewer: prompt mirrors the chat-as-dispatch
+                  model — they can chart-note OR ask HosAlivio to take
+                  an agent action. Team-only mode swaps in a private-
+                  note framing. %>
+              <span class="group-data-[audience=team]/audience:hidden">
+                <span>Note about&nbsp;</span>
+                <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>
+                <span>, or ask HosAlivio.</span>
+              </span>
+              <span class="hidden group-data-[audience=team]/audience:inline italic">
+                Note to the care team — family won't see this…
+              </span>
+            <% end %>
           </div>
         </div>
 
