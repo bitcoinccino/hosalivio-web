@@ -43,7 +43,18 @@ module Api
 
           notify_mentioned_users(note, body, patient) if internal
 
-          render json: { status: "ok", id: note.id, clinician_only: note.clinician_only }, status: :created
+          # Chat-as-dispatch: when the clinician explicitly tags
+          # @HosAlivio in their message, classify the intent and fire
+          # the matching agent action (pharmacy, DME, chaplain, SW,
+          # NOE). Same green action banner the family-triggered path
+          # produces.
+          dispatched = false
+          if ClinicianDispatcher.mentions_hosalivio?(body)
+            HosalivioDispatchJob.perform_later(note.id, @user.id)
+            dispatched = true
+          end
+
+          render json: { status: "ok", id: note.id, clinician_only: note.clinician_only, dispatched: dispatched }, status: :created
         end
       end
 
