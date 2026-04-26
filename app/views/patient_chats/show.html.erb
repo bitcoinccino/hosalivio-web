@@ -662,38 +662,33 @@
         </div>
       </details>
 
-      <!-- Quick Actions (clinicians only) -->
+      <%# Quick Actions trimmed to two real items: Schedule visit (the
+          calendar UI shows conflicts; chat can't), and Sign off (MD
+          only, attestation that the agents legally cannot do for you).
+          Everything else — refills, pages, chaplain requests — runs
+          through the team-huddle chat: clinician types in plain
+          English, HosAlivio dispatches the matching agent. %>
       <% unless current_user.family_access? %>
+        <% viewer_roles = current_user.role_names %>
+        <% pending_signoff = viewer_roles.include?("md") && @pre_admit_eval&.status_final? %>
         <details class="group" open>
           <%= acc_header("ri-flashlight-line", "Quick Actions") %>
           <div class="px-5 pb-4 space-y-2">
-            <% viewer_roles = current_user.role_names %>
-            <%# Schedule visit — every clinician role does visits. %>
             <a href="<%= new_visit_path %>"
                class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
               <i class="ri-calendar-line text-[#D97757]"></i> Schedule visit
             </a>
-            <%# Handoff to MD — hidden when the viewer IS the MD. %>
-            <% unless viewer_roles.include?("md") %>
-              <button type="button"
-                      class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-                <i class="ri-stethoscope-line text-[#2B4A7A]"></i> Handoff to MD
-              </button>
+
+            <% if pending_signoff %>
+              <%= link_to pre_admit_eval_path(@pre_admit_eval),
+                    class: "flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#E6F0EE] border border-[#2F6F4E] hover:bg-[#d6e8e2] text-[13px] text-[#1D1C1A] transition" do %>
+                <i class="ri-quill-pen-line text-[#2F6F4E]"></i> Sign off pending pre-admit cert
+              <% end %>
             <% end %>
-            <%# Order comfort kit — only the MD prescribes. %>
-            <% if viewer_roles.include?("md") %>
-              <button type="button"
-                      class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-                <i class="ri-medicine-bottle-line text-[#7A4A8C]"></i> Order comfort kit
-              </button>
-            <% end %>
-            <%# Request chaplain — hidden when the viewer IS the chaplain. %>
-            <% unless viewer_roles.include?("chaplain") %>
-              <button type="button"
-                      class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-                <i class="ri-hand-heart-line text-[#8C6A2F]"></i> Request chaplain
-              </button>
-            <% end %>
+
+            <p class="text-[11px] text-[#6B665F] leading-snug pt-1">
+              For refills, chaplain pages, supply orders, anything routine: just type it in the team chat. HosAlivio dispatches the right agent.
+            </p>
           </div>
         </details>
       <% end %>
