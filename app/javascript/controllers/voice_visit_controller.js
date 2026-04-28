@@ -18,10 +18,11 @@ export default class extends Controller {
   static targets = ["timer", "status", "canvas", "transcript",
                     "recordButton", "recordIcon", "pauseButton", "stopButton"]
   static values = {
-    updateUrl: String,
-    editUrl:   String,
-    csrf:      String,
-    lang:      { type: String, default: "en-US" }
+    updateUrl:  String,
+    editUrl:    String,
+    discardUrl: String,
+    csrf:       String,
+    lang:       { type: String, default: "en-US" }
   }
 
   connect() {
@@ -31,6 +32,7 @@ export default class extends Controller {
     this._speech        = null
     this._listening     = false
     this._userStopped   = false
+    this._uploaded      = false
     this._finalText     = ""
     this._interimText   = ""
     this._timerInterval = null
@@ -38,10 +40,31 @@ export default class extends Controller {
     this._startedAtMs   = 0
     this._pausedAtMs    = 0
     this._pausedTotalMs = 0
+
+    // Browser back / tab close / hard reload all fire pagehide. If
+    // the RN never tapped Stop, send a discard beacon so the visit
+    // doesn't sit in :recording state forever. sendBeacon is
+    // fire-and-forget but reliable across navigation.
+    this._boundPageHide = this._onPageHide.bind(this)
+    window.addEventListener("pagehide", this._boundPageHide)
   }
 
   disconnect() {
+    window.removeEventListener("pagehide", this._boundPageHide)
     this._teardown()
+  }
+
+  _onPageHide() {
+    // Only fire the discard if the RN never finished uploading.
+    // After a clean Stop + redirect to edit, _uploaded is true and we
+    // skip — the visit has real content now.
+    if (this._uploaded) return
+    if (!this.discardUrlValue) return
+    const fd = new FormData()
+    fd.append("authenticity_token", this.csrfValue)
+    try {
+      navigator.sendBeacon(this.discardUrlValue, fd)
+    } catch (_) {}
   }
 
   // ── Top-level toggles ─────────────────────────────────────────────
@@ -194,6 +217,9 @@ export default class extends Controller {
       },
       body: fd
     }).then(() => {
+      // Mark the visit as uploaded so the pagehide beacon doesn't
+      // discard it on the redirect away from this screen.
+      this._uploaded = true
       // Hand off to the edit page where the RN reviews + finishes.
       // Append a hint so the edit page knows to auto-extract vitals.
       window.location.href = `${this.editUrlValue}?just_recorded=1`

@@ -62,6 +62,22 @@ class DashboardsController < ApplicationController
     today_start = Date.current.in_time_zone.beginning_of_day
     today_end   = Date.current.in_time_zone.end_of_day
 
+    # Auto-discard truly-empty in-progress visits owned by this
+    # clinician older than 5 minutes. Catches the case where Pascal
+    # tapped Start a visit, then closed the tab / hit browser back /
+    # got distracted, leaving a phantom 'In progress' row on his
+    # dashboard. Visits with any narrative or audio are kept so we
+    # don't throw away real work.
+    Visit.unscoped.where(user_id: me.id)
+                   .where.not(started_at: nil)
+                   .where(ended_at: nil)
+                   .where("started_at < ?", 5.minutes.ago)
+                   .find_each do |v|
+      next if v.narrative.to_s.strip.present?
+      next if v.audio_note.attached?
+      v.destroy
+    end
+
     @todays_visits = Visit.where(user_id: me.id)
                           .where("COALESCE(scheduled_at, started_at) BETWEEN ? AND ?", today_start, today_end)
                           .order(Arel.sql("COALESCE(scheduled_at, started_at) ASC"))

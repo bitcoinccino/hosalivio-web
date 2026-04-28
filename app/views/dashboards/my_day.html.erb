@@ -135,10 +135,17 @@
                       <i class="ri-edit-2-line"></i> Completed
                     <% end %>
                   <% elsif v.started_at %>
+                    <%# Visit was started (started_at set) but never
+                        finished (ended_at nil). 'Recording' was a
+                        misleading label, the user might already have
+                        navigated away from the recording page. Relabel
+                        as 'In progress' which is honest about the
+                        state. The link routes to the edit page so the
+                        RN can review + Finish. %>
                     <%= link_to edit_visit_path(v),
-                          class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#C1403A] hover:bg-[#a5342f] text-white font-medium flex-shrink-0",
-                          title: "Continue recording this visit" do %>
-                      <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> Recording
+                          class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium flex-shrink-0",
+                          title: "Continue this visit" do %>
+                      <i class="ri-pause-circle-line"></i> In progress
                     <% end %>
                   <% else %>
                     <%= button_to begin_visit_path(v), method: :post,

@@ -144,19 +144,25 @@ class VisitsController < ApplicationController
   # work. If the visit has any content we leave it alone and just
   # bounce to the dashboard so the RN can pick it back up later.
   def discard
-    redirect_path = dashboard_path
     ActsAsTenant.with_tenant(current_user.agency) do
       empty = @visit.narrative.to_s.strip.empty? &&
               !@visit.audio_note.attached? &&
               @visit.ended_at.nil?
       if empty
         @visit.destroy!
-        flash[:notice] = "Visit discarded."
+        flash[:notice] = "Visit discarded." unless request.format.json? || beacon_request?
       else
-        flash[:notice] = "Visit kept (had content). You can finish it from My Day."
+        flash[:notice] = "Visit kept (had content). You can finish it from My Day." unless beacon_request?
       end
     end
-    redirect_to redirect_path
+
+    # sendBeacon hits us with no Accept header / blob body and we don't
+    # need the redirect — return 204 No Content so the browser is happy.
+    if beacon_request?
+      head :no_content
+    else
+      redirect_to dashboard_path
+    end
   end
 
   def begin
@@ -298,6 +304,15 @@ class VisitsController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @visit = Visit.find(params[:id])
     end
+  end
+
+  # navigator.sendBeacon doesn't set an Accept header that smells like
+  # an HTML page request. Detect by absence of common interactive
+  # accept types so the discard action returns 204 instead of trying
+  # to redirect.
+  def beacon_request?
+    accept = request.headers["Accept"].to_s
+    accept.empty? || accept.include?("*/*") && !accept.include?("text/html")
   end
 
   def redirect_family_users
