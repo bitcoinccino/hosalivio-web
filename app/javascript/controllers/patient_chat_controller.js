@@ -402,6 +402,30 @@ export default class extends Controller {
     this._scrollToBottom()
   }
 
+  _appendHosalivioAck(n) {
+    const time   = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
+    const text   = String(n.body || "").replace(/^\[HOSALIVIO_ACK\]\s*/, "")
+    const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
+
+    const wrap = document.createElement("div")
+    wrap.className = "max-w-2xl flex items-center gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] opacity-0 transition-opacity duration-300"
+    wrap.title = "HosAlivio dispatch confirmation"
+    wrap.innerHTML = `
+      <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+        <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio</div>
+        <div data-role="ack" class="text-[13px] text-[#1D1C1A] mt-0.5"></div>
+      </div>
+      <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0">${time}</div>
+    `
+    wrap.querySelector('[data-role="ack"]').textContent = text
+    this.feedTarget.appendChild(wrap)
+    requestAnimationFrame(() => { wrap.style.opacity = "1" })
+    this._scrollToBottom()
+  }
+
   _appendGuardrailBlock(n) {
     const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
     const reason = String(n.body || "").replace(/^\[GUARDRAIL_BLOCKED\]\s*/, "")
@@ -622,13 +646,16 @@ export default class extends Controller {
     // Clinician-only notes for clinicians, in priority order:
     //   1. guardrail block ([GUARDRAIL_BLOCKED]) — red pill
     //   2. action banner ([ACTION:...] marker) — green success bar
-    //   3. IDG huddle bubble (real human author) — dashed muted bubble
-    //   4. audit rationale (no human author) — collapsed audit row
+    //   3. HosAlivio ack ([HOSALIVIO_ACK]) — bot-avatar pill
+    //   4. IDG huddle bubble (real human author) — dashed muted bubble
+    //   5. audit rationale (no human author) — collapsed audit row
     if (n.clinician_only) {
       if (n.audit_kind === "guardrail") {
         this._appendGuardrailBlock(n)
       } else if (n.action_payload) {
         this._appendActionBanner(n)
+      } else if (n.audit_kind === "hosalivio_ack") {
+        this._appendHosalivioAck(n)
       } else if (n.author_user_id) {
         this._appendHuddleBubble(n)
       } else {

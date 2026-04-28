@@ -114,6 +114,22 @@
       <div class="text-[10px] text-[#6B665F] font-mono"><%= in_patient_zone(note.created_at, @patient) %></div>
     </div>
   </div>
+<% elsif note.clinician_only? && note.audit_kind == :hosalivio_ack %>
+  <%# HosAlivio ack pill: bot avatar + the dispatcher's confirmation
+      message ('Simone (Pharmacy) notified, comfort kit on the way.').
+      Subtle, team-only, never family-visible. %>
+  <% ack_text = note.body.to_s.sub(/\A\[HOSALIVIO_ACK\]\s*/, "") %>
+  <div class="max-w-2xl flex items-center gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6]"
+       title="HosAlivio dispatch confirmation">
+    <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+      <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio" %>
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio</div>
+      <div class="text-[13px] text-[#1D1C1A] mt-0.5"><%= ack_text %></div>
+    </div>
+    <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= in_patient_zone(note.created_at, @patient) %></div>
+  </div>
 <% elsif note.clinician_only? && note.audit_kind == :guardrail %>
   <%# Guardrail block: an agent tried to take an action its cannot_do
       list forbids. We surface this as a small red pill so clinicians

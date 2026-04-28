@@ -122,6 +122,16 @@ class ClinicianDispatcher
 
   # Pharmacy intents materialize the actual PharmacyDelivery record so
   # the green 'Pharmacy Dispatched' banner shows up in the audit trail.
+  # Persona helpers — pull names from AgentRegistry, role labels from
+  # the existing HosalivioTriager constant so we read 'Simone (Pharmacy)'
+  # / 'Marcus (DME)' / 'Geoginio (Chaplain)' / 'Nickla (Social Worker)'
+  # consistently across the chat audit trail.
+  def persona(role)
+    name  = AgentRegistry.persona_for(role)
+    label = HosalivioTriager::ROLE_LABELS[role.to_s] || role.to_s.titleize
+    name ? "#{name} (#{label})" : label
+  end
+
   def dispatch_pharmacy(intent, ack: nil)
     kind = intent == :pharmacy_comfort_kit ? "comfort_kit" : "refill"
     # Refills must link to an active medication_order so the AgentGuard
@@ -149,7 +159,7 @@ class ClinicianDispatcher
       return Result.new(dispatched: false, reason: reason, intent: intent.to_s)
     end
 
-    post_ack(ack || "Pharmacy notified, #{kind.tr('_', ' ')} on the way.")
+    post_ack(ack || "#{persona('pharmacy')} notified, #{kind.tr('_', ' ')} on the way.")
     Result.new(dispatched: true, intent: intent.to_s)
   end
 
@@ -164,7 +174,7 @@ class ClinicianDispatcher
       post_guardrail_block("DME guardrail blocked the order")
       return Result.new(dispatched: false, reason: "guard_blocked", intent: :dme_order.to_s)
     end
-    post_ack(ack || "DME notified, equipment request on the way.")
+    post_ack(ack || "#{persona('dme')} notified, equipment request on the way.")
     Result.new(dispatched: true, intent: :dme_order.to_s)
   end
 
@@ -185,10 +195,11 @@ class ClinicianDispatcher
                           requested_by: @requester.full_name },
       happened_at:      Time.current
     )
-    label_map = { "chaplain" => "Chaplain visit requested.",
-                  "social_worker" => "Social work request sent.",
+    label_map = { "chaplain" => "visit requested.",
+                  "social_worker" => "request sent.",
                   "insurance" => "NOE filing queued." }
-    post_ack(ack || label_map[role] || "Routed to #{role}.")
+    default = "#{persona(role)} #{label_map[role] || 'routed.'}"
+    post_ack(ack || default)
     Result.new(dispatched: true, intent: intent_label)
   end
 
@@ -199,7 +210,9 @@ class ClinicianDispatcher
       agency:         @agency,
       patient:        @patient,
       author_role:    "admissions",
-      body:           "HosAlivio: #{text}",
+      # [HOSALIVIO_ACK] prefix triggers the bot-avatar pill renderer
+      # in the chat partial + Cable JS. Strip the prefix when displayed.
+      body:           "[HOSALIVIO_ACK] #{text}",
       urgency:        "normal",
       source:         "system",
       clinician_only: true
