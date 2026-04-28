@@ -122,14 +122,41 @@ class ClinicianDispatcher
 
   # Pharmacy intents materialize the actual PharmacyDelivery record so
   # the green 'Pharmacy Dispatched' banner shows up in the audit trail.
-  # Persona helpers — pull names from AgentRegistry, role labels from
-  # the existing HosalivioTriager constant so we read 'Simone (Pharmacy)'
-  # / 'Marcus (DME)' / 'Geoginio (Chaplain)' / 'Nickla (Social Worker)'
-  # consistently across the chat audit trail.
+  # Resolve a role to the human label Pascal should see in the ack.
+  #
+  # Priority:
+  #   1. Real human at the patient's branch with this role
+  #      ('Mark Chen (Pharmacy) notified...')
+  #   2. Real human at the agency with this role (any branch)
+  #   3. Agent persona from config/agents.yml as the fallback
+  #      ('Simone (Pharmacy) notified...') — used when the agency
+  #      hasn't onboarded a real human for this role yet
+  #
+  # Internally / in audit traces (AgentEvent change_set, log lines) we
+  # keep the agent persona; this helper is just for clinician-facing
+  # acks. So the under-the-hood Simone is still Simone, but Pascal
+  # reads the real pharmacist's name.
   def persona(role)
-    name  = AgentRegistry.persona_for(role)
     label = HosalivioTriager::ROLE_LABELS[role.to_s] || role.to_s.titleize
+    user  = human_user_for_role(role)
+    return "#{first_name_without_honorific(user)} (#{label})" if user
+    name = AgentRegistry.persona_for(role)
     name ? "#{name} (#{label})" : label
+  end
+
+  HONORIFICS = %w[dr. mr. mrs. ms. mx. rev. fr. sr.].freeze
+
+  def first_name_without_honorific(user)
+    tokens = user.full_name.to_s.split.reject { |t| HONORIFICS.include?(t.downcase) }
+    tokens.first.presence || user.full_name.to_s.split.first
+  end
+
+  def human_user_for_role(role)
+    base = User.joins(user_roles: :role)
+               .where(agency: @agency, active: true)
+               .where(roles: { name: role.to_s })
+    in_branch = @patient.branch_id.present? ? base.where(branch_id: @patient.branch_id) : base.none
+    in_branch.first || base.first
   end
 
   def dispatch_pharmacy(intent, ack: nil)
