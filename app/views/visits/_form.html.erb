@@ -5,84 +5,103 @@
     </div>
   <% end %>
 
-  <div>
-    <%= f.label :patient_id, "Patient", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-    <%= f.select :patient_id,
-          @patients.map { |p| ["#{p.mrn} · #{p.full_name}", p.id] },
-          { include_blank: "Select patient..." },
-          class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-  </div>
+  <%# When the visit is in :recording state (Pascal already tapped
+      Start), Pascal doesn't need to look at patient/clinician/scheduled
+      times again, those are already locked in. Collapse all the
+      scheduling metadata into a small expandable so the narrative +
+      dictate + record block can rise to the top of the page. %>
+  <% in_progress = @visit.persisted? && @visit.started_at.present? && @visit.ended_at.nil? %>
 
-  <div class="grid grid-cols-2 gap-3">
+  <% metadata_block = capture do %>
     <div>
-      <%= f.label :user_id, "Clinician", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-      <%= f.select :user_id,
-            @clinicians.map { |u|
-              role = (u.role_names & %w[rn md don sw chaplain aide social_worker]).first
-              branch_tag = u.branch&.name.presence ? " · #{u.branch.name}" : ""
-              ["#{u.full_name} (#{role})#{branch_tag}", u.id]
-            },
-            {},
+      <%= f.label :patient_id, "Patient", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.select :patient_id,
+            @patients.map { |p| ["#{p.mrn} · #{p.full_name}", p.id] },
+            { include_blank: "Select patient..." },
             class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
     </div>
-    <div>
-      <%= f.label :discipline, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-      <%= f.select :discipline,
-            Visit.disciplines.keys.map { |d| [d.upcase, d] },
-            {},
-            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-    </div>
-  </div>
 
-  <div class="grid grid-cols-2 gap-3">
-    <div>
-      <%= f.label :scheduled_at, "Scheduled start", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-      <%= f.datetime_local_field :scheduled_at,
-            value: @visit.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
-            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div>
+        <%= f.label :user_id, "Clinician", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.select :user_id,
+              @clinicians.map { |u|
+                role = (u.role_names & %w[rn md don sw chaplain aide social_worker]).first
+                branch_tag = u.branch&.name.presence ? " · #{u.branch.name}" : ""
+                ["#{u.full_name} (#{role})#{branch_tag}", u.id]
+              },
+              {},
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
+      <div>
+        <%= f.label :discipline, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.select :discipline,
+              Visit.disciplines.keys.map { |d| [d.upcase, d] },
+              {},
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
     </div>
-    <div>
-      <%= f.label :ended_at, "Expected end (optional)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-      <%= f.datetime_local_field :ended_at,
-            value: @visit.ended_at&.strftime("%Y-%m-%dT%H:%M"),
-            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-    </div>
-  </div>
 
-  <div class="grid grid-cols-2 gap-3">
-    <div>
-      <%= f.label :visit_type, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-      <%= f.select :visit_type,
-            Visit.visit_types.keys.map { |vt| [vt.tr('_', ' ').titleize, vt] },
-            {},
-            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div>
+        <%= f.label :scheduled_at, "Scheduled start", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.datetime_local_field :scheduled_at,
+              value: @visit.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
+      <div>
+        <%= f.label :ended_at, "Expected end (optional)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.datetime_local_field :ended_at,
+              value: @visit.ended_at&.strftime("%Y-%m-%dT%H:%M"),
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
     </div>
-    <div>
-      <%
-        location_labels = {
-          "home" => "Home (Q5001)", "ipu" => "Hospice IPU (Q5006)",
-          "hospital_gip" => "Hospital / GIP (Q5005)", "snf" => "SNF (Q5004)",
-          "alf" => "ALF (Q5002)", "nursing_facility" => "Nursing facility (Q5003)",
-          "psychiatric_facility" => "Psych facility (Q5008)",
-          "group_home" => "Group home (Q5009)",
-          "temporary_lodging" => "Temp lodging (Q5009)",
-          "other" => "Other (Q5009)"
-        }
-      %>
-      <%= f.label :service_location, "Place of service", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-      <%= f.select :service_location,
-            Visit.service_locations.keys.map { |k| [location_labels[k] || k, k] },
-            {},
-            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-    </div>
-  </div>
 
-  <div>
-    <%= f.label :facility_name, "Facility name (only if not at home)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-    <%= f.text_field :facility_name,
-          placeholder: "e.g. Memorial Regional Hospital, room 412",
-          class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-  </div>
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div>
+        <%= f.label :visit_type, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.select :visit_type,
+              Visit.visit_types.keys.map { |vt| [vt.tr('_', ' ').titleize, vt] },
+              {},
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
+      <div>
+        <%
+          location_labels = {
+            "home" => "Home (Q5001)", "ipu" => "Hospice IPU (Q5006)",
+            "hospital_gip" => "Hospital / GIP (Q5005)", "snf" => "SNF (Q5004)",
+            "alf" => "ALF (Q5002)", "nursing_facility" => "Nursing facility (Q5003)",
+            "psychiatric_facility" => "Psych facility (Q5008)",
+            "group_home" => "Group home (Q5009)",
+            "temporary_lodging" => "Temp lodging (Q5009)",
+            "other" => "Other (Q5009)"
+          }
+        %>
+        <%= f.label :service_location, "Place of service", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.select :service_location,
+              Visit.service_locations.keys.map { |k| [location_labels[k] || k, k] },
+              {},
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <%= f.label :facility_name, "Facility name (only if not at home)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+      <%= f.text_field :facility_name,
+            placeholder: "e.g. Memorial Regional Hospital, room 412",
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+    </div>
+  <% end %>
+
+  <% if in_progress %>
+    <%# Recording state: metadata is collapsed inside a quiet <details>
+        beneath the narrative+dictate+record block (which renders next).
+        We render the details block AFTER the recording controls below. %>
+  <% else %>
+    <%# Scheduling / completed states: metadata stays prominent at the
+        top, same as before. %>
+    <%= metadata_block %>
+  <% end %>
 
   <% mic = mic_controller_name(current_user.agency) %>
   <div data-controller="<%= mic %> vitals-extractor" data-<%= mic %>-lang-value="en-US" class="space-y-3">
@@ -221,6 +240,24 @@
       </div>
     </div>
   </div>
+
+  <% if in_progress %>
+    <%# Recording state: metadata tucked behind a quiet, collapsible
+        Visit details panel. Pascal opens it only if he needs to fix
+        the visit type or service location mid-visit. %>
+    <details class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5]">
+      <summary class="cursor-pointer list-none flex items-center justify-between px-4 py-3 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
+        <span class="inline-flex items-center gap-1.5">
+          <i class="ri-list-settings-line"></i>
+          Visit details (patient, clinician, type, location)
+        </span>
+        <i class="ri-arrow-down-s-line group-open:rotate-180 transition-transform"></i>
+      </summary>
+      <div class="px-4 pb-4">
+        <%= metadata_block %>
+      </div>
+    </details>
+  <% end %>
 
   <div class="pt-3 border-t border-[#EFECE6] flex items-center justify-between text-[11px] text-[#6B665F]">
     <span>
