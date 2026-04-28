@@ -87,6 +87,15 @@ class VisitsController < ApplicationController
       patient = Patient.find_by(id: patient_id)
       return redirect_to(dashboard_path, alert: "Patient not found.") unless patient
 
+      # Idempotent: if THIS clinician already has an in-progress visit
+      # for this patient, take them straight to that visit's recording
+      # page instead of spawning duplicates on accidental double-taps.
+      existing = patient.visits.where(user_id: current_user.id)
+                                .where.not(started_at: nil)
+                                .where(ended_at: nil)
+                                .order(started_at: :desc).first
+      return redirect_to(record_visit_path(existing)) if existing
+
       role = (current_user.role_names & Visit.disciplines.keys).first || "rn"
       now  = Time.current
       visit = Visit.create!(
