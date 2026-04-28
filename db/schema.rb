@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_28_004003) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_28_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -448,10 +448,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_004003) do
     t.boolean "agent_authored", default: false, null: false
     t.boolean "billable", default: true, null: false
     t.datetime "created_at", null: false
+    t.uuid "created_by_user_id"
     t.integer "discipline", null: false
     t.datetime "ended_at"
     t.string "facility_name"
     t.text "narrative"
+    t.text "narrative_raw"
     t.integer "pain_score"
     t.uuid "patient_id", null: false
     t.datetime "scheduled_at"
@@ -466,6 +468,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_004003) do
     t.index ["agency_id", "patient_id", "started_at"], name: "idx_visits_on_agency_patient_start"
     t.index ["agency_id", "visit_type"], name: "idx_visits_on_agency_visit_type"
     t.index ["agency_id"], name: "index_visits_on_agency_id"
+    t.index ["created_by_user_id"], name: "index_visits_on_created_by_user_id"
     t.index ["patient_id"], name: "index_visits_on_patient_id"
     t.index ["service_location"], name: "index_visits_on_service_location"
     t.index ["user_id"], name: "index_visits_on_user_id"
@@ -520,4 +523,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_004003) do
   add_foreign_key "visits", "agencies"
   add_foreign_key "visits", "patients"
   add_foreign_key "visits", "users"
+  add_foreign_key "visits", "users", column: "created_by_user_id"
 end

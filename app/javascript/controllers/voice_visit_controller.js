@@ -13,17 +13,37 @@ import { Controller } from "@hotwired/stimulus"
 // On Stop we PATCH /visits/:id with multipart (narrative + audio_note),
 // then redirect to /visits/:id/edit so the RN can review/correct
 // before tapping Finish.
+//
+// Speaker labels are manual today (the "Patient said…" / "RN said…"
+// pill buttons inject [Patient:] / [RN:] tags into the live
+// transcript). Web Speech API does not do diarization. Phase 2 is a
+// one-day drop-in: on Stop, send the audio Blob to Deepgram /
+// AssemblyAI / Whisper+pyannote and replace the Web Speech text with
+// real diarized labels. The narrative shape stays the same, so the
+// PreAdmitNarrativeExtractor and downstream consumers don't need to
+// change. Cost ~$0.006–$0.015 per minute.
+//
+// Transcription language defaults from Patient#preferred_language
+// (2-letter ISO, mapped to BCP-47 for SpeechRecognition.lang). The
+// language pill on the recording stage swaps mid-visit; ticking
+// "Set as patient default" PATCHes the choice back so future visits
+// pick it up automatically. Phase 2's auto-detect will deprecate
+// this picker but the patient-default field stays useful.
 
 export default class extends Controller {
   static targets = ["timer", "status", "canvas", "transcript",
                     "recordButton", "recordIcon", "pauseButton", "stopButton",
-                    "consentPanel", "stage"]
+                    "consentPanel", "typePickerPanel", "stage",
+                    "langButton", "langFlag", "langLabel", "langMenu", "syncLangCheckbox"]
   static values = {
-    updateUrl:  String,
-    editUrl:    String,
-    discardUrl: String,
-    csrf:       String,
-    lang:       { type: String, default: "en-US" }
+    updateUrl:        String,
+    editUrl:          String,
+    discardUrl:       String,
+    csrf:             String,
+    lang:             { type: String, default: "en-US" },
+    langCode:         { type: String, default: "en" },
+    needsTypePicker:  { type: Boolean, default: false },
+    suggestedType:    { type: String, default: "" }
   }
 
   connect() {
@@ -57,11 +77,51 @@ export default class extends Controller {
 
   // ── Top-level toggles ─────────────────────────────────────────────
 
-  // Consent gate — shown first; the RN reads it, asks the patient,
-  // then taps 'I have consent' which hides the panel and reveals
-  // the mic stage.
+  // Consent gate — shown first. After acknowledgement we either
+  // reveal the visit-type picker (ad-hoc start, type unknown) or
+  // jump straight to the mic stage (scheduled visit, type already
+  // set when the visit was created).
   acknowledgeConsent() {
     if (this.hasConsentPanelTarget) this.consentPanelTarget.classList.add("hidden")
+    if (this.needsTypePickerValue && this.hasTypePickerPanelTarget) {
+      this.typePickerPanelTarget.classList.remove("hidden")
+      this.typePickerPanelTarget.classList.add("flex")
+    } else {
+      this._revealStage()
+    }
+  }
+
+  // Type picker — RN taps Admission or Routine. PATCH the chosen
+  // type onto the visit, then reveal the recording stage. We do the
+  // PATCH eagerly so the type is correct on the server even if the
+  // RN bails before tapping Stop.
+  pickType(event) {
+    const btn  = event.currentTarget
+    const type = btn?.dataset?.visitType
+    if (!type) return
+    btn.disabled = true
+
+    const fd = new FormData()
+    fd.append("visit[visit_type]", type)
+    fd.append("_method",           "patch")
+
+    fetch(this.updateUrlValue, {
+      method:  "POST",
+      headers: {
+        "Accept":       "text/html",
+        "X-CSRF-Token": this.csrfValue
+      },
+      body: fd
+    }).then(() => {
+      if (this.hasTypePickerPanelTarget) this.typePickerPanelTarget.classList.add("hidden")
+      this._revealStage()
+    }).catch((err) => {
+      console.error("[voice-visit] type PATCH failed:", err)
+      btn.disabled = false
+    })
+  }
+
+  _revealStage() {
     if (this.hasStageTarget) {
       this.stageTarget.classList.remove("hidden")
       this.stageTarget.classList.add("flex")
@@ -92,6 +152,87 @@ export default class extends Controller {
       this._setStatus("Recording…")
       this._startTimer()
       this._startWaveform()
+    }
+  }
+
+  // ── Language picker ──────────────────────────────────────────────
+
+  toggleLangMenu(event) {
+    event?.stopPropagation()
+    if (!this.hasLangMenuTarget) return
+    const wasHidden = this.langMenuTarget.classList.contains("hidden")
+    this.langMenuTarget.classList.toggle("hidden")
+    if (wasHidden) {
+      // Close on next outside-click. Bind once; the handler removes itself.
+      this._closeLangOnOutside = (e) => {
+        if (!this.element.contains(e.target)) {
+          this.langMenuTarget.classList.add("hidden")
+          document.removeEventListener("click", this._closeLangOnOutside)
+        }
+      }
+      // Defer one tick so the click that opened the menu doesn't immediately close it.
+      setTimeout(() => document.addEventListener("click", this._closeLangOnOutside), 0)
+    }
+  }
+
+  selectLang(event) {
+    const btn = event.currentTarget
+    const code  = btn?.dataset?.code
+    const bcp47 = btn?.dataset?.bcp47
+    const label = btn?.dataset?.label
+    if (!code || !bcp47) return
+
+    this.langValue     = bcp47
+    this.langCodeValue = code
+
+    // Swap the live recognizer's language. Web Speech can't change
+    // lang on a running session — stop and restart so the new model
+    // is used for subsequent utterances. Already-final text stays.
+    if (this._speech) {
+      try { this._speech.stop() } catch (_) {}
+      this._speech.lang = bcp47
+      if (this._listening && !this._userStopped) {
+        try { this._speech.start() } catch (_) {}
+      }
+    }
+
+    if (this.hasLangLabelTarget && label) this.langLabelTarget.textContent = label
+    const flagHtml = btn?.dataset?.flagHtml
+    if (this.hasLangFlagTarget && flagHtml) this.langFlagTarget.innerHTML = flagHtml
+    if (this.hasLangMenuTarget) this.langMenuTarget.classList.add("hidden")
+
+    if (this.hasSyncLangCheckboxTarget && this.syncLangCheckboxTarget.checked) {
+      this._syncPatientLanguage(code)
+      this.syncLangCheckboxTarget.checked = false
+    }
+  }
+
+  _syncPatientLanguage(code) {
+    const fd = new FormData()
+    fd.append("patient_preferred_language", code)
+    fd.append("_method",                    "patch")
+    fetch(this.updateUrlValue, {
+      method:  "POST",
+      headers: { "Accept": "text/html", "X-CSRF-Token": this.csrfValue },
+      body:    fd
+    }).catch((err) => console.warn("[voice-visit] patient language sync failed:", err))
+  }
+
+  // Manual speaker label. Inserts "[Patient:] " or "[RN:] " into the
+  // running final transcript so the downstream extractor (and the
+  // saved narrative) know who said what. Web Speech doesn't ship
+  // diarization, so this is the cheap-and-good v1.
+  tagSpeaker(event) {
+    const speaker = event.currentTarget?.dataset?.speaker
+    if (!speaker) return
+    const tag = `[${speaker}:] `
+    if (this._finalText.length > 0 && !this._finalText.endsWith("\n")) {
+      this._finalText += "\n"
+    }
+    this._finalText += tag
+    this._renderTranscript()
+    if (this.hasTranscriptTarget) {
+      this.transcriptTarget.scrollTop = this.transcriptTarget.scrollHeight
     }
   }
 

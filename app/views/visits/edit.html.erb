@@ -13,7 +13,7 @@
   just_recorded = params[:just_recorded] == "1"
 %>
 <% if just_recorded %>
-  <div class="max-w-xl mx-auto px-4 pt-4">
+  <div class="max-w-3xl mx-auto px-4 pt-4">
     <div class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-3 text-[12px] text-[#1D1C1A]">
       <i class="ri-check-line text-[#2F6F4E]"></i>
       Recording saved. Review the narrative + vitals below, then tap <strong>Finish visit</strong>.
@@ -38,22 +38,34 @@
             :scheduled
           end
 
-  page_title, header_label, header_icon, header_color = case state
-    when :completed
-      ["Edit visit · HosAlivio",        "Edit completed visit",    "ri-edit-2-line",          "#6B665F"]
-    when :recording
-      ["Visit in progress · HosAlivio", "Visit in progress",       "ri-time-line",            "#C1403A"]
-    when :ready
-      ["Start visit · HosAlivio",       "Start visit",             "ri-calendar-check-line",  "#D97757"]
-    else
-      ["Edit visit · HosAlivio",        "Edit scheduled visit",    "ri-calendar-event-line",  "#D97757"]
-    end
   is_admission = @visit.visit_type.to_s == "admission"
   linked_eval  = @visit.pre_admit_eval
+
+  page_title, header_label, header_icon, header_color = case state
+    when :completed
+      if is_admission && linked_eval
+        ["Pre-eval note · HosAlivio",    "Edit pre-eval note",      "ri-clipboard-line",       "#2B4A7A"]
+      else
+        ["Edit visit · HosAlivio",       "Edit completed visit",    "ri-edit-2-line",          "#6B665F"]
+      end
+    when :recording
+      ["Visit in progress · HosAlivio",  "Visit in progress",       "ri-time-line",            "#C1403A"]
+    when :ready
+      ["Start visit · HosAlivio",        "Start visit",             "ri-calendar-check-line",  "#D97757"]
+    else
+      ["Edit visit · HosAlivio",         "Edit scheduled visit",    "ri-calendar-event-line",  "#D97757"]
+    end
+
+  # "Scheduled by" line: prefer the actual human who created the
+  # visit (admin / admissions / on-call RN). Fall back to the assigned
+  # clinician for legacy visits with no created_by stamp. AI-scheduled
+  # visits show the persona instead.
+  scheduler = @visit.created_by_user || (@visit.agent_authored ? nil : @visit.user)
+  scheduler_role = scheduler ? (scheduler.role_names & %w[admin don admissions rn md sw social_worker chaplain aide]).first : nil
 %>
 <% content_for :title, page_title %>
 <div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
-  <div class="max-w-xl mx-auto">
+  <div class="max-w-3xl mx-auto">
     <a href="<%= current_user.role_names.include?("don") ? dashboard_path : dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to My Day
     </a>
@@ -73,30 +85,155 @@
         <%= @visit.patient&.full_name %>
       </h1>
       <div class="text-[11px] text-[#6B665F] mb-5">
-        <%= @visit.agent_authored ? "🤖 Originally scheduled by AI" : "👤 Originally scheduled by a human" %>
+        <% if @visit.agent_authored %>
+          🤖 Scheduled by HosAlivio
+        <% elsif scheduler %>
+          👤 Scheduled by <%= scheduler_role&.tr("_", " ")&.titleize&.then { |r| "#{r} " } %><strong class="text-[#1D1C1A] font-medium">@<%= scheduler.full_name.split.first %></strong>
+        <% else %>
+          👤 Scheduled by a human
+        <% end %>
       </div>
 
       <% if is_admission && linked_eval %>
-        <div class="mb-5 rounded-2xl border border-[#2B4A7A] bg-[#F0F4FA] p-4">
+        <%
+          dx_section = linked_eval.diagnosis_section
+          primary_dx = dx_section["primary_terminal_diagnosis"].is_a?(Hash) ? dx_section["primary_terminal_diagnosis"] : {}
+          secondary_dx = Array(dx_section["secondary_diagnoses"])
+          lcd_criteria = Array(dx_section["lcd_criteria_met"])
+          pps_obj      = linked_eval.pps_object
+          pps_hash     = pps_obj.is_a?(Hash) ? pps_obj : {}
+          blockers     = linked_eval.certification_blockers
+          status_color = case linked_eval.status.to_s
+                         when "certified" then "#2F6F4E"
+                         when "final"     then "#2B4A7A"
+                         else                   "#6B665F"
+                         end
+        %>
+        <div class="mb-5 rounded-2xl border border-[#2B4A7A] bg-[#F0F4FA] p-4"
+             data-controller="json-toggle">
           <div class="flex items-start gap-3">
             <i class="ri-clipboard-line text-[#2B4A7A] text-lg mt-0.5"></i>
-            <div class="flex-1">
-              <div class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold">Admission assessment linked</div>
-              <div class="text-[12px] text-[#1D1C1A] mt-1">
-                Dictate Maria's head-to-toe, PPS, consent language, and election details below.
-                When ready, one tap runs HosAlivio over the narrative to populate the
-                structured pre-admit eval.
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold">Pre-admit assessment</div>
+                <div class="flex items-center gap-2">
+                  <%# Segmented toggle between the human-friendly summary
+                      and the raw JSON dump. Both are pre-rendered; the
+                      json-toggle controller just hides one or the other. %>
+                  <div class="inline-flex items-center rounded-full bg-white/60 border border-[#2B4A7A]/20 p-0.5 text-[11px]">
+                    <button type="button"
+                            data-action="click->json-toggle#showHuman"
+                            data-json-toggle-target="humanButton"
+                            class="px-2.5 py-1 rounded-full bg-white text-[#1D1C1A] shadow-sm font-medium">
+                      Human friendly
+                    </button>
+                    <button type="button"
+                            data-action="click->json-toggle#showJson"
+                            data-json-toggle-target="jsonButton"
+                            class="px-2.5 py-1 rounded-full text-[#6B665F] font-medium">
+                      JSON
+                    </button>
+                  </div>
+                  <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest font-bold rounded-full px-2 py-0.5"
+                        style="color: <%= status_color %>; background: <%= status_color %>1a; border: 1px solid <%= status_color %>40;">
+                    <%= linked_eval.status.to_s.tr("_", " ") %>
+                  </span>
+                </div>
               </div>
+
+              <%# Compact human-readable preview of the JSON eval. Key
+                  fields only — full sections live on the eval show
+                  page (button below). Renders nothing for empty
+                  fields so a fresh draft doesn't show a wall of dashes. %>
+              <div data-json-toggle-target="human">
+              <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+                <% if primary_dx["description"].present? || primary_dx["icd10"].present? %>
+                  <div class="sm:col-span-2">
+                    <dt class="text-[10px] uppercase tracking-widest text-[#6B665F]">Terminal diagnosis</dt>
+                    <dd class="text-[#1D1C1A]">
+                      <%= primary_dx["description"] %>
+                      <% if primary_dx["icd10"].present? %>
+                        <span class="font-mono text-[11px] text-[#6B665F] ml-1">(<%= primary_dx["icd10"] %>)</span>
+                      <% end %>
+                    </dd>
+                  </div>
+                <% end %>
+
+                <% if secondary_dx.any? %>
+                  <div class="sm:col-span-2">
+                    <dt class="text-[10px] uppercase tracking-widest text-[#6B665F]">Secondary diagnoses</dt>
+                    <dd class="text-[#1D1C1A]">
+                      <% secondary_dx.each do |sd| %>
+                        <% case sd
+                           when Hash %>
+                          <span class="inline-block mr-2"><%= sd["description"] || sd["icd10"] %></span>
+                        <% else %>
+                          <span class="inline-block mr-2"><%= sd %></span>
+                        <% end %>
+                      <% end %>
+                    </dd>
+                  </div>
+                <% end %>
+
+                <% if pps_hash["score"].present? || pps_hash["source"].present? %>
+                  <div>
+                    <dt class="text-[10px] uppercase tracking-widest text-[#6B665F]">PPS</dt>
+                    <dd class="text-[#1D1C1A]">
+                      <span class="font-mono"><%= pps_hash["score"] || "—" %><%= "%" if pps_hash["score"].present? %></span>
+                      <% if pps_hash["source"].present? %>
+                        <span class="text-[10px] text-[#6B665F] ml-1">· <%= pps_hash["source"] %></span>
+                      <% end %>
+                    </dd>
+                    <% if pps_hash["justification"].present? %>
+                      <dd class="text-[11px] text-[#6B665F] italic mt-0.5"><%= pps_hash["justification"] %></dd>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <% if lcd_criteria.any? %>
+                  <div>
+                    <dt class="text-[10px] uppercase tracking-widest text-[#6B665F]">LCD criteria met</dt>
+                    <dd class="text-[#1D1C1A]"><%= lcd_criteria.size %> noted</dd>
+                  </div>
+                <% end %>
+
+                <% if blockers.any? %>
+                  <div class="sm:col-span-2">
+                    <dt class="text-[10px] uppercase tracking-widest text-[#C1403A]">Certification blockers</dt>
+                    <dd class="text-[#C1403A] text-[12px]">
+                      <ul class="list-disc list-inside">
+                        <% blockers.each do |b| %><li><%= b %></li><% end %>
+                      </ul>
+                    </dd>
+                  </div>
+                <% end %>
+              </dl>
+
+              <% if primary_dx.empty? && secondary_dx.empty? && pps_hash["score"].blank? && lcd_criteria.empty? %>
+                <div class="mt-2 text-[12px] text-[#6B665F] italic">
+                  No structured fields extracted yet. Dictate the assessment below, then tap <strong>Sync to Eval</strong>.
+                </div>
+              <% end %>
+              </div><%# /human %>
+
+              <%# JSON view — raw dump, pretty-printed. Hidden until the
+                  RN flips the toggle. Useful for developers + curious
+                  RNs who want to see exactly what the AI extracted. %>
+              <div data-json-toggle-target="json" class="hidden mt-3">
+                <pre class="text-[11px] leading-snug font-mono bg-white border border-[#2B4A7A]/20 rounded-lg p-3 overflow-x-auto max-h-80 overflow-y-auto text-[#1D1C1A]"><%= JSON.pretty_generate(linked_eval.raw_json) %></pre>
+              </div>
+
               <div class="mt-3 flex items-center gap-2 flex-wrap">
-                <%= button_to sync_to_eval_visit_path(@visit), method: :post,
-                      class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#223d66] text-white font-medium" do %>
-                  <i class="ri-magic-line"></i> Sync to Eval
+                <% if state != :completed %>
+                  <%= button_to sync_to_eval_visit_path(@visit), method: :post,
+                        class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#223d66] text-white font-medium" do %>
+                    <i class="ri-magic-line"></i> Sync to Eval
+                  <% end %>
                 <% end %>
-                <%= link_to edit_pre_admit_eval_path(linked_eval),
-                      class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-white" do %>
-                  <i class="ri-external-link-line"></i> Open pre-admit eval
+                <%= link_to pre_admit_eval_path(linked_eval),
+                      class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-white font-medium" do %>
+                  <i class="ri-external-link-line"></i> View full assessment
                 <% end %>
-                <span class="text-[10px] text-[#6B665F]">Status: <strong><%= linked_eval.status.to_s.tr("_", " ") %></strong></span>
               </div>
             </div>
           </div>

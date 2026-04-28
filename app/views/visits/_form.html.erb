@@ -11,6 +11,14 @@
       scheduling metadata into a small expandable so the narrative +
       dictate + record block can rise to the top of the page. %>
   <% in_progress = @visit.persisted? && @visit.started_at.present? && @visit.ended_at.nil? %>
+  <%# Completed = visit is finished. The narrative + audio + visit
+      metadata (patient, clinician, scheduled times, type, location)
+      are all part of the medical record and must not be edited
+      inline. Corrections go through a late-entry note. Vitals stay
+      editable because they're often corrected after the fact (RN
+      misreads a glucose strip, fixes pulse from 88 to 98) without
+      requiring a chart amendment. %>
+  <% completed = @visit.persisted? && @visit.ended_at.present? %>
 
   <% metadata_block = capture do %>
     <div>
@@ -93,13 +101,57 @@
     </div>
   <% end %>
 
-  <% if in_progress %>
-    <%# Recording state: metadata is collapsed inside a quiet <details>
-        beneath the narrative+dictate+record block (which renders next).
-        We render the details block AFTER the recording controls below. %>
+  <%# Read-only metadata (completed visits only). Renders the same
+      fields as `metadata_block` but as static dl/dt/dd pairs so the
+      record can't be amended after the chart entry is signed. %>
+  <% metadata_readonly_block = capture do %>
+    <%
+      location_labels_ro = {
+        "home" => "Home (Q5001)", "ipu" => "Hospice IPU (Q5006)",
+        "hospital_gip" => "Hospital / GIP (Q5005)", "snf" => "SNF (Q5004)",
+        "alf" => "ALF (Q5002)", "nursing_facility" => "Nursing facility (Q5003)",
+        "psychiatric_facility" => "Psych facility (Q5008)",
+        "group_home" => "Group home (Q5009)",
+        "temporary_lodging" => "Temp lodging (Q5009)",
+        "other" => "Other (Q5009)"
+      }
+      ro_rows = [
+        ["Patient",         @visit.patient ? "#{@visit.patient.mrn} · #{@visit.patient.full_name}" : "—"],
+        ["Clinician",       @visit.user ? "#{@visit.user.full_name} (#{(@visit.user.role_names & %w[rn md don sw chaplain aide social_worker admissions]).first || '—'})" : "—"],
+        ["Discipline",      @visit.discipline.to_s.upcase],
+        ["Visit type",      @visit.visit_type.to_s.tr("_", " ").titleize],
+        ["Place of service", location_labels_ro[@visit.service_location.to_s] || @visit.service_location.to_s.titleize],
+        ["Facility",        @visit.facility_name.presence || "—"],
+        ["Scheduled start", @visit.scheduled_at&.strftime("%a %b %-d, %Y · %-l:%M %p") || "—"],
+        ["Started",         @visit.started_at&.strftime("%a %b %-d, %Y · %-l:%M %p") || "—"],
+        ["Ended",           @visit.ended_at&.strftime("%a %b %-d, %Y · %-l:%M %p") || "—"]
+      ]
+    %>
+    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+      <% ro_rows.each do |label, value| %>
+        <div>
+          <dt class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= label %></dt>
+          <dd class="text-[#1D1C1A]"><%= value %></dd>
+        </div>
+      <% end %>
+    </dl>
+    <div class="mt-3 text-[11px] text-[#6B665F] inline-flex items-start gap-1.5">
+      <i class="ri-lock-2-line mt-0.5"></i>
+      <span>Visit metadata is locked once the chart entry is finished. Corrections require a late-entry note.</span>
+    </div>
+  <% end %>
+
+  <%# Metadata visibility rules:
+      :recording  — collapsed in a <details> below (RN already knows
+                    who/where, only needs it to fix a typo mid-visit)
+      :completed  — same: collapsed below; nothing's being scheduled,
+                    the chart entry is the focus
+      :ready / :scheduled — prominent at top: this is the scheduling
+                            screen, those fields are the point %>
+  <% collapse_metadata = in_progress || completed %>
+  <% if collapse_metadata %>
+    <%# rendered as a <details> below, after the narrative block %>
   <% else %>
-    <%# Scheduling / completed states: metadata stays prominent at the
-        top, same as before. %>
     <%= metadata_block %>
   <% end %>
 
@@ -113,30 +165,74 @@
        class="space-y-3">
     <div>
       <div class="flex items-center justify-between mb-1">
-        <%= f.label :narrative, "Narrative (optional, can fill at the bedside)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium" %>
-        <div class="flex items-center gap-2">
-          <span data-<%= mic %>-target="status" class="text-[11px] text-[#6B665F]"></span>
-          <button type="button"
-                  data-action="click-><%= mic %>#toggle"
-                  data-<%= mic %>-target="button"
-                  class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#FBF9F5] text-[#D97757] hover:bg-[#EFECE6] border border-[#EFECE6] transition"
-                  title="Tap to dictate">
-            <i class="ri-mic-line"></i> Dictate
-          </button>
-        </div>
+        <%= f.label :narrative, "Narrative" + (completed ? "" : " (optional, can fill at the bedside)"), class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium" %>
+        <% if completed %>
+          <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-2 py-0.5 font-bold">
+            <i class="ri-lock-2-line"></i> Locked
+          </span>
+        <% else %>
+          <div class="flex items-center gap-2">
+            <span data-<%= mic %>-target="status" class="text-[11px] text-[#6B665F]"></span>
+            <button type="button"
+                    data-action="click-><%= mic %>#toggle"
+                    data-<%= mic %>-target="button"
+                    class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#FBF9F5] text-[#D97757] hover:bg-[#EFECE6] border border-[#EFECE6] transition"
+                    title="Tap to dictate">
+              <i class="ri-mic-line"></i> Dictate
+            </button>
+          </div>
+        <% end %>
       </div>
-      <%= f.text_area :narrative, rows: 4,
-            data: { "#{mic}_target": "output", vitals_extractor_target: "narrative" },
-            placeholder: "Type, or tap Dictate to speak. e.g. \"BP 128/76, pulse 88, pain 4/10. Patient resting comfortably after morphine dose.\"",
-            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      <% if completed %>
+        <%# Hidden round-trip so the locked narrative value is
+            re-submitted alongside vitals/metadata edits without
+            getting nulled out on save. %>
+        <%= f.hidden_field :narrative %>
+        <% has_raw = @visit.narrative_raw.present? && @visit.narrative_raw != @visit.narrative %>
+        <% if has_raw %>
+          <div class="text-[10px] uppercase tracking-widest text-[#2B4A7A] font-bold mb-1 inline-flex items-center gap-1">
+            <i class="ri-sparkling-2-line"></i> AI-polished
+          </div>
+        <% end %>
+        <div class="w-full px-3 py-2 rounded-lg border border-[#EFECE6] bg-[#FBF9F5] text-[14px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"
+             data-vitals-extractor-target="narrative">
+          <%= @visit.narrative.presence || content_tag(:span, "No narrative recorded.", class: "text-[#6B665F] italic") %>
+        </div>
+        <% if has_raw %>
+          <%# Original voice transcript stays accessible for surveyors
+              and any clinician who wants to verify the polish didn't
+              add or drop facts. Collapsed by default. %>
+          <details class="mt-2 rounded-xl border border-[#EFECE6] bg-white">
+            <summary class="cursor-pointer list-none flex items-center justify-between px-3 py-2 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
+              <span class="inline-flex items-center gap-1.5">
+                <i class="ri-mic-line"></i> View original voice transcript
+              </span>
+              <i class="ri-arrow-down-s-line"></i>
+            </summary>
+            <div class="px-3 pb-3 pt-1 text-[13px] text-[#3A3936] whitespace-pre-wrap font-serif italic leading-relaxed">
+              <%= @visit.narrative_raw %>
+            </div>
+          </details>
+        <% end %>
+        <div class="mt-1 text-[11px] text-[#6B665F] inline-flex items-start gap-1.5">
+          <i class="ri-information-line mt-0.5"></i>
+          <span>Narrative is part of the medical record. To add a correction, create a late-entry note from the patient chart.</span>
+        </div>
+      <% else %>
+        <%= f.text_area :narrative, rows: 4,
+              data: { "#{mic}_target": "output", vitals_extractor_target: "narrative" },
+              placeholder: "Type, or tap Dictate to speak. e.g. \"BP 128/76, pulse 88, pain 4/10. Patient resting comfortably after morphine dose.\"",
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      <% end %>
     </div>
 
     <%# Clinical audio recorder — separate from Dictate. Captures the
         bedside (breath sounds, family voice, exact phrasing) as an
         ActiveStorage attachment on the Visit. Played back from the
         chart. Uses MediaRecorder + a hidden file input so the blob
-        ships with the normal form submit. %>
-    <div data-controller="audio-recorder" class="rounded-xl border border-dashed border-[#D9D5CD] bg-white p-3">
+        ships with the normal form submit. Hidden on completed visits
+        — once the chart entry is saved, the audio is frozen. %>
+    <div data-controller="audio-recorder" class="<%= 'hidden' if completed %> rounded-xl border border-dashed border-[#D9D5CD] bg-white p-3">
       <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
           <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-medium">Bedside audio (optional)</div>
@@ -186,6 +282,16 @@
       <% end %>
     </div>
 
+    <%# On completed visits the audio recorder block above is hidden,
+        but we still want playback if there's saved audio. Surface it
+        as its own row outside the (hidden) recorder. %>
+    <% if completed && @visit.audio_note.attached? %>
+      <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3 flex items-center gap-2">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Saved audio</div>
+        <%= audio_tag url_for(@visit.audio_note), controls: true, class: "flex-1 h-9" %>
+      </div>
+    <% end %>
+
     <!-- Vitals: freely editable, auto-fillable from the narrative above -->
     <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
       <div class="flex items-center justify-between mb-2">
@@ -193,12 +299,14 @@
           <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-medium">Vitals at visit</div>
           <span data-vitals-extractor-target="summary" class="text-[10px] text-[#6B665F]"></span>
         </div>
-        <button type="button"
-                data-action="click->vitals-extractor#extract"
-                class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-white text-[#1D1C1A] hover:bg-[#EFECE6] border border-[#D9D5CD] transition"
-                title="Parse BP, temp, HR, RR, SpO2, and pain score out of the narrative">
-          <i class="ri-magic-line"></i> Auto-fill from narrative
-        </button>
+        <% unless completed %>
+          <button type="button"
+                  data-action="click->vitals-extractor#extract"
+                  class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-white text-[#1D1C1A] hover:bg-[#EFECE6] border border-[#D9D5CD] transition"
+                  title="Parse BP, temp, HR, RR, SpO2, and pain score out of the narrative">
+            <i class="ri-magic-line"></i> Auto-fill from narrative
+          </button>
+        <% end %>
       </div>
       <% vitals_source = (@visit.vitals.presence || {}) %>
       <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
@@ -247,20 +355,30 @@
     </div>
   </div>
 
-  <% if in_progress %>
-    <%# Recording state: metadata tucked behind a quiet, collapsible
-        Visit details panel. Pascal opens it only if he needs to fix
-        the visit type or service location mid-visit. %>
+  <% if collapse_metadata %>
+    <%# Quiet, collapsible Visit details panel. In-progress visits
+        keep the editable form so Pascal can fix a typo at the
+        bedside. Completed visits show a read-only display because
+        the metadata is part of the signed chart entry. %>
     <details class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5]">
       <summary class="cursor-pointer list-none flex items-center justify-between px-4 py-3 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
         <span class="inline-flex items-center gap-1.5">
-          <i class="ri-list-settings-line"></i>
-          Visit details (patient, clinician, type, location)
+          <% if completed %>
+            <i class="ri-lock-2-line"></i>
+            Visit details (locked)
+          <% else %>
+            <i class="ri-list-settings-line"></i>
+            Visit details (patient, clinician, type, location)
+          <% end %>
         </span>
         <i class="ri-arrow-down-s-line group-open:rotate-180 transition-transform"></i>
       </summary>
       <div class="px-4 pb-4">
-        <%= metadata_block %>
+        <% if completed %>
+          <%= metadata_readonly_block %>
+        <% else %>
+          <%= metadata_block %>
+        <% end %>
       </div>
     </details>
   <% end %>

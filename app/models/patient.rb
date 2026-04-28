@@ -3,6 +3,15 @@ class Patient < ApplicationRecord
   has_paper_trail
   include AgentAuditable
 
+  # Languages we ship live transcription for via Web Speech API.
+  # Stored as 2-letter ISO codes on Patient#preferred_language; the
+  # client maps to BCP-47 (en→en-US, es→es-ES, etc.) when configuring
+  # SpeechRecognition.lang. South Florida hospice reality: English,
+  # Spanish, Haitian Creole, Brazilian Portuguese cover the bulk of
+  # patients; "other" lets the RN keep going even when we don't have
+  # the right model on the client.
+  SUPPORTED_LANGUAGES = %w[en es ht pt other].freeze
+
   # --- Encrypted PHI fields ------------------------------------------------
   # `deterministic: true` on identifiers allows equality lookup (e.g. search by phone);
   # narrative/clinical text uses the default non-deterministic (stronger) mode.

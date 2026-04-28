@@ -44,6 +44,7 @@ class Visit < ApplicationRecord
   belongs_to :agency
   belongs_to :patient
   belongs_to :user  # clinician who visited
+  belongs_to :created_by_user, class_name: "User", optional: true # whoever scheduled it (admin, admissions, RN one-tap, AI agent)
   has_one    :pre_admit_eval, dependent: :nullify
 
   validates :pain_score, inclusion: { in: 0..10, allow_nil: true }

@@ -1,6 +1,18 @@
 <% content_for :title, "Recording visit · #{@visit.patient.full_name}" %>
 <%
   patient_first = patient_salutation(@visit.patient)
+
+  # Patient.preferred_language stores 2-letter ISO codes (default "en").
+  # Web Speech API wants BCP-47 ("en-US", "es-ES", ...). Keep the map
+  # here so the controller can map back-and-forth without round-tripping.
+  language_options = [
+    { code: "en", bcp47: "en-US", label: "English"        },
+    { code: "es", bcp47: "es-ES", label: "Spanish"        },
+    { code: "ht", bcp47: "ht-HT", label: "Haitian Creole" },
+    { code: "pt", bcp47: "pt-BR", label: "Portuguese"     }
+  ]
+  patient_lang_code = @visit.patient.preferred_language.presence_in(Patient::SUPPORTED_LANGUAGES) || "en"
+  current_lang      = language_options.find { |l| l[:code] == patient_lang_code } || language_options.first
 %>
 
 <%# Full-screen voice-first recording stage. Stimulus controller
@@ -13,7 +25,10 @@
      data-voice-visit-edit-url-value="<%= edit_visit_path(@visit) %>"
      data-voice-visit-discard-url-value="<%= discard_visit_path(@visit) %>"
      data-voice-visit-csrf-value="<%= form_authenticity_token %>"
-     data-voice-visit-lang-value="en-US">
+     data-voice-visit-lang-value="<%= current_lang[:bcp47] %>"
+     data-voice-visit-lang-code-value="<%= current_lang[:code] %>"
+     data-voice-visit-needs-type-picker-value="<%= @needs_type_picker ? 'true' : 'false' %>"
+     data-voice-visit-suggested-type-value="<%= @suggested_type %>">
 
   <%# Top bar: patient name + cancel link %>
   <header class="flex items-center justify-between px-6 py-5">
@@ -73,6 +88,48 @@
     </div>
   </div>
 
+  <%# Visit-type picker — shown between consent and the recording stage
+      ONLY when the RN started the visit ad-hoc (one-button quick action)
+      and the type wasn't pre-set on the schedule. Pre-scheduled visits
+      skip this panel and go straight to the mic. The Suggested badge
+      defaults to Admission for first-timers, Routine otherwise. %>
+  <div data-voice-visit-target="typePickerPanel"
+       class="hidden flex-1 flex-col items-center justify-center px-6">
+    <div class="max-w-md w-full text-center">
+      <div class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+        <i class="ri-stethoscope-line text-[#D97757] text-[28px]"></i>
+      </div>
+      <h2 class="font-serif text-[24px] leading-tight">What kind of visit is this?</h2>
+      <p class="text-[13px] text-white/60 mt-2">Pick once. We use this to route the chart correctly.</p>
+
+      <div class="mt-6 space-y-3 text-left">
+        <% [
+          { type: "admission", label: "Admission visit",  sub: "Start of Care · evaluates eligibility for hospice", icon: "ri-user-heart-line" },
+          { type: "routine",   label: "Routine visit",    sub: "Ongoing care · symptoms, vitals, interventions",   icon: "ri-play-circle-line" }
+        ].each do |opt| %>
+          <button type="button"
+                  data-action="click->voice-visit#pickType"
+                  data-visit-type="<%= opt[:type] %>"
+                  class="w-full flex items-start gap-3 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#D97757]/60 transition text-left">
+            <span class="w-9 h-9 rounded-full bg-[#D97757]/20 text-[#D97757] flex items-center justify-center flex-shrink-0">
+              <i class="<%= opt[:icon] %> text-[18px]"></i>
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="flex items-center gap-2">
+                <span class="text-[14px] font-medium text-white"><%= opt[:label] %></span>
+                <% if @suggested_type == opt[:type] %>
+                  <span class="text-[8px] uppercase tracking-widest text-[#2F6F4E] bg-[#2F6F4E]/15 border border-[#2F6F4E]/40 rounded-full px-1.5 py-0.5 font-bold">Suggested</span>
+                <% end %>
+              </span>
+              <span class="block text-[11px] text-white/60 mt-0.5"><%= opt[:sub] %></span>
+            </span>
+            <i class="ri-arrow-right-line text-white/40 flex-shrink-0 mt-2.5"></i>
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
   <%# Main stage: timer + canvas waveform + mic + transcript.
       Hidden until the RN acknowledges consent (see panel above).
       Tightened gaps and shorter canvas so the whole stack fits one
@@ -123,12 +180,72 @@
       </button>
     </div>
 
+    <%# Speaker-tag buttons + language pill. Tapping a speaker pill
+        inserts a [Patient:] or [RN:] line break into the live
+        transcript. The language pill opens a tiny popover that swaps
+        the SpeechRecognition lang on the fly and (optionally) writes
+        the choice back to Patient#preferred_language as the new
+        default for future visits. Web Speech doesn't diarize and is
+        language-specific, so both labels and language are manual v1. %>
+    <div class="flex items-center justify-center gap-3 flex-wrap">
+      <button type="button"
+              data-action="click->voice-visit#tagSpeaker"
+              data-speaker="Patient"
+              class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
+        <i class="ri-user-voice-line text-[#D97757]"></i> Patient said…
+      </button>
+      <button type="button"
+              data-action="click->voice-visit#tagSpeaker"
+              data-speaker="RN"
+              class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
+        <i class="ri-stethoscope-line text-[#D97757]"></i> RN said…
+      </button>
+
+      <div class="relative">
+        <button type="button"
+                data-action="click->voice-visit#toggleLangMenu"
+                data-voice-visit-target="langButton"
+                class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
+          <span data-voice-visit-target="langFlag" class="flex items-center"><%= language_flag(current_lang[:code]) %></span>
+          <span data-voice-visit-target="langLabel"><%= current_lang[:label] %></span>
+          <i class="ri-arrow-down-s-line text-white/60"></i>
+        </button>
+        <div data-voice-visit-target="langMenu"
+             class="hidden absolute right-0 bottom-full mb-2 w-60 rounded-xl bg-[#2A2825] border border-white/10 shadow-xl overflow-hidden z-40">
+          <div class="px-3 py-2 border-b border-white/10 text-[10px] uppercase tracking-[0.18em] text-white/50 font-bold">
+            Transcription language
+          </div>
+          <% language_options.each do |opt| %>
+            <button type="button"
+                    data-action="click->voice-visit#selectLang"
+                    data-code="<%= opt[:code] %>"
+                    data-bcp47="<%= opt[:bcp47] %>"
+                    data-label="<%= opt[:label] %>"
+                    data-flag-html="<%= language_flag(opt[:code]) %>"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-white/90 hover:bg-white/10 transition">
+              <%= language_flag(opt[:code]) %>
+              <span class="flex-1"><%= opt[:label] %></span>
+              <% if opt[:code] == current_lang[:code] %>
+                <i class="ri-check-line text-[#D97757]"></i>
+              <% end %>
+            </button>
+          <% end %>
+          <label class="flex items-center gap-2 px-3 py-2 border-t border-white/10 text-[12px] text-white/80 hover:bg-white/5 cursor-pointer">
+            <input type="checkbox"
+                   data-voice-visit-target="syncLangCheckbox"
+                   class="accent-[#D97757]">
+            <span>Set as patient default</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <%# Live transcript preview (scrolls). Pure feedback; the official
         narrative gets saved on Stop. %>
     <div data-voice-visit-target="transcript"
-         class="w-full max-w-[640px] min-h-[60px] max-h-[120px] overflow-y-auto rounded-2xl bg-white/5 border border-white/10 p-3 text-[13px] text-white/90 leading-relaxed font-serif italic">
+         class="w-full max-w-[640px] min-h-[60px] max-h-[120px] overflow-y-auto rounded-2xl bg-white/5 border border-white/10 p-3 text-[13px] text-white/90 leading-relaxed font-serif italic whitespace-pre-wrap">
       <%# Filled by the controller as Web Speech delivers interim + final results %>
-      <span class="text-white/40 not-italic">Speak your visit assessment, the transcript will appear here…</span>
+      <span class="text-white/40 not-italic">Recording the full visit. Your words and the patient's words appear here. Tap the buttons above to label who is speaking.</span>
     </div>
 
     <div class="text-[11px] text-white/40 text-center">

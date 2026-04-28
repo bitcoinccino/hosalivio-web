@@ -21,7 +21,7 @@ class VisitsController < ApplicationController
 
   def create
     ActsAsTenant.with_tenant(current_user.agency) do
-      @visit = Visit.new(visit_params.merge(agency: current_user.agency, agent_authored: false))
+      @visit = Visit.new(visit_params.merge(agency: current_user.agency, agent_authored: false, created_by_user_id: current_user.id))
       if @visit.save
         redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
                     notice: "Visit scheduled for #{@visit.scheduled_at&.strftime('%a %b %-d, %-l:%M %p')}."
@@ -43,13 +43,63 @@ class VisitsController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @clinicians = agency_clinicians
       @patients   = Patient.order(:mrn)
+
+      # Backfill: if this is an admission visit with no linked
+      # pre-admit eval (happens when the visit_type was changed to
+      # admission AFTER the visit was begun), create the draft eval
+      # now and run the narrative extractor so the eval block on
+      # this page populates immediately. Idempotent — only fires
+      # when nothing's linked.
+      if @visit.visit_type_admission? && @visit.pre_admit_eval.nil? &&
+         PreAdmitEval.where(patient_id: @visit.patient_id, status: [:draft, :final]).none?
+        eval_rec = PreAdmitEval.create!(
+          agency:       @visit.agency,
+          patient:      @visit.patient,
+          visit:        @visit,
+          evaluator:    @visit.user,
+          status:       :draft,
+          evaluated_at: @visit.started_at || Time.current,
+          raw_json:     { "pre_admit_eval" => {} }
+        )
+        if @visit.narrative.to_s.strip.present?
+          result = PreAdmitNarrativeExtractor.call(
+            narrative:     @visit.narrative,
+            existing_json: eval_rec.raw_json,
+            visit:         @visit,
+            patient:       @visit.patient
+          )
+          eval_rec.update!(raw_json: result.json)
+        end
+        @visit.reload
+      end
     end
     render :edit, layout: false if request.headers["Turbo-Frame"] || params[:modal]
   end
 
   def update
     ActsAsTenant.with_tenant(current_user.agency) do
-      if @visit.update(visit_params.merge(agent_authored: false))
+      # Side-channel: the recording screen's language pill PATCHes here
+      # with `patient_preferred_language` set when the RN taps
+      # "Set as patient default" while choosing transcription language.
+      if (lang = params[:patient_preferred_language].to_s.presence)
+        @visit.patient.update!(preferred_language: lang) if Patient::SUPPORTED_LANGUAGES.include?(lang)
+      end
+
+      # Once the visit is finished, the chart entry (narrative,
+      # audio, patient/clinician/scheduled-times/visit-type/location
+      # metadata) is locked. Vitals stay editable for legitimate
+      # corrections without amending the chart. The form locks these
+      # fields client-side; this strips them server-side too so a
+      # crafted request can't bypass the lock.
+      attrs = visit_params
+      if @visit.ended_at.present?
+        attrs = attrs.except(:narrative, :audio_note,
+                             :patient_id, :user_id, :discipline,
+                             :scheduled_at, :ended_at,
+                             :visit_type, :service_location, :facility_name)
+      end
+
+      if @visit.update(attrs.merge(agent_authored: false))
         redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
                     notice: "Visit updated."
       else
@@ -98,22 +148,42 @@ class VisitsController < ApplicationController
 
       role = (current_user.role_names & Visit.disciplines.keys).first || "rn"
       now  = Time.current
+
+      # Visit type comes from the quick-actions dropdown (Admission vs
+      # Routine). If absent (older clients, dashboard one-tap), fall back
+      # to a smart default: admission for never-admitted patients, routine
+      # otherwise. This avoids the silent "routine" trap where SOC visits
+      # would never trigger the pre-admit eval extraction.
+      requested        = params[:visit_type].to_s
+      explicit_type    = %w[admission routine recert].include?(requested)
+      has_prior_admit  = patient.visits.where(visit_type: :admission).where.not(ended_at: nil).exists?
+      visit_type = if explicit_type
+                     requested
+                   elsif has_prior_admit
+                     "routine"
+                   else
+                     "admission"
+                   end
+
       visit = Visit.create!(
-        agency:           current_user.agency,
-        patient:          patient,
-        user:             current_user,
-        discipline:       role,
-        visit_type:       "routine",
-        scheduled_at:     now,
-        started_at:       now,
-        service_location: "home",
-        narrative:        "",
-        agent_authored:   false
+        agency:             current_user.agency,
+        patient:            patient,
+        user:               current_user,
+        created_by_user_id: current_user.id,
+        discipline:         role,
+        visit_type:         visit_type,
+        scheduled_at:       now,
+        started_at:         now,
+        service_location:   "home",
+        narrative:          "",
+        agent_authored:     false
       )
       # Land on the full-screen recording page, not the cluttered
       # edit form. The recording page captures the narrative + audio
-      # and redirects to edit when the RN taps Stop.
-      redirect_to record_visit_path(visit)
+      # and redirects to edit when the RN taps Stop. When the RN
+      # didn't pre-pick a type (one-button quick action), pass pick=1
+      # so the post-consent panel asks before the mic stage opens.
+      redirect_to record_visit_path(visit, (explicit_type ? {} : { pick: 1 }))
     end
   rescue ActiveRecord::RecordInvalid => e
     redirect_to dashboard_path, alert: "Could not start visit: #{e.record.errors.full_messages.to_sentence}"
@@ -135,6 +205,20 @@ class VisitsController < ApplicationController
         @visit.update!(started_at: Time.current)
       end
     end
+
+    # Type picker shows after consent when the visit was created
+    # ad-hoc without an explicit type (one-button "Start a visit"
+    # path). Scheduled visits skip this entirely. Suggestion: SOC
+    # for never-admitted patients, routine otherwise.
+    @needs_type_picker = params[:pick].to_s == "1"
+    @suggested_type    =
+      if @visit.patient.visits.where(visit_type: :admission)
+                              .where.not(ended_at: nil, id: @visit.id)
+                              .exists?
+        "routine"
+      else
+        "admission"
+      end
   end
 
   # POST /visits/:id/discard
@@ -145,14 +229,9 @@ class VisitsController < ApplicationController
   # bounce to the dashboard so the RN can pick it back up later.
   def discard
     ActsAsTenant.with_tenant(current_user.agency) do
-      # Belt-and-suspenders: refuse to destroy a visit younger than
-      # 30 seconds even if it looks empty. Stops races where a fast
-      # tap-Stop + navigate-to-edit fires a discard before the
-      # PATCH's audio_note attachment is visible to this query.
       empty = @visit.narrative.to_s.strip.empty? &&
               !@visit.audio_note.attached? &&
-              @visit.ended_at.nil? &&
-              @visit.created_at < 30.seconds.ago
+              @visit.ended_at.nil?
       if empty
         @visit.destroy!
         flash[:notice] = "Visit discarded." unless request.format.json? || beacon_request?
@@ -235,6 +314,34 @@ class VisitsController < ApplicationController
       if @visit.started_at && @visit.ended_at.nil?
         @visit.update!(ended_at: Time.current)
         flash[:notice] = "Visit completed. Thank you."
+
+        # Polish step (admission visits only — routine visits don't
+        # feed the structured eval, so spending an LLM call on them
+        # adds cost without benefit). Save the raw transcript first
+        # so surveyors can verify nothing was added or dropped, then
+        # replace `narrative` with the polished version that drives
+        # the chart + downstream extraction.
+        if @visit.visit_type_admission? && @visit.narrative.to_s.strip.present? && @visit.narrative_raw.blank?
+          raw     = @visit.narrative.to_s
+          @visit.update!(narrative_raw: raw)
+          if (polish = HosalivioBrain.polish_narrative(raw))
+            @visit.update!(narrative: polish["polished"])
+            AgentEvent.create!(
+              agency:      @visit.agency,
+              agent_id:    "hosalivio_brain",
+              action:      "polish_narrative",
+              subject:     @visit,
+              happened_at: Time.current,
+              change_set: {
+                source:    polish["source"],
+                chars_in:  raw.length,
+                chars_out: polish["polished"].length
+              }
+            )
+          else
+            Rails.logger.warn("[VisitsController#finish] polish_narrative returned nil; keeping raw narrative as displayed")
+          end
+        end
 
         if @visit.visit_type_admission? && (eval_rec = @visit.pre_admit_eval)
           result = PreAdmitNarrativeExtractor.call(
