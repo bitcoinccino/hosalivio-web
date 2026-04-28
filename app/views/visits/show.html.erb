@@ -99,9 +99,30 @@
         </div>
 
         <% if @visit.narrative.present? %>
+          <%
+            placeholder_narrative = @visit.narrative.to_s.start_with?("Narrative pending")
+          %>
           <div class="mb-4">
-            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Narrative</div>
-            <p class="text-[13px] text-[#3A3936] leading-relaxed whitespace-pre-wrap"><%= @visit.narrative %></p>
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1 flex items-center gap-2">
+              <span>Narrative</span>
+              <% if placeholder_narrative %>
+                <span class="text-[9px] uppercase tracking-[0.18em] font-bold text-[#D97757] bg-[#FFF3EC] border border-[#D97757] rounded-full px-2 py-0.5">
+                  <i class="ri-mic-line"></i> Awaiting RN
+                </span>
+              <% end %>
+            </div>
+            <% if placeholder_narrative %>
+              <%# Muted, italic — the placeholder is a prompt, not a note. %>
+              <p class="text-[13px] text-[#6B665F] italic leading-relaxed whitespace-pre-wrap"><%= @visit.narrative %></p>
+              <% if @visit.user_id == current_user.id || (current_user.role_names & %w[admin don admissions]).any? %>
+                <%= link_to edit_visit_path(@visit, focus: "narrative"),
+                      class: "mt-2 inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white transition" do %>
+                  <i class="ri-mic-line"></i> Clear &amp; dictate
+                <% end %>
+              <% end %>
+            <% else %>
+              <p class="text-[13px] text-[#3A3936] leading-relaxed whitespace-pre-wrap"><%= @visit.narrative %></p>
+            <% end %>
           </div>
         <% end %>
 

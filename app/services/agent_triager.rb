@@ -104,20 +104,36 @@ class AgentTriager
     write_note(p.merge(author_role: "admissions"))
   end
 
+  # Placeholder we substitute for the AI's auto-narrative on RN visits.
+  # The clinical voice on an RN bedside visit must come from the licensed
+  # RN, not from the agent. The agent can SCHEDULE the visit, but
+  # composing the chart narrative is Pascal's job at the bedside.
+  RN_NARRATIVE_PLACEHOLDER =
+    "Narrative pending. RN will fill at the bedside.".freeze
+
   def write_visit(p)
     patient_id = p[:patient_id] || fallback_patient_id
     return nil if patient_id.blank?
+
+    discipline = (p[:discipline].presence || @role).to_s
+    narrative  = p[:narrative]
+    if discipline == "rn"
+      # Scrub the AI-composed narrative for RN visits so the clinician
+      # sees a clear "your turn" prompt instead of robot prose. MD,
+      # SW, chaplain, etc. keep their agent-authored narratives.
+      narrative = RN_NARRATIVE_PLACEHOLDER
+    end
 
     Visit.create!(
       agency:          @agency,
       patient_id:      patient_id,
       user_id:         p[:user_id] || user_for_role&.id,
-      discipline:      (p[:discipline].presence || @role).to_s,
+      discipline:      discipline,
       visit_type:      p[:visit_type].presence || "routine",
       scheduled_at:    p[:scheduled_at],
       started_at:      p[:started_at],
       ended_at:        p[:ended_at],
-      narrative:       p[:narrative],
+      narrative:       narrative,
       vitals:          (p[:vitals].is_a?(Hash) ? p[:vitals] : {}),
       pain_score:      p[:pain_score],
       billable:        p[:billable].nil? ? true : ActiveModel::Type::Boolean.new.cast(p[:billable]),

@@ -1,4 +1,12 @@
 <%
+  # 'Clear & dictate' button on the visit show page links here with
+  # ?focus=narrative. We wipe the AI-pending placeholder in-memory so
+  # the form renders an empty narrative ready for Pascal to dictate
+  # into. The actual save still goes through the normal update path.
+  if params[:focus] == "narrative" && @visit.narrative.to_s.start_with?("Narrative pending")
+    @visit.narrative = ""
+  end
+
   # Visit lifecycle states drive the entire page language:
   #   scheduled    — start time in the future, not yet begun
   #   ready        — scheduled time is now or passed, not yet begun
