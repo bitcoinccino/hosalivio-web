@@ -63,8 +63,13 @@
           <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
             <i class="<%= a[:icon] %>"></i>
           </span>
-          <span class="min-w-0">
-            <span class="block text-[13px] text-[#1D1C1A]"><%= a[:label] %></span>
+          <span class="min-w-0 flex-1">
+            <span class="flex items-center gap-2">
+              <span class="block text-[13px] text-[#1D1C1A]"><%= a[:label] %></span>
+              <% if a[:suggested] %>
+                <span class="text-[8px] uppercase tracking-widest text-[#2F6F4E] bg-[#2F6F4E]/10 border border-[#2F6F4E]/30 rounded-full px-1.5 py-0.5 font-bold">Suggested</span>
+              <% end %>
+            </span>
             <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
           </span>
         <% end %>

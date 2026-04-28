@@ -122,7 +122,7 @@
   <div class="max-w-2xl flex items-center gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6]"
        title="HosAlivio dispatch confirmation">
     <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
-      <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio" %>
+      <span class="w-full h-full flex items-center justify-center bg-[#D97757] text-white" title="HosAlivio"><i class="ri-heart-pulse-line text-[14px]"></i></span>
     </div>
     <div class="min-w-0 flex-1">
       <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio</div>
@@ -234,7 +234,7 @@
     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %> border border-[#EFECE6]">
       <% if is_ai %>
         <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
-          <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio" %>
+          <span class="w-full h-full flex items-center justify-center bg-[#D97757] text-white" title="HosAlivio"><i class="ri-heart-pulse-line text-[14px]"></i></span>
         </div>
       <% else %>
         <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
@@ -253,8 +253,8 @@
     <div class="flex items-center justify-between mb-1 gap-2">
       <div class="min-w-0 flex items-center gap-2.5">
         <% if is_ai %>
-          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
-            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio" %>
+          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#D97757] flex items-center justify-center text-white" title="HosAlivio">
+            <i class="ri-heart-pulse-line text-[20px]"></i>
           </div>
         <% elsif note.author_user&.has_avatar? %>
           <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">

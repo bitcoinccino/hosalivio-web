@@ -66,6 +66,66 @@ class HosalivioBrain
     # explicitly state a PPS number. Returns:
     #   { score:, source: "calculated", justification: }
     # or nil if the LLM call fails or no signal is available.
+    # Answers a clinician's factual question about a specific patient
+    # using the role-scoped PatientContextBuilder snapshot. Returns:
+    #   { "answer" => String, "source" => "claude:..." }
+    # or nil when both providers fail. The dispatcher posts the answer
+    # back into the chat as a clinician-only HosAlivio bubble.
+    def answer_clinician_question(question:, patient:, role:)
+      return nil if question.to_s.strip.empty? || patient.nil?
+      ctx = PatientContextBuilder.call(patient: patient, role: role)
+      payload = {
+        REQUESTER_ROLE:  role.to_s,
+        QUESTION:        question.to_s.strip,
+        PATIENT_CONTEXT: ctx
+      }.to_json
+      PROVIDER_CHAIN.each do |provider|
+        next unless provider_enabled?(provider)
+        begin
+          raw      = (provider == :claude) ? request_answer_claude(payload) : request_answer_openai(payload)
+          parsed   = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
+          answer   = parsed["answer"].to_s.strip
+          next if answer.empty?
+          answer = answer.gsub(/[–—]/, ", ")
+          return {
+            "answer" => answer,
+            "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
+          }
+        rescue => e
+          Rails.logger.warn("[HosalivioBrain.answer_clinician_question:#{provider}] #{e.class}: #{e.message}")
+        end
+      end
+      nil
+    end
+
+    # Polishes the raw voice transcript into a clean clinical
+    # narrative ready for the chart. Returns:
+    #   { "polished" => String, "source" => "claude:..." }
+    # or nil when both providers fail / are unconfigured. The caller
+    # is expected to keep the raw transcript alongside (Visit#narrative_raw)
+    # so surveyors can verify nothing was added or dropped.
+    def polish_narrative(raw_text)
+      return nil if raw_text.to_s.strip.empty?
+      PROVIDER_CHAIN.each do |provider|
+        next unless provider_enabled?(provider)
+        begin
+          raw      = (provider == :claude) ? request_polish_claude(raw_text) : request_polish_openai(raw_text)
+          parsed   = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
+          polished = parsed["polished"].to_s.strip
+          next if polished.empty?
+          # Belt-and-suspenders em-dash scrub (same as classify_clinician).
+          polished = polished.gsub(/[–—]/, ", ")
+          return {
+            "polished" => polished,
+            "source"   => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
+          }
+        rescue => e
+          Rails.logger.warn("[HosalivioBrain.polish_narrative:#{provider}] #{e.class}: #{e.message}")
+        end
+      end
+      nil
+    end
+
     def calculate_pps(narrative:)
       return nil if narrative.to_s.strip.empty?
       PROVIDER_CHAIN.each do |provider|
@@ -158,11 +218,17 @@ class HosalivioBrain
   end
 
   def sanitize(parsed, source)
+    reply = parsed[:reply].to_s.strip.presence || "I've recorded your message and let the team know. Someone will follow up."
+    # Belt-and-suspenders: strip em/en dashes the LLM slips in despite
+    # the prompt rule. Replace with comma + space so the prose still
+    # flows naturally. Hospice users find dashes cold; commas read warmer.
+    reply     = reply.gsub(/\s*[—–]\s*/, ", ")
+    reasoning = parsed[:reasoning].to_s.strip.gsub(/\s*[—–]\s*/, ", ")
     {
       intent:    INTENTS.include?(parsed[:intent])    ? parsed[:intent]  : "other",
       urgency:   URGENCIES.include?(parsed[:urgency]) ? parsed[:urgency] : (@note.urgency.presence || "normal"),
-      reasoning: parsed[:reasoning].to_s.strip,
-      reply:     parsed[:reply].to_s.strip.presence || "I've recorded your message and let the team know. Someone will follow up.",
+      reasoning: reasoning,
+      reply:     reply,
       source:    source
     }
   end
@@ -243,6 +309,17 @@ class HosalivioBrain
         "reply":     a warm, specific reply to the family in plain language, 2 to 4 sentences, name the clinician you are alerting, be honest about what you do not know
       }
 
+      VOICE RULES (apply to BOTH reply AND reasoning):
+        - Plain English, conversational, calm. Speak like a real human
+          care coordinator, not a corporate bot.
+        - NEVER use em-dashes (—) or en-dashes (–). Use commas, periods,
+          colons, or parentheses for clause separation.
+        - Don't use stiff phrases like "we are" stacked together; vary
+          pacing. Contractions are welcome ("I'm", "they're", "we're").
+        - Refer to the patient by first name when the family does.
+        - Never sound like a script. If two replies in a row would
+          land identically, vary the second one.
+
       URGENCY
         crisis  : life or comfort critical right now (uncontrolled pain, dyspnea, active dying signs)
         urgent  : address within hours (meds running out, caregiver distress, moderate symptom change)
@@ -296,6 +373,10 @@ class HosalivioBrain
     sw_request
     dme_order
     noe_file
+    verify_insurance
+    admissions_handoff
+    billing_question
+    answer_question
   ].freeze
 
   def clinician_system_prompt
@@ -330,8 +411,44 @@ class HosalivioBrain
         sw_request           : send the social worker
         dme_order            : equipment (hospital bed, oxygen, walker, etc.)
         noe_file             : file the Notice of Election with insurance
-        no_action            : the clinician is not asking for anything to
-                               be dispatched. Most messages are no_action.
+        verify_insurance     : route to the insurance / billing team to
+                               verify Medicare or Medicaid eligibility,
+                               check coverage, or resolve insurance
+                               questions ('verify Maria's Medicaid',
+                               'check her Medicare', 'is her insurance
+                               approved?', 'flag insurance for review').
+        admissions_handoff   : the clinician needs admissions involved
+                               on something operational that doesn't fit
+                               another action ('loop in admissions',
+                               'page admissions', 'admissions needs
+                               to know').
+        billing_question     : a billing or claim issue specifically
+        answer_question      : ANY question the clinician is asking
+                               HosAlivio about THIS patient. Strong signal:
+                               the body contains a "?" or starts with
+                               who / what / when / where / why / how / is /
+                               has / does / can / should / will / which /
+                               are / who's / what's / how many / how long.
+                               Examples (NOT exhaustive):
+                                 "When was the last visit?"
+                                 "How many days until recert?"
+                                 "How many days does Maria have left to recertify?"
+                                 "What's her PPS?"
+                                 "Has the eval been certified?"
+                                 "Is she on morphine?"
+                                 "Who's the family contact?"
+                                 "What meds is she on for pain?"
+                                 "Are we behind on the NOE?"
+                                 "What's the recert window?"
+                               If you are unsure between answer_question
+                               and no_action, prefer answer_question.
+                               Returns an info answer; never changes orders.
+        no_action            : The clinician is documenting narrative or
+                               making a statement, NOT asking a question
+                               and NOT requesting a dispatch. Examples:
+                               "Patient resting comfortably." "Just left
+                               the home, will follow up tomorrow." "Family
+                               present and supportive."
 
       body_rewrite
         Use this ONLY when the clinician phrased their message as an
@@ -424,6 +541,103 @@ class HosalivioBrain
 
   AUDIENCES = %w[family team].freeze
 
+  ANSWER_SYSTEM_PROMPT = <<~SYS.freeze
+    You are HosAlivio, a hospice care coordination AI. Someone asked you a
+    question. They might be a clinician, an aide, a chaplain, a social
+    worker, or a patient's family member. You have a structured
+    PATIENT_CONTEXT JSON with what they are allowed to know. Your job:
+    answer warmly, concisely, professionally.
+
+    Hard rules:
+      - For PATIENT-SPECIFIC questions: use ONLY facts present in
+        PATIENT_CONTEXT. Never speculate, never invent, never extrapolate.
+      - For GENERAL HOSPICE EDUCATION questions ("what is hospice?", "what
+        does PPS mean?", "what should I expect at end of life?", "how
+        does the Medicare hospice benefit work?"): explain in plain,
+        warm language. You may use general hospice knowledge here, but
+        keep it factual and conservative. If unsure, say so.
+      - Never give clinical advice. Never recommend medication changes,
+        dose changes, or new orders. Redirect to the right human (RN, MD,
+        DON, hospice nurse on call).
+      - Never include the patient's full SSN, address, DOB, or other
+        private identifiers in your reply, even if you have them.
+      - If you don't know something, say so plainly and offer to route
+        the question. Example: "I don't see that in her chart yet. Want
+        me to ping the RN?"
+      - Stay in character as HosAlivio. Warm, calm, professional. No
+        em-dashes (use commas, periods, parentheses).
+      - Keep replies short. 1-3 sentences for simple lookups; up to 5
+        for trend summaries or education. No headers, no bullet markdown
+        unless explicitly asked for a list.
+
+    Role-aware emphasis (REQUESTER_ROLE field):
+      rn / md / don         : full clinical detail OK
+      admissions / admin    : focus on operational status (visits, eval
+                              certification, NOE deadlines), avoid clinical
+                              recommendation framing
+      aide                  : focus on ADLs, schedule, family. If asked
+                              about medications, answer at the level of
+                              "she's on a long-acting opioid for pain"
+                              not specific doses.
+      sw / social_worker    : focus on family, advance directives, goals
+                              of care, psychosocial. Skip dose detail.
+      chaplain              : focus on spiritual care, family, end-of-life
+                              wishes. Skip clinical detail.
+      family                : warmest tone. Refer to the patient by first
+                              name. NEVER share specific drug names, doses,
+                              or frequencies, even if PATIENT_CONTEXT shows
+                              them; describe medications by category
+                              ("a comfort medication for pain"). For
+                              clinical questions ("is mom dying?", "how
+                              long does she have?"), respond with
+                              compassion and offer to connect them with
+                              the RN, MD, or chaplain. Always end a hard
+                              question with an explicit next-step offer.
+
+                              When family asks WHO does something at the
+                              agency (e.g., "who verifies Medicaid?", "who
+                              orders her oxygen?", "who's the social
+                              worker?"), use PATIENT_CONTEXT.agency_staff
+                              and PATIENT_CONTEXT.care_team to name the
+                              real person by full name + role
+                              ("Kendra in Insurance handles Medicaid
+                              verification"). Do NOT give a generic
+                              "our admissions or billing team" answer
+                              when a specific named human is in the
+                              context. Offer to connect them.
+
+    Output ONLY a JSON object (no markdown fences, no preamble):
+      { "answer": "<your reply, plain text, 1-5 sentences>" }
+  SYS
+
+  POLISH_SYSTEM_PROMPT = <<~SYS.freeze
+    You are a clinical scribe polishing an RN's voice-dictated visit
+    narrative for the medical record. Your job is FORMAT, not content.
+
+    Allowed transformations:
+      - Add punctuation, sentence breaks, and paragraph breaks.
+      - Capitalize correctly. Use clinical present tense.
+      - Fix obvious dictation artifacts ("twenty over" → "20/", "BP one twenty
+        eight over seventy six" → "BP 128/76").
+      - Replace lay phrasing with clinical terms only when the meaning is
+        unambiguous (e.g., "blood from her mouth" → "hemoptysis";
+        "trouble breathing" → "dyspnea"). When unsure, KEEP the lay phrase.
+
+    Forbidden transformations:
+      - Do NOT add facts that are not explicitly in the original text.
+      - Do NOT drop facts. Every clinical detail (symptom, medication,
+        family member, social factor) must appear in the polished version.
+      - Do NOT change numbers, doses, frequencies, or named entities.
+      - Do NOT include any preamble, markdown, or explanation.
+      - Do NOT use em-dashes; use commas, periods, or parentheses instead.
+
+    Output ONLY a JSON object (no markdown fences, no preamble):
+      { "polished": "<polished narrative as a single string>" }
+
+    If the narrative is already clean enough or empty, return the original
+    text verbatim in the "polished" field.
+  SYS
+
   PPS_SYSTEM_PROMPT = <<~SYS.freeze
     You are an expert hospice RN scoring the Palliative Performance Scale (PPS).
     Evaluate ONLY the narrative evidence against the five PPS domains:
@@ -447,6 +661,78 @@ class HosalivioBrain
     If the narrative does not contain enough evidence for any domain,
     return score: 0 and justification: "insufficient narrative evidence".
   SYS
+
+  def self.request_answer_claude(payload_json)
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = {
+      model:      CLAUDE_MODEL,
+      max_tokens: 600,
+      system:     [{ type: "text", text: ANSWER_SYSTEM_PROMPT }],
+      messages:   [{ role: "user", content: payload_json }]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  def self.request_answer_openai(payload_json)
+    uri = URI(OPENAI_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req.body = {
+      model:           OPENAI_MODEL,
+      max_tokens:      600,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: ANSWER_SYSTEM_PROMPT },
+        { role: "user",   content: payload_json }
+      ]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
+
+  def self.request_polish_claude(raw_text)
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = {
+      model:      CLAUDE_MODEL,
+      max_tokens: 1500,
+      system:     [{ type: "text", text: POLISH_SYSTEM_PROMPT }],
+      messages:   [{ role: "user", content: "Raw narrative:\n#{raw_text}" }]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  def self.request_polish_openai(raw_text)
+    uri = URI(OPENAI_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req.body = {
+      model:           OPENAI_MODEL,
+      max_tokens:      1500,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: POLISH_SYSTEM_PROMPT },
+        { role: "user",   content: "Raw narrative:\n#{raw_text}" }
+      ]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
 
   def self.request_pps_claude(narrative)
     uri = URI(CLAUDE_URL)

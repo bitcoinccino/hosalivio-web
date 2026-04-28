@@ -78,11 +78,32 @@ class HosalivioTriager
   # triage chain.
   HUMAN_CONVERSATION_WINDOW = 30.minutes
 
+  INTERROGATIVES = %w[who what when where why how is has does can should will which are who's what's].freeze
+
+  def looks_like_question?(body)
+    s = body.to_s.strip
+    return false if s.empty?
+    return true if s.end_with?("?")
+    first = s.split(/\s+/, 2).first.to_s.downcase
+    INTERROGATIVES.include?(first)
+  end
+
   def triage!
     # 0 — SUPPRESS if a human clinician is actively in this thread
     if human_clinician_recently_active? && !@note.urgency_crisis?
       Rails.logger.info("[HosalivioTriager] suppressing AI — human clinician active in thread for patient=#{@patient.id}")
       @note.mark_read!
+      return
+    end
+
+    # 0.5 — Q&A short-circuit. If the family member asked a question
+    # (factual about THIS patient, or general hospice education), use
+    # the role-scoped answer path instead of the generic intent
+    # classifier. Crisis messages still go through the normal triage
+    # below because they need handoffs even if phrased as "is mom
+    # dying?". Read receipts + audit happen inside answer_family!.
+    if looks_like_question?(@note.body) && !@note.urgency_crisis?
+      answer_family!
       return
     end
 
@@ -126,6 +147,51 @@ class HosalivioTriager
   end
 
   private
+
+  # Family Q&A path. Calls HosalivioBrain.answer_clinician_question with
+  # role: "family" (which gates the patient context to lay-friendly,
+  # no specific drug names/doses) and posts the answer as a normal,
+  # family-visible HosAlivio reply. Audit-logged for compliance.
+  def answer_family!
+    Current.agency           = @agency
+    Current.agent_id         = "admissions"
+    Current.agent_session_id = "hosalivio-family-qa-#{SecureRandom.hex(4)}"
+
+    result = HosalivioBrain.answer_clinician_question(
+      question: @note.body.to_s,
+      patient:  @patient,
+      role:     "family"
+    )
+    reply_text = result&.dig("answer").presence || "I'm not able to answer that just now. I've nudged the care team so someone can get back to you."
+
+    Note.create!(
+      agency:      @agency,
+      patient:     @patient,
+      author_role: "admissions",
+      body:        reply_text,
+      urgency:     "normal",
+      source:      "system"
+    )
+
+    AgentEvent.create!(
+      agency:      @agency,
+      agent_id:    "hosalivio_brain",
+      action:      "answer_family_question",
+      subject:     @patient,
+      happened_at: Time.current,
+      change_set: {
+        family_user_id: @note.author_user_id,
+        source:         result&.dig("source"),
+        chars_in:       @note.body.to_s.length,
+        chars_out:      reply_text.length,
+        answered:       result.present?
+      }
+    )
+
+    @note.mark_read!
+  ensure
+    Current.reset
+  end
 
   # Was the most recent non-family note authored by a real human user
   # (not an AI / system note) within the conversation window? If so,

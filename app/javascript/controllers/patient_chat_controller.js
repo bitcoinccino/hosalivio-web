@@ -365,7 +365,12 @@ export default class extends Controller {
     const wasVoice    = this._usedVoice || !!audio
     this._currentUrgency = "normal"
     this._usedVoice = false
-    if (isFamily) this._scheduleTyping(800)
+    // Schedule the "HosAlivio is thinking" indicator for both family
+     // (waiting for a clinician to read + reply) and clinicians (waiting
+     // for HosAlivio to answer Q&A or post a dispatch ack). The indicator
+     // is harmless when no reply lands within 30s; the fallback copy
+     // softens it to "we'll reply as soon as we can".
+     this._scheduleTyping(800)
 
     let resp
     if (audio) {
@@ -414,13 +419,12 @@ export default class extends Controller {
 
   _showTyping() {
     if (this._typingEl) return
-    const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     const wrap = document.createElement("div")
     wrap.className = "max-w-2xl mx-auto opacity-0 transition-opacity duration-300"
     wrap.innerHTML = `
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#EFECE6] border border-[#EFECE6] ring-1 ring-dashed ring-[#B9B4AB]">
-        <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
-          <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
+        <div class="w-7 h-7 rounded-full bg-[#D97757] flex items-center justify-center text-white flex-shrink-0">
+          <i class="ri-heart-pulse-line text-[14px]"></i>
         </div>
         <span class="text-[10px] font-bold uppercase tracking-widest text-[#6B665F]">HosAlivio</span>
         <span class="text-[10px] text-[#6B665F]">is thinking</span>
@@ -436,21 +440,33 @@ export default class extends Controller {
     this._scrollToBottom()
     this._typingEl = wrap
 
-    // Fallback: if no reply lands within 30s, swap the dots for a calm message.
-    this._typingFallback = setTimeout(() => this._showTypingFallback(), 30000)
+    // Fallback: if no reply lands within 90s, swap the dots for a calm
+    // message. Bumped from 30s because the dev queue adapter is :inline
+    // and Claude can occasionally take 20-40s under load; 30s was
+    // creating false negatives where the reply lands at second 35.
+    this._typingFallback = setTimeout(() => this._showTypingFallback(), 90000)
   }
 
   _showTypingFallback() {
     if (!this._typingEl) return
-    const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
     this._typingEl.innerHTML = `
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#EFECE6] border border-[#EFECE6] ring-1 ring-dashed ring-[#B9B4AB]">
-        <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
-          <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
+        <div class="w-7 h-7 rounded-full bg-[#D97757] flex items-center justify-center text-white flex-shrink-0">
+          <i class="ri-heart-pulse-line text-[14px]"></i>
         </div>
-        <span class="text-[12px] text-[#3A3936]">Your care team has been notified — we'll reply as soon as we can.</span>
+        <span class="text-[12px] text-[#3A3936]">Still working on it, this is taking longer than usual...</span>
       </div>
     `
+
+    // Belt-and-suspenders: if the fallback fired, the WebSocket may have
+    // missed the broadcast (background tab, transient disconnect). Try to
+    // reload the chat once so the user doesn't have to manually refresh.
+    if (!this._fallbackReloaded) {
+      this._fallbackReloaded = true
+      setTimeout(() => {
+        if (this._typingEl) window.location.reload()
+      }, 4000)
+    }
   }
 
   _clearTyping() {
@@ -519,22 +535,21 @@ export default class extends Controller {
   }
 
   _appendHosalivioAck(n) {
-    const time   = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
-    const text   = String(n.body || "").replace(/^\[HOSALIVIO_ACK\]\s*/, "")
-    const botSrc = document.body.dataset.hosalivioBotSrc || "/assets/hosalivio_assistant.png"
+    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
+    const text = String(n.body || "").replace(/^\[HOSALIVIO_ACK\]\s*/, "")
 
     const wrap = document.createElement("div")
-    wrap.className = "max-w-2xl flex items-center gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] opacity-0 transition-opacity duration-300"
-    wrap.title = "HosAlivio dispatch confirmation"
+    wrap.className = "max-w-2xl flex items-start gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] opacity-0 transition-opacity duration-300"
+    wrap.title = "HosAlivio reply"
     wrap.innerHTML = `
-      <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
-        <img src="${botSrc}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
+      <div class="w-7 h-7 rounded-full bg-[#D97757] flex items-center justify-center text-white flex-shrink-0">
+        <i class="ri-heart-pulse-line text-[14px]"></i>
       </div>
       <div class="min-w-0 flex-1">
         <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio</div>
-        <div data-role="ack" class="text-[13px] text-[#1D1C1A] mt-0.5"></div>
+        <div data-role="ack" class="text-[13px] text-[#1D1C1A] mt-0.5 whitespace-pre-wrap"></div>
       </div>
-      <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0">${time}</div>
+      <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0 mt-0.5">${time}</div>
     `
     wrap.querySelector('[data-role="ack"]').textContent = text
     this.feedTarget.appendChild(wrap)
@@ -766,6 +781,12 @@ export default class extends Controller {
     //   4. IDG huddle bubble (real human author) — dashed muted bubble
     //   5. audit rationale (no human author) — collapsed audit row
     if (n.clinician_only) {
+      // Clear the "HosAlivio is thinking" dots when any system /
+      // HosAlivio message lands. Without this, the typing indicator
+      // would stick around forever after a Q&A reply or dispatch ack.
+      if (n.audit_kind === "hosalivio_ack" || n.audit_kind === "guardrail" || n.action_payload) {
+        this._clearTyping()
+      }
       if (n.audit_kind === "guardrail") {
         this._appendGuardrailBlock(n)
       } else if (n.action_payload) {

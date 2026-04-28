@@ -44,6 +44,16 @@ module Api
           )
 
           decision = HosalivioBrain.classify_clinician_message(note: note, requester: @user)
+
+          # Belt-and-suspenders: if the body looks like a question (ends
+          # with "?" or starts with a clear interrogative) and the LLM
+          # still classified it as no_action, override to answer_question
+          # so HosAlivio replies. The LLM occasionally misses phrasings
+          # the prompt's examples don't cover.
+          if decision[:action].to_s == "no_action" && looks_like_question?(body)
+            decision = decision.merge(action: "answer_question")
+          end
+
           note.clinician_only = (decision[:audience] == "team")
           # If the brain rewrote the body (e.g. 'let Carlos know that …'
           # → 'I just left, she is resting comfortably'), use the cleaned
@@ -84,6 +94,16 @@ module Api
       def normalize_urgency(raw)
         v = raw.to_s.downcase
         %w[normal urgent crisis].include?(v) ? v : "normal"
+      end
+
+      INTERROGATIVES = %w[who what when where why how is has does can should will which are who's what's].freeze
+
+      def looks_like_question?(body)
+        s = body.to_s.strip
+        return false if s.empty?
+        return true if s.end_with?("?")
+        first = s.split(/\s+/, 2).first.to_s.downcase
+        INTERROGATIVES.include?(first)
       end
 
       # Scan an internal team message for @FirstName tokens, resolve each

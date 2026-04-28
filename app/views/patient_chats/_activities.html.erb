@@ -1,0 +1,129 @@
+<%#
+  Compact "Now / Coming up" strip rendered above the message feed.
+  Only ships rows whose data already exists in the controller (no
+  IDG / scheduled-visit stubs yet). Each section's heading hides
+  if it has zero rows; whole block hides if both sections empty.
+%>
+<%
+  in_progress_visit  = @recent_visits.find { |v| v.started_at && v.ended_at.nil? }
+  en_route_deliveries = @pending_deliveries.select(&:delivery_en_route?)
+  in_transit_dme     = @active_dme.select(&:dme_approved?)
+
+  # Soonest non-overdue scheduled dose (overdue is already loud in the right rail).
+  next_med = @order_schedules
+                .select { |_o, s| s[:status] == :upcoming && s[:next_due_at] }
+                .min_by { |_o, s| s[:next_due_at] }
+
+  recert_soon = @days_to_recert && @days_to_recert <= 30
+
+  has_now      = in_progress_visit || en_route_deliveries.any? || in_transit_dme.any?
+  has_upcoming = recert_soon || next_med
+%>
+
+<% if has_now || has_upcoming %>
+  <details class="mx-6 mt-4 mb-2 bg-white border border-[#EFECE6] rounded-xl group" open>
+    <summary class="flex items-center justify-between px-4 py-2.5 cursor-pointer list-none">
+      <div class="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">
+        <i class="ri-pulse-line text-[#D97757] text-[14px]"></i>
+        Activity
+      </div>
+      <i class="ri-arrow-down-s-line text-[#6B665F] group-[[open]]:rotate-180 transition"></i>
+    </summary>
+
+    <div class="px-4 pb-3 pt-1 space-y-3 border-t border-[#EFECE6]">
+      <% if has_now %>
+        <div>
+          <div class="text-[9px] uppercase tracking-[0.2em] text-[#C1403A] font-bold mb-1.5">Now</div>
+          <ul class="space-y-1.5">
+            <% if in_progress_visit %>
+              <li class="flex items-center justify-between gap-2 text-[13px]">
+                <div class="flex items-center gap-2 min-w-0">
+                  <i class="ri-record-circle-line text-[#D97757]"></i>
+                  <span class="truncate">
+                    Visit in progress
+                    <% if in_progress_visit.user %>
+                      with <%= in_progress_visit.user.full_name.split.first %>
+                    <% end %>
+                  </span>
+                </div>
+                <% unless current_user.family_access? %>
+                  <%= link_to "Open", record_visit_path(in_progress_visit),
+                        class: "text-[11px] text-[#D97757] hover:underline font-medium flex-shrink-0" %>
+                <% end %>
+              </li>
+            <% end %>
+
+            <% en_route_deliveries.each do |d| %>
+              <li class="flex items-center justify-between gap-2 text-[13px]">
+                <div class="flex items-center gap-2 min-w-0">
+                  <i class="ri-truck-line text-[#D97757]"></i>
+                  <span class="truncate">
+                    Pharmacy <%= d.kind.to_s.tr("_", " ") %> en route
+                    <% if d.medication_order&.drug_name.present? %>
+                      · <%= d.medication_order.drug_name %>
+                    <% end %>
+                  </span>
+                </div>
+                <span class="text-[11px] text-[#6B665F] font-mono flex-shrink-0">
+                  <%= time_ago_in_words(d.created_at) %> ago
+                </span>
+              </li>
+            <% end %>
+
+            <% in_transit_dme.each do |dme| %>
+              <li class="flex items-center justify-between gap-2 text-[13px]">
+                <div class="flex items-center gap-2 min-w-0">
+                  <i class="ri-archive-2-line text-[#D97757]"></i>
+                  <span class="truncate">
+                    <%= dme.equipment_type.to_s.tr("_", " ").titleize %> on the way
+                  </span>
+                </div>
+                <span class="text-[11px] text-[#6B665F] font-mono flex-shrink-0">
+                  <%= time_ago_in_words(dme.requested_at) %> ago
+                </span>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <% if has_upcoming %>
+        <div>
+          <div class="text-[9px] uppercase tracking-[0.2em] text-[#2F6F4E] font-bold mb-1.5">Coming up</div>
+          <ul class="space-y-1.5">
+            <% if next_med %>
+              <% order, sched = next_med %>
+              <li class="flex items-center justify-between gap-2 text-[13px]">
+                <div class="flex items-center gap-2 min-w-0">
+                  <i class="ri-capsule-line text-[#6B665F]"></i>
+                  <span class="truncate"><%= order.drug_name %> <%= order.dose %></span>
+                </div>
+                <span class="text-[11px] text-[#2F6F4E] font-medium flex-shrink-0">
+                  <%= sched[:label] %>
+                </span>
+              </li>
+            <% end %>
+
+            <% if recert_soon %>
+              <li class="flex items-center justify-between gap-2 text-[13px]">
+                <div class="flex items-center gap-2 min-w-0">
+                  <i class="ri-calendar-check-line text-[#6B665F]"></i>
+                  <span class="truncate">Recertification window</span>
+                </div>
+                <span class="text-[11px] <%= @days_to_recert <= 7 ? 'text-[#C1403A]' : 'text-[#6B665F]' %> font-medium flex-shrink-0">
+                  <% if @days_to_recert <= 0 %>
+                    Due now
+                  <% elsif @days_to_recert == 1 %>
+                    1 day
+                  <% else %>
+                    <%= @days_to_recert %> days
+                  <% end %>
+                </span>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+    </div>
+  </details>
+<% end %>

@@ -69,6 +69,14 @@ class ClinicianDispatcher
       d.send(:dispatch_role_handoff, "social_worker", "sw_request", ack: ack)
     when :noe_file
       d.send(:dispatch_role_handoff, "insurance", "noe_file", ack: ack)
+    when :verify_insurance
+      d.send(:dispatch_role_handoff, "insurance", "verify_insurance", ack: ack)
+    when :billing_question
+      d.send(:dispatch_role_handoff, "billing", "billing_question", ack: ack)
+    when :admissions_handoff
+      d.send(:dispatch_role_handoff, "admissions", "admissions_handoff", ack: ack)
+    when :answer_question
+      d.send(:answer_question)
     else
       return Result.new(dispatched: false, reason: "unknown_action:#{action}")
     end
@@ -222,12 +230,83 @@ class ClinicianDispatcher
                           requested_by: @requester.full_name },
       happened_at:      Time.current
     )
-    label_map = { "chaplain" => "visit requested.",
+    # Persistent notification so the targeted role's bell-icon actually
+    # pings, not just the agent-event audit log. Looks up active users
+    # with the given role at the patient's branch (or agency-wide if
+    # no branch is set), and creates one Notification each.
+    notify_role_users(role, intent_label)
+
+    label_map = { "chaplain"      => "visit requested.",
                   "social_worker" => "request sent.",
-                  "insurance" => "NOE filing queued." }
+                  "insurance"     => intent_label == "verify_insurance" ? "asked to verify insurance." : "NOE filing queued.",
+                  "billing"       => "billing question routed.",
+                  "admissions"    => "looped in." }
     default = "#{persona(role)} #{label_map[role] || 'routed.'}"
     post_ack(ack || default)
     Result.new(dispatched: true, intent: intent_label)
+  end
+
+  def notify_role_users(role, intent_label)
+    base = User.unscoped
+                 .joins(user_roles: :role)
+                 .where(agency_id: @agency.id, active: true, family_access: false)
+                 .where(roles: { name: role })
+    base = base.where(branch_id: @patient.branch_id) if @patient.branch_id
+    base.find_each do |target|
+      next if Notification.exists?(user: target, kind: "role_handoff", linked: @patient, title: intent_title(intent_label))
+      Notification.create!(
+        agency: @agency,
+        user:   target,
+        kind:   "role_handoff",
+        title:  "#{intent_title(intent_label)}: #{@patient.full_name}",
+        linked: @patient
+      )
+    end
+  end
+
+  def intent_title(intent_label)
+    {
+      "verify_insurance"     => "Verify insurance",
+      "billing_question"     => "Billing question",
+      "admissions_handoff"   => "Admissions follow-up",
+      "noe_file"             => "NOE filing",
+      "chaplain_request"     => "Chaplain visit",
+      "sw_request"           => "Social work follow-up"
+    }.fetch(intent_label, intent_label.to_s.tr("_", " ").titleize)
+  end
+
+  # Q&A path: clinician asked HosAlivio a factual question about the
+  # patient. Build a role-scoped context, call Claude, post the answer
+  # back as a HosAlivio bot bubble. Audit-logged via AgentEvent so we
+  # know what was asked, what was answered, and which role asked it.
+  def answer_question
+    role = (@requester.role_names & %w[rn md don admissions admin ceo aide sw social_worker chaplain]).first || "rn"
+    result = HosalivioBrain.answer_clinician_question(
+      question: @note.body.to_s,
+      patient:  @patient,
+      role:     role
+    )
+
+    if result
+      post_ack(result["answer"])
+      AgentEvent.create!(
+        agency:      @agency,
+        agent_id:    "hosalivio_brain",
+        action:      "answer_clinician_question",
+        subject:     @patient,
+        happened_at: Time.current,
+        change_set:  {
+          requester_id:   @requester.id,
+          requester_role: role,
+          source:         result["source"],
+          chars_in:       @note.body.to_s.length,
+          chars_out:      result["answer"].length
+        }
+      )
+    else
+      post_ack("I couldn't answer that just now. Want me to ping the RN?")
+    end
+    Result.new(dispatched: true, intent: "answer_question")
   end
 
   # Posts a short HosAlivio reply into the team-only audit trail so
