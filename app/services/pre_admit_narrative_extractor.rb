@@ -225,8 +225,40 @@ class PreAdmitNarrativeExtractor
 
   def populate_functional_decline(eval_root)
     fd = (eval_root["functional_decline"] ||= {})
-    if (m = @lower.match(/\bpps\s*(?:is|at|of|=|:)?\s*(\d{1,3})\s*%?/)) && m[1].to_i.between?(10, 100)
-      fd["pps"] ||= m[1].to_i
+
+    # PPS is structured: { score, source, justification }.
+    # When the clinician says a number, we capture it and stamp
+    # source: 'clinician' with the exact phrase as justification.
+    # Calculated PPS (Leftward Precedence over the five domains) is
+    # planned via HosalivioBrain.calculate_pps; until then the
+    # calculator path stays a placeholder so the structure is stable.
+    if fd["pps"].nil? || (fd["pps"].is_a?(Hash) && fd["pps"]["score"].to_i.zero?)
+      if (m = @lower.match(/\bpps\s*(?:is|at|of|=|:)?\s*(\d{1,3})\s*%?/)) && m[1].to_i.between?(10, 100)
+        clinician_phrase = @text[/\b[Pp][Pp][Ss][^\.]{0,40}\b/].to_s.strip.presence ||
+                           "PPS #{m[1]}"
+        fd["pps"] = {
+          "score"         => m[1].to_i,
+          "source"        => "clinician",
+          "justification" => clinician_phrase
+        }
+        touch("functional_decline.pps")
+      else
+        # Clinician didn't speak a number. Ask the brain to score by
+        # Leftward Precedence over the five domains. Returns nil if
+        # the narrative is too thin to score or no LLM is configured;
+        # the Final Review UI then prompts the clinician to enter one.
+        calc = HosalivioBrain.calculate_pps(narrative: @text)
+        if calc && calc["score"].to_i.between?(10, 100)
+          fd["pps"] = calc
+          touch("functional_decline.pps")
+        end
+      end
+    elsif fd["pps"].is_a?(Integer)
+      # Backfill: an older row stored PPS as a flat integer. Wrap it
+      # in the new shape and stamp source: 'clinician' (we have no
+      # justification text on file for legacy rows).
+      legacy = fd["pps"]
+      fd["pps"] = { "score" => legacy, "source" => "clinician", "justification" => "" }
       touch("functional_decline.pps")
     end
     if (m = @lower.match(/\b(?:kps|karnofsky)\s*(?:is|at|of|=|:)?\s*(\d{1,3})\s*%?/)) && m[1].to_i.between?(10, 100)
@@ -311,7 +343,12 @@ class PreAdmitNarrativeExtractor
     crit = Array(dx["lcd_criteria_met"]).dup
 
     add = ->(c) { crit << c unless crit.include?(c) }
-    add.call("PPS ≤ 70%")               if fd["pps"].is_a?(Integer) && fd["pps"] <= 70
+    pps_score =
+      case fd["pps"]
+      when Integer then fd["pps"]
+      when Hash    then fd["pps"]["score"].to_i
+      end
+    add.call("PPS ≤ 70%")               if pps_score && pps_score.between?(10, 70)
     add.call("Weight loss ≥ 10% in 6 months") if nd["weight_loss_pct"].to_f >= 10
     add.call("Albumin < 2.5 g/dL")      if nd["albumin_g_dl"].to_f.positive? && nd["albumin_g_dl"].to_f < 2.5
     add.call("Resting dyspnea")         if sx.dig("dyspnea", "severity") == "at rest"

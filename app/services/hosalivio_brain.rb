@@ -59,6 +59,41 @@ class HosalivioBrain
       new(note).classify_for(requester)
     end
 
+    # Calculates a Palliative Performance Scale score from the
+    # narrative using Leftward Precedence over the five domains
+    # (Ambulation, Activity, Self-Care, Intake, Conscious Level).
+    # Used by PreAdmitNarrativeExtractor when the clinician did not
+    # explicitly state a PPS number. Returns:
+    #   { score:, source: "calculated", justification: }
+    # or nil if the LLM call fails or no signal is available.
+    def calculate_pps(narrative:)
+      return nil if narrative.to_s.strip.empty?
+      PROVIDER_CHAIN.each do |provider|
+        next unless provider_enabled?(provider)
+        begin
+          raw    = (provider == :claude) ? request_pps_claude(narrative) : request_pps_openai(narrative)
+          parsed = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
+          score  = parsed["score"].to_i
+          next   unless score.between?(10, 100)
+          return {
+            "score"         => score,
+            "source"        => "calculated",
+            "justification" => parsed["justification"].to_s.strip
+          }
+        rescue => e
+          Rails.logger.warn("[HosalivioBrain.calculate_pps:#{provider}] #{e.class}: #{e.message}")
+        end
+      end
+      nil
+    end
+
+    def provider_enabled?(provider)
+      case provider
+      when :claude then valid_key?(ENV["ANTHROPIC_API_KEY"])
+      when :openai then valid_key?(ENV["OPENAI_API_KEY"])
+      end
+    end
+
     private
 
     def valid_key?(k)
@@ -388,6 +423,66 @@ class HosalivioBrain
   end
 
   AUDIENCES = %w[family team].freeze
+
+  PPS_SYSTEM_PROMPT = <<~SYS.freeze
+    You are an expert hospice RN scoring the Palliative Performance Scale (PPS).
+    Evaluate ONLY the narrative evidence against the five PPS domains:
+      Ambulation, Activity / Disease Status, Self-Care, Intake, Conscious Level.
+    Apply Leftward Precedence: the lowest domain score determines the final PPS.
+
+    Use this exact mapping:
+      100-80%: Fully ambulatory, full self-care, normal intake.
+      70-60%:  Reduced ambulation, occasional assistance, tires easily.
+      50-40%:  Mainly sit / lie, extensive disease, assist with most ADLs.
+      30%:     Total bedbound, total care.
+      20-10%:  Minimal intake, drowsy or unresponsive.
+
+    Output ONLY a JSON object with two keys (no preamble, no markdown fences):
+      {
+        "score":         integer 10..100 in steps of 10,
+        "justification": one sentence quoting the narrative phrases that
+                         drove the scoring decision, including the
+                         leftward-precedence domain.
+      }
+    If the narrative does not contain enough evidence for any domain,
+    return score: 0 and justification: "insufficient narrative evidence".
+  SYS
+
+  def self.request_pps_claude(narrative)
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = {
+      model:      CLAUDE_MODEL,
+      max_tokens: 250,
+      system:     [{ type: "text", text: PPS_SYSTEM_PROMPT }],
+      messages:   [{ role: "user", content: "Narrative:\n#{narrative}" }]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
+    raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  def self.request_pps_openai(narrative)
+    uri = URI(OPENAI_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req.body = {
+      model: OPENAI_MODEL,
+      max_tokens: 250,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: PPS_SYSTEM_PROMPT },
+        { role: "user",   content: "Narrative:\n#{narrative}" }
+      ]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
+    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
 
   def sanitize_clinician(parsed, source)
     audience = AUDIENCES.include?(parsed[:audience]) ? parsed[:audience] : "team"
