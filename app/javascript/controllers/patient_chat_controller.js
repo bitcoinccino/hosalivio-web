@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
-  static targets = ["input", "feed", "status", "quickActions", "mic", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer"]
+  static targets = ["input", "feed", "status", "quickActions", "mic", "micIcon", "micWave", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer"]
   static values  = {
     patientId: String,
     lang:      { type: String, default: "en-US" },
@@ -265,6 +265,21 @@ export default class extends Controller {
 
   _paintMic(on) {
     if (!this.hasMicTarget) return
+    // Swap the static mic icon for the inline wave bars while
+    // listening, so the dictate flow shows the same energy animation
+    // as the voiceprint record flow. Input stays visible underneath
+    // so Pascal sees the transcript filling in as he speaks.
+    if (this.hasMicIconTarget && this.hasMicWaveTarget) {
+      if (on) {
+        this.micIconTarget.classList.add("hidden")
+        this.micWaveTarget.classList.remove("hidden")
+        this.micWaveTarget.classList.add("inline-flex")
+      } else {
+        this.micIconTarget.classList.remove("hidden")
+        this.micWaveTarget.classList.add("hidden")
+        this.micWaveTarget.classList.remove("inline-flex")
+      }
+    }
     const icon = this.micTarget.querySelector("i")
     if (on) {
       this.micTarget.classList.add("bg-[#D97757]", "text-white", "animate-pulse")

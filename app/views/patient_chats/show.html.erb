@@ -433,10 +433,22 @@
                         On stop, auto-sends both the audio file and
                         the transcript as one message (no Enter
                         needed). %>
+        <%# Mic button shows the static ri-mic-line by default; when
+            dictation is active the JS swaps in a small inline wave
+            (data-patient-chat-target="micWave") so Pascal sees the
+            same energy animation as the voiceprint flow without
+            losing sight of the input as it fills with transcript. %>
         <button type="button" data-patient-chat-target="mic" data-action="click->patient-chat#toggleMic"
                 title="Tap to dictate (text only, edit before sending)"
                 class="flex-shrink-0 w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
-          <i class="ri-mic-line"></i>
+          <i class="ri-mic-line" data-patient-chat-target="micIcon"></i>
+          <span data-patient-chat-target="micWave" class="hidden items-center gap-[2px] h-4">
+            <span class="w-[2px] bg-[#D97757] rounded-full h-2  animate-voice-wave" style="animation-delay:0s"></span>
+            <span class="w-[2px] bg-[#D97757] rounded-full h-3  animate-voice-wave" style="animation-delay:-0.15s"></span>
+            <span class="w-[2px] bg-[#D97757] rounded-full h-4  animate-voice-wave" style="animation-delay:-0.3s"></span>
+            <span class="w-[2px] bg-[#D97757] rounded-full h-3  animate-voice-wave" style="animation-delay:-0.45s"></span>
+            <span class="w-[2px] bg-[#D97757] rounded-full h-2  animate-voice-wave" style="animation-delay:-0.6s"></span>
+          </span>
         </button>
         <button type="button"
                 data-action="click->patient-chat#toggleRecord"
