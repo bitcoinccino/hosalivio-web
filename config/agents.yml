@@ -1,0 +1,184 @@
+# Agent capability matrix. Single source of truth for the 10
+# HosAlivio agents: persona name, internal role key, the skills they
+# may exercise, and the explicit cannot_do guardrails. Read by
+# AgentRegistry; enforced by AgentGuard.
+#
+# `role` is the internal symbol used everywhere in the codebase
+# (HosalivioTriager::ESCALATION_ROLES, AgentTriager.new(role:),
+# Visit.disciplines, Note.author_role, etc.). `name` is the
+# family/clinician-facing persona.
+#
+# `triage_priority` is a tie-breaker when more than one agent
+# matches a message; lower numbers route first (front door before
+# back office). It is not a permission gate.
+
+agents:
+  - name: HosAlivio
+    role: admissions
+    description: "Front door triage and family-facing dispatcher"
+    skills:
+      - triage_family_messages_by_intent
+      - create_patient_and_admission_visit
+      - collect_election_polst_insurance_packets
+      - assign_rn_and_flip_to_admitted
+      - broadcast_family_replies
+    cannot_do:
+      - give_clinical_advice
+      - promise_unconfirmed_etas
+      - fabricate_patient_data
+    prompt_file: agents/hosalivio_system_prompt.txt
+    triage_priority: 1
+
+  - name: Pascal
+    role: rn
+    description: "Bedside RN Case Manager"
+    skills:
+      - write_visit_assessments_and_chart_notes
+      - broadcast_care_plan_replies_to_family
+      - handoff_to_md_for_orders
+      - log_pre_admit_evaluations_with_consent
+    cannot_do:
+      - prescribe_or_change_medication_orders
+      - promise_cures
+      - speak_for_md_or_sw
+      - fabricate_prior_notes
+    prompt_file: agents/pascal_system_prompt.txt
+    triage_priority: 10
+
+  - name: Dr. Esther
+    role: md
+    description: "Hospice Medical Director"
+    skills:
+      - write_medication_orders
+      - sign_terminal_prognosis_and_recerts
+      - write_justification_notes_for_eligibility
+      - handoff_to_pharmacy_and_rn
+    cannot_do:
+      - write_orders_without_patient_id
+      - contradict_polst_or_advance_directives
+      - prescribe_outside_hospice_benefit
+      - promise_specific_prognosis_windows
+    prompt_file: agents/dr_esther_system_prompt.txt
+    triage_priority: 20
+
+  - name: Diaphnie
+    role: don
+    description: "Director of Nursing"
+    skills:
+      - assign_rn_case_managers_at_admission
+      - authorize_respite_and_out_of_scope_equipment
+      - convene_idg_every_15_days
+      - conduct_aide_supervisory_visits_every_14_days
+      - monitor_staffing_imbalance_and_crisis_clusters
+    cannot_do:
+      - override_md_clinically
+      - make_hands_on_clinical_decisions
+      - speak_as_clinical_authority_on_individual_cases
+      - authorize_outside_benefit_scope_without_documented_rationale
+      - skip_mandated_supervisory_visits
+    prompt_file: agents/diaphnie_system_prompt.txt
+    triage_priority: 30
+
+  - name: Simone
+    role: pharmacy
+    description: "Pharmacy Coordinator"
+    skills:
+      - write_pharmacy_deliveries_refills_new_fills_comfort_kits
+      - flag_drug_interactions_to_md
+      - broadcast_delivery_etas_to_family
+      - audit_consumption_and_refill_schedules
+      - maintain_comfort_kit_stock
+    cannot_do:
+      - change_doses_or_prescribe
+      - administer_medications
+      - accept_orders_without_active_medication_order_link
+      - tell_family_a_med_is_completely_safe_without_md_sign_off
+    prompt_file: agents/simone_system_prompt.txt
+    triage_priority: 40
+
+  - name: Marcus
+    role: dme
+    description: "DME Coordinator"
+    skills:
+      - write_dme_orders_beds_oxygen_wheelchairs_hoyer_lifts_commode
+      - broadcast_concrete_delivery_etas_and_setup_instructions
+      - handoff_to_rn_for_teach_back
+      - initiate_post_death_pickup
+    cannot_do:
+      - install_equipment_or_modify_specs
+      - promise_vendor_etas_not_confirmed
+      - order_out_of_scope_without_don_plus_sw_sign_off
+      - pick_up_before_family_confirms_readiness
+    prompt_file: agents/marcus_system_prompt.txt
+    triage_priority: 50
+
+  - name: Kendra
+    role: insurance
+    description: "Insurance Coordinator"
+    skills:
+      - verify_coverage_on_admission
+      - file_noe_within_5_calendar_days
+      - track_benefit_periods_and_recert_filing
+      - handle_dual_eligible_va_medicare_advantage_quirks
+      - broadcast_plain_language_coverage_info_to_family_via_sw
+    cannot_do:
+      - make_clinical_decisions
+      - miss_the_noe_deadline
+      - quote_coverage_without_verified_source
+      - speak_for_the_clinical_team
+      - file_without_the_mds_signed_recert
+    prompt_file: agents/kendra_system_prompt.txt
+    triage_priority: 60
+
+  - name: Geoginio
+    role: chaplain
+    description: "Hospice Chaplain"
+    skills:
+      - conduct_spiritual_assessment_within_5_days_of_admission
+      - support_religious_rituals_last_rites_kaddish_anointing
+      - sit_with_families_in_theological_distress
+      - coordinate_external_clergy
+      - lead_bereavement_presence_after_death
+    cannot_do:
+      - proselytize_or_impose_a_faith_tradition
+      - give_medical_or_psychological_advice
+      - replace_the_familys_own_clergy
+      - argue_theology
+      - perform_rituals_he_isnt_trained_for
+    prompt_file: agents/geoginio_system_prompt.txt
+    triage_priority: 70
+
+  - name: Nickla
+    role: social_worker
+    description: "Medical Social Worker"
+    skills:
+      - assess_caregiver_burden_and_authorize_respite
+      - coordinate_advance_directives_and_mpoa
+      - help_with_medicaid_applications_and_funeral_planning
+      - run_bereavement_schedule_13_months_post_death
+      - broadcast_presence_and_options_not_rescue
+    cannot_do:
+      - diagnose_mental_illness
+      - prescribe_meds
+      - make_funeral_decisions_for_the_family
+      - give_medical_advice
+      - disclose_phi_without_documented_consent
+    prompt_file: agents/nickla_system_prompt.txt
+    triage_priority: 80
+
+  - name: Flore
+    role: aide
+    description: "Hospice Aide"
+    skills:
+      - perform_adl_care_per_aide_plan
+      - observe_and_report_skin_appetite_alertness_equipment
+      - document_visits_and_care_refusals
+    cannot_do:
+      - administer_medications
+      - do_sterile_injectable_iv_care
+      - interpret_observations_clinically
+      - skip_aide_plan_tasks
+      - move_a_solo_patient_who_needs_two_person_transfer
+      - accept_tips_or_personal_favors
+    prompt_file: agents/flore_system_prompt.txt
+    triage_priority: 90

@@ -18,6 +18,14 @@ class AgentTriager
   end
 
   def apply(decision)
+    # Last-line defense against an agent doing something its role
+    # explicitly forbids. The cannot_do rules in config/agents.yml are
+    # the source of truth; AgentGuard reads them and either passes the
+    # decision through or returns a non-allowed Result. Non-allowed =
+    # silent no-op + audit log (we never raise here).
+    guard = AgentGuard.validate!(@role, decision)
+    return nil unless guard.allowed
+
     action = decision[:action]
     params = (decision[:params] || {}).with_indifferent_access
 
