@@ -1,161 +1,332 @@
-# Regex-based first pass over a free-text visit narrative. Lifts common
-# admission-assessment signals into the pre_admit_eval JSON so Pascal
-# doesn't have to enter the same data twice.
+# Extracts a hospice Pre-Admit Eval JSON from a clinician-dictated
+# visit narrative, in the section-based shape that maps 1:1 to the
+# Final Review UI (Header / General Comments / Diagnosis / Current
+# Medications / Other Symptoms / Cognitive Decline / Nutritional
+# Decline / Functional Decline / General).
 #
-# Deliberately conservative: if a field isn't explicitly mentioned, leave
-# it empty. Follows Pascal's SOUL's never-infer rule.
+# Conservative by design: any field not explicitly mentioned in the
+# narrative is left nil rather than inferred. Pascal's SOUL's never-
+# infer rule is the law. The header block is server-populated from
+# the visit + patient + clinician (no extraction needed).
 #
-# When Anthropic credits land, AgentBrain can replace this service behind
-# the same interface — the controller contract is (narrative, existing_json)
-# → merged_json. Swap the implementation, keep the UX.
+# Caller passes in:
+#   narrative      — string the clinician dictated
+#   existing_json  — current pre_admit_evals.raw_json (preserves
+#                    fields the clinician already filled in)
+#   visit          — Visit instance (used for header + clinician)
+#   patient        — Patient instance (used for header + diagnosis)
+#
+# Returns Result(json:, fields_updated:) where json is a deep-merged
+# hash with the new pre_admit_eval shape and fields_updated is the
+# list of dotted paths the extractor touched this run.
+
 class PreAdmitNarrativeExtractor
   Result = Struct.new(:json, :fields_updated, keyword_init: true)
 
-  def self.call(narrative:, existing_json: nil)
-    new(narrative: narrative, existing_json: existing_json).call
+  def self.call(narrative:, existing_json: nil, visit: nil, patient: nil)
+    new(narrative: narrative, existing_json: existing_json, visit: visit, patient: patient).call
   end
 
-  def initialize(narrative:, existing_json: nil)
-    @text    = narrative.to_s
-    @lower   = @text.downcase
-    @base    = existing_json.is_a?(Hash) ? existing_json.deep_dup : {}
-    @updated = []
+  def initialize(narrative:, existing_json: nil, visit: nil, patient: nil)
+    @text     = narrative.to_s
+    @lower    = @text.downcase
+    @base     = existing_json.is_a?(Hash) ? existing_json.deep_dup : {}
+    @visit    = visit
+    @patient  = patient
+    @updated  = []
   end
 
   def call
     eval_root = (@base["pre_admit_eval"] ||= {})
-    eval_root["general"]             ||= {}
-    eval_root["functional_decline"]  ||= {}
-    eval_root["nutritional_decline"] ||= {}
-    eval_root["cognitive_decline"]   ||= {}
-    eval_root["other_symptoms"]      ||= {}
-    eval_root["informed_consent"]    ||= {}
-    eval_root["election_of_benefit"] ||= {}
-    eval_root["financial_consent"]   ||= {}
-    eval_root["medicare_lcd_criteria"] ||= { "criteria_met" => [], "supporting_documentation" => "" }
 
-    # Functional: PPS
-    if (m = @lower.match(/\bpps\s*(?:is|at|of|=|:)?\s*(\d{1,3})\s*%?/))
-      pps = m[1].to_i
-      if pps.between?(10, 100)
-        eval_root["functional_decline"]["pps_score"] = "#{pps}%"
-        touch("functional_decline.pps_score")
-      end
-    end
-
-    # Mobility
-    %w[bedbound chairbound ambulatory].each do |word|
-      if @lower.include?(word)
-        eval_root["functional_decline"]["mobility_status"] ||= word
-        touch("functional_decline.mobility_status")
-        break
-      end
-    end
-
-    # ADL mentions — flip explicitly stated dependencies into broad strings
-    adls = eval_root["functional_decline"]["adl_dependence"] ||= {}
-    { "bathing" => /\bbathing\b/, "dressing" => /\bdressing\b/,
-      "toileting" => /\btoileting\b/, "transferring" => /\btransfer/,
-      "continence" => /\bincontinen/, "feeding" => /\bfeeding\b/ }.each do |key, rx|
-      if @lower.match?(rx) && adls[key].to_s.empty?
-        if @lower.match?(/\b(needs|requires|total|full)\s+(help|assistance|dependence)\b/) ||
-           @lower.match?(/dependence in|dependent in/)
-          adls[key] = "assistance"
-          touch("functional_decline.adl_dependence.#{key}")
-        end
-      end
-    end
-
-    # Nutritional: weight loss pattern
-    if (m = @text.match(/lost\s+(\d{1,3})\s*(lbs?|pounds?|kg)\s+in\s+(\d{1,3})\s*(days?|weeks?|months?)/i))
-      eval_root["nutritional_decline"]["weight_loss"] = "#{m[1]} #{m[2]} in #{m[3]} #{m[4]}"
-      touch("nutritional_decline.weight_loss")
-    end
-    if (m = @lower.match(/(\d{1,2})\s*%\s+(?:weight\s+loss|loss)\s+(?:in|over)\s+(\d{1,2})\s*(months?|mo)/))
-      eval_root["nutritional_decline"]["percent_weight_loss_6mo"] = "#{m[1]}%" if m[2].start_with?("mo") || m[2].include?("month")
-      touch("nutritional_decline.percent_weight_loss_6mo")
-    end
-    if (m = @lower.match(/albumin\s*(?:of|is|=|:)?\s*(\d+(?:\.\d+)?)/))
-      eval_root["nutritional_decline"]["albumin_level"] = m[1]
-      touch("nutritional_decline.albumin_level")
-    end
-    if @lower.match?(/\bdysphagia\b/)
-      eval_root["nutritional_decline"]["dysphagia"] ||= "present"
-      touch("nutritional_decline.dysphagia")
-    end
-
-    # Symptoms (dyspnea, pain, agitation, anxiety, wounds)
-    if @lower.match?(/dyspnea\s+at\s+rest|dyspneic\s+at\s+rest|short(?:ness)?\s+of\s+breath\s+at\s+rest/)
-      eval_root["other_symptoms"]["dyspnea"] = "at rest"
-      touch("other_symptoms.dyspnea")
-    end
-    if (m = @lower.match(/pain\s*(?:score|level|of|at|:)?\s*(\d{1,2})(?:\s*\/\s*10)?/))
-      eval_root["other_symptoms"]["pain"] = "#{m[1]}/10" if m[1].to_i.between?(0, 10)
-      touch("other_symptoms.pain")
-    end
-    if @lower.include?("pressure ulcer") || @lower.match?(/stage\s+\d\b/) || @lower.include?("wound")
-      eval_root["other_symptoms"]["wounds"] ||= "present"
-      touch("other_symptoms.wounds")
-    end
-
-    # Consent + Election (the key bridging phrases)
-    if @lower.match?(/agrees?\s+to\s+stop\s+(curative|aggressive|treatment)|stop(ping)?\s+(curative|aggressive)\s+treatment/)
-      eval_root["informed_consent"]["curative_treatment_stop_explained"] = true
-      eval_root["informed_consent"]["family_agrees_to_stop_curative"]    = true
-      touch("informed_consent.family_agrees_to_stop_curative")
-    end
-    if @lower.match?(/signed\s+(the\s+)?(election|mhes|medicare\s+hospice\s+election)/)
-      eval_root["election_of_benefit"]["mhes_signed"] = true
-      eval_root["election_of_benefit"]["election_effective_date"] = Date.current.iso8601 if eval_root["election_of_benefit"]["election_effective_date"].to_s.empty?
-      touch("election_of_benefit.mhes_signed")
-    end
-    if @lower.match?(/(answered\s+(all\s+)?(her\s+|his\s+|their\s+)?questions|had\s+the\s+opportunity\s+to\s+ask|family\s+had\s+questions)/)
-      eval_root["informed_consent"]["questions_answered"] = true
-      touch("informed_consent.questions_answered")
-    end
-    if @lower.match?(/services?\s+(were\s+)?explained|explained\s+(the\s+)?services/)
-      eval_root["informed_consent"]["services_explained"] = true
-      touch("informed_consent.services_explained")
-    end
-    if @lower.match?(/levels?\s+of\s+care|explained\s+(the\s+)?four\s+levels/)
-      eval_root["informed_consent"]["levels_of_care_explained"] = true
-      touch("informed_consent.levels_of_care_explained")
-    end
-    if @lower.match?(/(wants?\s+to\s+proceed|ready\s+to\s+(move|go)\s+forward|agrees?\s+to\s+(proceed|admission))/)
-      eval_root["informed_consent"]["family_wants_to_proceed"] = true
-      touch("informed_consent.family_wants_to_proceed")
-    end
-
-    # Financial consent
-    if @lower.match?(/assignment\s+of\s+benefits|aob\s+signed|signed\s+(the\s+)?aob/)
-      eval_root["financial_consent"]["assignment_of_benefits_signed"] = true
-      touch("financial_consent.assignment_of_benefits_signed")
-    end
-    if @lower.match?(/medicare\s+covers?\s+(100%|all|everything)/)
-      eval_root["financial_consent"]["medicare_coverage_explained"] = true
-      touch("financial_consent.medicare_coverage_explained")
-    end
-    if @lower.match?(/acknowledged?\s+(liability|responsibility)|understands?\s+they\s+are\s+(liable|responsible)/)
-      eval_root["financial_consent"]["aob_liability_acknowledged"] = true
-      touch("financial_consent.aob_liability_acknowledged")
-    end
-
-    # LCD signals — append any hits to criteria_met
-    lcd = eval_root["medicare_lcd_criteria"]["criteria_met"] ||= []
-    add_lcd = ->(crit) { lcd << crit unless lcd.include?(crit); touch("medicare_lcd_criteria.criteria_met") }
-    add_lcd.call("PPS <=70%")              if eval_root.dig("functional_decline", "pps_score")&.match?(/\b[1-7]?\d\s*%?/) && eval_root["functional_decline"]["pps_score"].to_s.scan(/\d+/).first.to_i <= 70
-    add_lcd.call("Weight loss >=10% in 6mo") if eval_root.dig("nutritional_decline", "percent_weight_loss_6mo").to_s.match?(/^(1[0-9]|[2-9]\d)%/)
-    add_lcd.call("Albumin <2.5")            if eval_root.dig("nutritional_decline", "albumin_level").to_f != 0 && eval_root["nutritional_decline"]["albumin_level"].to_f < 2.5
-    add_lcd.call("Dyspnea at rest")          if eval_root.dig("other_symptoms", "dyspnea") == "at rest"
-    add_lcd.call("Dependence in >=3 ADLs")   if (adls.values.count { |v| v.to_s.present? && v != "" }) >= 3
-
-    # Keep the raw text as supporting documentation (clinician's own words)
-    eval_root["medicare_lcd_criteria"]["supporting_documentation"] = @text.strip if @text.strip.length > 0 && eval_root["medicare_lcd_criteria"]["supporting_documentation"].to_s.strip.empty?
+    populate_header(eval_root)
+    populate_general_comments(eval_root)
+    populate_diagnosis(eval_root)
+    populate_other_symptoms(eval_root)
+    populate_cognitive_decline(eval_root)
+    populate_nutritional_decline(eval_root)
+    populate_functional_decline(eval_root)
+    populate_general(eval_root)
+    populate_lcd_criteria(eval_root)
 
     Result.new(json: @base, fields_updated: @updated.uniq)
   end
 
   private
+
+  # ── HEADER (server-populated, not extracted) ─────────────────────
+
+  def populate_header(eval_root)
+    h = (eval_root["header"] ||= {})
+    if @patient
+      h["patient_name"] = @patient.full_name if h["patient_name"].to_s.empty?
+      h["dob"]          = @patient.dob.iso8601 if h["dob"].to_s.empty? && @patient.dob.present?
+      h["mrn"]          = @patient.mrn if h["mrn"].to_s.empty?
+      h["start_of_care_date"] = @patient.hospice_election_date&.iso8601 if h["start_of_care_date"].to_s.empty?
+    end
+    if @visit
+      h["date_of_visit"]   = @visit.started_at&.to_date&.iso8601 || @visit.scheduled_at&.to_date&.iso8601 if h["date_of_visit"].to_s.empty?
+      h["visit_type"]      = @visit.visit_type.to_s.tr("_", " ").capitalize if h["visit_type"].to_s.empty?
+      if @visit.user
+        clinician_role = (@visit.user.role_names & %w[rn md sw chaplain aide don]).first&.upcase
+        h["clinician_name"] = [@visit.user.full_name, clinician_role].compact.join(", ") if h["clinician_name"].to_s.empty?
+      end
+    end
+    touch("header") if h.values.any?(&:present?)
+  end
+
+  # ── GENERAL COMMENTS ─────────────────────────────────────────────
+
+  def populate_general_comments(eval_root)
+    gc = (eval_root["general_comments"] ||= {})
+    if gc["narrative_summary"].to_s.empty? && @text.strip.length.positive?
+      gc["narrative_summary"] = @text.strip
+      touch("general_comments.narrative_summary")
+    end
+    if @lower.match?(/\b(safety risk|fall risk|elopement|home unsafe)\b/) && Array(gc["immediate_safety_risks"]).empty?
+      gc["immediate_safety_risks"] = ["Identified during assessment, see narrative"]
+      touch("general_comments.immediate_safety_risks")
+    end
+    if gc["family_caregiver_status"].to_s.empty?
+      if @lower.match?(/(family\s+(is\s+)?supportive|family\s+present|spouse\s+(is\s+)?supportive|caregiver\s+available)/)
+        gc["family_caregiver_status"] = "Supportive"
+        touch("general_comments.family_caregiver_status")
+      elsif @lower.match?(/(caregiver\s+overwhelmed|caregiver\s+distress|family\s+conflict|no\s+caregiver)/)
+        gc["family_caregiver_status"] = "Strained"
+        touch("general_comments.family_caregiver_status")
+      end
+    end
+  end
+
+  # ── DIAGNOSIS ────────────────────────────────────────────────────
+
+  def populate_diagnosis(eval_root)
+    dx = (eval_root["diagnosis"] ||= {})
+    if @patient && (dx["primary_terminal_diagnosis"].is_a?(Hash) ? dx["primary_terminal_diagnosis"]["description"].to_s.empty? : true)
+      icd10 = @patient.primary_diagnosis.to_s[/\b([A-Z]\d{2}(?:\.\d{1,3})?)\b/, 1]
+      desc  = @patient.primary_diagnosis.to_s.sub(/\s*\(?ICD-?10\s*[:\-]?\s*[A-Z]\d{2}(?:\.\d{1,3})?\)?/i, "").strip
+      dx["primary_terminal_diagnosis"] = { "description" => desc, "icd10" => icd10 }.compact
+      touch("diagnosis.primary_terminal_diagnosis")
+    end
+    if @patient && Array(dx["secondary_diagnoses"]).empty? && @patient.secondary_diagnoses.present?
+      dx["secondary_diagnoses"] = @patient.secondary_diagnoses.to_s.split(/[,;]\s*/).map { |d|
+        icd10 = d[/\b([A-Z]\d{2}(?:\.\d{1,3})?)\b/, 1]
+        desc  = d.sub(/\s*\(?ICD-?10\s*[:\-]?\s*[A-Z]\d{2}(?:\.\d{1,3})?\)?/i, "").strip
+        { "description" => desc, "icd10" => icd10 }.compact
+      }
+      touch("diagnosis.secondary_diagnoses")
+    end
+    dx["hospice_eligible"] = true if dx["hospice_eligible"].nil? && lcd_eligible?(eval_root)
+  end
+
+  # ── OTHER SYMPTOMS ───────────────────────────────────────────────
+
+  def populate_other_symptoms(eval_root)
+    sx = (eval_root["other_symptoms"] ||= {})
+
+    pain = (sx["pain"] ||= {})
+    if (m = @lower.match(/pain\s*(?:score|level|of|at|:)?\s*(\d{1,2})(?:\s*\/\s*10)?/)) && m[1].to_i.between?(0, 10)
+      pain["score"] ||= m[1].to_i
+      touch("other_symptoms.pain.score")
+    end
+    %w[lower\sback chest abdomen abdominal head neck shoulder hip knee leg arm].each do |loc|
+      if pain["location"].to_s.empty? && @lower.match?(/\b#{loc}\b/)
+        pain["location"] = loc.gsub('\\s', " ")
+        touch("other_symptoms.pain.location")
+        break
+      end
+    end
+
+    dyspnea = (sx["dyspnea"] ||= {})
+    if dyspnea["severity"].to_s.empty?
+      dyspnea["severity"] =
+        if @lower.match?(/dyspnea\s+at\s+rest|short(?:ness)?\s+of\s+breath\s+at\s+rest/) then "at rest"
+        elsif @lower.match?(/dyspnea\s+on\s+exertion|sob\s+on\s+exertion|short(?:ness)?\s+of\s+breath\s+on\s+exertion/) then "on exertion"
+        elsif @lower.match?(/\b(dyspnea|shortness\s+of\s+breath|sob)\b/) then "present"
+        end
+      touch("other_symptoms.dyspnea.severity") if dyspnea["severity"]
+    end
+
+    gi = (sx["gi_symptoms"] ||= {})
+    # 'Nausea none' / 'nausea: none' / 'no nausea' all mean none.
+    gi["nausea"]       ||= (@lower.match?(/nausea\s*(:\s*)?(none|absent)|no\s+nausea|denies\s+nausea/) ? "none" : "present") if @lower.match?(/\bnausea\b/)
+    gi["vomiting"]     ||= (@lower.match?(/vomit\w*\s*(:\s*)?(none|absent)|no\s+vomit|denies\s+vomit/)  ? "none" : "present") if @lower.match?(/\bvomit/)
+    gi["constipation"] ||= (@lower.match?(/constipat\w*\s*(:\s*)?(none|absent)|no\s+constipat|denies\s+constipat/) ? "none" : "present") if @lower.match?(/\bconstipat/)
+    touch("other_symptoms.gi_symptoms") if gi.values.any?
+
+    psy = (sx["psychosocial"] ||= {})
+    psy["anxiety"]    ||= "present" if @lower.match?(/\banxious|\banxiety\b/)
+    psy["depression"] ||= "present" if @lower.match?(/\bdepress/)
+    psy["agitation"]  ||= "present" if @lower.match?(/\bagitat/)
+    touch("other_symptoms.psychosocial") if psy.values.any?
+  end
+
+  # ── COGNITIVE DECLINE ────────────────────────────────────────────
+
+  def populate_cognitive_decline(eval_root)
+    cd = (eval_root["cognitive_decline"] ||= {})
+    if cd["mental_status"].to_s.empty?
+      if @lower.match?(/alert\s+(?:and\s+)?orient(?:ed)?\s*(?:x\s*\d|to\s+(?:person|place|time|situation))/)
+        cd["mental_status"] = @text[/[Aa]lert[^\.]{0,80}orient(?:ed)?[^\.]{0,80}\./].to_s.strip.presence || "Alert and oriented"
+        touch("cognitive_decline.mental_status")
+      elsif @lower.match?(/confus(?:ed|ion)|disoriented|delirium/)
+        cd["mental_status"] = "Confused / disoriented"
+        touch("cognitive_decline.mental_status")
+      elsif @lower.match?(/unresponsive|comatose/)
+        cd["mental_status"] = "Unresponsive"
+        touch("cognitive_decline.mental_status")
+      end
+    end
+    if (m = @lower.match(/\bfast\s*(?:score|stage|of|:)?\s*(\d[a-c]?)/i)) && cd["fast_score"].to_s.empty?
+      cd["fast_score"] = m[1].upcase
+      touch("cognitive_decline.fast_score")
+    end
+    if (m = @lower.match(/\b(bims|mmse)\s*(?:score|of|=|:)?\s*(\d{1,2})/)) && cd["bims_mmse_score"].to_s.empty?
+      cd["bims_mmse_score"] = m[2].to_i
+      touch("cognitive_decline.bims_mmse_score")
+    end
+  end
+
+  # ── NUTRITIONAL DECLINE ──────────────────────────────────────────
+
+  def populate_nutritional_decline(eval_root)
+    nd = (eval_root["nutritional_decline"] ||= {})
+    if (m = @lower.match(/(?:current\s+weight|weighs?)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*(?:lbs?|pounds?)/)) && nd["current_weight_lbs"].to_s.empty?
+      nd["current_weight_lbs"] = m[1].to_i
+      touch("nutritional_decline.current_weight_lbs")
+    end
+    if (m = @text.match(/lost\s+(\d{1,3})\s*(lbs?|pounds?)\s+(?:in|over)\s+(?:the\s+)?(\d{1,3})\s*(days?|weeks?|months?)/i))
+      nd["weight_loss_lbs"]      ||= m[1].to_i
+      nd["weight_loss_timeframe"] ||= "#{m[3]} #{m[4].downcase}"
+      touch("nutritional_decline.weight_loss_lbs")
+    end
+    # Catches both '8% weight loss' and 'weight loss 8.4%' phrasings.
+    if (m = @lower.match(/(?:weight\s+loss|loss)\s+(?:of\s+)?(\d{1,2}(?:\.\d)?)\s*%/) ||
+            @lower.match(/(\d{1,2}(?:\.\d)?)\s*%\s+(?:weight\s+loss|loss)/))
+      nd["weight_loss_pct"] ||= m[1].to_f
+      touch("nutritional_decline.weight_loss_pct")
+    end
+    if (m = @lower.match(/albumin\s*(?:of|is|=|:)?\s*(\d+(?:\.\d+)?)/))
+      nd["albumin_g_dl"] ||= m[1].to_f
+      touch("nutritional_decline.albumin_g_dl")
+    end
+    if nd["intake"].to_s.empty?
+      nd["intake"] =
+        if @lower.match?(/\b(npo|not eating|refusing food|no oral intake)\b/) then "None / NPO"
+        elsif @lower.match?(/\b(poor (intake|appetite)|barely eating|minimal intake)\b/) then "Poor"
+        elsif @lower.match?(/\b(fair (intake|appetite)|reduced (intake|appetite))\b/) then "Fair"
+        elsif @lower.match?(/\b(good (intake|appetite)|eating well)\b/) then "Good"
+        end
+      touch("nutritional_decline.intake") if nd["intake"]
+    end
+  end
+
+  # ── FUNCTIONAL DECLINE ───────────────────────────────────────────
+
+  def populate_functional_decline(eval_root)
+    fd = (eval_root["functional_decline"] ||= {})
+    if (m = @lower.match(/\bpps\s*(?:is|at|of|=|:)?\s*(\d{1,3})\s*%?/)) && m[1].to_i.between?(10, 100)
+      fd["pps"] ||= m[1].to_i
+      touch("functional_decline.pps")
+    end
+    if (m = @lower.match(/\b(?:kps|karnofsky)\s*(?:is|at|of|=|:)?\s*(\d{1,3})\s*%?/)) && m[1].to_i.between?(10, 100)
+      fd["kps"] ||= m[1].to_i
+      touch("functional_decline.kps")
+    end
+    if fd["mobility"].to_s.empty?
+      fd["mobility"] =
+        if @lower.match?(/\bbedbound\b/) then "Bedbound"
+        elsif @lower.match?(/bed[\s-]*to[\s-]*chair/) then "Bed-to-chair with assist"
+        elsif @lower.match?(/ambulat(?:es|ory|ing)\s+with\s+(assist|walker|cane)/) then "Ambulatory with assist"
+        elsif @lower.match?(/ambulat(?:es|ory)/) then "Ambulatory"
+        end
+      touch("functional_decline.mobility") if fd["mobility"]
+    end
+
+    adl = (fd["adl_dependencies"] ||= {})
+    %w[bathing dressing feeding toileting transferring].each do |task|
+      next unless adl[task].to_s.empty?
+      task_re = task == "transferring" ? /transfer/ : Regexp.new(task)
+      next unless @lower.match?(task_re)
+      adl[task] =
+        if @lower.match?(/(total|full)\s+(assist|dependence)\s+(with\s+|in\s+)?#{task[0..5]}/) then "Dependent"
+        elsif @lower.match?(/(needs|requires|needs help with)\s+(assist|help)\s+(with\s+)?#{task[0..5]}/) then "Assist"
+        elsif @lower.match?(/independent\s+(with\s+|in\s+)?#{task[0..5]}/) then "Independent"
+        end
+      touch("functional_decline.adl_dependencies.#{task}") if adl[task]
+    end
+  end
+
+  # ── GENERAL (consents, AD, DME, spiritual) ────────────────────────
+
+  def populate_general(eval_root)
+    g = (eval_root["general"] ||= {})
+    if g["election_of_benefits_signed"].nil? && @lower.match?(/(signed\s+(the\s+)?(election|mhes|medicare\s+hospice)|election\s+(of\s+benefits?\s+)?signed|mhes\s+signed)/)
+      g["election_of_benefits_signed"] = true
+      touch("general.election_of_benefits_signed")
+    end
+    if g["advance_directives"].to_s.empty?
+      g["advance_directives"] =
+        if @lower.match?(/\bdnr\s*\/\s*dni\b|\bdnr\b.*\bdni\b/) then "DNR / DNI"
+        elsif @lower.match?(/\bdnr\b/) then "DNR"
+        elsif @lower.match?(/full\s+code/) then "Full code"
+        end
+      touch("general.advance_directives") if g["advance_directives"]
+    end
+    if g["patient_rights_reviewed"].nil? && @lower.match?(/(patient(?:'s)?\s+rights\s+(reviewed|explained)|reviewed\s+patient\s+rights)/)
+      g["patient_rights_reviewed"] = true
+      touch("general.patient_rights_reviewed")
+    end
+    if g["spiritual_bereavement_risk"].to_s.empty?
+      g["spiritual_bereavement_risk"] =
+        if @lower.match?(/(complicated grief|high\s+bereavement\s+risk|spiritual\s+distress)/) then "High"
+        elsif @lower.match?(/(moderate\s+(spiritual|bereavement))/) then "Moderate"
+        elsif @lower.match?(/(low\s+(spiritual|bereavement)|no\s+complicating)/) then "Low"
+        end
+      touch("general.spiritual_bereavement_risk") if g["spiritual_bereavement_risk"]
+    end
+
+    dme = Array(g["dme_needs"]).dup
+    {
+      "Hospital bed"       => /hospital\s+bed/,
+      "Oxygen concentrator" => /oxygen|o2\s+concentrator/,
+      "Wheelchair"          => /wheel\s*chair|wheelchair/,
+      "Walker"              => /\bwalker\b/,
+      "Bedside commode"     => /bedside\s+commode|commode/,
+      "Hoyer lift"          => /hoyer|patient\s+lift/
+    }.each { |label, rx| dme << label if @lower.match?(rx) && !dme.include?(label) }
+    if dme.any?
+      g["dme_needs"] = dme
+      touch("general.dme_needs")
+    end
+  end
+
+  # ── LCD criteria (lifted into diagnosis.lcd_criteria_met) ────────
+
+  def populate_lcd_criteria(eval_root)
+    dx  = (eval_root["diagnosis"] ||= {})
+    fd  = eval_root["functional_decline"] || {}
+    nd  = eval_root["nutritional_decline"] || {}
+    sx  = eval_root["other_symptoms"]      || {}
+    crit = Array(dx["lcd_criteria_met"]).dup
+
+    add = ->(c) { crit << c unless crit.include?(c) }
+    add.call("PPS ≤ 70%")               if fd["pps"].is_a?(Integer) && fd["pps"] <= 70
+    add.call("Weight loss ≥ 10% in 6 months") if nd["weight_loss_pct"].to_f >= 10
+    add.call("Albumin < 2.5 g/dL")      if nd["albumin_g_dl"].to_f.positive? && nd["albumin_g_dl"].to_f < 2.5
+    add.call("Resting dyspnea")         if sx.dig("dyspnea", "severity") == "at rest"
+    adl_count = Array(fd.dig("adl_dependencies")&.values).count { |v| v.to_s == "Dependent" || v.to_s == "Assist" }
+    add.call("Dependence in ≥ 3 ADLs")  if adl_count >= 3
+
+    if crit.any? && Array(dx["lcd_criteria_met"]) != crit
+      dx["lcd_criteria_met"] = crit
+      touch("diagnosis.lcd_criteria_met")
+    end
+  end
+
+  def lcd_eligible?(eval_root)
+    Array(eval_root.dig("diagnosis", "lcd_criteria_met")).any?
+  end
 
   def touch(path)
     @updated << path

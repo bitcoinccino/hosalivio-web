@@ -148,7 +148,9 @@ class VisitsController < ApplicationController
 
       result = PreAdmitNarrativeExtractor.call(
         narrative:     @visit.narrative.to_s,
-        existing_json: eval_rec.raw_json
+        existing_json: eval_rec.raw_json,
+        visit:         @visit,
+        patient:       @visit.patient
       )
       eval_rec.update!(raw_json: result.json)
 
