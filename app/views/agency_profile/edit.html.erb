@@ -23,7 +23,34 @@
       </div>
     <% end %>
 
-    <%= form_with(model: @agency, url: agency_profile_path, method: :patch, local: true, html: { class: "space-y-8 bg-white rounded-3xl border border-[#EFECE6] p-8" }) do |f| %>
+    <%= form_with(model: @agency, url: agency_profile_path, method: :patch, local: true, html: { class: "space-y-8 bg-white rounded-3xl border border-[#EFECE6] p-8", multipart: true }) do |f| %>
+
+      <%# ── Brand assets ───────────────────────────────────────────── %>
+      <section>
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-4">Brand</div>
+        <div class="flex items-start gap-5">
+          <div class="w-24 h-24 rounded-xl border border-[#D9D5CD] bg-[#FBF9F5] flex items-center justify-center overflow-hidden flex-shrink-0">
+            <% if @agency.logo.attached? %>
+              <%= image_tag @agency.logo, class: "max-w-full max-h-full object-contain" %>
+            <% else %>
+              <span class="text-[28px] leading-none"><%= @agency.emoji %></span>
+            <% end %>
+          </div>
+          <div class="flex-1 min-w-0">
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Agency logo</label>
+            <%= f.file_field :logo, accept: "image/png,image/jpeg,image/svg+xml",
+                  class: "block w-full text-[12px] text-[#1D1C1A] file:mr-3 file:px-3 file:py-1.5 file:rounded-full file:border-0 file:bg-[#FBF9F5] file:text-[#1D1C1A] file:text-[12px] file:font-medium hover:file:bg-[#EFECE6] cursor-pointer" %>
+            <p class="text-[11px] text-[#6B665F] mt-1">PNG, JPG, or SVG. Shown on partner-facing pages and printed PDFs (e.g. pre-admit eval). Square or near-square works best.</p>
+            <% if @agency.logo.attached? %>
+              <%= button_to "Remove logo",
+                    agency_profile_path(remove_logo: 1), method: :patch,
+                    data: { turbo_confirm: "Remove the agency logo?" },
+                    form: { class: "inline-block mt-2" },
+                    class: "text-[11px] text-[#C1403A] hover:underline" %>
+            <% end %>
+          </div>
+        </div>
+      </section>
 
       <%# ── Identity & Compliance ───────────────────────────────────── %>
       <section>

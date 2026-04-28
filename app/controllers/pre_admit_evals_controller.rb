@@ -94,6 +94,50 @@ class PreAdmitEvalsController < ApplicationController
     redirect_to pre_admit_eval_path(@eval)
   end
 
+  # One-tap blocker resolution from the show page. Whitelisted to the
+  # two boolean attestations on `general` so the RN can mark
+  # consent / patient-rights review without opening the full edit form.
+  # Stamps who acknowledged + when into the same `general` block for audit.
+  QUICK_SET_KEYS = %w[election_of_benefits_signed patient_rights_reviewed].freeze
+
+  def quick_set
+    key = params[:key].to_s
+    unless QUICK_SET_KEYS.include?(key)
+      redirect_to(pre_admit_eval_path(@eval), alert: "Unknown attestation.") and return
+    end
+    unless @eval.status_draft? || @eval.status_final?
+      redirect_to(pre_admit_eval_path(@eval), alert: "This eval is locked.") and return
+    end
+
+    raw = existing_raw_json.deep_dup
+    raw["pre_admit_eval"] ||= {}
+    raw["pre_admit_eval"]["general"] ||= {}
+    raw["pre_admit_eval"]["general"][key]                     = true
+    raw["pre_admit_eval"]["general"]["#{key}_attested_by_id"] = current_user.id
+    raw["pre_admit_eval"]["general"]["#{key}_attested_at"]    = Time.current.iso8601
+
+    @eval.update!(raw_json: raw)
+    flash[:notice] = "#{key.humanize} marked complete."
+    redirect_to pre_admit_eval_path(@eval)
+  end
+
+  # Finalize action. Flips a draft eval to :final (which routes it to
+  # the MD's certification queue) when the RN has cleared all blockers.
+  # Triggered from the "Mark Complete & Route to MD" button on the show
+  # page so the RN doesn't need to open the edit form just to submit.
+  def finalize
+    unless @eval.status_draft?
+      redirect_to(pre_admit_eval_path(@eval), alert: "Eval is not in draft state.") and return
+    end
+    if @eval.certification_blockers.any?
+      redirect_to(pre_admit_eval_path(@eval),
+                  alert: "Resolve blockers first: #{@eval.certification_blockers.to_sentence}.") and return
+    end
+    @eval.update!(status: :final, finalized_at: Time.current)
+    flash[:notice] = "Eval finalized. Routed to MD for certification."
+    redirect_to pre_admit_eval_path(@eval)
+  end
+
   # MD certification. Delegates the transition + downstream NOE
   # handoff to AgentTriager#certify_pre_admit_eval, which enforces
   # can_certify? and emits the Insurance handoff event.

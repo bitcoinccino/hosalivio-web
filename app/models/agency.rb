@@ -1,6 +1,11 @@
 class Agency < ApplicationRecord
   has_paper_trail
 
+  # Agency-branded logo shown on partner-facing surfaces (the eval
+  # show page, printed PDFs, public landing pages). PNG/SVG/JPG.
+  # When unattached, views fall back to the agency name + emoji.
+  has_one_attached :logo
+
   # Tiering for future plans / feature gating
   enum :billing_tier, { starter: 0, pro: 1, enterprise: 2 }, validate: true
 

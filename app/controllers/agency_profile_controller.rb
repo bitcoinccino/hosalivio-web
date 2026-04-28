@@ -16,6 +16,7 @@ class AgencyProfileController < ApplicationController
     phone
     mac_region emr_system pharmacy_partner dme_partner
     after_hours_instructions
+    logo
   ].freeze
 
   def edit
@@ -24,6 +25,14 @@ class AgencyProfileController < ApplicationController
 
   def update
     @agency = current_user.agency
+
+    # Logo removal — small side-channel param so the "Remove logo"
+    # button doesn't need its own controller action.
+    if params[:remove_logo].to_s == "1" && @agency.logo.attached?
+      @agency.logo.purge_later
+      redirect_to(edit_agency_profile_path, notice: "Agency logo removed.") and return
+    end
+
     if @agency.update(profile_params)
       redirect_to edit_agency_profile_path, notice: "Agency profile saved."
     else

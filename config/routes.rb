@@ -81,6 +81,8 @@ Rails.application.routes.draw do
     member do
       post :confirm_pps
       post :certify
+      post :finalize
+      post :quick_set
     end
   end
   resource  :agency_features, only: [:edit, :update], controller: "agency_features"
