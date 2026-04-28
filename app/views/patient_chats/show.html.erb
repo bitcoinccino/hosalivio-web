@@ -381,15 +381,16 @@
             data-patient-chat-target="form"
             class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
                    group-data-[recording=true]/composer:hidden">
-        <% if current_user.family_access? %>
-          <%# Quick-actions toggle is family-only — opens the templates
-              panel above. Clinicians get the visibility toggle instead. %>
-          <button type="button" data-action="click->patient-chat#toggleQuickActions"
-                  title="Quick actions"
-                  class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
-            <i class="ri-add-line"></i>
-          </button>
-        <% end %>
+        <%# Quick-actions toggle.
+            Family viewers: opens the family quick-reply chips panel above.
+            Clinicians: opens the slide-up modal with role-scoped actions
+            (Start visit / Upload photo / Document). %>
+        <button type="button"
+                data-action="click->patient-chat#toggleQuickActions"
+                title="Quick actions"
+                class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+          <i class="ri-add-line"></i>
+        </button>
 
         <%# Styled-placeholder pattern: invisible native placeholder + an
             absolutely-positioned overlay so we can bold the patient's first
@@ -490,6 +491,120 @@
         Messages go through HosAlivio. We triage and loop in your nurse or doctor instantly.
       </div>
     </div>
+
+    <%# === Slide-up quick-actions modal (clinicians only) ============
+        Hidden by default; toggled by patient-chat#toggleQuickActions
+        on the + button in the composer. Action list is role-scoped:
+        what RN sees is different from what MD or SW sees. Each action
+        either submits a form (Start visit) or opens a native file
+        picker (Upload photo, Document) tied to a clinician note. %>
+    <% unless current_user.family_access? %>
+      <%
+        viewer_roles = current_user.role_names
+        # Action catalog: { label, icon, color, action_type, ... }.
+        # Filter by role below so each clinician sees only their toolkit.
+        all_actions = {
+          start_visit: {
+            label: "Start a visit", sub: "Begin documenting at the bedside now",
+            icon: "ri-play-circle-line", color: "#D97757",
+            kind: :form, form_url: start_now_visits_path(patient_id: @patient.id),
+            roles: %w[rn md sw social_worker chaplain aide don admissions]
+          },
+          upload_photo: {
+            label: "Upload a photo", sub: "Wound, equipment, ID, family member",
+            icon: "ri-camera-line", color: "#2F6F4E",
+            kind: :coming_soon,
+            roles: %w[rn md sw social_worker aide don]
+          },
+          document: {
+            label: "Document a form", sub: "Advance directive, POLST, signed paperwork",
+            icon: "ri-file-text-line", color: "#2B4A7A",
+            kind: :coming_soon,
+            roles: %w[rn md sw social_worker don admissions]
+          },
+          sign_pre_admit: {
+            label: "Sign pending pre-admit", sub: "Certify the latest finalized eval",
+            icon: "ri-quill-pen-line", color: "#2F6F4E",
+            kind: :link, href: (@pre_admit_eval ? pre_admit_eval_path(@pre_admit_eval) : nil),
+            roles: %w[md], gated: -> { @pre_admit_eval&.status_final? }
+          },
+          schedule_visit: {
+            label: "Schedule for later", sub: "Calendar slot for a future visit",
+            icon: "ri-calendar-line", color: "#6B665F",
+            kind: :link, href: new_visit_path(patient_id: @patient.id),
+            roles: %w[rn md sw social_worker chaplain aide don admissions]
+          }
+        }
+        actions = all_actions.values.select do |a|
+          (a[:roles] & viewer_roles).any? && (a[:gated].nil? || a[:gated].call)
+        end
+      %>
+      <div data-patient-chat-target="quickActionsModal"
+           data-action="click->patient-chat#closeQuickActionsBackdrop keydown.esc@window->patient-chat#closeQuickActions"
+           class="hidden fixed inset-0 z-50 bg-[#1D1C1A]/40 backdrop-blur-sm">
+        <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl border-t border-[#EFECE6] shadow-2xl
+                    transform transition-transform duration-300 translate-y-full
+                    max-h-[80vh] overflow-y-auto"
+             data-patient-chat-target="quickActionsSheet"
+             data-action="click->patient-chat#stopPropagation">
+          <div class="flex items-center justify-between px-5 pt-4 pb-2">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Quick actions</div>
+              <h2 class="font-serif text-[20px] text-[#1D1C1A] mt-0.5">For <%= @patient.first_name %></h2>
+            </div>
+            <button type="button" data-action="click->patient-chat#closeQuickActions"
+                    class="w-9 h-9 rounded-full hover:bg-[#FBF9F5] text-[#6B665F] flex items-center justify-center">
+              <i class="ri-close-line text-lg"></i>
+            </button>
+          </div>
+          <div class="h-1 w-12 rounded-full bg-[#EFECE6] mx-auto -mt-1 mb-2"></div>
+
+          <div class="px-3 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <% actions.each do |a| %>
+              <% case a[:kind] %>
+              <% when :form %>
+                <%= button_to a[:form_url], method: :post,
+                      class: "flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#FBF9F5] hover:bg-[#EFECE6] text-left transition" do %>
+                  <span class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
+                    <i class="<%= a[:icon] %> text-[20px]"></i>
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block text-[14px] font-medium text-[#1D1C1A]"><%= a[:label] %></span>
+                    <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
+                  </span>
+                <% end %>
+              <% when :link %>
+                <% next if a[:href].nil? %>
+                <%= link_to a[:href],
+                      class: "flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#FBF9F5] hover:bg-[#EFECE6] text-left transition" do %>
+                  <span class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
+                    <i class="<%= a[:icon] %> text-[20px]"></i>
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block text-[14px] font-medium text-[#1D1C1A]"><%= a[:label] %></span>
+                    <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
+                  </span>
+                <% end %>
+              <% else %>
+                <button type="button" disabled
+                        class="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#FBF9F5] text-left opacity-70 cursor-not-allowed">
+                  <span class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
+                    <i class="<%= a[:icon] %> text-[20px]"></i>
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <span class="flex items-center gap-2">
+                      <span class="block text-[14px] font-medium text-[#1D1C1A]"><%= a[:label] %></span>
+                      <span class="text-[9px] uppercase tracking-widest text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-2 py-0.5">soon</span>
+                    </span>
+                    <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
+                  </span>
+                </button>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
   </main>
 
   <!-- ─── Right Rail: At-a-Glance Accordion ─────────────────────── -->
@@ -655,48 +770,11 @@
         </div>
       </details>
 
-      <%# Quick Actions trimmed to two real items: Schedule visit (the
-          calendar UI shows conflicts; chat can't), and Sign off (MD
-          only, attestation that the agents legally cannot do for you).
-          Everything else — refills, pages, chaplain requests — runs
-          through the team-huddle chat: clinician types in plain
-          English, HosAlivio dispatches the matching agent. %>
-      <% unless current_user.family_access? %>
-        <% viewer_roles = current_user.role_names %>
-        <% pending_signoff = viewer_roles.include?("md") && @pre_admit_eval&.status_final? %>
-        <details class="group" open>
-          <%= acc_header("ri-flashlight-line", "Quick Actions") %>
-          <div class="px-5 pb-4 space-y-2">
-            <%# Primary RN action: start documenting at the bedside RIGHT
-                NOW. One tap, Visit auto-created with the user as the
-                clinician, scheduled_at + started_at = now, home as
-                place of service. Lands on the edit page already in
-                :recording state. %>
-            <%= button_to start_now_visits_path(patient_id: @patient.id),
-                  method: :post,
-                  class: "flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-medium cursor-pointer transition" do %>
-              <i class="ri-play-circle-line text-[16px]"></i> Start visit now
-            <% end %>
-            <%# Secondary: schedule a future slot. Kept around for admins
-                who need to plan ahead, but no longer the primary action. %>
-            <a href="<%= new_visit_path(patient_id: @patient.id) %>"
-               class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-              <i class="ri-calendar-line text-[#D97757]"></i> Schedule for later
-            </a>
-
-            <% if pending_signoff %>
-              <%= link_to pre_admit_eval_path(@pre_admit_eval),
-                    class: "flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#E6F0EE] border border-[#2F6F4E] hover:bg-[#d6e8e2] text-[13px] text-[#1D1C1A] transition" do %>
-                <i class="ri-quill-pen-line text-[#2F6F4E]"></i> Sign off pending pre-admit cert
-              <% end %>
-            <% end %>
-
-            <p class="text-[11px] text-[#6B665F] leading-snug pt-1">
-              For refills, chaplain pages, supply orders, anything routine: just type it in the team chat. HosAlivio dispatches the right agent.
-            </p>
-          </div>
-        </details>
-      <% end %>
+      <%# Right-rail Quick Actions removed. The same actions now live
+          in the slide-up modal triggered by the + icon in the chat
+          composer (role-scoped: RN sees Start visit / Upload photo /
+          Document; MD adds Sign pending pre-admit; etc.). The footnote
+          about chat-as-dispatch lives in the modal header instead. %>
 
       <!-- Latest vitals + trend sparklines -->
       <details class="group">

@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to <main data-controller="patient-chat" data-patient-chat-patient-id-value="…">
 export default class extends Controller {
-  static targets = ["input", "feed", "status", "quickActions", "mic", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer"]
+  static targets = ["input", "feed", "status", "quickActions", "mic", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer", "quickActionsModal", "quickActionsSheet"]
   static values  = {
     patientId: String,
     lang:      { type: String, default: "en-US" },
@@ -23,7 +23,46 @@ export default class extends Controller {
   }
 
   toggleQuickActions() {
-    this.quickActionsTarget.classList.toggle("hidden")
+    // Family viewers still get the inline quick-reply chips panel
+    // (the legacy data-patient-chat-target="quickActions"). Clinicians
+    // get the slide-up modal.
+    if (this.hasQuickActionsModalTarget) {
+      this._openQuickActionsModal()
+    } else if (this.hasQuickActionsTarget) {
+      this.quickActionsTarget.classList.toggle("hidden")
+    }
+  }
+
+  _openQuickActionsModal() {
+    this.quickActionsModalTarget.classList.remove("hidden")
+    // Force a reflow so the slide animates from translate-y-full to 0
+    // instead of jumping. Class toggle drives the transition.
+    requestAnimationFrame(() => {
+      if (this.hasQuickActionsSheetTarget) {
+        this.quickActionsSheetTarget.classList.remove("translate-y-full")
+        this.quickActionsSheetTarget.classList.add("translate-y-0")
+      }
+    })
+  }
+
+  closeQuickActions() {
+    if (!this.hasQuickActionsModalTarget) return
+    if (this.hasQuickActionsSheetTarget) {
+      this.quickActionsSheetTarget.classList.remove("translate-y-0")
+      this.quickActionsSheetTarget.classList.add("translate-y-full")
+    }
+    // Wait for the slide-down to finish before hiding the backdrop.
+    setTimeout(() => this.quickActionsModalTarget.classList.add("hidden"), 250)
+  }
+
+  closeQuickActionsBackdrop(event) {
+    // Click on the dimmed backdrop (the modal target) — close. Clicks
+    // bubbled from inside the sheet are intercepted by stopPropagation.
+    if (event.target === this.quickActionsModalTarget) this.closeQuickActions()
+  }
+
+  stopPropagation(event) {
+    event.stopPropagation()
   }
 
   // ── Voice-note recording (MediaRecorder) ─────────────────────────
