@@ -1,12 +1,12 @@
 <% content_for :title, "Edit branch · HosAlivio" %>
-<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
-  <div class="max-w-lg mx-auto">
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4 md:px-10">
+  <div class="max-w-3xl mx-auto">
     <a href="<%= branches_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to branches
     </a>
-    <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm">
-      <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">Edit <%= @branch.name %></h1>
-      <div class="text-[12px] text-[#6B665F] mb-5"><%= current_user.agency&.name %></div>
+    <div class="rounded-3xl bg-white border border-[#EFECE6] p-8 shadow-sm">
+      <h1 class="font-serif text-[24px] text-[#1D1C1A] mb-1">Edit <%= @branch.name %></h1>
+      <div class="text-[12px] text-[#6B665F] mb-6"><%= current_user.agency&.name %></div>
       <%= render "form" %>
     </div>
   </div>
