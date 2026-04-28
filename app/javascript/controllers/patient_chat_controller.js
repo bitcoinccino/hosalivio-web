@@ -54,20 +54,56 @@ export default class extends Controller {
     this._mediaStream = stream
     this._audioChunks = []
     this._cancelRequested = false
+    this._voiceTranscript = ""
+    this._voiceInterim   = ""
     const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
                    .find((c) => MediaRecorder.isTypeSupported(c)) || ""
     this._mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
     this._mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) this._audioChunks.push(e.data) }
     this._mediaRecorder.onstop = () => this._finalizeRecording()
     this._mediaRecorder.start(1000)
+    // Web Speech runs in parallel so the audio note also lands a
+    // text body. Browsers without Web Speech still get the audio.
+    this._startVoiceTranscription()
     this._recordStartMs = Date.now()
     this._setComposerRecording(true)
     this._startRecordTimer()
   }
 
+  _startVoiceTranscription() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { this._voiceSpeech = null; return }
+    const r = new SR()
+    r.lang           = this.langValue || "en-US"
+    r.continuous     = true
+    r.interimResults = true
+    r.onresult = (e) => {
+      let interim = ""
+      let final   = this._voiceTranscript
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript
+        if (e.results[i].isFinal) { final += t } else { interim += t }
+      }
+      this._voiceTranscript = final
+      this._voiceInterim    = interim
+    }
+    r.onend = () => {
+      // Continuous mode self-ends on long silences; restart unless
+      // we explicitly stopped recording.
+      if (this._mediaRecorder && this._mediaRecorder.state === "recording") {
+        try { r.start() } catch (_) {}
+      }
+    }
+    try { r.start() } catch (_) {}
+    this._voiceSpeech = r
+  }
+
   _stopRecording() {
     if (this._mediaRecorder) {
       try { this._mediaRecorder.stop() } catch (_) {}
+    }
+    if (this._voiceSpeech) {
+      try { this._voiceSpeech.stop() } catch (_) {}
     }
     this._stopRecordTimer()
   }
@@ -93,9 +129,20 @@ export default class extends Controller {
     this._setComposerRecording(false)
     if (cancelled) {
       this._pendingAudio = null
+      this._voiceTranscript = ""
+      this._voiceInterim   = ""
       return
     }
     this._pendingAudio = new File([blob], `voice-${Date.now()}.${ext}`, { type })
+    // Inject the Web Speech transcript into the input so the message
+    // body carries the spoken text alongside the audio attachment.
+    // send() reads this.inputTarget.value as the body.
+    if (this.hasInputTarget) {
+      const transcript = (this._voiceTranscript + " " + this._voiceInterim).trim()
+      if (transcript.length) this.inputTarget.value = transcript
+    }
+    this._voiceTranscript = ""
+    this._voiceInterim   = ""
     // Auto-send the voice note immediately — same UX as iMessage / WhatsApp.
     // Cancel button gives the user a non-send exit.
     this.send(new Event("submit", { cancelable: true }))

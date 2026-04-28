@@ -425,29 +425,18 @@
                placeholder=""
                class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
 
-        <button type="button" data-patient-chat-target="mic" data-action="click->patient-chat#toggleMic"
-                disabled
-                title="Tap to dictate (text)"
-                class="w-9 h-9 rounded-full text-[#B9B4AB] text-lg flex items-center justify-center cursor-not-allowed transition">
-          <i class="ri-mic-line"></i>
-        </button>
-
-        <%# Voice-note record button — captures actual audio (MediaRecorder),
-            attaches to the Note, plays back inline in the bubble. Distinct
-            from the mic above (which only transcribes to text). %>
+        <%# Single voice button — tap to start, tap again to stop.
+            Records audio + transcribes via Web Speech in parallel,
+            auto-sends both when stopped. The dictate-only mic button
+            and the standalone Send button are gone; typed messages
+            still submit on Enter via the form's submit handler. %>
         <button type="button"
                 data-action="click->patient-chat#toggleRecord"
                 data-patient-chat-target="recordButton"
                 data-state="idle"
-                title="Tap to record a voice note (audio)"
-                class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#FFEDE2] text-[#C1403A] text-lg flex items-center justify-center transition">
+                title="Tap to record a voice note (audio + transcript)"
+                class="w-10 h-10 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-lg flex items-center justify-center transition">
           <i class="ri-voiceprint-line"></i>
-        </button>
-        <button type="submit"
-                title="Send"
-                class="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
-          <i class="ri-send-plane-fill"></i>
-          <span>Send</span>
         </button>
       </form>
       </div><%# end outer flex row wrapper %>
