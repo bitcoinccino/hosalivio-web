@@ -1,5 +1,24 @@
 <%
-  user_options = User.where(agency: current_user.agency, active: true).order(:full_name).map { |u| [u.full_name, u.id] }
+  # Pool of clinicians at this agency — never family users. Scoped per
+  # leadership slot below so each dropdown only shows the appropriate
+  # role (MD director gets MDs, DON gets DONs, etc.).
+  clinical_pool = User
+                    .where(agency: current_user.agency, active: true)
+                    .where(family_access: [false, nil])
+                    .includes(:roles)
+                    .order(:full_name)
+
+  options_for_role = ->(role_names) {
+    pool = clinical_pool.select { |u| (u.role_names & Array(role_names)).any? }
+    pool.map { |u| [u.full_name, u.id] }
+  }
+  any_clinician_options = clinical_pool.map { |u| [u.full_name, u.id] }
+
+  manager_options    = options_for_role.call(%w[admin don admissions])
+  md_options         = options_for_role.call(%w[md])
+  don_options        = options_for_role.call(%w[don])
+  supervisor_options = options_for_role.call(%w[don rn])
+
   type_options = [
     ["Standard office (admin)", "office"],
     ["Inpatient Unit (freestanding IPU)", "ipu"],
@@ -137,19 +156,19 @@
     <div class="grid grid-cols-2 gap-3">
       <div>
         <%= f.label :manager_id, "Administrator / branch manager", class: label_cls %>
-        <%= f.select :manager_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+        <%= f.select :manager_id, manager_options, { include_blank: "— none —" }, class: input_cls %>
       </div>
       <div>
         <%= f.label :medical_director_id, "Medical Director (MD)", class: label_cls %>
-        <%= f.select :medical_director_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+        <%= f.select :medical_director_id, md_options, { include_blank: "— none —" }, class: input_cls %>
       </div>
       <div>
         <%= f.label :director_of_nursing_id, "Director of Nursing (DON)", class: label_cls %>
-        <%= f.select :director_of_nursing_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+        <%= f.select :director_of_nursing_id, don_options, { include_blank: "— none —" }, class: input_cls %>
       </div>
       <div>
         <%= f.label :clinical_supervisor_id, "Clinical supervisor", class: label_cls %>
-        <%= f.select :clinical_supervisor_id, user_options, { include_blank: "— none —" }, class: input_cls %>
+        <%= f.select :clinical_supervisor_id, supervisor_options, { include_blank: "— none —" }, class: input_cls %>
       </div>
     </div>
   </section>
