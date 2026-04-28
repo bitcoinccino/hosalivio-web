@@ -23,9 +23,16 @@ class Branch < ApplicationRecord
   validates :npi, format: { with: /\A\d{10}\z/, message: "must be 10 digits" }, allow_blank: true
   validates :ccn, format: { with: /\A[A-Z0-9]{5,10}\z/, message: "invalid Medicare CCN format" }, allow_blank: true
   validates :ein, format: { with: /\A\d{2}-?\d{7}\z/, message: "must be XX-XXXXXXX" }, allow_blank: true
+  # NPI and CCN are CMS-assigned IDs that are globally unique; another
+  # branch (in this agency or another) cannot reuse them. Validate here
+  # so users get a friendly form error instead of a 500 from the DB
+  # unique-index violation.
+  validates :npi, uniqueness: { case_sensitive: false }, allow_blank: true
+  validates :ccn, uniqueness: { case_sensitive: false }, allow_blank: true
   validate  :triage_email_shape
 
   before_validation :normalize_arrays
+  before_validation :nullify_blank_unique_ids
 
   scope :active, -> { where(active: true) }
 
@@ -71,6 +78,16 @@ class Branch < ApplicationRecord
   def normalize_arrays
     self.service_area_zips     = split_listish(service_area_zips)
     self.service_area_counties = split_listish(service_area_counties)
+  end
+
+  # The unique indexes on npi / ccn allow multiple NULLs but reject
+  # multiple empty strings. Coerce blank submissions to nil so an
+  # admin who leaves these fields empty doesn't trip the constraint
+  # the second time around.
+  def nullify_blank_unique_ids
+    self.npi = nil if npi.is_a?(String) && npi.strip.empty?
+    self.ccn = nil if ccn.is_a?(String) && ccn.strip.empty?
+    self.ein = nil if ein.is_a?(String) && ein.strip.empty?
   end
 
   def split_listish(val)
