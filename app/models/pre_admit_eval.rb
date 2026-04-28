@@ -42,53 +42,48 @@ class PreAdmitEval < ApplicationRecord
     noe_deadline_at && Time.current > noe_deadline_at && !status_noe_filed?
   end
 
-  # ── Consent / certification gate ────────────────────────────────
-  # Esther cannot certify until informed consent + election + financial
-  # consent are documented. This mirrors the CMS COP requirements and
-  # prevents an NOE from being filed on a patient who didn't actually
-  # agree to elect the hospice benefit.
+  # ── Section accessors (new section-based schema) ────────────────
 
-  def informed_consent
-    raw_json.dig("pre_admit_eval", "informed_consent") || {}
+  def header              ; raw_json.dig("pre_admit_eval", "header")              || {}; end
+  def general_comments    ; raw_json.dig("pre_admit_eval", "general_comments")    || {}; end
+  def diagnosis_section   ; raw_json.dig("pre_admit_eval", "diagnosis")           || {}; end
+  def current_medications ; Array(raw_json.dig("pre_admit_eval", "current_medications")); end
+  def discontinued_meds   ; Array(raw_json.dig("pre_admit_eval", "discontinued_meds")); end
+  def other_symptoms      ; raw_json.dig("pre_admit_eval", "other_symptoms")      || {}; end
+  def cognitive_decline   ; raw_json.dig("pre_admit_eval", "cognitive_decline")   || {}; end
+  def nutritional_decline ; raw_json.dig("pre_admit_eval", "nutritional_decline") || {}; end
+  def functional_decline  ; raw_json.dig("pre_admit_eval", "functional_decline")  || {}; end
+  def general             ; raw_json.dig("pre_admit_eval", "general")             || {}; end
+
+  def pps_object          ; functional_decline["pps"]; end
+  def pps_score
+    case pps_object
+    when Integer then pps_object
+    when Hash    then pps_object["score"].to_i.nonzero?
+    end
   end
 
-  def election_of_benefit
-    raw_json.dig("pre_admit_eval", "election_of_benefit") || {}
+  # ── Certification gate (new schema) ─────────────────────────────
+  # CMS still requires election + signed Notice of Election + a
+  # supported terminal prognosis. The new schema collapses old
+  # informed_consent / financial_consent into a thinner `general`
+  # block; we keep the gate aligned to that.
+
+  def election_signed?
+    general["election_of_benefits_signed"] == true
   end
 
-  def financial_consent
-    raw_json.dig("pre_admit_eval", "financial_consent") || {}
-  end
-
-  def consent_complete?
-    informed_consent["family_agrees_to_stop_curative"] == true &&
-      election_of_benefit["mhes_signed"] == true &&
-      election_of_benefit["election_effective_date"].to_s.strip.present? &&
-      financial_consent["assignment_of_benefits_signed"] == true
-  end
-
-  def medicaid_needed?
-    financial_consent["medicaid_form_needed"] == true
-  end
-
-  def medicaid_complete?
-    !medicaid_needed? || financial_consent["medicaid_form_signed"] == true
-  end
-
-  def aob_signed?
-    financial_consent["assignment_of_benefits_signed"] == true
+  def patient_rights_reviewed?
+    general["patient_rights_reviewed"] == true
   end
 
   # Returns an array of specific blockers; empty array means certify-ready.
   def certification_blockers
     blockers = []
-    blockers << "family has not agreed to stop curative treatment" unless informed_consent["family_agrees_to_stop_curative"] == true
-    blockers << "Medicare Hospice Election Statement not signed"    unless election_of_benefit["mhes_signed"] == true
-    blockers << "election effective date missing"                   if election_of_benefit["election_effective_date"].to_s.strip.empty?
-    blockers << "Assignment of Benefits not signed"                 unless aob_signed?
-    blockers << "Medicaid R&B form needed but not signed"           if medicaid_needed? && !medicaid_complete?
-    blockers << "primary diagnosis ICD-10 missing"                  if primary_icd10.blank?
-    blockers << "LCD criteria not supported"                        unless lcd_criteria_supported
+    blockers << "Election of benefits not signed"  unless election_signed?
+    blockers << "Patient rights not reviewed"      unless patient_rights_reviewed?
+    blockers << "Primary diagnosis ICD-10 missing" if primary_icd10.blank?
+    blockers << "LCD criteria not supported"       unless lcd_criteria_supported
     blockers
   end
 
@@ -108,15 +103,19 @@ class PreAdmitEval < ApplicationRecord
     self.noe_deadline_at ||= (evaluated_at || Time.current) + NOE_WINDOW_DAYS.days
   end
 
-  # Pull the primary_icd10 + description + LCD flag out of the JSON each save
+  # Pull primary_icd10 + description + LCD flag out of the JSON each save
   # so SQL queries can filter without having to jsonb-dig every row.
+  # New schema nests diagnosis fields:
+  #   diagnosis.primary_terminal_diagnosis.{description,icd10}
+  #   diagnosis.lcd_criteria_met (array of strings)
   def sync_summary_from_json
     return unless raw_json.is_a?(Hash)
-    dx = raw_json.dig("pre_admit_eval", "diagnosis") || {}
-    lcd = raw_json.dig("pre_admit_eval", "medicare_lcd_criteria") || {}
+    dx       = raw_json.dig("pre_admit_eval", "diagnosis") || {}
+    primary  = dx["primary_terminal_diagnosis"].is_a?(Hash) ? dx["primary_terminal_diagnosis"] : {}
+    lcd_list = Array(dx["lcd_criteria_met"])
 
-    self.primary_icd10             = dx["primary_icd10"].to_s.presence
-    self.primary_icd10_description = dx["primary_icd10_description"].to_s.presence
-    self.lcd_criteria_supported    = Array(lcd["criteria_met"]).any? || lcd["supporting_documentation"].to_s.strip.present?
+    self.primary_icd10             = primary["icd10"].to_s.presence
+    self.primary_icd10_description = primary["description"].to_s.presence
+    self.lcd_criteria_supported    = lcd_list.any?
   end
 end

@@ -1,27 +1,44 @@
 <% content_for :title, "Pre-admit eval · #{@eval.patient.full_name}" %>
 <%
-  pae = @eval.raw_json["pre_admit_eval"] || {}
-  ic  = pae["informed_consent"]    || {}
-  eob = pae["election_of_benefit"] || {}
-  fc  = pae["financial_consent"]   || {}
-  dx  = pae["diagnosis"]            || {}
-  lcd = pae["medicare_lcd_criteria"] || {}
-  fr  = pae["final_review"]         || {}
+  pae   = @eval.raw_json["pre_admit_eval"] || {}
+  hd    = @eval.header
+  gc    = @eval.general_comments
+  dx    = @eval.diagnosis_section
+  meds  = @eval.current_medications
+  disc  = @eval.discontinued_meds
+  sx    = @eval.other_symptoms
+  cog   = @eval.cognitive_decline
+  nut   = @eval.nutritional_decline
+  fd    = @eval.functional_decline
+  gen   = @eval.general
+
+  pps   = fd["pps"]
+  pps_h = pps.is_a?(Hash) ? pps : { "score" => pps.to_i, "source" => "clinician", "justification" => "" }
+
+  card  = "rounded-2xl bg-white border border-[#EFECE6] p-5"
+  h2    = "text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3 flex items-center gap-2"
+  yes_ = ->(v) { v ? %Q(<span class="text-[#2F6F4E] font-medium">✓ yes</span>) : %Q(<span class="text-[#C1403A] font-medium">— no</span>) }
 %>
-<div class="min-h-screen bg-[#FBF9F5] py-8 px-4">
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4 md:px-10">
   <div class="max-w-3xl mx-auto">
     <a href="<%= patient_path(@eval.patient) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to <%= @eval.patient.full_name %>
     </a>
 
+    <%# === Header strip ============================================ %>
     <div class="flex items-start justify-between mb-6">
       <div>
-        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Pre-admit evaluation</div>
-        <h1 class="font-serif text-2xl text-[#1D1C1A]"><%= @eval.patient.full_name %></h1>
-        <div class="text-[12px] text-[#6B665F] mt-0.5 font-mono">
-          <%= @eval.evaluator_name %>
-          <% if @eval.evaluator_license %> · LIC <%= @eval.evaluator_license %><% end %>
-          · <%= @eval.evaluated_at&.strftime("%b %-d, %Y %-l:%M %p") %>
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Pre-admit eval · Final review</div>
+        <h1 class="font-serif text-[28px] text-[#1D1C1A] leading-tight"><%= hd["patient_name"].presence || @eval.patient.full_name %></h1>
+        <div class="text-[12px] text-[#6B665F] mt-1 font-mono space-x-2">
+          <% if hd["mrn"].present? %><span>MRN <%= hd["mrn"] %></span><% end %>
+          <% if hd["dob"].present? %><span>· DOB <%= hd["dob"] %></span><% end %>
+          <% if hd["visit_type"].present? %><span>· <%= hd["visit_type"] %></span><% end %>
+        </div>
+        <div class="text-[12px] text-[#6B665F] mt-0.5">
+          <%= hd["clinician_name"].presence || @eval.evaluator_name %>
+          <% if hd["date_of_visit"].present? %> · Visit <%= hd["date_of_visit"] %><% end %>
+          <% if hd["start_of_care_date"].present? %> · SOC <%= hd["start_of_care_date"] %><% end %>
         </div>
       </div>
       <%
@@ -34,6 +51,7 @@
       </span>
     </div>
 
+    <%# === Cert gate ============================================== %>
     <% blockers = @eval.certification_blockers %>
     <% if blockers.any? %>
       <div class="mb-5 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4">
@@ -59,86 +77,332 @@
     <% end %>
 
     <div class="space-y-4">
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Diagnosis</h2>
-        <div class="text-[13px]">
-          <div><strong class="font-mono"><%= dx["primary_icd10"] %></strong> <%= dx["primary_icd10_description"] %></div>
-          <% if (dx["secondary_icd10_codes"] || []).any? %>
-            <div class="text-[12px] text-[#6B665F] mt-1">Secondary: <%= (dx["secondary_icd10_codes"] || []).join(", ") %></div>
-          <% end %>
-        </div>
-      </section>
-
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Medicare LCD</h2>
-        <% if (lcd["criteria_met"] || []).any? %>
-          <ul class="list-disc ml-5 text-[13px] text-[#1D1C1A] space-y-0.5">
-            <% (lcd["criteria_met"] || []).each do |c| %><li><%= c %></li><% end %>
-          </ul>
+      <%# === General Comments ====================================== %>
+      <section class="<%= card %>">
+        <h2 class="<%= h2 %>"><i class="ri-edit-line text-[#6B665F]"></i> General comments</h2>
+        <% if gc["narrative_summary"].to_s.strip.present? %>
+          <p class="text-[13px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= gc["narrative_summary"] %></p>
+        <% else %>
+          <p class="text-[12px] text-[#6B665F] italic">No narrative captured.</p>
         <% end %>
-        <% if lcd["supporting_documentation"].to_s.strip.present? %>
-          <p class="text-[12px] text-[#3A3936] mt-2"><%= lcd["supporting_documentation"] %></p>
+        <div class="grid grid-cols-2 gap-3 mt-3 text-[12px]">
+          <div>
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Family / caregiver</div>
+            <div class="text-[#1D1C1A]"><%= gc["family_caregiver_status"].presence || "—" %></div>
+          </div>
+          <div>
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Immediate safety risks</div>
+            <div class="text-[#1D1C1A]"><%= Array(gc["immediate_safety_risks"]).join(", ").presence || "None reported" %></div>
+          </div>
+        </div>
+      </section>
+
+      <%# === Diagnosis ============================================= %>
+      <section class="<%= card %>">
+        <h2 class="<%= h2 %>"><i class="ri-stethoscope-line text-[#2B4A7A]"></i> Diagnosis</h2>
+        <% pdx = dx["primary_terminal_diagnosis"].is_a?(Hash) ? dx["primary_terminal_diagnosis"] : {} %>
+        <div class="text-[13px] mb-2">
+          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Primary terminal</div>
+          <div>
+            <% if pdx["icd10"].present? %><strong class="font-mono"><%= pdx["icd10"] %></strong> · <% end %>
+            <%= pdx["description"].presence || "—" %>
+          </div>
+        </div>
+        <% if Array(dx["secondary_diagnoses"]).any? %>
+          <div class="text-[12px]">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Secondary</div>
+            <ul class="list-disc ml-5 mt-1 text-[#1D1C1A] space-y-0.5">
+              <% Array(dx["secondary_diagnoses"]).each do |s| %>
+                <% next unless s.is_a?(Hash) %>
+                <li>
+                  <% if s["icd10"].present? %><strong class="font-mono"><%= s["icd10"] %></strong> · <% end %><%= s["description"] %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        <% if Array(dx["lcd_criteria_met"]).any? %>
+          <div class="text-[12px] mt-3 pt-3 border-t border-[#EFECE6]">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Medicare LCD criteria met</div>
+            <div class="flex flex-wrap gap-1.5">
+              <% Array(dx["lcd_criteria_met"]).each do |c| %>
+                <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-[#E6F0EE] border border-[#2F6F4E] text-[#2F6F4E]">
+                  <i class="ri-check-line"></i> <%= c %>
+                </span>
+              <% end %>
+            </div>
+          </div>
         <% end %>
       </section>
 
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Informed consent</h2>
-        <div class="grid grid-cols-2 gap-y-1 text-[12px]">
-          <% [
-            ["Services explained",                ic["services_explained"]],
-            ["Levels of care explained",          ic["levels_of_care_explained"]],
-            ["Curative-stop explained",           ic["curative_treatment_stop_explained"]],
-            ["Family agrees to stop curative",    ic["family_agrees_to_stop_curative"]],
-            ["Questions answered",                ic["questions_answered"]],
-            ["Family wants to proceed",           ic["family_wants_to_proceed"]]
-          ].each do |label, val| %>
-            <div class="text-[#6B665F]"><%= label %></div>
-            <div class="<%= val ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= val ? "✓ yes" : "— no" %></div>
+      <%# === Current Medications =================================== %>
+      <% if meds.any? || disc.any? %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-capsule-line text-[#7A4A8C]"></i> Current medications</h2>
+          <% if meds.any? %>
+            <ul class="space-y-2 text-[13px]">
+              <% meds.each do |m| %>
+                <% next unless m.is_a?(Hash) %>
+                <li class="flex items-baseline justify-between gap-2 border-b border-[#EFECE6] pb-2 last:border-0 last:pb-0">
+                  <div class="min-w-0">
+                    <div class="font-medium text-[#1D1C1A]"><%= m["name"] %> <span class="font-mono text-[12px] text-[#6B665F]"><%= m["dose"] %></span></div>
+                    <div class="text-[11px] text-[#6B665F] font-mono"><%= [m["route"], m["frequency"]].compact_blank.join(" · ") %></div>
+                  </div>
+                  <div class="text-[11px] text-[#6B665F] italic flex-shrink-0"><%= m["indication"] %></div>
+                </li>
+              <% end %>
+            </ul>
           <% end %>
-        </div>
-        <% if ic["levels_covered_with_family"].is_a?(Array) && ic["levels_covered_with_family"].any? %>
-          <div class="text-[11px] text-[#6B665F] mt-2">Covered: <%= ic["levels_covered_with_family"].map { |l| l.tr("_", " ") }.join(", ") %></div>
-        <% end %>
-      </section>
-
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Election of benefit</h2>
-        <div class="text-[12px] space-y-1">
-          <div>MHES signed: <span class="<%= eob['mhes_signed'] ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= eob["mhes_signed"] ? "✓ yes" : "— no" %></span></div>
-          <div>Effective date: <span class="font-mono"><%= eob["election_effective_date"].presence || "—" %></span></div>
-          <div>Signed by: <%= eob["primary_decision_maker_name"].presence || "—" %><% if eob["primary_decision_maker_relationship"].present? %> (<%= eob["primary_decision_maker_relationship"] %>)<% end %></div>
-        </div>
-      </section>
-
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Financial consent</h2>
-        <div class="text-[12px] space-y-1">
-          <div>AOB signed: <span class="<%= fc['assignment_of_benefits_signed'] ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= fc["assignment_of_benefits_signed"] ? "✓ yes" : "— no" %></span></div>
-          <div>AOB signer: <%= fc["aob_signer_name"].presence || "—" %><% if fc["aob_signer_relationship"].present? %> (<%= fc["aob_signer_relationship"] %>)<% end %></div>
-          <div>Liability acknowledged: <span class="<%= fc['aob_liability_acknowledged'] ? 'text-[#2F6F4E]' : 'text-[#C1403A]' %>"><%= fc["aob_liability_acknowledged"] ? "✓ yes" : "— no" %></span></div>
-          <div>Medicaid R&B needed: <%= fc["medicaid_form_needed"] ? "yes" : "no" %><% if fc["medicaid_form_needed"] %> · signed: <%= fc["medicaid_form_signed"] ? "✓ yes" : "— no" %><% end %></div>
-        </div>
-      </section>
-
-      <% if fr["rn_recommendation"].to_s.strip.present? %>
-        <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-          <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">RN recommendation</h2>
-          <p class="text-[13px] text-[#1D1C1A]"><%= fr["rn_recommendation"] %></p>
-          <% if fr["prognosis_estimate"].to_s.strip.present? %>
-            <div class="text-[12px] text-[#6B665F] mt-2">Prognosis: <%= fr["prognosis_estimate"] %></div>
-          <% end %>
-          <% if fr["hospice_eligibility_statement"].to_s.strip.present? %>
-            <div class="text-[12px] text-[#6B665F] mt-1"><%= fr["hospice_eligibility_statement"] %></div>
+          <% if disc.any? %>
+            <div class="mt-3 pt-3 border-t border-[#EFECE6]">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Discontinued</div>
+              <ul class="list-disc ml-5 text-[12px] text-[#3A3936] space-y-0.5">
+                <% disc.each do |d| %><li><%= d %></li><% end %>
+              </ul>
+            </div>
           <% end %>
         </section>
       <% end %>
+
+      <%# === Other Symptoms ======================================== %>
+      <% if sx.any? %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-pulse-line text-[#C1403A]"></i> Other symptoms</h2>
+          <%
+            pain = sx["pain"] || {}
+            dyspnea = sx["dyspnea"] || {}
+            gi = sx["gi_symptoms"] || {}
+            psy = sx["psychosocial"] || {}
+          %>
+          <div class="grid grid-cols-2 gap-4 text-[12px]">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Pain</div>
+              <% if pain["score"].to_i.positive? %>
+                <div class="text-[#1D1C1A]">
+                  <span class="font-mono"><%= pain["score"] %>/10</span>
+                  <% if pain["location"].present? %> · <%= pain["location"] %><% end %>
+                </div>
+                <% if pain["characteristics"].present? %>
+                  <div class="text-[11px] text-[#6B665F]"><%= pain["characteristics"] %></div>
+                <% end %>
+                <% if pain["management"].present? %>
+                  <div class="text-[11px] text-[#3A3936] italic mt-0.5"><%= pain["management"] %></div>
+                <% end %>
+              <% else %>
+                <div class="text-[#6B665F]">—</div>
+              <% end %>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Dyspnea</div>
+              <div class="text-[#1D1C1A]"><%= dyspnea["severity"].presence || "—" %></div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">GI</div>
+              <div class="text-[#1D1C1A] space-y-0.5">
+                <% %w[nausea vomiting constipation].each do |k| %>
+                  <% next if gi[k].to_s.empty? %>
+                  <div><span class="text-[#6B665F]"><%= k.titleize %>:</span> <%= gi[k] %></div>
+                <% end %>
+                <% if gi.values.compact_blank.empty? %><div class="text-[#6B665F]">—</div><% end %>
+              </div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Psychosocial</div>
+              <div class="text-[#1D1C1A] space-y-0.5">
+                <% %w[anxiety depression agitation].each do |k| %>
+                  <% next if psy[k].to_s.empty? %>
+                  <div><span class="text-[#6B665F]"><%= k.titleize %>:</span> <%= psy[k] %></div>
+                <% end %>
+                <% if psy.values.compact_blank.empty? %><div class="text-[#6B665F]">—</div><% end %>
+              </div>
+            </div>
+          </div>
+        </section>
+      <% end %>
+
+      <%# === Cognitive Decline ===================================== %>
+      <% if cog.any? %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-brain-line text-[#5A2F7A]"></i> Cognitive decline</h2>
+          <div class="grid grid-cols-3 gap-3 text-[12px]">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Mental status</div>
+              <div class="text-[#1D1C1A]"><%= cog["mental_status"].presence || "—" %></div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">FAST score</div>
+              <div class="text-[#1D1C1A] font-mono"><%= cog["fast_score"].presence || "—" %></div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">BIMS / MMSE</div>
+              <div class="text-[#1D1C1A] font-mono"><%= cog["bims_mmse_score"].presence || "—" %></div>
+            </div>
+          </div>
+          <% if Array(cog["behavioral_symptoms"]).any? %>
+            <div class="text-[11px] text-[#6B665F] mt-2">Behaviors: <%= Array(cog["behavioral_symptoms"]).join(", ") %></div>
+          <% end %>
+        </section>
+      <% end %>
+
+      <%# === Nutritional Decline =================================== %>
+      <% if nut.any? %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-restaurant-line text-[#8C6A2F]"></i> Nutritional decline</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Current weight</div>
+              <div class="text-[#1D1C1A] font-mono"><%= nut["current_weight_lbs"].present? ? "#{nut["current_weight_lbs"]} lb" : "—" %></div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Weight loss</div>
+              <div class="text-[#1D1C1A] font-mono">
+                <% loss = [(nut["weight_loss_lbs"].present? ? "#{nut["weight_loss_lbs"]} lb" : nil),
+                            (nut["weight_loss_pct"].present? ? "#{nut["weight_loss_pct"]}%" : nil)].compact_blank.join(" · ") %>
+                <%= loss.presence || "—" %>
+              </div>
+              <% if nut["weight_loss_timeframe"].present? %>
+                <div class="text-[11px] text-[#6B665F]">over <%= nut["weight_loss_timeframe"] %></div>
+              <% end %>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Albumin</div>
+              <div class="text-[#1D1C1A] font-mono"><%= nut["albumin_g_dl"].present? ? "#{nut["albumin_g_dl"]} g/dL" : "—" %></div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Intake</div>
+              <div class="text-[#1D1C1A]"><%= nut["intake"].presence || "—" %></div>
+            </div>
+          </div>
+        </section>
+      <% end %>
+
+      <%# === Functional Decline (PPS spotlight) ==================== %>
+      <% if fd.any? %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-walk-line text-[#2F6F4E]"></i> Functional decline</h2>
+          <%# PPS card with the suggested-vs-confirmed treatment. %>
+          <%
+            calculated = pps_h["source"] == "calculated"
+            score      = pps_h["score"].to_i
+          %>
+          <div class="rounded-xl <%= calculated ? "bg-[#F0F4FA] border border-dashed border-[#2B4A7A]" : "bg-[#FBF9F5] border border-[#EFECE6]" %> p-4 mb-4">
+            <div class="flex items-baseline justify-between gap-3">
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-0.5">Palliative Performance Scale</div>
+                <div class="font-serif text-[28px] text-[#1D1C1A] leading-none"><%= score.positive? ? "#{score}%" : "—" %></div>
+                <% if calculated %>
+                  <div class="inline-flex items-center gap-1 mt-1 text-[10px] uppercase tracking-[0.18em] text-[#2B4A7A] font-bold">
+                    <i class="ri-sparkling-2-line"></i> Suggested based on narrative
+                  </div>
+                <% elsif score.positive? %>
+                  <div class="inline-flex items-center gap-1 mt-1 text-[10px] uppercase tracking-[0.18em] text-[#2F6F4E] font-bold">
+                    <i class="ri-check-line"></i> Confirmed by clinician
+                  </div>
+                <% end %>
+              </div>
+              <% if calculated && (@eval.status_draft? || @eval.status_final?) %>
+                <%= button_to confirm_pps_pre_admit_eval_path(@eval), method: :post,
+                      data: { turbo_confirm: "Confirm PPS at #{score}%? Status will flip to clinician-confirmed." },
+                      class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium cursor-pointer" do %>
+                  <i class="ri-check-double-line"></i> Confirm
+                <% end %>
+              <% end %>
+            </div>
+            <% if pps_h["justification"].to_s.strip.present? %>
+              <details class="mt-3 group">
+                <summary class="cursor-pointer list-none text-[11px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
+                  <i class="ri-arrow-right-s-line group-open:rotate-90 transition-transform inline-block"></i>
+                  Why this score
+                </summary>
+                <p class="text-[12px] text-[#3A3936] mt-2 leading-relaxed pl-4 border-l-2 border-[#D9D5CD]"><%= pps_h["justification"] %></p>
+              </details>
+            <% end %>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">KPS</div>
+              <div class="text-[#1D1C1A] font-mono"><%= fd["kps"].present? ? "#{fd["kps"]}%" : "—" %></div>
+            </div>
+            <div class="md:col-span-2">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Mobility</div>
+              <div class="text-[#1D1C1A]"><%= fd["mobility"].presence || "—" %></div>
+            </div>
+          </div>
+
+          <% adl = fd["adl_dependencies"].is_a?(Hash) ? fd["adl_dependencies"] : {} %>
+          <% if adl.values.compact_blank.any? %>
+            <div class="mt-3 pt-3 border-t border-[#EFECE6]">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-2">ADL dependencies</div>
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-[11px]">
+                <% %w[bathing dressing feeding toileting transferring].each do |task| %>
+                  <%
+                    val   = adl[task].to_s
+                    color = case val
+                            when "Dependent"  then "#C1403A"
+                            when "Assist"     then "#D97757"
+                            when "Independent" then "#2F6F4E"
+                            else                    "#6B665F"
+                            end
+                  %>
+                  <div>
+                    <div class="text-[9px] uppercase tracking-widest text-[#6B665F]"><%= task.titleize %></div>
+                    <div style="color: <%= color %>;" class="font-medium"><%= val.presence || "—" %></div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
+
+      <%# === General (consents, AD, DME, spiritual) ================= %>
+      <section class="<%= card %>">
+        <h2 class="<%= h2 %>"><i class="ri-shield-check-line text-[#2F6F4E]"></i> General</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-y-2 text-[12px]">
+          <div class="text-[#6B665F]">Election of benefits signed</div>
+          <div><%= yes_.call(gen["election_of_benefits_signed"] == true).html_safe %></div>
+          <div class="text-[#6B665F]">Patient rights reviewed</div>
+          <div><%= yes_.call(gen["patient_rights_reviewed"] == true).html_safe %></div>
+          <div class="text-[#6B665F]">Advance directives</div>
+          <div class="text-[#1D1C1A]"><%= gen["advance_directives"].presence || "—" %></div>
+          <div class="text-[#6B665F]">Spiritual / bereavement risk</div>
+          <div class="text-[#1D1C1A]"><%= gen["spiritual_bereavement_risk"].presence || "—" %></div>
+        </div>
+        <% if Array(gen["dme_needs"]).any? %>
+          <div class="mt-3 pt-3 border-t border-[#EFECE6]">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">DME needs</div>
+            <div class="flex flex-wrap gap-1.5">
+              <% Array(gen["dme_needs"]).each do |d| %>
+                <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-[#FBF9F5] border border-[#D9D5CD] text-[#1D1C1A]">
+                  <i class="ri-tools-line text-[#6B665F]"></i> <%= d %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% if gen["notes"].to_s.strip.present? %>
+          <p class="text-[12px] text-[#3A3936] mt-3 italic"><%= gen["notes"] %></p>
+        <% end %>
+      </section>
     </div>
 
-    <% if @eval.status_draft? || @eval.status_final? %>
-      <div class="mt-6 flex items-center justify-end gap-2">
-        <%= link_to "Edit eval", edit_pre_admit_eval_path(@eval),
-              class: "inline-flex items-center gap-1 text-[13px] px-4 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white" %>
-      </div>
-    <% end %>
+    <div class="mt-6 flex items-center justify-between gap-2">
+      <% if (@eval.status_draft? || @eval.status_final?) %>
+        <%= link_to edit_pre_admit_eval_path(@eval),
+              class: "inline-flex items-center gap-1 text-[13px] px-4 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white" do %>
+          <i class="ri-edit-line"></i> Edit eval
+        <% end %>
+      <% else %>
+        <span></span>
+      <% end %>
+      <% if @eval.status_final? && @eval.can_certify? && current_user.role_names.include?("md") %>
+        <%= button_to certify_pre_admit_eval_path(@eval), method: :post,
+              data: { turbo_confirm: "Sign certification of terminal illness for #{@eval.patient.full_name}?" },
+              class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium cursor-pointer" do %>
+          <i class="ri-quill-pen-line"></i> Certify (MD signature)
+        <% end %>
+      <% end %>
+    </div>
   </div>
 </div>

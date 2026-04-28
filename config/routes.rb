@@ -75,7 +75,12 @@ Rails.application.routes.draw do
   end
 
   # Per-agency team management (coordinator / DON / admin)
-  resources :pre_admit_evals, only: [:show, :edit, :update]
+  resources :pre_admit_evals, only: [:show, :edit, :update] do
+    member do
+      post :confirm_pps
+      post :certify
+    end
+  end
   resource  :agency_features, only: [:edit, :update], controller: "agency_features"
   resource  :agency_profile,  only: [:edit, :update], controller: "agency_profile"
   resources :branches, only: [:index, :new, :create, :edit, :update, :destroy]
