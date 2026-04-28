@@ -60,6 +60,7 @@ Rails.application.routes.draw do
       post :begin
       post :finish
       post :sync_to_eval
+      post :discard
     end
   end
 

@@ -1,7 +1,7 @@
 class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
-  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record]
+  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -135,6 +135,28 @@ class VisitsController < ApplicationController
         @visit.update!(started_at: Time.current)
       end
     end
+  end
+
+  # POST /visits/:id/discard
+  # Cancel link on the recording screen calls this. Destroys the
+  # visit only if it's truly empty (no narrative typed, no audio
+  # attached, no ended_at) so we don't accidentally throw away real
+  # work. If the visit has any content we leave it alone and just
+  # bounce to the dashboard so the RN can pick it back up later.
+  def discard
+    redirect_path = dashboard_path
+    ActsAsTenant.with_tenant(current_user.agency) do
+      empty = @visit.narrative.to_s.strip.empty? &&
+              !@visit.audio_note.attached? &&
+              @visit.ended_at.nil?
+      if empty
+        @visit.destroy!
+        flash[:notice] = "Visit discarded."
+      else
+        flash[:notice] = "Visit kept (had content). You can finish it from My Day."
+      end
+    end
+    redirect_to redirect_path
   end
 
   def begin

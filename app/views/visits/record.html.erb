@@ -20,11 +20,17 @@
       <div class="text-[10px] uppercase tracking-[0.2em] text-white/60 font-bold">Recording visit</div>
       <div class="font-serif text-[20px] mt-0.5"><%= patient_first %></div>
     </div>
-    <a href="<%= dashboard_path %>"
-       class="text-[12px] text-white/60 hover:text-white inline-flex items-center gap-1.5"
-       data-action="click->voice-visit#cancel">
+    <%# Cancel POSTs to /visits/:id/discard which destroys the visit
+        if it's empty (no narrative, no audio) so we don't leave
+        phantom 'Recording' rows on the dashboard. button_to renders
+        a tiny form here, which is fine because we're outside any
+        outer form on this page. %>
+    <%= button_to discard_visit_path(@visit), method: :post,
+          form: { class: "inline", data: { turbo_confirm: "Cancel this recording? Empty visits will be discarded." } },
+          class: "text-[12px] text-white/60 hover:text-white inline-flex items-center gap-1.5 cursor-pointer",
+          data: { action: "click->voice-visit#cancel" } do %>
       <i class="ri-close-line text-lg"></i> Cancel
-    </a>
+    <% end %>
   </header>
 
   <%# Main stage: timer + canvas waveform + mic + transcript.
