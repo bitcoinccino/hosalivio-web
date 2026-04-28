@@ -116,6 +116,38 @@ export default class extends Controller {
     this._stopRecording()
   }
 
+  // Living Wave bar's trash button: routes to the right cancel based
+  // on which mode is active (audio recording vs voice dictation).
+  cancelComposing() {
+    if (this._mediaRecorder && this._mediaRecorder.state !== "inactive") {
+      this.cancelRecord()
+    } else if (this._dictateMode) {
+      this._userStopped = true
+      this._dictateMode = false
+      try { this._speech?.stop() } catch (_) {}
+      // Restore form view; clear any partial dictation from the input
+      // so the user starts fresh (the trash icon means 'discard').
+      if (this.hasInputTarget) this.inputTarget.value = ""
+      this.refreshPlaceholderOverlay()
+      this._setComposerRecording(false)
+      this._stopRecordTimer()
+    }
+  }
+
+  // Living Wave bar's send button: routes to the right finish based
+  // on which mode is active.
+  stopAndSend() {
+    if (this._mediaRecorder && this._mediaRecorder.state !== "inactive") {
+      // Audio recording path: stop the recorder; the existing onstop
+      // handler finalizes + posts.
+      this.toggleRecord()
+    } else if (this._dictateMode) {
+      // Dictate path: stop speech, ship the transcript already in
+      // the input field as a typed message.
+      this.toggleMic()
+    }
+  }
+
   _finalizeRecording() {
     const type = this._mediaRecorder.mimeType || "audio/webm"
     const ext  = type.includes("ogg") ? "ogg" : (type.includes("mp4") ? "m4a" : "webm")
@@ -211,12 +243,29 @@ export default class extends Controller {
   toggleMic() {
     if (!this._speech) return
     if (this._listening) {
-      this._userStopped = true   // signal: don't auto-restart from onend
+      // Tapping the Living Wave's send button while in dictate mode
+      // stops the speech recognition AND submits the form so the
+      // transcript ships as a normal text message.
+      this._userStopped = true
+      this._dictateMode = false
       try { this._speech.stop() } catch (_) {}
+      this._setComposerRecording(false)
+      this._stopRecordTimer()
+      // Defer the send so the speech onend handler has a chance to
+      // flush any final transcript into the input first.
+      setTimeout(() => this.send(new Event("submit", { cancelable: true })), 60)
     } else {
       this._micStartText = this.inputTarget.value
       this._userStopped  = false
+      this._dictateMode  = true
       try { this._speech.start() } catch (_) { /* already running */ }
+      // Show the Living Wave bar with cancel + wave + timer + send.
+      // Same visual the voiceprint record flow uses — the user gets
+      // a single mental model and the bar's send button below routes
+      // back into toggleMic to stop + ship.
+      this._setComposerRecording(true)
+      this._recordStartMs = Date.now()
+      this._startRecordTimer()
     }
   }
 

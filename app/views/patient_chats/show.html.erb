@@ -462,13 +462,14 @@
       </div><%# end outer flex row wrapper %>
 
       <%# 'Living Wave' recording UI — replaces the input row while
-          MediaRecorder is active. Cancel (trash) discards; Send (plane)
-          stops + sends. Bars animate via CSS keyframes with staggered
-          delays to mimic voice frequency without real audio analysis. %>
+          either MediaRecorder OR Web Speech dictation is active.
+          Cancel (trash) discards; Send (plane) stops + sends. The
+          controller routes both buttons based on which mode is
+          active so a single bar serves both flows. %>
       <div class="hidden group-data-[recording=true]/composer:flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#D97757] shadow-sm transition-all">
         <button type="button"
-                data-action="click->patient-chat#cancelRecord"
-                title="Cancel recording"
+                data-action="click->patient-chat#cancelComposing"
+                title="Cancel"
                 class="w-9 h-9 rounded-full hover:bg-[#FFF3EC] text-[#6B665F] hover:text-[#C1403A] flex items-center justify-center transition">
           <i class="ri-delete-bin-line text-lg"></i>
         </button>
@@ -487,8 +488,8 @@
         <span data-patient-chat-target="recordTimer" class="font-mono text-[13px] text-[#D97757] font-bold tracking-wider min-w-[45px] text-right">0:00</span>
 
         <button type="button"
-                data-action="click->patient-chat#toggleRecord"
-                title="Stop recording &amp; send"
+                data-action="click->patient-chat#stopAndSend"
+                title="Stop &amp; send"
                 class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-sm active:scale-95 transition">
           <i class="ri-send-plane-fill text-[16px]"></i>
         </button>
