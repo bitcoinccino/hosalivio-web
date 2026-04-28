@@ -32,15 +32,14 @@
         <% end %>
       </div>
 
+      <%# Family roster — read-only in the sidebar. Invite + Revoke
+          actions moved into the chat composer's quick-actions dropdown
+          (gated to admin / DON / admissions / assigned RN / assigned
+          MD via @can_invite_family). Each family row in the list links
+          to the manage page where revoke lives. %>
       <div class="mt-6 pb-5 border-b border-[#D9D5CD] group-data-[collapsed=true]/sb:hidden">
         <div class="flex items-center justify-between mb-2">
           <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Family</div>
-          <% if @can_invite_family %>
-            <%= link_to new_patient_family_path(@patient),
-                  class: "text-[11px] text-[#D97757] hover:underline inline-flex items-center gap-0.5" do %>
-              <i class="ri-user-add-line text-[12px]"></i> Invite
-            <% end %>
-          <% end %>
         </div>
         <% if @family_users.empty? %>
           <div class="text-[11px] text-[#6B665F] italic">No family linked yet.</div>
@@ -57,6 +56,9 @@
                     <%= fu.relationship.presence ? "#{fu.relationship.capitalize} of #{@patient.first_name}" : "Family member" %>
                   </div>
                 </div>
+                <%# Per-row revoke stays here since it's per-family-user;
+                    the Invite link itself moved to the quick-actions
+                    dropdown in the composer. %>
                 <% if @can_invite_family && fu.active %>
                   <%= button_to patient_family_path(@patient, fu), method: :delete,
                         form: { class: "inline" },
