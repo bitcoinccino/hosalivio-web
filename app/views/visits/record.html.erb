@@ -27,60 +27,64 @@
     </a>
   </header>
 
-  <%# Main stage: timer + canvas waveform + transcript scroll %>
-  <main class="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+  <%# Main stage: timer + canvas waveform + mic + transcript.
+      Tightened gaps and shorter canvas so the whole stack fits one
+      viewport height with the mic button always above the fold. %>
+  <main class="flex-1 flex flex-col items-center justify-center px-6 gap-5 pb-6">
     <div class="text-center">
       <div data-voice-visit-target="timer"
-           class="font-mono text-[56px] md:text-[72px] tracking-[0.05em] text-[#D97757] tabular-nums leading-none">0:00</div>
+           class="font-mono text-[48px] md:text-[64px] tracking-[0.05em] text-[#D97757] tabular-nums leading-none">0:00</div>
       <div data-voice-visit-target="status"
-           class="text-[12px] uppercase tracking-[0.18em] text-white/50 font-bold mt-3">Press the mic to begin</div>
+           class="text-[12px] uppercase tracking-[0.18em] text-white/50 font-bold mt-2">Press the mic to begin</div>
     </div>
 
     <%# Canvas-driven AnalyserNode waveform. Width is responsive,
         height fixed; the controller sizes the bitmap to the CSS box. %>
-    <div class="w-full max-w-[640px] h-[160px] md:h-[200px]">
+    <div class="w-full max-w-[640px] h-[120px] md:h-[160px]">
       <canvas data-voice-visit-target="canvas"
               class="w-full h-full"></canvas>
+    </div>
+
+    <%# Primary controls — mic in the center, optional Pause / Stop
+        as smaller satellites. Pulled UP into the main stage (out of
+        the footer) so it's always visible above the fold. %>
+    <div class="flex items-center justify-center gap-6">
+      <button type="button"
+              data-action="click->voice-visit#togglePause"
+              data-voice-visit-target="pauseButton"
+              title="Pause / resume"
+              class="hidden w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white text-[20px] flex items-center justify-center transition">
+        <i class="ri-pause-line"></i>
+      </button>
+
+      <button type="button"
+              data-action="click->voice-visit#toggle"
+              data-voice-visit-target="recordButton"
+              data-state="idle"
+              title="Tap to start recording"
+              class="w-20 h-20 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-2xl flex items-center justify-center transition active:scale-95">
+        <i data-voice-visit-target="recordIcon" class="ri-mic-fill text-[32px]"></i>
+      </button>
+
+      <button type="button"
+              data-action="click->voice-visit#stop"
+              data-voice-visit-target="stopButton"
+              title="Stop and review"
+              class="hidden w-14 h-14 rounded-full bg-white text-[#1D1C1A] hover:bg-white/90 shadow-md flex items-center justify-center transition">
+        <i class="ri-check-line text-[24px]"></i>
+      </button>
     </div>
 
     <%# Live transcript preview (scrolls). Pure feedback; the official
         narrative gets saved on Stop. %>
     <div data-voice-visit-target="transcript"
-         class="w-full max-w-[640px] min-h-[80px] max-h-[160px] overflow-y-auto rounded-2xl bg-white/5 border border-white/10 p-4 text-[14px] text-white/90 leading-relaxed font-serif italic">
+         class="w-full max-w-[640px] min-h-[60px] max-h-[120px] overflow-y-auto rounded-2xl bg-white/5 border border-white/10 p-3 text-[13px] text-white/90 leading-relaxed font-serif italic">
       <%# Filled by the controller as Web Speech delivers interim + final results %>
       <span class="text-white/40 not-italic">Speak your visit assessment, the transcript will appear here…</span>
     </div>
+
+    <div class="text-[11px] text-white/40 text-center">
+      Auto-saves to the chart on Stop. Vitals are extracted on the next screen.
+    </div>
   </main>
-
-  <%# Bottom controls: large red Stop, optional Pause %>
-  <footer class="px-6 pb-10 flex items-center justify-center gap-6">
-    <button type="button"
-            data-action="click->voice-visit#togglePause"
-            data-voice-visit-target="pauseButton"
-            title="Pause / resume"
-            class="hidden w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white text-[20px] flex items-center justify-center transition">
-      <i class="ri-pause-line"></i>
-    </button>
-
-    <button type="button"
-            data-action="click->voice-visit#toggle"
-            data-voice-visit-target="recordButton"
-            data-state="idle"
-            title="Tap to start recording"
-            class="w-20 h-20 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-2xl flex items-center justify-center transition active:scale-95">
-      <i data-voice-visit-target="recordIcon" class="ri-mic-fill text-[32px]"></i>
-    </button>
-
-    <button type="button"
-            data-action="click->voice-visit#stop"
-            data-voice-visit-target="stopButton"
-            title="Stop and review"
-            class="hidden w-14 h-14 rounded-full bg-white text-[#1D1C1A] hover:bg-white/90 shadow-md flex items-center justify-center transition">
-      <i class="ri-check-line text-[24px]"></i>
-    </button>
-  </footer>
-
-  <div class="text-center text-[11px] text-white/40 pb-6">
-    Auto-saves to the chart on Stop. Vitals are extracted on the next screen.
-  </div>
 </div>
