@@ -1,7 +1,7 @@
 class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
-  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish]
+  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -101,10 +101,31 @@ class VisitsController < ApplicationController
         narrative:        "",
         agent_authored:   false
       )
-      redirect_to edit_visit_path(visit)
+      # Land on the full-screen recording page, not the cluttered
+      # edit form. The recording page captures the narrative + audio
+      # and redirects to edit when the RN taps Stop.
+      redirect_to record_visit_path(visit)
     end
   rescue ActiveRecord::RecordInvalid => e
     redirect_to dashboard_path, alert: "Could not start visit: #{e.record.errors.full_messages.to_sentence}"
+  end
+
+  # GET /visits/:id/record
+  # Full-screen recording screen — large waveform, timer, Stop button.
+  # Web Speech API captures the transcript, MediaRecorder captures the
+  # audio Blob, AnalyserNode drives the live waveform. On Stop the
+  # client PATCHes /visits/:id with narrative + audio_note as multipart
+  # and the server bounces the user to the edit page with vitals
+  # auto-extracted.
+  def record
+    # Auto-stamp started_at if the visit hasn't begun yet (catches the
+    # case where the RN clicked Start Visit on a card that wasn't yet
+    # in :recording state).
+    if @visit.started_at.nil?
+      ActsAsTenant.with_tenant(current_user.agency) do
+        @visit.update!(started_at: Time.current)
+      end
+    end
   end
 
   def begin

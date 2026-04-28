@@ -18,6 +18,19 @@ import { Controller } from "@hotwired/stimulus"
 //   </div>
 export default class extends Controller {
   static targets = ["narrative", "painScore", "bp", "temp", "pulse", "resp", "o2", "summary"]
+  static values  = { autoExtract: { type: Boolean, default: false } }
+
+  // When the visit edit page lands with ?just_recorded=1, the ERB sets
+  // data-vitals-extractor-auto-extract-value="true" on this controller's
+  // root. We auto-fire the extraction once on connect so the RN sees
+  // pre-filled vitals without having to tap the Auto-fill button.
+  connect() {
+    if (this.autoExtractValue) {
+      // Defer to next tick so the form fields are mounted and visible
+      // before we modify them.
+      setTimeout(() => this.extract(), 0)
+    }
+  }
 
   extract() {
     const text = (this.narrativeTarget?.value || "").toLowerCase()

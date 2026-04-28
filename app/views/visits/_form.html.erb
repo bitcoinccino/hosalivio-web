@@ -104,7 +104,13 @@
   <% end %>
 
   <% mic = mic_controller_name(current_user.agency) %>
-  <div data-controller="<%= mic %> vitals-extractor" data-<%= mic %>-lang-value="en-US" class="space-y-3">
+  <%# vitals-extractor-auto-extract-value flips the extractor's
+      connect() to auto-run on page load when the RN just landed
+      from the recording screen (?just_recorded=1 in the URL). %>
+  <div data-controller="<%= mic %> vitals-extractor"
+       data-<%= mic %>-lang-value="en-US"
+       data-vitals-extractor-auto-extract-value="<%= local_assigns[:just_recorded] ? 'true' : 'false' %>"
+       class="space-y-3">
     <div>
       <div class="flex items-center justify-between mb-1">
         <%= f.label :narrative, "Narrative (optional, can fill at the bedside)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium" %>

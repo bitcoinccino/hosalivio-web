@@ -7,6 +7,21 @@
     @visit.narrative = ""
   end
 
+  # ?just_recorded=1 — landed here from the full-screen recording
+  # screen. The narrative is fresh; auto-extract vitals into the
+  # form on page load so the RN sees them pre-filled before Finish.
+  just_recorded = params[:just_recorded] == "1"
+%>
+<% if just_recorded %>
+  <div class="max-w-xl mx-auto px-4 pt-4">
+    <div class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-3 text-[12px] text-[#1D1C1A]">
+      <i class="ri-check-line text-[#2F6F4E]"></i>
+      Recording saved. Review the narrative + vitals below, then tap <strong>Finish visit</strong>.
+    </div>
+  </div>
+<% end %>
+<%
+
   # Visit lifecycle states drive the entire page language:
   #   scheduled    — start time in the future, not yet begun
   #   ready        — scheduled time is now or passed, not yet begun
@@ -88,7 +103,7 @@
         </div>
       <% end %>
 
-      <%= render "form" %>
+      <%= render "form", just_recorded: just_recorded %>
 
       <% if state == :recording %>
         <div class="mt-5 pt-5 border-t border-[#EFECE6]">

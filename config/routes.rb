@@ -56,6 +56,7 @@ Rails.application.routes.draw do
       post :start_now
     end
     member do
+      get  :record
       post :begin
       post :finish
       post :sync_to_eval
