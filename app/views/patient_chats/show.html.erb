@@ -425,17 +425,25 @@
                placeholder=""
                class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
 
-        <%# Single voice button — tap to start, tap again to stop.
-            Records audio + transcribes via Web Speech in parallel,
-            auto-sends both when stopped. The dictate-only mic button
-            and the standalone Send button are gone; typed messages
-            still submit on Enter via the form's submit handler. %>
+        <%# Two voice buttons. Both visible by default, no Send button.
+            Mic        Web Speech only. Streams transcript into the
+                        input so Pascal can review/edit, then he hits
+                        Enter to submit.
+            Voiceprint Records audio AND transcribes in parallel.
+                        On stop, auto-sends both the audio file and
+                        the transcript as one message (no Enter
+                        needed). %>
+        <button type="button" data-patient-chat-target="mic" data-action="click->patient-chat#toggleMic"
+                title="Tap to dictate (text only, edit before sending)"
+                class="flex-shrink-0 w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+          <i class="ri-mic-line"></i>
+        </button>
         <button type="button"
                 data-action="click->patient-chat#toggleRecord"
                 data-patient-chat-target="recordButton"
                 data-state="idle"
-                title="Tap to record a voice note (audio + transcript)"
-                class="w-10 h-10 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-lg flex items-center justify-center transition">
+                title="Tap to record a voice note (audio + transcript, auto-sends)"
+                class="flex-shrink-0 w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-lg flex items-center justify-center transition">
           <i class="ri-voiceprint-line"></i>
         </button>
       </form>
