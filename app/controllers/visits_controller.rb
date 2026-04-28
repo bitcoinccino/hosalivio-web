@@ -163,19 +163,84 @@ class VisitsController < ApplicationController
     end
   end
 
-  # Finish button on the documentation form: stamps ended_at and returns to the
-  # calendar so he can move on to the next visit.
+  # Finish button on the documentation form: stamps ended_at, then for
+  # admission visits auto-runs the narrative extractor (no separate
+  # 'Sync to Eval' click needed) and routes the structured JSON to
+  # the agency's MDs for certification review.
   def finish
     ActsAsTenant.with_tenant(current_user.agency) do
       if @visit.started_at && @visit.ended_at.nil?
         @visit.update!(ended_at: Time.current)
         flash[:notice] = "Visit completed. Thank you."
+
+        if @visit.visit_type_admission? && (eval_rec = @visit.pre_admit_eval)
+          result = PreAdmitNarrativeExtractor.call(
+            narrative:     @visit.narrative.to_s,
+            existing_json: eval_rec.raw_json,
+            visit:         @visit,
+            patient:       @visit.patient
+          )
+          eval_rec.update!(raw_json: result.json)
+
+          notify_md_for_certification(eval_rec)
+          flash[:notice] = "Visit completed. Pre-admit eval updated and routed to MD for certification."
+        end
       end
     end
     redirect_to dashboard_path
   end
 
   private
+
+  # Pings every MD at the agency that a fresh admission eval is ready
+  # for certification, plus sends a quiet copy to the DON for quality
+  # oversight (non-blocking). Each MD's bell badge increments and the
+  # MD agent now has a structured pre_admit_eval JSON to read for the
+  # certification decision. Idempotent on (user, eval): if an MD
+  # already has a 'pre_admit_review_ready' Notification linked to
+  # this eval, we do not duplicate it.
+  def notify_md_for_certification(eval_rec)
+    targets = User.joins(user_roles: :role)
+                  .where(agency: eval_rec.agency, active: true)
+                  .where(roles: { name: %w[md don] })
+    targets.find_each do |target|
+      next if Notification.exists?(user: target, kind: "pre_admit_review_ready", linked: eval_rec)
+      role = target.role_names.include?("md") ? "MD" : "DON"
+      title = role == "MD" ?
+        "Pre-admit eval ready to certify: #{eval_rec.patient.full_name}" :
+        "Quality copy: pre-admit eval submitted for #{eval_rec.patient.full_name}"
+      Notification.create!(
+        agency: eval_rec.agency,
+        user:   target,
+        kind:   "pre_admit_review_ready",
+        title:  title,
+        linked: eval_rec
+      )
+    end
+
+    # Emit a handoff event so the MD agent has a chart entry to act on
+    # (same shape AgentTriager#write_pre_admit_eval emits when the
+    # status flips to :final). Idempotent at the change_set level.
+    AgentEvent.create!(
+      agency:           eval_rec.agency,
+      agent_id:         current_user.role_names.include?("rn") ? "rn" : "admissions",
+      agent_session_id: "rn-finish-#{SecureRandom.hex(4)}",
+      action:           "handoff",
+      subject:          eval_rec,
+      change_set: {
+        target_role:   "md",
+        intent:        "pre_admit_certification",
+        urgency:       "urgent",
+        eval_id:       eval_rec.id,
+        patient_name:  eval_rec.patient.full_name,
+        primary_icd10: eval_rec.raw_json.dig("pre_admit_eval", "diagnosis", "primary_terminal_diagnosis", "icd10"),
+        source:        "rn_finish_visit"
+      },
+      happened_at: Time.current
+    )
+  rescue ActiveRecord::RecordInvalid => e
+    Rails.logger.warn("[VisitsController#finish] notify_md_for_certification failed: #{e.message}")
+  end
 
   def set_visit
     ActsAsTenant.with_tenant(current_user.agency) do
