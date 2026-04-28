@@ -1,0 +1,94 @@
+<%# Role-scoped quick-actions popover. Same pattern as the sidebar
+    profile menu: a small panel anchored to the + button, opens on
+    click, closes on outside click or ESC. Wired by
+    app/javascript/controllers/quick_actions_controller.js. %>
+<%
+  viewer_roles = current_user.role_names
+
+  all_actions = {
+    start_visit: {
+      label: "Start a visit", sub: "Begin documenting now",
+      icon: "ri-play-circle-line", color: "#D97757",
+      kind: :form, form_url: start_now_visits_path(patient_id: @patient.id),
+      roles: %w[rn md sw social_worker chaplain aide don admissions]
+    },
+    upload_photo: {
+      label: "Upload a photo", sub: "Wound, equipment, ID",
+      icon: "ri-camera-line", color: "#2F6F4E",
+      kind: :coming_soon,
+      roles: %w[rn md sw social_worker aide don]
+    },
+    document: {
+      label: "Document a form", sub: "AD, POLST, signed paperwork",
+      icon: "ri-file-text-line", color: "#2B4A7A",
+      kind: :coming_soon,
+      roles: %w[rn md sw social_worker don admissions]
+    },
+    sign_pre_admit: {
+      label: "Sign pending pre-admit", sub: "Certify the latest eval",
+      icon: "ri-quill-pen-line", color: "#2F6F4E",
+      kind: :link, href: (@pre_admit_eval ? pre_admit_eval_path(@pre_admit_eval) : nil),
+      roles: %w[md], gated: -> { @pre_admit_eval&.status_final? }
+    },
+    schedule_visit: {
+      label: "Schedule for later", sub: "Future calendar slot",
+      icon: "ri-calendar-line", color: "#6B665F",
+      kind: :link, href: new_visit_path(patient_id: @patient.id),
+      roles: %w[rn md sw social_worker chaplain aide don admissions]
+    }
+  }
+  actions = all_actions.values.select do |a|
+    (a[:roles] & viewer_roles).any? && (a[:gated].nil? || a[:gated].call)
+  end
+%>
+<div data-quick-actions-target="panel"
+     class="hidden absolute left-0 bottom-full mb-2 w-72 rounded-2xl bg-white border border-[#EFECE6] shadow-lg overflow-hidden z-50">
+  <div class="px-4 py-2 border-b border-[#EFECE6]">
+    <div class="text-[10px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Quick actions</div>
+    <div class="text-[12px] text-[#1D1C1A] mt-0.5">For <%= @patient.first_name %></div>
+  </div>
+  <div class="py-1">
+    <% actions.each do |a| %>
+      <% case a[:kind] %>
+      <% when :form %>
+        <%= button_to a[:form_url], method: :post,
+              form: { class: "block" },
+              class: "flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[#FBF9F5] transition cursor-pointer" do %>
+          <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
+            <i class="<%= a[:icon] %>"></i>
+          </span>
+          <span class="min-w-0">
+            <span class="block text-[13px] text-[#1D1C1A]"><%= a[:label] %></span>
+            <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
+          </span>
+        <% end %>
+      <% when :link %>
+        <% next if a[:href].nil? %>
+        <%= link_to a[:href],
+              class: "flex items-center gap-3 w-full px-4 py-2.5 hover:bg-[#FBF9F5] transition" do %>
+          <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
+            <i class="<%= a[:icon] %>"></i>
+          </span>
+          <span class="min-w-0">
+            <span class="block text-[13px] text-[#1D1C1A]"><%= a[:label] %></span>
+            <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
+          </span>
+        <% end %>
+      <% else %>
+        <button type="button" disabled
+                class="flex items-center gap-3 w-full px-4 py-2.5 text-left opacity-60 cursor-not-allowed">
+          <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
+            <i class="<%= a[:icon] %>"></i>
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="flex items-center gap-2">
+              <span class="block text-[13px] text-[#1D1C1A]"><%= a[:label] %></span>
+              <span class="text-[8px] uppercase tracking-widest text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-1.5 py-0.5">soon</span>
+            </span>
+            <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
+          </span>
+        </button>
+      <% end %>
+    <% end %>
+  </div>
+</div>

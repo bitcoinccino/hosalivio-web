@@ -383,14 +383,27 @@
                    group-data-[recording=true]/composer:hidden">
         <%# Quick-actions toggle.
             Family viewers: opens the family quick-reply chips panel above.
-            Clinicians: opens the slide-up modal with role-scoped actions
-            (Start visit / Upload photo / Document). %>
-        <button type="button"
-                data-action="click->patient-chat#toggleQuickActions"
-                title="Quick actions"
-                class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
-          <i class="ri-add-line"></i>
-        </button>
+            Clinicians: opens a small dropdown popover anchored to this
+            button (same pattern as the sidebar profile menu) with
+            role-scoped actions (Start visit / Upload photo / Document). %>
+        <% if current_user.family_access? %>
+          <button type="button"
+                  data-action="click->patient-chat#toggleQuickActions"
+                  title="Quick actions"
+                  class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+            <i class="ri-add-line"></i>
+          </button>
+        <% else %>
+          <div class="relative" data-controller="quick-actions">
+            <button type="button"
+                    data-action="click->quick-actions#toggle"
+                    title="Quick actions"
+                    class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+              <i class="ri-add-line"></i>
+            </button>
+            <%= render "patient_chats/quick_actions_dropdown" %>
+          </div>
+        <% end %>
 
         <%# Styled-placeholder pattern: invisible native placeholder + an
             absolutely-positioned overlay so we can bold the patient's first
@@ -492,126 +505,11 @@
       </div>
     </div>
 
-    <%# === Slide-up quick-actions modal (clinicians only) ============
-        Hidden by default; toggled by patient-chat#toggleQuickActions
-        on the + button in the composer. Action list is role-scoped:
-        what RN sees is different from what MD or SW sees. Each action
-        either submits a form (Start visit) or opens a native file
-        picker (Upload photo, Document) tied to a clinician note. %>
-    <% unless current_user.family_access? %>
-      <%
-        viewer_roles = current_user.role_names
-        # Action catalog: { label, icon, color, action_type, ... }.
-        # Filter by role below so each clinician sees only their toolkit.
-        all_actions = {
-          start_visit: {
-            label: "Start a visit", sub: "Begin documenting at the bedside now",
-            icon: "ri-play-circle-line", color: "#D97757",
-            kind: :form, form_url: start_now_visits_path(patient_id: @patient.id),
-            roles: %w[rn md sw social_worker chaplain aide don admissions]
-          },
-          upload_photo: {
-            label: "Upload a photo", sub: "Wound, equipment, ID, family member",
-            icon: "ri-camera-line", color: "#2F6F4E",
-            kind: :coming_soon,
-            roles: %w[rn md sw social_worker aide don]
-          },
-          document: {
-            label: "Document a form", sub: "Advance directive, POLST, signed paperwork",
-            icon: "ri-file-text-line", color: "#2B4A7A",
-            kind: :coming_soon,
-            roles: %w[rn md sw social_worker don admissions]
-          },
-          sign_pre_admit: {
-            label: "Sign pending pre-admit", sub: "Certify the latest finalized eval",
-            icon: "ri-quill-pen-line", color: "#2F6F4E",
-            kind: :link, href: (@pre_admit_eval ? pre_admit_eval_path(@pre_admit_eval) : nil),
-            roles: %w[md], gated: -> { @pre_admit_eval&.status_final? }
-          },
-          schedule_visit: {
-            label: "Schedule for later", sub: "Calendar slot for a future visit",
-            icon: "ri-calendar-line", color: "#6B665F",
-            kind: :link, href: new_visit_path(patient_id: @patient.id),
-            roles: %w[rn md sw social_worker chaplain aide don admissions]
-          }
-        }
-        actions = all_actions.values.select do |a|
-          (a[:roles] & viewer_roles).any? && (a[:gated].nil? || a[:gated].call)
-        end
-      %>
-      <%# Backdrop is a flex container that pins its child sheet to the
-          bottom and centers it horizontally. The sheet then handles
-          its own vertical slide (translate-y-full → translate-y-0)
-          without fighting another transform for centering. Caps at
-          max-w-md on desktop so it reads as a floating panel above
-          the composer instead of stretching across the sidebars; on
-          phones the viewport is narrower than max-w-md so it goes
-          edge-to-edge naturally. %>
-      <div data-patient-chat-target="quickActionsModal"
-           data-action="click->patient-chat#closeQuickActionsBackdrop keydown.esc@window->patient-chat#closeQuickActions"
-           class="hidden fixed inset-0 z-50 bg-[#1D1C1A]/40 backdrop-blur-sm flex items-end justify-center">
-        <div class="w-full max-w-md bg-white rounded-t-3xl border-t border-x border-[#EFECE6] shadow-2xl
-                    transition-transform duration-300 translate-y-full
-                    max-h-[80vh] overflow-y-auto"
-             data-patient-chat-target="quickActionsSheet"
-             data-action="click->patient-chat#stopPropagation">
-          <div class="flex items-center justify-between px-5 pt-4 pb-2">
-            <div>
-              <div class="text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Quick actions</div>
-              <h2 class="font-serif text-[20px] text-[#1D1C1A] mt-0.5">For <%= @patient.first_name %></h2>
-            </div>
-            <button type="button" data-action="click->patient-chat#closeQuickActions"
-                    class="w-9 h-9 rounded-full hover:bg-[#FBF9F5] text-[#6B665F] flex items-center justify-center">
-              <i class="ri-close-line text-lg"></i>
-            </button>
-          </div>
-          <div class="h-1 w-12 rounded-full bg-[#EFECE6] mx-auto -mt-1 mb-2"></div>
-
-          <div class="px-3 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <% actions.each do |a| %>
-              <% case a[:kind] %>
-              <% when :form %>
-                <%= button_to a[:form_url], method: :post,
-                      class: "flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#FBF9F5] hover:bg-[#EFECE6] text-left transition" do %>
-                  <span class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
-                    <i class="<%= a[:icon] %> text-[20px]"></i>
-                  </span>
-                  <span class="min-w-0">
-                    <span class="block text-[14px] font-medium text-[#1D1C1A]"><%= a[:label] %></span>
-                    <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
-                  </span>
-                <% end %>
-              <% when :link %>
-                <% next if a[:href].nil? %>
-                <%= link_to a[:href],
-                      class: "flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#FBF9F5] hover:bg-[#EFECE6] text-left transition" do %>
-                  <span class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
-                    <i class="<%= a[:icon] %> text-[20px]"></i>
-                  </span>
-                  <span class="min-w-0">
-                    <span class="block text-[14px] font-medium text-[#1D1C1A]"><%= a[:label] %></span>
-                    <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
-                  </span>
-                <% end %>
-              <% else %>
-                <button type="button" disabled
-                        class="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#FBF9F5] text-left opacity-70 cursor-not-allowed">
-                  <span class="w-10 h-10 rounded-full bg-white border border-[#EFECE6] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
-                    <i class="<%= a[:icon] %> text-[20px]"></i>
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <span class="flex items-center gap-2">
-                      <span class="block text-[14px] font-medium text-[#1D1C1A]"><%= a[:label] %></span>
-                      <span class="text-[9px] uppercase tracking-widest text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-2 py-0.5">soon</span>
-                    </span>
-                    <span class="block text-[11px] text-[#6B665F]"><%= a[:sub] %></span>
-                  </span>
-                </button>
-              <% end %>
-            <% end %>
-          </div>
-        </div>
-      </div>
+    <%# Quick-actions popover for clinicians moved to the inline
+        'data-controller="quick-actions"' wrapper around the + button
+        in the composer (see app/views/patient_chats/_quick_actions_dropdown.html.erb).
+        Same pattern as the sidebar profile menu. %>
+    <% if false %>
     <% end %>
   </main>
 
