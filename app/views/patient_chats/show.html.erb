@@ -539,11 +539,19 @@
           (a[:roles] & viewer_roles).any? && (a[:gated].nil? || a[:gated].call)
         end
       %>
+      <%# Backdrop is a flex container that pins its child sheet to the
+          bottom and centers it horizontally. The sheet then handles
+          its own vertical slide (translate-y-full → translate-y-0)
+          without fighting another transform for centering. Caps at
+          max-w-md on desktop so it reads as a floating panel above
+          the composer instead of stretching across the sidebars; on
+          phones the viewport is narrower than max-w-md so it goes
+          edge-to-edge naturally. %>
       <div data-patient-chat-target="quickActionsModal"
            data-action="click->patient-chat#closeQuickActionsBackdrop keydown.esc@window->patient-chat#closeQuickActions"
-           class="hidden fixed inset-0 z-50 bg-[#1D1C1A]/40 backdrop-blur-sm">
-        <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl border-t border-[#EFECE6] shadow-2xl
-                    transform transition-transform duration-300 translate-y-full
+           class="hidden fixed inset-0 z-50 bg-[#1D1C1A]/40 backdrop-blur-sm flex items-end justify-center">
+        <div class="w-full max-w-md bg-white rounded-t-3xl border-t border-x border-[#EFECE6] shadow-2xl
+                    transition-transform duration-300 translate-y-full
                     max-h-[80vh] overflow-y-auto"
              data-patient-chat-target="quickActionsSheet"
              data-action="click->patient-chat#stopPropagation">
