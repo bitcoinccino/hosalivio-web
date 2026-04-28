@@ -114,6 +114,23 @@
       <div class="text-[10px] text-[#6B665F] font-mono"><%= in_patient_zone(note.created_at, @patient) %></div>
     </div>
   </div>
+<% elsif note.clinician_only? && note.audit_kind == :guardrail %>
+  <%# Guardrail block: an agent tried to take an action its cannot_do
+      list forbids. We surface this as a small red pill so clinicians
+      see WHY a dispatch they expected didn't happen, instead of having
+      to tail the dev log. %>
+  <% reason = note.body.to_s.sub(/\A\[GUARDRAIL_BLOCKED\]\s*/, "") %>
+  <div class="max-w-3xl flex items-center gap-3 px-4 py-2.5 rounded-xl border border-[#C1403A] bg-[#FFF3EC]"
+       title="HosAlivio guardrail blocked this action. Audit-logged.">
+    <i class="ri-shield-cross-line text-[#C1403A] text-[18px] flex-shrink-0"></i>
+    <div class="min-w-0 flex-1">
+      <div class="text-[10px] uppercase tracking-[0.18em] text-[#C1403A] font-bold">
+        Guardrail blocked
+      </div>
+      <div class="text-[13px] text-[#1D1C1A] mt-0.5"><%= reason %></div>
+    </div>
+    <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= in_patient_zone(note.created_at, @patient) %></div>
+  </div>
 <% elsif note.clinician_only? && (action = note.action_payload) %>
   <%# Action banner — green success bar, always visible. Pascal sees the
       result at a glance instead of reading rationale prose. %>

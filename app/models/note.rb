@@ -79,9 +79,11 @@ class Note < ApplicationRecord
   #   :rationale  — '<Role> rationale\n\n<why>' from log_audit_note
   #   :chart      — anything else; treated as a clinical chart entry
   RATIONALE_BODY_RE = /\A[A-Z][\w ]+ rationale\n\n/.freeze
+  GUARDRAIL_PREFIX = "[GUARDRAIL_BLOCKED]"
   def audit_kind
     return :action    if action_banner?
     txt = body.to_s
+    return :guardrail if txt.start_with?(GUARDRAIL_PREFIX)
     return :triage    if txt.lines.any? { |l| l.start_with?("Notified:") }
     return :rationale if txt.match?(RATIONALE_BODY_RE)
     :chart

@@ -402,6 +402,29 @@ export default class extends Controller {
     this._scrollToBottom()
   }
 
+  _appendGuardrailBlock(n) {
+    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
+    const reason = String(n.body || "").replace(/^\[GUARDRAIL_BLOCKED\]\s*/, "")
+
+    const wrap = document.createElement("div")
+    wrap.className = "max-w-3xl flex items-center gap-3 px-4 py-2.5 rounded-xl border border-[#C1403A] bg-[#FFF3EC] opacity-0 transition-opacity duration-300"
+    wrap.title = "HosAlivio guardrail blocked this action. Audit-logged."
+    wrap.innerHTML = `
+      <i class="ri-shield-cross-line text-[#C1403A] text-[18px] flex-shrink-0"></i>
+      <div class="min-w-0 flex-1">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-[#C1403A] font-bold">
+          Guardrail blocked
+        </div>
+        <div data-role="reason" class="text-[13px] text-[#1D1C1A] mt-0.5"></div>
+      </div>
+      <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0">${time}</div>
+    `
+    wrap.querySelector('[data-role="reason"]').textContent = reason
+    this.feedTarget.appendChild(wrap)
+    requestAnimationFrame(() => { wrap.style.opacity = "1" })
+    this._scrollToBottom()
+  }
+
   _appendActionBanner(n) {
     const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
     const label  = n.action_payload.label
@@ -597,11 +620,14 @@ export default class extends Controller {
     if (n.clinician_only && document.body.dataset.viewerFamily === "true") return
 
     // Clinician-only notes for clinicians, in priority order:
-    //   1. action banner ([ACTION:...] marker) — green success bar
-    //   2. IDG huddle bubble (real human author) — dashed muted bubble
-    //   3. audit rationale (no human author) — collapsed audit row
+    //   1. guardrail block ([GUARDRAIL_BLOCKED]) — red pill
+    //   2. action banner ([ACTION:...] marker) — green success bar
+    //   3. IDG huddle bubble (real human author) — dashed muted bubble
+    //   4. audit rationale (no human author) — collapsed audit row
     if (n.clinician_only) {
-      if (n.action_payload) {
+      if (n.audit_kind === "guardrail") {
+        this._appendGuardrailBlock(n)
+      } else if (n.action_payload) {
         this._appendActionBanner(n)
       } else if (n.author_user_id) {
         this._appendHuddleBubble(n)

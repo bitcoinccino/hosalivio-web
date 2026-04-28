@@ -124,23 +124,46 @@ class ClinicianDispatcher
   # the green 'Pharmacy Dispatched' banner shows up in the audit trail.
   def dispatch_pharmacy(intent, ack: nil)
     kind = intent == :pharmacy_comfort_kit ? "comfort_kit" : "refill"
-    AgentTriager.new(role: "pharmacy", agency: @agency, depth: 1).apply({
+    # Refills must link to an active medication_order so the AgentGuard
+    # rule passes and Simone has a real row to refill against. Pick the
+    # patient's most recent active order; nil here would (correctly)
+    # trigger the guard block.
+    medication_order_id =
+      if kind == "refill"
+        @patient.medication_orders.where(status: :active).order(created_at: :desc).first&.id
+      end
+
+    delivery = AgentTriager.new(role: "pharmacy", agency: @agency, depth: 1).apply({
       action:    "write_pharm_delivery",
-      params:    { patient_id: @patient.id, kind: kind, urgency: "urgent" },
+      params:    { patient_id: @patient.id, kind: kind, urgency: "urgent",
+                   medication_order_id: medication_order_id }.compact,
       reasoning: "Dispatched by #{@requester.full_name} via team chat",
       source:    "dispatch:clinician"
     })
+
+    unless delivery
+      reason = kind == "refill" && medication_order_id.nil? ?
+        "no active medication order to refill" :
+        "pharmacy guardrail blocked the delivery"
+      post_guardrail_block(reason)
+      return Result.new(dispatched: false, reason: reason, intent: intent.to_s)
+    end
+
     post_ack(ack || "Pharmacy notified, #{kind.tr('_', ' ')} on the way.")
     Result.new(dispatched: true, intent: intent.to_s)
   end
 
   def dispatch_dme(ack: nil)
-    AgentTriager.new(role: "dme", agency: @agency, depth: 1).apply({
+    dme = AgentTriager.new(role: "dme", agency: @agency, depth: 1).apply({
       action:    "write_dme_order",
       params:    { patient_id: @patient.id, equipment_type: "other", quantity: 1, urgency: "urgent" },
       reasoning: "Dispatched by #{@requester.full_name} via team chat",
       source:    "dispatch:clinician"
     })
+    unless dme
+      post_guardrail_block("DME guardrail blocked the order")
+      return Result.new(dispatched: false, reason: "guard_blocked", intent: :dme_order.to_s)
+    end
     post_ack(ack || "DME notified, equipment request on the way.")
     Result.new(dispatched: true, intent: :dme_order.to_s)
   end
@@ -178,6 +201,24 @@ class ClinicianDispatcher
       author_role:    "admissions",
       body:           "HosAlivio: #{text}",
       urgency:        "normal",
+      source:         "system",
+      clinician_only: true
+    )
+  rescue ActiveRecord::RecordInvalid
+    nil
+  end
+
+  # Visible "the system stopped this from happening" note. Body is
+  # prefixed with [GUARDRAIL_BLOCKED] so the chat partial + JS renderer
+  # can paint the row in a distinct red pill instead of letting it
+  # blend in with the regular audit log.
+  def post_guardrail_block(reason)
+    Note.create!(
+      agency:         @agency,
+      patient:        @patient,
+      author_role:    "admissions",
+      body:           "[GUARDRAIL_BLOCKED] #{reason}",
+      urgency:        "urgent",
       source:         "system",
       clinician_only: true
     )

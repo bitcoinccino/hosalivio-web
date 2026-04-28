@@ -20,11 +20,19 @@ class AgentGuard
   Result = Struct.new(:allowed, :reason, keyword_init: true)
 
   RULES = [
-    # Pharmacy can only write deliveries linked to an active order.
+    # Pharmacy refills must link to an active medication_order. Comfort
+    # kits and new_fills are standalone deliveries that establish or
+    # bundle a regimen and do NOT need a prior order to reference, so
+    # we allow them through unlinked.
     {
       role: "pharmacy",
       key:  "accept_orders_without_active_medication_order_link",
-      check: ->(d) { d[:action] == "write_pharm_delivery" && d[:params].to_h["medication_order_id"].blank? }
+      check: lambda do |d|
+        next false unless d[:action] == "write_pharm_delivery"
+        kind = d[:params].to_h["kind"].to_s
+        next false unless kind == "refill"
+        d[:params].to_h["medication_order_id"].blank?
+      end
     },
 
     # Pharmacy must not change doses or prescribe.
