@@ -75,6 +75,8 @@ class PartnerProvisioner
     Branch.create!(
       agency:                @agency,
       name:                  @s2[:branch_name],
+      address_line1:         @s2[:address_line1].presence,
+      address_line2:         @s2[:address_line2].presence,
       city:                  @s2[:city],
       state:                 @s2[:state],
       zip:                   @s2[:zip],

@@ -56,7 +56,8 @@ class BranchesController < ApplicationController
 
   def branch_params
     params.require(:branch).permit(
-      :name, :city, :state, :zip, :phone, :manager_id, :active,
+      :name, :address_line1, :address_line2, :city, :state, :zip,
+      :phone, :manager_id, :active,
       :npi, :ccn, :ein, :state_license_number,
       :timezone, :triage_email, :after_hours_phone, :branch_type,
       :service_area_zips, :service_area_counties,

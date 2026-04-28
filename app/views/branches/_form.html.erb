@@ -32,6 +32,14 @@
           <%= f.select :branch_type, type_options, {}, class: input_cls %>
         </div>
       </div>
+      <div>
+        <%= f.label :address_line1, "Street (line 1)", class: label_cls %>
+        <%= f.text_field :address_line1, placeholder: "123 Main St", class: input_cls %>
+      </div>
+      <div>
+        <%= f.label :address_line2, "Street (line 2, optional)", class: label_cls %>
+        <%= f.text_field :address_line2, placeholder: "Suite 200", class: input_cls %>
+      </div>
       <div class="grid grid-cols-4 gap-3">
         <div class="col-span-2">
           <%= f.label :city, class: label_cls %>

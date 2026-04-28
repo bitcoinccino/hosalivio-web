@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_24_232329) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_28_002315) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -107,6 +107,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_24_232329) do
 
   create_table "branches", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "active", default: true, null: false
+    t.string "address_line1"
+    t.string "address_line2"
     t.string "after_hours_phone"
     t.uuid "agency_id", null: false
     t.integer "branch_type", default: 0, null: false
