@@ -42,30 +42,17 @@ export default class extends Controller {
     this._pausedAtMs    = 0
     this._pausedTotalMs = 0
 
-    // Browser back / tab close / hard reload all fire pagehide. If
-    // the RN never tapped Stop, send a discard beacon so the visit
-    // doesn't sit in :recording state forever. sendBeacon is
-    // fire-and-forget but reliable across navigation.
-    this._boundPageHide = this._onPageHide.bind(this)
-    window.addEventListener("pagehide", this._boundPageHide)
+    // Note: a pagehide beacon used to fire here to discard the visit
+    // when the RN navigated away without tapping Stop. It raced the
+    // PATCH-then-redirect on Stop (the beacon hit /discard before the
+    // audio_note attachment was visible to a follow-up read), causing
+    // VisitsController#edit to 404 on a freshly saved visit. Removed.
+    // The Cancel link's explicit POST + DashboardsController's 5-min
+    // cleanup of empty in-progress visits are sufficient.
   }
 
   disconnect() {
-    window.removeEventListener("pagehide", this._boundPageHide)
     this._teardown()
-  }
-
-  _onPageHide() {
-    // Only fire the discard if the RN never finished uploading.
-    // After a clean Stop + redirect to edit, _uploaded is true and we
-    // skip — the visit has real content now.
-    if (this._uploaded) return
-    if (!this.discardUrlValue) return
-    const fd = new FormData()
-    fd.append("authenticity_token", this.csrfValue)
-    try {
-      navigator.sendBeacon(this.discardUrlValue, fd)
-    } catch (_) {}
   }
 
   // ── Top-level toggles ─────────────────────────────────────────────

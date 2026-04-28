@@ -145,9 +145,14 @@ class VisitsController < ApplicationController
   # bounce to the dashboard so the RN can pick it back up later.
   def discard
     ActsAsTenant.with_tenant(current_user.agency) do
+      # Belt-and-suspenders: refuse to destroy a visit younger than
+      # 30 seconds even if it looks empty. Stops races where a fast
+      # tap-Stop + navigate-to-edit fires a discard before the
+      # PATCH's audio_note attachment is visible to this query.
       empty = @visit.narrative.to_s.strip.empty? &&
               !@visit.audio_note.attached? &&
-              @visit.ended_at.nil?
+              @visit.ended_at.nil? &&
+              @visit.created_at < 30.seconds.ago
       if empty
         @visit.destroy!
         flash[:notice] = "Visit discarded." unless request.format.json? || beacon_request?
