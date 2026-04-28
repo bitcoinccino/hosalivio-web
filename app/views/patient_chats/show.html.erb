@@ -377,17 +377,29 @@
           bar takes its place while audio capture is active. %>
       <div data-patient-chat-target="composer" data-recording="false" class="group/composer">
 
-      <%# Outer flex row: + button (or quick-actions dropdown for
-          clinicians) sits BESIDE the chat form, not inside it.
-          Critical: button_to renders a nested <form>; HTML disallows
-          nested forms, so keeping the dropdown outside the chat form
-          is what makes both submit paths work. %>
-      <div class="flex items-center gap-3 group-data-[recording=true]/composer:hidden">
+      <%# Static placeholder hint above the pill. Replaces the
+          absolute-positioned overlay inside the input that we used
+          before; this version doesn't fight the input's natural
+          padding and reads cleanly on both desktop and mobile. %>
+      <div class="text-center text-[12px] text-[#6B665F] mb-2 group-data-[recording=true]/composer:hidden">
+        <% if current_user.family_access? %>
+          How is <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span> doing?
+        <% else %>
+          Note about <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>, or ask HosAlivio.
+        <% end %>
+      </div>
+
+      <%# Single pill that visually holds both the + button and the
+          chat form. The form inside has no chrome (no border, no bg);
+          the outer div is the pill. button_to forms inside the
+          dropdown are siblings of the chat form (not nested), so
+          both submit paths stay valid. %>
+      <div class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm group-data-[recording=true]/composer:hidden">
         <% if current_user.family_access? %>
           <button type="button"
                   data-action="click->patient-chat#toggleQuickActions"
                   title="Quick actions"
-                  class="flex-shrink-0 w-9 h-9 rounded-full bg-white border border-[#EFECE6] hover:bg-[#FBF9F5] text-[#D97757] text-lg flex items-center justify-center transition">
+                  class="flex-shrink-0 w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
             <i class="ri-add-line"></i>
           </button>
         <% else %>
@@ -395,7 +407,7 @@
             <button type="button"
                     data-action="click->quick-actions#toggle"
                     title="Quick actions"
-                    class="w-9 h-9 rounded-full bg-white border border-[#EFECE6] hover:bg-[#FBF9F5] text-[#D97757] text-lg flex items-center justify-center transition">
+                    class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
               <i class="ri-add-line"></i>
             </button>
             <%= render "patient_chats/quick_actions_dropdown" %>
@@ -404,41 +416,12 @@
 
       <form data-action="submit->patient-chat#send"
             data-patient-chat-target="form"
-            class="flex-1 flex items-center gap-3 bg-white rounded-3xl pl-4 pr-2 py-2 border border-[#EFECE6] shadow-sm">
+            class="flex-1 flex items-center gap-3">
 
-        <%# Styled-placeholder pattern: invisible native placeholder + an
-            absolutely-positioned overlay so we can bold the patient's first
-            name in orange. Visibility is driven by Stimulus on input events,
-            since peer-placeholder-shown isn't reliably scanned by Tailwind v4. %>
-        <div class="relative flex-1">
-          <input type="text" name="text" data-patient-chat-target="input"
-                 autocomplete="off"
-                 placeholder=" "
-                 data-action="input->patient-chat#refreshPlaceholderOverlay"
-                 class="w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-transparent py-2">
-          <div data-patient-chat-target="placeholderOverlay"
-               class="pointer-events-none absolute inset-0 flex items-center text-[15px] text-[#6B665F]">
-            <% if current_user.family_access? %>
-              <%# Family viewer: warm 'How is …' prompt with the patient's
-                  salutation in bold orange. Family doesn't have an
-                  audience toggle so this is the only state they see. %>
-              <span>
-                <span>How is&nbsp;</span>
-                <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>
-                <span>&nbsp;doing?</span>
-              </span>
-            <% else %>
-              <%# Clinician viewer: HosAlivio routes every message
-                  automatically. They just type whatever they need;
-                  no toggle to think about. %>
-              <span>
-                <span>Note about&nbsp;</span>
-                <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>
-                <span>, or ask HosAlivio.</span>
-              </span>
-            <% end %>
-          </div>
-        </div>
+        <input type="text" name="text" data-patient-chat-target="input"
+               autocomplete="off"
+               placeholder=""
+               class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
 
         <button type="button" data-patient-chat-target="mic" data-action="click->patient-chat#toggleMic"
                 disabled
