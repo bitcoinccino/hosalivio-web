@@ -52,6 +52,9 @@ Rails.application.routes.draw do
   # Calendar + visit CRUD (clinician-facing scheduling)
   get "calendar", to: "calendars#show", as: :calendar
   resources :visits, only: [:new, :create, :show, :edit, :update, :destroy] do
+    collection do
+      post :start_now
+    end
     member do
       post :begin
       post :finish

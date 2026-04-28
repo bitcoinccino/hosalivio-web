@@ -71,6 +71,42 @@ class VisitsController < ApplicationController
   # set, then drops him into the documentation form with dictation ready.
   # For admission visits, also auto-drafts a PreAdmitEval so the narrative
   # bridges straight into the structured assessment when he hits Sync.
+  # POST /visits/start_now
+  # One-tap "start a visit at the bedside RIGHT NOW" — creates the
+  # Visit with sensible defaults (current user is the clinician,
+  # scheduled_at + started_at = now, place_of_service = home,
+  # visit_type = routine, discipline = user's clinical role) and
+  # lands on the edit page in :recording state, ready for dictation.
+  # Avoids making Pascal fill the 12-field 'Schedule visit' form
+  # before he can document at the bedside.
+  def start_now
+    patient_id = params[:patient_id].to_s
+    return redirect_to(dashboard_path, alert: "Pick a patient to start a visit.") if patient_id.blank?
+
+    ActsAsTenant.with_tenant(current_user.agency) do
+      patient = Patient.find_by(id: patient_id)
+      return redirect_to(dashboard_path, alert: "Patient not found.") unless patient
+
+      role = (current_user.role_names & Visit.disciplines.keys).first || "rn"
+      now  = Time.current
+      visit = Visit.create!(
+        agency:           current_user.agency,
+        patient:          patient,
+        user:             current_user,
+        discipline:       role,
+        visit_type:       "routine",
+        scheduled_at:     now,
+        started_at:       now,
+        service_location: "home",
+        narrative:        "",
+        agent_authored:   false
+      )
+      redirect_to edit_visit_path(visit)
+    end
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_to dashboard_path, alert: "Could not start visit: #{e.record.errors.full_messages.to_sentence}"
+  end
+
   def begin
     ActsAsTenant.with_tenant(current_user.agency) do
       if @visit.started_at.nil?

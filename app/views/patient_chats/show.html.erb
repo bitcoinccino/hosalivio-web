@@ -667,9 +667,21 @@
         <details class="group" open>
           <%= acc_header("ri-flashlight-line", "Quick Actions") %>
           <div class="px-5 pb-4 space-y-2">
-            <a href="<%= new_visit_path %>"
+            <%# Primary RN action: start documenting at the bedside RIGHT
+                NOW. One tap, Visit auto-created with the user as the
+                clinician, scheduled_at + started_at = now, home as
+                place of service. Lands on the edit page already in
+                :recording state. %>
+            <%= button_to start_now_visits_path(patient_id: @patient.id),
+                  method: :post,
+                  class: "flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-medium cursor-pointer transition" do %>
+              <i class="ri-play-circle-line text-[16px]"></i> Start visit now
+            <% end %>
+            <%# Secondary: schedule a future slot. Kept around for admins
+                who need to plan ahead, but no longer the primary action. %>
+            <a href="<%= new_visit_path(patient_id: @patient.id) %>"
                class="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-[#FBF9F5] hover:bg-[#EFECE6] text-[13px] text-[#1D1C1A] transition">
-              <i class="ri-calendar-line text-[#D97757]"></i> Schedule visit
+              <i class="ri-calendar-line text-[#D97757]"></i> Schedule for later
             </a>
 
             <% if pending_signoff %>
