@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_28_002315) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_28_004003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -133,12 +133,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_002315) do
     t.string "zip"
     t.index ["agency_id", "name"], name: "index_branches_on_agency_id_and_name", unique: true
     t.index ["agency_id"], name: "index_branches_on_agency_id"
-    t.index ["ccn"], name: "index_branches_on_ccn", unique: true, where: "(ccn IS NOT NULL)"
+    t.index ["ccn"], name: "index_branches_on_ccn"
     t.index ["clinical_supervisor_id"], name: "index_branches_on_clinical_supervisor_id"
     t.index ["director_of_nursing_id"], name: "index_branches_on_director_of_nursing_id"
     t.index ["manager_id"], name: "index_branches_on_manager_id"
     t.index ["medical_director_id"], name: "index_branches_on_medical_director_id"
-    t.index ["npi"], name: "index_branches_on_npi", unique: true, where: "(npi IS NOT NULL)"
+    t.index ["npi"], name: "index_branches_on_npi"
     t.index ["service_area_counties"], name: "index_branches_on_service_area_counties", using: :gin
     t.index ["service_area_zips"], name: "index_branches_on_service_area_zips", using: :gin
   end

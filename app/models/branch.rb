@@ -23,12 +23,11 @@ class Branch < ApplicationRecord
   validates :npi, format: { with: /\A\d{10}\z/, message: "must be 10 digits" }, allow_blank: true
   validates :ccn, format: { with: /\A[A-Z0-9]{5,10}\z/, message: "invalid Medicare CCN format" }, allow_blank: true
   validates :ein, format: { with: /\A\d{2}-?\d{7}\z/, message: "must be XX-XXXXXXX" }, allow_blank: true
-  # NPI and CCN are CMS-assigned IDs that are globally unique; another
-  # branch (in this agency or another) cannot reuse them. Validate here
-  # so users get a friendly form error instead of a 500 from the DB
-  # unique-index violation.
-  validates :npi, uniqueness: { case_sensitive: false }, allow_blank: true
-  validates :ccn, uniqueness: { case_sensitive: false }, allow_blank: true
+  # NPI / CCN are NOT unique at the branch level: in real hospice
+  # operations, branches of the same agency commonly share the
+  # corporate NPI and CCN unless a specific location is separately
+  # Medicare-enrolled. Format-only validation; uniqueness is enforced
+  # at the agency level on the Agency model.
   validate  :triage_email_shape
 
   before_validation :normalize_arrays
