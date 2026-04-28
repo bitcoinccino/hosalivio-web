@@ -377,33 +377,34 @@
           bar takes its place while audio capture is active. %>
       <div data-patient-chat-target="composer" data-recording="false" class="group/composer">
 
-      <form data-action="submit->patient-chat#send"
-            data-patient-chat-target="form"
-            class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm
-                   group-data-[recording=true]/composer:hidden">
-        <%# Quick-actions toggle.
-            Family viewers: opens the family quick-reply chips panel above.
-            Clinicians: opens a small dropdown popover anchored to this
-            button (same pattern as the sidebar profile menu) with
-            role-scoped actions (Start visit / Upload photo / Document). %>
+      <%# Outer flex row: + button (or quick-actions dropdown for
+          clinicians) sits BESIDE the chat form, not inside it.
+          Critical: button_to renders a nested <form>; HTML disallows
+          nested forms, so keeping the dropdown outside the chat form
+          is what makes both submit paths work. %>
+      <div class="flex items-center gap-3 group-data-[recording=true]/composer:hidden">
         <% if current_user.family_access? %>
           <button type="button"
                   data-action="click->patient-chat#toggleQuickActions"
                   title="Quick actions"
-                  class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+                  class="flex-shrink-0 w-9 h-9 rounded-full bg-white border border-[#EFECE6] hover:bg-[#FBF9F5] text-[#D97757] text-lg flex items-center justify-center transition">
             <i class="ri-add-line"></i>
           </button>
         <% else %>
-          <div class="relative" data-controller="quick-actions">
+          <div class="relative flex-shrink-0" data-controller="quick-actions">
             <button type="button"
                     data-action="click->quick-actions#toggle"
                     title="Quick actions"
-                    class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+                    class="w-9 h-9 rounded-full bg-white border border-[#EFECE6] hover:bg-[#FBF9F5] text-[#D97757] text-lg flex items-center justify-center transition">
               <i class="ri-add-line"></i>
             </button>
             <%= render "patient_chats/quick_actions_dropdown" %>
           </div>
         <% end %>
+
+      <form data-action="submit->patient-chat#send"
+            data-patient-chat-target="form"
+            class="flex-1 flex items-center gap-3 bg-white rounded-3xl pl-4 pr-2 py-2 border border-[#EFECE6] shadow-sm">
 
         <%# Styled-placeholder pattern: invisible native placeholder + an
             absolutely-positioned overlay so we can bold the patient's first
@@ -464,6 +465,7 @@
           <span>Send</span>
         </button>
       </form>
+      </div><%# end outer flex row wrapper %>
 
       <%# 'Living Wave' recording UI — replaces the input row while
           MediaRecorder is active. Cancel (trash) discards; Send (plane)
