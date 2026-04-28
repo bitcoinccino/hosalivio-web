@@ -1,0 +1,178 @@
+<% content_for :title, "Agency profile · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5] px-4 md:px-10 py-8">
+  <div class="max-w-3xl mx-auto">
+    <%= link_to dashboard_path, class: "inline-flex items-center gap-2 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4" do %>
+      <i class="ri-arrow-left-line"></i> Back to dashboard
+    <% end %>
+
+    <header class="mb-6">
+      <div class="text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold mb-2">Agency profile</div>
+      <h1 class="font-serif text-[28px] text-[#1D1C1A] leading-tight"><%= @agency.name %></h1>
+      <p class="text-[13px] text-[#6B665F] mt-1">Update legal identity, address, and clinical-vendor wiring. Branch-level details (per-location address, on-call phone, service area, MD director, DON director) live on the Branches page.</p>
+    </header>
+
+    <% if flash[:alert] %>
+      <div class="mb-4 px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-[13px]">
+        <i class="ri-error-warning-line"></i> <%= flash[:alert] %>
+      </div>
+    <% end %>
+    <% if flash[:notice] %>
+      <div class="mb-4 px-3 py-2 rounded-lg bg-[#E6F0EE] border border-[#2F6F4E] text-[#2F6F4E] text-[13px]">
+        <i class="ri-check-line"></i> <%= flash[:notice] %>
+      </div>
+    <% end %>
+
+    <%= form_with(model: @agency, url: agency_profile_path, method: :patch, local: true, html: { class: "space-y-8 bg-white rounded-3xl border border-[#EFECE6] p-8" }) do |f| %>
+
+      <%# ── Identity & Compliance ───────────────────────────────────── %>
+      <section>
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-4">Identity &amp; compliance</div>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Legal business name</label>
+              <%= f.text_field :name, required: true,
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">DBA (what families see)</label>
+              <%= f.text_field :dba_name,
+                    placeholder: "e.g. Mercy Home Hospice",
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Short code (URLs &amp; report headers)</label>
+            <%= f.text_field :slug, required: true, pattern: "[A-Z0-9]{2,6}",
+                  class: "w-28 px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono uppercase" %>
+            <p class="text-[11px] text-[#6B665F] mt-1">2 to 6 uppercase letters or digits.</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Corporate NPI</label>
+              <%= f.text_field :npi, pattern: "[0-9]{10}", placeholder: "1234567890",
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">CMS Certification (CCN)</label>
+              <%= f.text_field :medicare_provider_number, placeholder: "10-1234",
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Accreditation body</label>
+              <%= f.select :accreditation_body,
+                    [["Joint Commission", "joint_commission"],
+                     ["CHAP", "chap"],
+                     ["ACHC", "achc"],
+                     ["State-licensed only", "state_only"]],
+                    { include_blank: "— Unselected —" },
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Administrator's full name</label>
+              <%= f.text_field :administrator_name, placeholder: "Jane Doe",
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <%# ── Mailing address ────────────────────────────────────────── %>
+      <section class="pt-6 border-t border-[#EFECE6]">
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-4">Mailing address</div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Street (line 1)</label>
+            <%= f.text_field :address_line1, placeholder: "123 Main St",
+                  class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Street (line 2, optional)</label>
+            <%= f.text_field :address_line2, placeholder: "Suite 200",
+                  class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+          </div>
+          <div class="grid grid-cols-6 gap-4">
+            <div class="col-span-3">
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">City</label>
+              <%= f.text_field :city,
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">State</label>
+              <%= f.text_field :state, maxlength: 2, pattern: "[A-Za-z]{2}", placeholder: "FL",
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] uppercase font-mono" %>
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">ZIP</label>
+              <%= f.text_field :zip, pattern: "[0-9]{5}", placeholder: "32801",
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Main phone</label>
+            <%= f.text_field :phone, placeholder: "(407) 555-0199",
+                  class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-mono" %>
+          </div>
+        </div>
+      </section>
+
+      <%# ── Vendors & Operations ───────────────────────────────────── %>
+      <section class="pt-6 border-t border-[#EFECE6]">
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-4">Vendors &amp; operations</div>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Pharmacy partner</label>
+              <%= f.select :pharmacy_partner,
+                    [["Optum", "optum"], ["Enclara", "enclara"], ["Local pharmacy", "local_pharmacy"]],
+                    { include_blank: "— Unselected —" },
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">DME partner</label>
+              <%= f.select :dme_partner,
+                    [["StateServ", "stateserv"], ["Qualis", "qualis"], ["Local DME", "local_dme"]],
+                    { include_blank: "— Unselected —" },
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">EMR / system of record</label>
+              <%= f.select :emr_system,
+                    [["Homecare Homebase", "hchb"], ["Netsmart", "netsmart"],
+                     ["MatrixCare", "matrixcare"], ["WellSky", "wellsky"],
+                     ["Standalone (HosAlivio only)", "standalone"]],
+                    { include_blank: "— Unselected —" },
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Medicare Admin. Contractor</label>
+              <%= f.select :mac_region,
+                    [["Palmetto GBA", "palmetto_gba"], ["CGS", "cgs"],
+                     ["NGS", "ngs"], ["Noridian", "noridian"]],
+                    { include_blank: "— Unselected —" },
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">After-hours instructions for HosAlivio</label>
+            <%= f.text_area :after_hours_instructions, rows: 3,
+                  placeholder: "If a family messages after 5 PM on weekdays or anytime on weekends, tell them a nurse will call back within 15 minutes.",
+                  class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            <p class="text-[11px] text-[#6B665F] mt-1">Plain English. HosAlivio reads this before drafting family-facing replies after hours.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="flex items-center justify-between pt-6 border-t border-[#EFECE6]">
+        <%= link_to "Cancel", dashboard_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+        <%= f.submit "Save changes", class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition cursor-pointer" %>
+      </div>
+    <% end %>
+  </div>
+</div>
