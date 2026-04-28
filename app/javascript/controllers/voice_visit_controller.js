@@ -16,7 +16,8 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["timer", "status", "canvas", "transcript",
-                    "recordButton", "recordIcon", "pauseButton", "stopButton"]
+                    "recordButton", "recordIcon", "pauseButton", "stopButton",
+                    "consentPanel", "stage"]
   static values = {
     updateUrl:  String,
     editUrl:    String,
@@ -68,6 +69,17 @@ export default class extends Controller {
   }
 
   // ── Top-level toggles ─────────────────────────────────────────────
+
+  // Consent gate — shown first; the RN reads it, asks the patient,
+  // then taps 'I have consent' which hides the panel and reveals
+  // the mic stage.
+  acknowledgeConsent() {
+    if (this.hasConsentPanelTarget) this.consentPanelTarget.classList.add("hidden")
+    if (this.hasStageTarget) {
+      this.stageTarget.classList.remove("hidden")
+      this.stageTarget.classList.add("flex")
+    }
+  }
 
   toggle() {
     if (this._listening) {

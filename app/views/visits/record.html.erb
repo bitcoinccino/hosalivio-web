@@ -34,10 +34,51 @@
     <% end %>
   </header>
 
+  <%# Consent gate — shown first, hidden once the RN taps 'I have
+      consent'. Reminds the RN to ask the patient + family before
+      any audio is captured, and explains the purpose in plain
+      English so the conversation goes smoothly. %>
+  <div data-voice-visit-target="consentPanel"
+       class="flex-1 flex items-center justify-center px-6">
+    <div class="max-w-md text-center">
+      <div class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+        <i class="ri-shield-check-line text-[#D97757] text-[28px]"></i>
+      </div>
+      <h2 class="font-serif text-[24px] leading-tight">Get consent before you start.</h2>
+      <p class="text-[13px] text-white/70 mt-3 leading-relaxed">
+        Ask <%= patient_first %> (and any family present) if it's okay to record this visit. Briefly explain why:
+      </p>
+      <ul class="text-[13px] text-white/80 mt-3 space-y-2 text-left">
+        <li class="flex gap-2">
+          <i class="ri-check-line text-[#D97757] mt-0.5"></i>
+          <span>I'm recording so the care team has your exact words and breath sounds, not my paraphrase.</span>
+        </li>
+        <li class="flex gap-2">
+          <i class="ri-check-line text-[#D97757] mt-0.5"></i>
+          <span>The recording stays in your hospice chart. Only your care team can listen to it.</span>
+        </li>
+        <li class="flex gap-2">
+          <i class="ri-check-line text-[#D97757] mt-0.5"></i>
+          <span>You can ask me to stop or delete it any time, no questions asked.</span>
+        </li>
+      </ul>
+      <button type="button"
+              data-action="click->voice-visit#acknowledgeConsent"
+              class="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition active:scale-95">
+        <i class="ri-check-double-line"></i> I have consent
+      </button>
+      <div class="text-[11px] text-white/40 mt-3">
+        If they decline, tap Cancel up top — nothing is saved.
+      </div>
+    </div>
+  </div>
+
   <%# Main stage: timer + canvas waveform + mic + transcript.
+      Hidden until the RN acknowledges consent (see panel above).
       Tightened gaps and shorter canvas so the whole stack fits one
       viewport height with the mic button always above the fold. %>
-  <main class="flex-1 flex flex-col items-center justify-center px-6 gap-5 pb-6">
+  <main data-voice-visit-target="stage"
+        class="hidden flex-1 flex-col items-center justify-center px-6 gap-5 pb-6">
     <div class="text-center">
       <div data-voice-visit-target="timer"
            class="font-mono text-[48px] md:text-[64px] tracking-[0.05em] text-[#D97757] tabular-nums leading-none">0:00</div>
