@@ -43,7 +43,8 @@ export default class extends Controller {
     lang:             { type: String, default: "en-US" },
     langCode:         { type: String, default: "en" },
     needsTypePicker:  { type: Boolean, default: false },
-    suggestedType:    { type: String, default: "" }
+    suggestedType:    { type: String, default: "" },
+    patientId:        { type: String, default: "" }
   }
 
   connect() {
@@ -262,14 +263,26 @@ export default class extends Controller {
     this._startedAtMs = Date.now()
     this._pausedTotalMs = 0
 
-    this._initSpeech()
+    // Pick the ASR backend BEFORE starting capture so we don't have
+    // to swap mid-stream. Server returns provider="deepgram" with a
+    // short-lived token + WebSocket URL when the patient's language
+    // is supported and DEEPGRAM_API_KEY is set, otherwise
+    // provider="web_speech" and the existing path runs unchanged.
+    const asr = await this._fetchAsrSession().catch(() => null)
+    this._asrConfig = asr || { provider: "web_speech" }
+
+    if (this._asrConfig.provider === "deepgram") {
+      await this._initDeepgram(stream, this._asrConfig)
+    } else {
+      this._initSpeech()
+      try { this._speech?.start() } catch (_) {}
+    }
     this._initRecorder(stream)
     this._initAnalyser(stream)
 
-    try { this._speech?.start() } catch (_) {}
     this._recorder.start(1000)
     this._listening = true
-    this._setStatus("Recording…")
+    this._setStatus(this._asrConfig.provider === "deepgram" ? "Recording (Deepgram)…" : "Recording…")
     this._paintRecording()
     this._showStopAndPause()
     this._startTimer()
@@ -279,11 +292,49 @@ export default class extends Controller {
     if (this.hasTranscriptTarget) this.transcriptTarget.innerHTML = ""
   }
 
+  async _fetchAsrSession() {
+    const patientId = this.patientIdValue
+    if (!patientId) return null
+    const resp = await fetch("/api/v1/asr_sessions", {
+      method:  "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept":       "application/json",
+        "X-CSRF-Token": this.csrfValue
+      },
+      body: JSON.stringify({ patient_id: patientId })
+    })
+    if (!resp.ok) return null
+    return resp.json()
+  }
+
+  async _initDeepgram(stream, cfg) {
+    const mod = await import("controllers/asr_deepgram_client")
+    const Client = mod.default
+    this._asr = new Client({
+      websocketUrl: cfg.websocket_url,
+      token:        cfg.token,
+      onTranscript: ({ kind, text, latest, speechFinal }) => {
+        if (kind === "final") {
+          this._finalText   = text
+          this._interimText = ""
+        } else {
+          this._interimText = latest
+        }
+        this._renderTranscript()
+      },
+      onError: (e) => console.warn("[voice-visit] deepgram error:", e),
+      onClose: ()  => { /* nothing to do — stream ended */ }
+    })
+    await this._asr.start(stream)
+  }
+
   stop() {
     if (!this._listening) return
     this._userStopped = true
     this._listening = false
     try { this._speech?.stop() } catch (_) {}
+    try { this._asr?.stop() }    catch (_) {}
     if (this._recorder && this._recorder.state !== "inactive") {
       try { this._recorder.stop() } catch (_) {}
     }

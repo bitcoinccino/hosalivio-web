@@ -49,6 +49,12 @@ Rails.application.routes.draw do
       # registration (TELEGRAM_WEBHOOK_SECRET env). Gated by
       # Agency#features["allow_telegram_replies"] (default false).
       post "telegram/webhook", to: "telegram_webhooks#receive"
+
+      # ASR session bootstrap — voice_visit_controller.js calls this
+      # before opening the streaming connection. Returns Deepgram
+      # short-lived key for en/es/pt patients, falls back to Web
+      # Speech for Haitian Creole and other languages.
+      post "asr_sessions", to: "asr_sessions#create"
     end
   end
 

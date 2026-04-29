@@ -28,7 +28,8 @@
      data-voice-visit-lang-value="<%= current_lang[:bcp47] %>"
      data-voice-visit-lang-code-value="<%= current_lang[:code] %>"
      data-voice-visit-needs-type-picker-value="<%= @needs_type_picker ? 'true' : 'false' %>"
-     data-voice-visit-suggested-type-value="<%= @suggested_type %>">
+     data-voice-visit-suggested-type-value="<%= @suggested_type %>"
+     data-voice-visit-patient-id-value="<%= @visit.patient_id %>">
 
   <%# Top bar: patient name + cancel link %>
   <header class="flex items-center justify-between px-6 py-5">
