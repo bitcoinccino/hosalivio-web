@@ -801,9 +801,15 @@ export default class extends Controller {
       return
     }
 
-    // The next non-family message means a reply has arrived — clear the
-    // typing indicator before rendering the actual bubble.
-    if (n.author_role !== "family") this._clearTyping()
+    // Clear the typing indicator only when the incoming note is
+    // from SOMEONE ELSE (a reply we were waiting on). The viewer's
+    // own message echoes back via Cable — we must not treat that
+    // echo as the awaited reply, otherwise the indicator vanishes
+    // before HosAlivio's actual response lands and the user sees
+    // nothing happening between send and reply.
+    const viewerId = document.body.dataset.viewerUserId || ""
+    const isOwnEcho = viewerId && n.author_user_id && String(n.author_user_id) === String(viewerId)
+    if (!isOwnEcho && n.author_role !== "family") this._clearTyping()
 
     // Day-change separator — drop a "Today / Yesterday / Monday / Apr 22"
     // pill in the feed when this note crosses into a new calendar day.
