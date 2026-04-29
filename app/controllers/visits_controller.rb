@@ -99,6 +99,17 @@ class VisitsController < ApplicationController
                              :visit_type, :service_location, :facility_name)
       end
 
+      # Visit metadata (assignment + schedule + type + location) is
+      # owned by admissions/admin/DON. Performing clinicians can
+      # update narrative + vitals but not the assignment. Strip
+      # those fields if a non-scheduler PATCH tries to change them.
+      scheduler_roles = %w[admin don admissions ceo]
+      unless (current_user.role_names & scheduler_roles).any?
+        attrs = attrs.except(:patient_id, :user_id, :discipline,
+                             :scheduled_at, :ended_at,
+                             :visit_type, :service_location, :facility_name)
+      end
+
       if @visit.update(attrs.merge(agent_authored: false))
         redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
                     notice: "Visit updated."

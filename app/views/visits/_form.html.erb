@@ -19,6 +19,13 @@
       misreads a glucose strip, fixes pulse from 88 to 98) without
       requiring a chart amendment. %>
   <% completed = @visit.persisted? && @visit.ended_at.present? %>
+  <%# Visit metadata (patient, clinician, scheduled time, type,
+      location) is set by the role that scheduled the visit
+      (admissions, admin, DON). Performing clinicians (RN, MD, SW,
+      chaplain, aide) get a read-only view because changing the
+      assignment from the bedside is a workflow violation; they
+      ping admissions if anything's wrong. %>
+  <% can_edit_metadata = (current_user.role_names & %w[admin don admissions ceo]).any? %>
 
   <% metadata_block = capture do %>
     <div>
@@ -152,7 +159,7 @@
   <% if collapse_metadata %>
     <%# rendered as a <details> below, after the narrative block %>
   <% else %>
-    <%= metadata_block %>
+    <%= can_edit_metadata ? metadata_block : metadata_readonly_block %>
   <% end %>
 
   <%# Edit page is text-only. All recording (mic + audio capture)
@@ -293,16 +300,18 @@
   </div>
 
   <% if collapse_metadata %>
-    <%# Quiet, collapsible Visit details panel. In-progress visits
-        keep the editable form so Pascal can fix a typo at the
-        bedside. Completed visits show a read-only display because
-        the metadata is part of the signed chart entry. %>
+    <%# Quiet, collapsible Visit details panel.
+        Editability rules:
+          completed visits             → read-only (chart entry locked)
+          performing clinician (RN/MD) → read-only (admin-set assignment)
+          admin / DON / admissions     → editable (they own the schedule) %>
+    <% metadata_locked = completed || !can_edit_metadata %>
     <details class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5]">
       <summary class="cursor-pointer list-none flex items-center justify-between px-4 py-3 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
         <span class="inline-flex items-center gap-1.5">
-          <% if completed %>
+          <% if metadata_locked %>
             <i class="ri-lock-2-line"></i>
-            Visit details (locked)
+            <%= completed ? "Visit details (locked)" : "Visit details (set by admissions)" %>
           <% else %>
             <i class="ri-list-settings-line"></i>
             Visit details (patient, clinician, type, location)
@@ -311,8 +320,14 @@
         <i class="ri-arrow-down-s-line group-open:rotate-180 transition-transform"></i>
       </summary>
       <div class="px-4 pb-4">
-        <% if completed %>
+        <% if metadata_locked %>
           <%= metadata_readonly_block %>
+          <% unless completed %>
+            <div class="mt-3 text-[11px] text-[#6B665F] inline-flex items-start gap-1.5">
+              <i class="ri-information-line mt-0.5"></i>
+              <span>Need to change the assignment? Ping admissions or DON; they own the schedule.</span>
+            </div>
+          <% end %>
         <% else %>
           <%= metadata_block %>
         <% end %>
