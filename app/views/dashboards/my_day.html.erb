@@ -99,10 +99,15 @@
           <%= render role_partial %>
         <% end %>
 
+        <%# ── Top action row ───────────────────────────────────
+            Two urgent cards side-by-side on wide screens, stacked
+            on narrow. Overdue meds (left) is patient-safety, handoffs
+            (right) is incoming work. Both get visual weight at the
+            top so triage happens before scheduling. %>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
         <%# ── 1. Overdue comfort meds ───────────────────────────
-            Patient-safety priority — pulled to the top of My Day so
-            an overdue PRN morphine can't get buried under scheduling
-            chrome. Red-tinged frame to signal "act on this first". %>
+            Red-tinged frame when any are overdue, neutral otherwise. %>
         <section class="rounded-2xl bg-white border-2 <%= @overdue_meds.any? ? 'border-[#C1403A]' : 'border-[#EFECE6]' %> overflow-hidden">
           <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
             <h3 class="text-[11px] uppercase tracking-widest font-bold flex items-center gap-2 <%= @overdue_meds.any? ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
@@ -216,6 +221,8 @@
             </ul>
           <% end %>
         </section>
+
+        </div><%# /grid: top action row %>
 
         <%# ── 3. Today's visits ──────────────────────────────── %>
         <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
