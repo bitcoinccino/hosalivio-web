@@ -41,7 +41,18 @@ module Api
           return render json: { ok: true, retried: true }
         end
         channels = Array(params[:channels]).map(&:to_s).uniq.presence || []
-        ping.mark_delivered!(channels)
+        attrs = {
+          delivered_at:       Time.current,
+          delivered_channels: channels
+        }
+        # Telegram's sendMessage returns the message_id of the message
+        # we just posted. The openclaw poller captures it and pipes it
+        # back here so future Telegram replies (when the RN long-presses
+        # → Reply on the ping) can be threaded back to this patient.
+        if (tg_msg_id = params[:telegram_message_id]).present?
+          attrs[:telegram_message_id] = tg_msg_id.to_i
+        end
+        ping.update!(attrs)
         render json: { ok: true, delivered_channels: channels }
       end
 

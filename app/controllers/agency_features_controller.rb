@@ -24,6 +24,14 @@ class AgencyFeaturesController < ApplicationController
       flash[:notice] = "Whisper disabled. Reverted to free browser voice (Web Speech API)."
     end
 
+    # Telegram replies (two-way bridge). Disabled by default because
+    # Telegram is not BAA-covered; the toggle in the UI carries an
+    # explicit HIPAA acknowledgement banner.
+    tg_enabled = ActiveModel::Type::Boolean.new.cast(params.dig(:features, :allow_telegram_replies))
+    features = @agency.features.is_a?(Hash) ? @agency.features.dup : {}
+    features["allow_telegram_replies"] = tg_enabled
+    @agency.update!(features: features)
+
     redirect_to edit_agency_features_path
   end
 

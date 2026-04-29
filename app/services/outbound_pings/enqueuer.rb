@@ -67,25 +67,46 @@ module OutboundPings
     # ── helpers ────────────────────────────────────────────────────
 
     def self.phi_free_preview_for_notification(n)
-      case n.kind.to_s
-      when "pre_admit_review_ready"
-        "1 pre-admit eval awaiting your certification"
-      when "pre_admit_certified"
-        "Your pre-admit eval was certified by the MD"
-      when "role_handoff"
-        intent = n.title.to_s.split(":", 2).first.presence || "follow-up"
-        "#{intent} requested for 1 patient"
-      else
-        "1 update awaiting your review"
-      end
+      tag = patient_tag_for(n.linked.is_a?(Patient) ? n.linked : (n.linked.respond_to?(:patient) ? n.linked.patient : nil))
+      base = case n.kind.to_s
+             when "pre_admit_review_ready"
+               "Pre-admit eval awaiting your certification"
+             when "pre_admit_certified"
+               "Your pre-admit eval was certified by the MD"
+             when "role_handoff"
+               intent = n.title.to_s.split(":", 2).first.presence || "Follow-up"
+               "#{intent} requested"
+             else
+               "Update awaiting your review"
+             end
+      tag.present? ? "#{base} for #{tag}" : base
     end
 
     def self.phi_free_preview_for_note(note)
-      case note.urgency.to_s
-      when "crisis" then "Crisis-level message awaiting your reply"
-      when "urgent" then "Urgent message awaiting your reply"
-      else               "1 message awaiting your reply"
-      end
+      tag = patient_tag_for(note.patient)
+      base = case note.urgency.to_s
+             when "crisis" then "Crisis message awaiting your reply"
+             when "urgent" then "Urgent message awaiting your reply"
+             else               "Message awaiting your reply"
+             end
+      tag.present? ? "#{base} re: #{tag}" : base
+    end
+
+    # First name + last initial + MRN. Per most hospice agencies this
+    # is the minimum identifier needed for staff triage outside the
+    # app. Stricter PHI-free agencies can flip the default by setting
+    # env HOSALIVIO_PINGS_PATIENT_TAG=none. Returns nil when patient
+    # is missing or tagging is disabled.
+    def self.patient_tag_for(patient)
+      return nil if patient.nil?
+      return nil if ENV["HOSALIVIO_PINGS_PATIENT_TAG"].to_s == "none"
+      first = patient.first_name.to_s.strip
+      last  = patient.last_name.to_s.strip
+      return nil if first.empty? && last.empty?
+      initial = last.empty? ? "" : "#{last[0]}."
+      mrn = patient.mrn.to_s.strip
+      [[first, initial].reject(&:empty?).join(" ").strip,
+       (mrn.empty? ? nil : "(#{mrn})")].compact.reject(&:empty?).join(" ")
     end
 
     def self.map_notification_kind(kind)

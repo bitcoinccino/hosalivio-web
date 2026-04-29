@@ -81,6 +81,42 @@
         <% end %>
       </div>
 
+      <%# ── Telegram two-way replies ───────────────────────────
+          Lets clinicians reply directly from Telegram (long-press
+          a HosAlivio ping → Reply → type → send). Their reply
+          becomes a family-visible Note in the patient chart.
+          NOT BAA-covered. Off by default. %>
+      <% tg_replies_on = @agency.features.is_a?(Hash) && @agency.features["allow_telegram_replies"] == true %>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 mt-4">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3 flex items-center gap-2">
+          <i class="ri-telegram-line text-[#0088cc]"></i> Telegram two-way replies
+        </h2>
+        <div class="rounded-xl bg-[#FFF3EC] border border-[#D97757] p-3 mb-4 text-[12px] text-[#1D1C1A] leading-relaxed">
+          <div class="font-bold text-[#C1403A] flex items-center gap-1.5 mb-1">
+            <i class="ri-error-warning-line"></i> HIPAA notice
+          </div>
+          Telegram is not BAA-covered. When this is on, clinician
+          replies through Telegram travel through Telegram's servers
+          before reaching HosAlivio. Use only for non-clinical
+          acknowledgement messages ("on my way", "ETA 10 min",
+          "calling now") until your agency has a signed BAA with a
+          covered relay partner. Anything clinical (doses, vitals,
+          diagnosis) should stay inside HosAlivio.
+        </div>
+        <label class="inline-flex items-center gap-3 cursor-pointer">
+          <input type="hidden" name="features[allow_telegram_replies]" value="0">
+          <input type="checkbox" name="features[allow_telegram_replies]" value="1"
+                 <%= "checked" if tg_replies_on %>
+                 class="w-4 h-4 accent-[#D97757]">
+          <span class="text-[13px] text-[#1D1C1A]">
+            Enable Telegram replies for <%= @agency.name %>
+          </span>
+        </label>
+        <div class="mt-2 text-[11px] text-[#6B665F]">
+          Status: <strong><%= tg_replies_on ? "Enabled" : "Disabled (replies via Telegram are dropped with a 'use HosAlivio' notice)" %></strong>
+        </div>
+      </div>
+
       <div class="flex items-center justify-end">
         <button type="submit"
                 class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">

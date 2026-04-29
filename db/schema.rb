@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_29_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_29_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -303,6 +303,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_160000) do
     t.string "link_token", null: false
     t.jsonb "payload", default: {}, null: false
     t.string "preview", null: false
+    t.bigint "telegram_message_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["agency_id"], name: "index_outbound_pings_on_agency_id"
@@ -310,6 +311,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_160000) do
     t.index ["created_at"], name: "index_outbound_pings_on_created_at"
     t.index ["kind"], name: "index_outbound_pings_on_kind"
     t.index ["link_token"], name: "index_outbound_pings_on_link_token", unique: true
+    t.index ["telegram_message_id"], name: "index_outbound_pings_on_telegram_message_id", where: "(telegram_message_id IS NOT NULL)"
     t.index ["user_id", "delivered_at"], name: "index_outbound_pings_on_user_id_and_delivered_at"
     t.index ["user_id"], name: "index_outbound_pings_on_user_id"
   end

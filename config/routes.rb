@@ -42,6 +42,13 @@ Rails.application.routes.draw do
       # from per-tenant AgentToken because this is cross-tenant infra).
       get  "outbound_pings/pending",         to: "outbound_pings#pending"
       post "outbound_pings/:id/delivered",   to: "outbound_pings#delivered"
+
+      # Telegram bot webhook — receives reply messages and routes them
+      # back into the matched patient chat. Auth via the
+      # X-Telegram-Bot-Api-Secret-Token header set during webhook
+      # registration (TELEGRAM_WEBHOOK_SECRET env). Gated by
+      # Agency#features["allow_telegram_replies"] (default false).
+      post "telegram/webhook", to: "telegram_webhooks#receive"
     end
   end
 
