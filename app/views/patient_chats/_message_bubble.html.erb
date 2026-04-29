@@ -119,16 +119,19 @@
       message ('Simone (Pharmacy) notified, comfort kit on the way.').
       Subtle, team-only, never family-visible. %>
   <% ack_text = note.body.to_s.sub(/\A\[HOSALIVIO_ACK\]\s*/, "") %>
-  <div class="max-w-2xl flex items-center gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6]"
-       title="HosAlivio dispatch confirmation">
-    <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
-      <span class="w-full h-full flex items-center justify-center bg-[#D97757] text-white" title="HosAlivio"><i class="ri-heart-pulse-line text-[14px]"></i></span>
+  <div class="max-w-2xl">
+    <div class="flex items-center gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6]"
+         title="HosAlivio dispatch confirmation">
+      <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
+        <span class="w-full h-full flex items-center justify-center bg-[#D97757] text-white" title="HosAlivio"><i class="ri-heart-pulse-line text-[14px]"></i></span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio</div>
+        <div class="text-[13px] text-[#1D1C1A] mt-0.5"><%= ack_text %></div>
+      </div>
+      <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= in_patient_zone(note.created_at, @patient) %></div>
     </div>
-    <div class="min-w-0 flex-1">
-      <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio</div>
-      <div class="text-[13px] text-[#1D1C1A] mt-0.5"><%= ack_text %></div>
-    </div>
-    <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= in_patient_zone(note.created_at, @patient) %></div>
+    <%= render "feedback_widget", note: note %>
   </div>
 <% elsif note.clinician_only? && note.audit_kind == :guardrail %>
   <%# Guardrail block: an agent tried to take an action its cannot_do
@@ -294,5 +297,8 @@
         <%= in_patient_zone(note.created_at, @patient) %>
       </div>
     </div>
+    <% if is_ai %>
+      <%= render "feedback_widget", note: note %>
+    <% end %>
   </div>
 <% end %>

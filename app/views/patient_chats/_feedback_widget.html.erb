@@ -1,0 +1,63 @@
+<%# Thumbs up / down widget for AI-authored notes. Family viewers don't
+    see it (their feedback is captured implicitly via what they ask
+    next). Clinicians thumbs-down opens a small reasons panel. The
+    score + reasons + free text PATCH straight onto the Note via
+    NoteFeedbacksController. Local: `note` (the Note instance).
+%>
+<% return if current_user&.family_access? %>
+<%
+  initial_score = note.feedback_score
+  feedback_url  = note_feedback_path(note_id: note.id)
+%>
+<div class="mt-1.5 flex items-center gap-1.5 text-[#6B665F]"
+     data-controller="feedback"
+     data-feedback-url-value="<%= feedback_url %>"
+     data-feedback-csrf-value="<%= form_authenticity_token %>"
+     data-feedback-score-value="<%= initial_score || 0 %>">
+  <button type="button"
+          data-action="click->feedback#thumbsUp"
+          data-feedback-target="upButton"
+          title="Helpful"
+          class="w-6 h-6 rounded-full hover:bg-[#FBF9F5] hover:text-[#2F6F4E] flex items-center justify-center transition <%= 'text-[#2F6F4E] bg-[#E6F0EE]' if initial_score == 1 %>">
+    <i class="ri-thumb-up-line text-[12px]"></i>
+  </button>
+  <button type="button"
+          data-action="click->feedback#thumbsDown"
+          data-feedback-target="downButton"
+          title="Not helpful"
+          class="w-6 h-6 rounded-full hover:bg-[#FBF9F5] hover:text-[#C1403A] flex items-center justify-center transition <%= 'text-[#C1403A] bg-[#FFF3EC]' if initial_score == -1 %>">
+    <i class="ri-thumb-down-line text-[12px]"></i>
+  </button>
+  <span data-feedback-target="status" class="text-[10px] text-[#6B665F]"></span>
+
+  <%# Reason panel — hidden until thumbs-down. Inline so the user
+      can finish without losing the message context. %>
+  <div data-feedback-target="reasonPanel"
+       class="hidden ml-2 flex-1 max-w-sm rounded-xl bg-white border border-[#EFECE6] p-2.5 shadow-sm">
+    <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1.5">What's wrong?</div>
+    <div class="flex flex-wrap gap-1 mb-2">
+      <% Note::FEEDBACK_REASONS.each do |reason| %>
+        <label class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] cursor-pointer has-[:checked]:bg-[#FFF3EC] has-[:checked]:border-[#D97757] has-[:checked]:text-[#C1403A]">
+          <input type="checkbox" value="<%= reason %>" data-feedback-target="reason" class="hidden">
+          <%= reason.tr("_", " ") %>
+        </label>
+      <% end %>
+    </div>
+    <textarea data-feedback-target="notes"
+              placeholder="Optional: what would have been the right answer?"
+              rows="2"
+              class="w-full text-[12px] px-2 py-1 rounded border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none mb-2"></textarea>
+    <div class="flex items-center justify-end gap-2">
+      <button type="button"
+              data-action="click->feedback#cancel"
+              class="text-[11px] text-[#6B665F] hover:text-[#1D1C1A] px-2 py-1">
+        Cancel
+      </button>
+      <button type="button"
+              data-action="click->feedback#submit"
+              class="text-[11px] px-3 py-1 rounded-full bg-[#C1403A] hover:bg-[#a8342f] text-white font-medium">
+        Submit
+      </button>
+    </div>
+  </div>
+</div>

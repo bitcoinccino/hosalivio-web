@@ -1,0 +1,103 @@
+<% content_for :title, "AI feedback · HosAlivio" %>
+<div class="min-h-screen bg-[#FBF9F5] px-4 md:px-10 py-8">
+  <div class="max-w-5xl mx-auto">
+    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to dashboard
+    </a>
+
+    <header class="mb-6">
+      <div class="text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold mb-2">Agent quality</div>
+      <h1 class="font-serif text-[28px] text-[#1D1C1A] leading-tight">AI feedback review</h1>
+      <p class="text-[13px] text-[#6B665F] mt-1">Clinician thumbs on HosAlivio replies. Curate what becomes a prompt update; ignore what's tonal noise. Feedback is never auto-fed back into the agents.</p>
+    </header>
+
+    <%# === Top-line metrics =================================== %>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-8">
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-4">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Thumbs up</div>
+        <div class="font-serif text-[28px] text-[#2F6F4E] leading-none mt-1"><%= @thumbs_up_count %></div>
+      </div>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-4">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Thumbs down</div>
+        <div class="font-serif text-[28px] text-[#C1403A] leading-none mt-1"><%= @thumbs_down_count %></div>
+      </div>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-4">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Last 7 days</div>
+        <div class="font-serif text-[28px] text-[#1D1C1A] leading-none mt-1">
+          <%= @last_week_ratio ? "#{@last_week_ratio}%" : "—" %>
+        </div>
+        <div class="text-[10px] text-[#6B665F] mt-1">positive ratio</div>
+      </div>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-4">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Last 30 days</div>
+        <div class="font-serif text-[28px] text-[#1D1C1A] leading-none mt-1">
+          <%= @last_30d_ratio ? "#{@last_30d_ratio}%" : "—" %>
+        </div>
+        <div class="text-[10px] text-[#6B665F] mt-1">positive ratio</div>
+      </div>
+    </div>
+
+    <%# === Reason breakdown =================================== %>
+    <% if @reason_breakdown.any? %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5 mb-6">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Why clinicians flagged HosAlivio</h2>
+        <div class="space-y-2">
+          <% max = @reason_breakdown.first&.last || 1 %>
+          <% @reason_breakdown.each do |reason, count| %>
+            <div>
+              <div class="flex items-center justify-between text-[12px] text-[#1D1C1A] mb-1">
+                <span><%= reason.to_s.tr("_", " ").titleize %></span>
+                <span class="font-mono text-[11px] text-[#6B665F]"><%= count %></span>
+              </div>
+              <div class="w-full bg-[#FBF9F5] rounded-full h-2 overflow-hidden">
+                <div class="h-full bg-[#C1403A]" style="width: <%= (count.to_f / max * 100).to_i %>%;"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <%# === Thumbs-down work queue ============================= %>
+    <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+      <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Recent thumbs-down (last 50)</h2>
+      <% if @thumbs_down.empty? %>
+        <div class="text-[13px] text-[#6B665F] italic">No thumbs-down feedback yet. Clinicians can score replies in the chat.</div>
+      <% else %>
+        <ul class="divide-y divide-[#EFECE6]">
+          <% @thumbs_down.each do |note| %>
+            <li class="py-3">
+              <div class="flex items-start gap-3">
+                <i class="ri-thumb-down-line text-[#C1403A] text-[16px] mt-0.5 flex-shrink-0"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] text-[#6B665F] flex items-center gap-2 flex-wrap">
+                    <span class="font-mono"><%= note.feedback_at&.strftime("%b %-d, %-l:%M %p") %></span>
+                    <span>·</span>
+                    <span><%= note.feedback_by&.full_name || "—" %></span>
+                    <span>·</span>
+                    <span><%= note.audit_kind.to_s.tr("_", " ") %></span>
+                    <% Array(note.feedback_reasons).each do |r| %>
+                      <span class="inline-flex items-center text-[10px] uppercase tracking-widest font-bold rounded-full px-2 py-0.5 bg-[#FFF3EC] border border-[#D97757] text-[#C1403A]"><%= r.tr("_", " ") %></span>
+                    <% end %>
+                  </div>
+                  <div class="text-[13px] text-[#1D1C1A] mt-1 leading-relaxed">
+                    <%= note.body.to_s.sub(/\A\[[A-Z_]+\]\s*/, "").truncate(300) %>
+                  </div>
+                  <% if note.feedback_notes.present? %>
+                    <div class="mt-2 pl-3 border-l-2 border-[#D97757] text-[12px] text-[#3A3936] italic">
+                      <%= note.feedback_notes %>
+                    </div>
+                  <% end %>
+                </div>
+                <%= link_to patient_path(note.patient_id),
+                      class: "text-[11px] text-[#6B665F] hover:text-[#D97757] flex-shrink-0" do %>
+                  Open chat <i class="ri-external-link-line"></i>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </section>
+  </div>
+</div>
