@@ -79,13 +79,35 @@ class HosalivioTriager
   HUMAN_CONVERSATION_WINDOW = 30.minutes
 
   INTERROGATIVES = %w[who what when where why how is has does can should will which are who's what's].freeze
+  AFFIRMATIVES   = %w[yes yeah yep yup ok okay sure please correct right confirm].freeze
+  CONTEXT_REPLY_MAX_WORDS = 6
 
   def looks_like_question?(body)
     s = body.to_s.strip
     return false if s.empty?
     return true if s.end_with?("?")
-    first = s.split(/\s+/, 2).first.to_s.downcase
+    first = s.split(/\s+/, 2).first.to_s.downcase.gsub(/[[:punct:]]+$/, "")
     INTERROGATIVES.include?(first)
+  end
+
+  # True when the body is a short reply (≤ 6 words) that's most
+  # likely a continuation of a prior HosAlivio offer / question.
+  # Routes "yes", "ok please", "do it" through the context-aware
+  # answer path so the brain can use thread context to interpret
+  # them, instead of the generic triage path which sees them in
+  # isolation and produces "I don't understand" replies.
+  def context_reply?(body)
+    s = body.to_s.strip
+    words = s.split(/\s+/)
+    return false if words.empty? || words.length > CONTEXT_REPLY_MAX_WORDS
+    first = words.first.to_s.downcase.gsub(/[[:punct:]]+$/, "")
+    return true if AFFIRMATIVES.include?(first)
+    return true if %w[no nope thanks thank].include?(first)
+    # Has a recent HosAlivio reply in the thread (within 30 min)?
+    @patient.notes
+            .where(author_role: "admissions", source: "system")
+            .where("created_at > ?", 30.minutes.ago)
+            .exists?
   end
 
   def triage!
@@ -96,13 +118,14 @@ class HosalivioTriager
       return
     end
 
-    # 0.5 — Q&A short-circuit. If the family member asked a question
-    # (factual about THIS patient, or general hospice education), use
-    # the role-scoped answer path instead of the generic intent
-    # classifier. Crisis messages still go through the normal triage
-    # below because they need handoffs even if phrased as "is mom
-    # dying?". Read receipts + audit happen inside answer_family!.
-    if looks_like_question?(@note.body) && !@note.urgency_crisis?
+    # 0.5 — Context-aware short-circuit. Either (a) a question worth
+    # answering directly, or (b) a short reply ("yes", "thanks") that
+    # only makes sense in the context of HosAlivio's prior turn.
+    # Both routes go through answer_family! which feeds the thread
+    # context to the brain. Crisis messages still use the normal
+    # triage below because they need handoffs even when phrased
+    # conversationally.
+    if !@note.urgency_crisis? && (looks_like_question?(@note.body) || context_reply?(@note.body))
       answer_family!
       return
     end
@@ -158,9 +181,10 @@ class HosalivioTriager
     Current.agent_session_id = "hosalivio-family-qa-#{SecureRandom.hex(4)}"
 
     result = HosalivioBrain.answer_clinician_question(
-      question: @note.body.to_s,
-      patient:  @patient,
-      role:     "family"
+      question:       @note.body.to_s,
+      patient:        @patient,
+      role:           "family",
+      thread_context: recent_thread_context
     )
     reply_text = result&.dig("answer").presence || "I'm not able to answer that just now. I've nudged the care team so someone can get back to you."
 
@@ -173,6 +197,14 @@ class HosalivioTriager
       source:      "system"
     )
 
+    # If the brain decided the family accepted an offer to contact a
+    # named clinician, execute it: drop a clinician_only urgent note
+    # that @-mentions the right person, which fires the existing
+    # OutboundPing pipeline (Telegram / SMS / email).
+    if (notify = result&.dig("notify"))
+      execute_notify(notify)
+    end
+
     AgentEvent.create!(
       agency:      @agency,
       agent_id:    "hosalivio_brain",
@@ -184,13 +216,79 @@ class HosalivioTriager
         source:         result&.dig("source"),
         chars_in:       @note.body.to_s.length,
         chars_out:      reply_text.length,
-        answered:       result.present?
+        answered:       result.present?,
+        notified_role:  notify&.dig("role")
       }
     )
 
     @note.mark_read!
   ensure
     Current.reset
+  end
+
+  # Last 8 messages on this patient's thread, oldest first, with bodies
+  # truncated so the context window stays small. Filters out clinician-
+  # only audit chatter (rationale notes, guardrail blocks) since the
+  # family side of the conversation is what matters for "did HosAlivio
+  # offer something the user is now confirming?".
+  def recent_thread_context
+    notes = @patient.notes
+                    .where(clinician_only: [nil, false])
+                    .where.not(id: @note.id)
+                    .order(created_at: :desc).limit(8)
+                    .reverse
+    notes.map do |n|
+      role = n.ai_authored? ? "hosalivio" : (n.author_role == "family" ? "family" : "clinician")
+      { role: role, body: n.body.to_s[0, 600], sent_at: n.created_at.iso8601 }
+    end
+  end
+
+  # Translates the brain's structured notify directive into actual
+  # plumbing: find the right human (role-scoped, branch-preferred),
+  # post a clinician_only urgent note that @-mentions them, and let
+  # the existing Note after_create_commit hook enqueue the
+  # OutboundPing for their channels. If no human matches the role,
+  # fall back to a generic on-call notice for the role's queue.
+  def execute_notify(notify)
+    role   = notify["role"].to_s
+    reason = notify["reason"].to_s.strip
+    return if role.empty?
+
+    target = resolve_clinician_for_role(role)
+    return if target.nil?
+
+    first = target.full_name.to_s.split(/\s+/, 2).first || "team"
+    body  = "@#{first} #{reason.presence || "family confirmed they want you to reach out"}"
+    Note.create!(
+      agency:         @agency,
+      patient:        @patient,
+      author_role:    "admissions",
+      body:           body,
+      urgency:        "urgent",
+      source:         "system",
+      clinician_only: true
+    )
+  rescue => e
+    Rails.logger.warn("[HosalivioTriager#execute_notify] #{e.class}: #{e.message}")
+  end
+
+  # Patient-assigned clinician first (assigned_rn / assigned_md / etc),
+  # then the agency's on-call user for that role at the patient's
+  # branch, then any active user at the agency in that role.
+  def resolve_clinician_for_role(role)
+    by_assignment = case role
+                    when "rn"            then @patient.assigned_rn
+                    when "md"            then @patient.assigned_md
+                    when "sw","social_worker" then @patient.assigned_sw
+                    when "chaplain"      then @patient.assigned_chaplain
+                    end
+    return by_assignment if by_assignment
+
+    base = User.where(agency_id: @agency.id, active: true, family_access: false)
+               .joins(user_roles: :role)
+               .where(roles: { name: role == "social_worker" ? "social_worker" : role })
+    base = base.where(branch_id: @patient.branch_id) if @patient.branch_id
+    base.order(on_call: :desc).first
   end
 
   # Was the most recent non-family note authored by a real human user

@@ -282,13 +282,21 @@ class ClinicianDispatcher
   def answer_question
     role = (@requester.role_names & %w[rn md don admissions admin ceo aide sw social_worker chaplain]).first || "rn"
     result = HosalivioBrain.answer_clinician_question(
-      question: @note.body.to_s,
-      patient:  @patient,
-      role:     role
+      question:       @note.body.to_s,
+      patient:        @patient,
+      role:           role,
+      thread_context: recent_clinician_thread_context
     )
 
     if result
       post_ack(result["answer"])
+      # Same notify-on-acceptance path as the family side: when the
+      # clinician confirms an offer ("yes, ping admissions") the
+      # brain returns a notify directive, which we execute as a
+      # clinician_only urgent note that @-mentions the right human.
+      if (notify = result["notify"])
+        execute_notify_directive(notify)
+      end
       AgentEvent.create!(
         agency:      @agency,
         agent_id:    "hosalivio_brain",
@@ -300,13 +308,76 @@ class ClinicianDispatcher
           requester_role: role,
           source:         result["source"],
           chars_in:       @note.body.to_s.length,
-          chars_out:      result["answer"].length
+          chars_out:      result["answer"].length,
+          notified_role:  notify&.dig("role")
         }
       )
     else
       post_ack("I couldn't answer that just now. Want me to ping the RN?")
     end
     Result.new(dispatched: true, intent: "answer_question")
+  end
+
+  # Last 8 clinician-visible messages from this patient's thread,
+  # oldest first, with bodies truncated. Includes both clinician chat
+  # and HosAlivio replies/acks so the brain can interpret a "yes" in
+  # the context of HosAlivio's prior offer.
+  def recent_clinician_thread_context
+    notes = @patient.notes
+                    .where.not(id: @note.id)
+                    .order(created_at: :desc).limit(8)
+                    .reverse
+    notes.map do |n|
+      role = if n.ai_authored?
+        "hosalivio"
+      elsif n.author_role == "family"
+        "family"
+      else
+        n.author_role.to_s
+      end
+      { role: role, body: n.body.to_s[0, 600], sent_at: n.created_at.iso8601 }
+    end
+  end
+
+  # Mirrors HosalivioTriager#execute_notify but for the clinician
+  # side: when an RN/MD/etc says "yes ping admissions", the brain
+  # emits notify={role:..., reason:...} and we post the urgent
+  # @-mention note that fires the OutboundPing pipeline.
+  def execute_notify_directive(notify)
+    role   = notify["role"].to_s
+    reason = notify["reason"].to_s.strip
+    return if role.empty?
+    target = resolve_clinician_for_role(role)
+    return if target.nil?
+
+    first = target.full_name.to_s.split(/\s+/, 2).first || "team"
+    body  = "@#{first} #{reason.presence || "follow-up requested"}"
+    Note.create!(
+      agency:         @agency,
+      patient:        @patient,
+      author_role:    "admissions",
+      body:           body,
+      urgency:        "urgent",
+      source:         "system",
+      clinician_only: true
+    )
+  rescue => e
+    Rails.logger.warn("[ClinicianDispatcher#execute_notify_directive] #{e.class}: #{e.message}")
+  end
+
+  def resolve_clinician_for_role(role)
+    by_assignment = case role
+                    when "rn"            then @patient.assigned_rn
+                    when "md"            then @patient.assigned_md
+                    when "sw","social_worker" then @patient.assigned_sw
+                    when "chaplain"      then @patient.assigned_chaplain
+                    end
+    return by_assignment if by_assignment
+    base = User.where(agency_id: @agency.id, active: true, family_access: false)
+               .joins(user_roles: :role)
+               .where(roles: { name: role == "social_worker" ? "social_worker" : role })
+    base = base.where(branch_id: @patient.branch_id) if @patient.branch_id
+    base.first
   end
 
   # Posts a short HosAlivio reply into the team-only audit trail so

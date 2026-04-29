@@ -46,11 +46,14 @@ module Api
           decision = HosalivioBrain.classify_clinician_message(note: note, requester: @user)
 
           # Belt-and-suspenders: if the body looks like a question (ends
-          # with "?" or starts with a clear interrogative) and the LLM
-          # still classified it as no_action, override to answer_question
-          # so HosAlivio replies. The LLM occasionally misses phrasings
-          # the prompt's examples don't cover.
-          if decision[:action].to_s == "no_action" && looks_like_question?(body)
+          # with "?" or starts with a clear interrogative) OR is a short
+          # reply ("yes", "ok please") that comes after a recent
+          # HosAlivio offer in the thread, force answer_question so the
+          # brain gets thread context and can resolve continuation
+          # intent. The LLM occasionally misses phrasings the prompt's
+          # examples don't cover, especially short replies in isolation.
+          if decision[:action].to_s == "no_action" &&
+             (looks_like_question?(body) || short_continuation_reply?(body, patient))
             decision = decision.merge(action: "answer_question")
           end
 
@@ -97,13 +100,35 @@ module Api
       end
 
       INTERROGATIVES = %w[who what when where why how is has does can should will which are who's what's].freeze
+      AFFIRMATIVES   = %w[yes yeah yep yup ok okay sure please correct right confirm].freeze
+      NEGATIVES      = %w[no nope thanks thank].freeze
+      CONTEXT_REPLY_MAX_WORDS = 6
 
       def looks_like_question?(body)
         s = body.to_s.strip
         return false if s.empty?
         return true if s.end_with?("?")
-        first = s.split(/\s+/, 2).first.to_s.downcase
+        first = s.split(/\s+/, 2).first.to_s.downcase.gsub(/[[:punct:]]+$/, "")
         INTERROGATIVES.include?(first)
+      end
+
+      # True when the body is a short reply that's most likely a
+      # continuation of HosAlivio's prior turn. Mirror of the family-
+      # side context_reply? so clinicians get the same context-aware
+      # treatment ("yes ping admissions" -> brain sees recent offer
+      # -> emits notify directive -> dispatcher executes).
+      def short_continuation_reply?(body, patient)
+        return false if patient.nil?
+        s = body.to_s.strip
+        words = s.split(/\s+/)
+        return false if words.empty? || words.length > CONTEXT_REPLY_MAX_WORDS
+        first = words.first.to_s.downcase.gsub(/[[:punct:]]+$/, "")
+        return true if AFFIRMATIVES.include?(first) || NEGATIVES.include?(first)
+        # Has a recent HosAlivio reply in the thread (within 30 min)?
+        patient.notes
+               .where(author_role: "admissions", source: "system")
+               .where("created_at > ?", 30.minutes.ago)
+               .exists?
       end
 
       # Scan an internal team message for @FirstName tokens, resolve each

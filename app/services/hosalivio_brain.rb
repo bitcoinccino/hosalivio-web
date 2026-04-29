@@ -71,14 +71,15 @@ class HosalivioBrain
     #   { "answer" => String, "source" => "claude:..." }
     # or nil when both providers fail. The dispatcher posts the answer
     # back into the chat as a clinician-only HosAlivio bubble.
-    def answer_clinician_question(question:, patient:, role:)
+    def answer_clinician_question(question:, patient:, role:, thread_context: nil)
       return nil if question.to_s.strip.empty? || patient.nil?
       ctx = PatientContextBuilder.call(patient: patient, role: role)
       payload = {
         REQUESTER_ROLE:  role.to_s,
         QUESTION:        question.to_s.strip,
-        PATIENT_CONTEXT: ctx
-      }.to_json
+        PATIENT_CONTEXT: ctx,
+        THREAD_CONTEXT:  thread_context
+      }.compact.to_json
       PROVIDER_CHAIN.each do |provider|
         next unless provider_enabled?(provider)
         begin
@@ -87,10 +88,28 @@ class HosalivioBrain
           answer   = parsed["answer"].to_s.strip
           next if answer.empty?
           answer = answer.gsub(/[–—]/, ", ")
+
+          # Optional structured notify directive — set when the brain
+          # determines the user accepted an offer to contact a specific
+          # clinician (e.g. "Yes" after "Would you like me to connect
+          # you with Pascal?"). Caller is expected to act on this by
+          # creating the corresponding clinician_only urgent note +
+          # OutboundPing for the named user. We validate the role
+          # against a fixed set; everything else is just a string the
+          # caller can sanity-check.
+          notify = parsed["notify"]
+          notify = nil unless notify.is_a?(Hash)
+          if notify
+            allowed_roles = %w[rn md don sw social_worker chaplain aide admissions insurance billing]
+            notify_role   = notify["role"].to_s
+            notify        = nil unless allowed_roles.include?(notify_role)
+          end
+
           return {
             "answer" => answer,
+            "notify" => notify,
             "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
-          }
+          }.compact
         rescue => e
           Rails.logger.warn("[HosalivioBrain.answer_clinician_question:#{provider}] #{e.class}: #{e.message}")
         end
@@ -647,8 +666,42 @@ class HosalivioBrain
                               when a specific named human is in the
                               context. Offer to connect them.
 
-    Output ONLY a JSON object (no markdown fences, no preamble):
-      { "answer": "<your reply, plain text, 1-5 sentences>" }
+    THREAD_CONTEXT (optional):
+      An array of recent messages in this same patient thread (most
+      recent last). Each entry has { role, body, sent_at }. Use it
+      to interpret short replies in context. Two specific patterns
+      to handle:
+
+      1) Affirmative reply to a HosAlivio offer
+         If the most recent HosAlivio message contains an explicit
+         offer ("Want me to connect you with X?", "Should I notify
+         Y?", "Would you like me to ping the team?") and the new
+         QUESTION is an affirmative ("yes", "yes please", "ok", "sure",
+         "do it", "please"), interpret QUESTION as accepting the
+         offer. Confirm action in your `answer` and emit a `notify`
+         directive (see below).
+
+      2) Negation / clarification of a HosAlivio offer
+         If the user is correcting or declining HosAlivio's last
+         message, acknowledge calmly and pivot to what they actually
+         need. Do not pretend the prior turn didn't happen.
+
+    NOTIFY DIRECTIVE (optional, second top-level key):
+      When the user accepts an offer to contact a specific clinician
+      named in THREAD_CONTEXT or PATIENT_CONTEXT.care_team, emit:
+        "notify": { "role": "<rn|md|don|sw|chaplain|aide|admissions|...>",
+                    "reason": "<one short sentence summarizing why>" }
+      The Rails caller will then create the clinician notification +
+      out-of-app ping for that role's assigned user.
+
+      Do NOT emit notify for general informational answers, only when
+      the user is clearly accepting a "should I contact X?" offer.
+
+    Output ONLY a JSON object (no markdown fences, no preamble).
+    Shape:
+      { "answer": "<your reply, plain text, 1-5 sentences>",
+        "notify": { "role": "...", "reason": "..." }   // omit when not needed
+      }
   SYS
 
   EVAL_GAP_FILL_SYSTEM_PROMPT = <<~SYS.freeze
