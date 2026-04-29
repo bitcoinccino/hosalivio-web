@@ -335,15 +335,52 @@
     </details>
   <% end %>
 
-  <div class="pt-3 border-t border-[#EFECE6] flex items-center justify-between text-[11px] text-[#6B665F]">
-    <span>
-      <i class="ri-shield-check-line"></i>
-      Overlap + 30-min windshield buffer enforced by the database.
-    </span>
-    <div class="flex items-center gap-2">
-      <%= link_to "Cancel", calendar_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
-      <%= f.submit (@visit.persisted? ? "Save changes" : "Schedule visit"),
+  <%# State-aware button row.
+      :scheduled / :ready  (admin or DON pre-visit)  → Cancel + Save/Schedule, buffer notice shown
+      :recording           (RN in the middle of it)  → small Save draft link only; the green Finish lives outside this form (edit.html.erb)
+      :completed           (chart entry signed)      → just Save vitals corrections (only field still editable)
+  %>
+  <% if completed %>
+    <div class="pt-3 border-t border-[#EFECE6] flex items-center justify-end">
+      <%= f.submit "Save vitals corrections",
             class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
     </div>
-  </div>
+  <% elsif in_progress %>
+    <%# Two submit buttons, same form. submit_action=draft just
+        saves; submit_action=finish saves AND triggers the
+        finish flow (stamp ended_at, polish, extractor, route to
+        MD). Server reads params[:submit_action] in #update. %>
+    <div class="pt-3 border-t border-[#EFECE6] flex flex-col gap-3">
+      <div class="flex items-center justify-end">
+        <button type="submit" name="submit_action" value="draft"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] text-[12px] font-medium cursor-pointer">
+          <i class="ri-save-line"></i> Save draft (stay)
+        </button>
+      </div>
+      <button type="submit" name="submit_action" value="finish"
+              data-turbo-confirm="Finish this visit for <%= @visit.patient&.full_name %>? This saves your edits, stamps end time, and routes the chart for review."
+              class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-semibold shadow-sm">
+        <i class="ri-check-double-line text-lg"></i> Finish visit and route to MD
+      </button>
+      <div class="text-[11px] text-[#6B665F] text-center">
+        <% if @visit.visit_type_admission? %>
+          Finish saves any pending edits, stamps end time, polishes the narrative, and routes the eval to the on-call MD.
+        <% else %>
+          Finish saves any pending edits and stamps end time. Returns to My Day.
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="pt-3 border-t border-[#EFECE6] flex items-center justify-between text-[11px] text-[#6B665F]">
+      <span>
+        <i class="ri-shield-check-line"></i>
+        Overlap + 30-min windshield buffer enforced by the database.
+      </span>
+      <div class="flex items-center gap-2">
+        <%= link_to "Cancel", calendar_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+        <%= f.submit (@visit.persisted? ? "Save changes" : "Schedule visit"),
+              class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+      </div>
+    </div>
+  <% end %>
 <% end %>

@@ -111,6 +111,16 @@ class VisitsController < ApplicationController
       end
 
       if @visit.update(attrs.merge(agent_authored: false))
+        # Two submit buttons on the in-progress edit form share this
+        # update action. submit_action=finish chains into the finish
+        # flow (stamp ended_at, polish, extractor, route to MD) so
+        # the RN's pending narrative + vitals edits ride along
+        # instead of being dropped by a separate Finish click.
+        if params[:submit_action].to_s == "finish" && @visit.started_at && @visit.ended_at.nil?
+          finish_after_update
+          return
+        end
+
         redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
                     notice: "Visit updated."
       else
@@ -120,6 +130,46 @@ class VisitsController < ApplicationController
         render :edit, status: :unprocessable_entity
       end
     end
+  end
+
+  # Shared with the standalone POST /visits/:id/finish endpoint.
+  # Encapsulates the polish + extractor + MD routing logic so both
+  # the new in-form Finish submit and any external callers share
+  # one code path.
+  def finish_after_update
+    @visit.reload  # pick up just-saved narrative
+    @visit.update!(ended_at: Time.current)
+    flash[:notice] = "Visit completed. Thank you."
+
+    if @visit.visit_type_admission? && @visit.narrative.to_s.strip.present? && @visit.narrative_raw.blank?
+      raw = @visit.narrative.to_s
+      @visit.update!(narrative_raw: raw)
+      if (polish = HosalivioBrain.polish_narrative(raw))
+        @visit.update!(narrative: polish["polished"])
+        AgentEvent.create!(
+          agency:      @visit.agency,
+          agent_id:    "hosalivio_brain",
+          action:      "polish_narrative",
+          subject:     @visit,
+          happened_at: Time.current,
+          change_set:  { source: polish["source"], chars_in: raw.length, chars_out: polish["polished"].length }
+        )
+      end
+    end
+
+    if @visit.visit_type_admission? && (eval_rec = @visit.pre_admit_eval)
+      result = PreAdmitNarrativeExtractor.call(
+        narrative:     @visit.narrative.to_s,
+        existing_json: eval_rec.raw_json,
+        visit:         @visit,
+        patient:       @visit.patient
+      )
+      eval_rec.update!(raw_json: result.json)
+      notify_md_for_certification(eval_rec)
+      flash[:notice] = "Visit completed. Pre-admit eval updated and routed to MD for certification."
+    end
+
+    redirect_to dashboard_path
   end
 
   def destroy

@@ -109,16 +109,10 @@
 
       <%= render "form", just_recorded: just_recorded %>
 
-      <% if state == :recording %>
-        <div class="mt-5 pt-5 border-t border-[#EFECE6]">
-          <%= button_to finish_visit_path(@visit), method: :post,
-                data: { turbo_confirm: "Finish this visit for #{@visit.patient&.full_name}?" },
-                class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium" do %>
-            <i class="ri-check-double-line"></i> Finish visit
-          <% end %>
-          <span class="text-[11px] text-[#6B665F] ml-2">Stamps the end time and returns to My Day.</span>
-        </div>
-      <% end %>
+      <%# Finish button moved into the form (same submit, name=
+          submit_action value=finish) so pending edits ride along
+          and the finish flow runs server-side after a successful
+          update. See app/views/visits/_form.html.erb. %>
     </div>
   </div>
 </div>
