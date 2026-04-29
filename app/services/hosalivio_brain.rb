@@ -690,7 +690,18 @@ class HosalivioBrain
       When the user accepts an offer to contact a specific clinician
       named in THREAD_CONTEXT or PATIENT_CONTEXT.care_team, emit:
         "notify": { "role": "<rn|md|don|sw|chaplain|aide|admissions|...>",
-                    "reason": "<one short sentence summarizing why>" }
+                    "reason": "<one short sentence describing the situation, NOT the clinician>" }
+
+      Critical rules for `reason`:
+        - Describe the SITUATION ("family reports uncontrolled pain",
+          "family asked to confirm Medicaid eligibility").
+        - Do NOT name the clinician (no "Pascal Benoit", no
+          "the RN"). The Rails caller adds the @-mention separately;
+          if you also include the name the message reads with the
+          clinician's name twice ("@Pascal contact Pascal Benoit").
+        - Do NOT include the patient's full name in the reason
+          either; first name is fine when needed for clarity.
+
       The Rails caller will then create the clinician notification +
       out-of-app ping for that role's assigned user.
 

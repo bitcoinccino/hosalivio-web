@@ -350,8 +350,9 @@ class ClinicianDispatcher
     target = resolve_clinician_for_role(role)
     return if target.nil?
 
-    first = target.full_name.to_s.split(/\s+/, 2).first || "team"
-    body  = "@#{first} #{reason.presence || "follow-up requested"}"
+    first  = target.full_name.to_s.split(/\s+/, 2).first || "team"
+    reason = scrub_clinician_name_from_reason(reason, target)
+    body   = "@#{first} #{reason.presence || "follow-up requested"}"
     Note.create!(
       agency:         @agency,
       patient:        @patient,
@@ -363,6 +364,31 @@ class ClinicianDispatcher
     )
   rescue => e
     Rails.logger.warn("[ClinicianDispatcher#execute_notify_directive] #{e.class}: #{e.message}")
+  end
+
+  # Mirror of HosalivioTriager#scrub_clinician_name. Strips the
+  # target clinician's own name (full / first / last) from the
+  # reason text so the rendered @-mention doesn't read with the
+  # name twice ("@Pascal contact Pascal Benoit").
+  CONNECTOR_RE = /\b(?:with|to|by|from|for|contact|reach|reach\s+out\s+to|in|of|notify|page|page\s+in|loop\s+in|alert)\b/i.freeze
+
+  def scrub_clinician_name_from_reason(reason, target)
+    return reason if reason.blank? || target.nil?
+    full  = target.full_name.to_s.strip
+    first = full.split(/\s+/, 2).first.to_s
+    last  = full.split(/\s+/, 2).last.to_s
+    cleaned = reason.dup
+    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+      cleaned = cleaned.gsub(/#{CONNECTOR_RE.source}\s+#{Regexp.escape(name)}\b/i, "")
+    end
+    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+      cleaned = cleaned.gsub(/\b#{Regexp.escape(name)}\b/i, "")
+    end
+    cleaned = cleaned.gsub(/\s+/, " ").strip
+    cleaned = cleaned.sub(/^,\s*/, "").gsub(/\s+,/, ",").gsub(/,\s*,/, ",")
+    cleaned = cleaned.sub(/#{CONNECTOR_RE.source}\s*[,.]?\s*$/i, "").strip
+    cleaned = cleaned.sub(/^[,.\s]+/, "").sub(/[,\s]+$/, "")
+    cleaned
   end
 
   def resolve_clinician_for_role(role)

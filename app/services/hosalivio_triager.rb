@@ -258,7 +258,12 @@ class HosalivioTriager
     return if target.nil?
 
     first = target.full_name.to_s.split(/\s+/, 2).first || "team"
-    body  = "@#{first} #{reason.presence || "family confirmed they want you to reach out"}"
+    # Strip the clinician's own name from the reason so the rendered
+    # body doesn't read "@Pascal contact Pascal Benoit". The brain's
+    # prompt already asks for situation-not-clinician language; this
+    # is the safety net.
+    reason = scrub_clinician_name(reason, target)
+    body   = "@#{first} #{reason.presence || "family confirmed they want you to reach out"}"
     Note.create!(
       agency:         @agency,
       patient:        @patient,
@@ -270,6 +275,37 @@ class HosalivioTriager
     )
   rescue => e
     Rails.logger.warn("[HosalivioTriager#execute_notify] #{e.class}: #{e.message}")
+  end
+
+  # Drops the target clinician's name from the reason text so the
+  # @-mention doesn't read with the name twice. Handles "Pascal
+  # Benoit", "Pascal", "Mr. Benoit", "with Pascal", "to Pascal" etc.
+  # If stripping leaves the reason empty, fall back to a generic
+  # phrase so the @-mention still reads as a complete sentence.
+  CONNECTOR_RE = /\b(?:with|to|by|from|for|contact|reach|reach\s+out\s+to|in|of|notify|page|page\s+in|loop\s+in|alert)\b/i.freeze
+
+  def scrub_clinician_name(reason, target)
+    return reason if reason.blank? || target.nil?
+    full  = target.full_name.to_s.strip
+    first = full.split(/\s+/, 2).first.to_s
+    last  = full.split(/\s+/, 2).last.to_s
+    cleaned = reason.dup
+    # Pass 1: try to remove the connector + name together so we don't
+    # leave dangling prepositions ("contact with" / "loop in").
+    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+      cleaned = cleaned.gsub(/#{CONNECTOR_RE.source}\s+#{Regexp.escape(name)}\b/i, "")
+    end
+    # Pass 2: anything still standing alone, drop just the name.
+    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+      cleaned = cleaned.gsub(/\b#{Regexp.escape(name)}\b/i, "")
+    end
+    # Pass 3: collapse whitespace, prune dangling tail connectors,
+    # and tidy commas / sentence-final punctuation.
+    cleaned = cleaned.gsub(/\s+/, " ").strip
+    cleaned = cleaned.sub(/^,\s*/, "").gsub(/\s+,/, ",").gsub(/,\s*,/, ",")
+    cleaned = cleaned.sub(/#{CONNECTOR_RE.source}\s*[,.]?\s*$/i, "").strip
+    cleaned = cleaned.sub(/^[,.\s]+/, "").sub(/[,\s]+$/, "")
+    cleaned
   end
 
   # Patient-assigned clinician first (assigned_rn / assigned_md / etc),
