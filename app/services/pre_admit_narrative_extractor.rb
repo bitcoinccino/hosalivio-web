@@ -49,10 +49,57 @@ class PreAdmitNarrativeExtractor
     populate_general(eval_root)
     populate_lcd_criteria(eval_root)
 
+    # LLM gap-fill pass for free-text fields heuristics can't reach
+    # (chief_complaint, HPI, fall_history, equipment status, RN
+    # final_review, etc.). Runs only when the brain is configured.
+    # Failures are non-blocking — heuristic-extracted fields stay.
+    apply_llm_gap_fill(eval_root)
+
     Result.new(json: @base, fields_updated: @updated.uniq)
   end
 
   private
+
+  # Sends the polished narrative + the partially-populated eval to
+  # HosalivioBrain.fill_eval_gaps. The brain returns a deltas hash
+  # with new fields only (it never overwrites populated values).
+  # We deep_merge those deltas into eval_root and stamp the touched
+  # paths so the controller's "Synced N fields" toast counts them.
+  def apply_llm_gap_fill(eval_root)
+    return if @text.to_s.strip.length < 80  # not worth the call on stub narratives
+
+    deltas = HosalivioBrain.fill_eval_gaps(narrative: @text, partial_json: { "pre_admit_eval" => eval_root })
+    return if deltas.blank?
+
+    deltas.each do |section, fields|
+      next unless fields.is_a?(Hash)
+      eval_root[section] ||= {}
+      fields.each do |key, value|
+        # Skip fields the heuristics already filled. The prompt asks
+        # the brain not to return them, but defense-in-depth.
+        existing = eval_root[section][key]
+        already_present = case existing
+                          when nil       then false
+                          when ""        then false
+                          when Array     then existing.any?
+                          when Hash      then existing.values.compact_blank.any?
+                          else                true
+                          end
+        next if already_present
+
+        # For nested hashes (e.g., general.equipment), merge per-leaf
+        # rather than replacing the whole sub-object.
+        if value.is_a?(Hash) && existing.is_a?(Hash)
+          existing.merge!(value)
+        else
+          eval_root[section][key] = value
+        end
+        touch("#{section}.#{key}")
+      end
+    end
+  rescue => e
+    Rails.logger.warn("[PreAdmitNarrativeExtractor#apply_llm_gap_fill] #{e.class}: #{e.message}")
+  end
 
   # ── HEADER (server-populated, not extracted) ─────────────────────
 

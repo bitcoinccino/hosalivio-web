@@ -54,6 +54,22 @@ class PreAdmitEval < ApplicationRecord
   def nutritional_decline ; raw_json.dig("pre_admit_eval", "nutritional_decline") || {}; end
   def functional_decline  ; raw_json.dig("pre_admit_eval", "functional_decline")  || {}; end
   def general             ; raw_json.dig("pre_admit_eval", "general")             || {}; end
+  def final_review_section; raw_json.dig("pre_admit_eval", "final_review")        || {}; end
+  def referral_context    ; raw_json.dig("pre_admit_eval", "referral_context")    || {}; end
+  def medicare_lcd        ; raw_json.dig("pre_admit_eval", "medicare_lcd_criteria") || {}; end
+  def equipment           ; (general["equipment"].is_a?(Hash) ? general["equipment"] : {}) || {}; end
+
+  # New fine-grained accessors aligned with the referral-stage
+  # schema (chief_complaint, HPI, related/unrelated conditions,
+  # fall_history, recent_functional_changes, etc.). These are all
+  # additive to existing data — old evals with sparse keys still
+  # render fine because every dig falls back to nil/empty.
+  def chief_complaint            ; general_comments["chief_complaint"]; end
+  def history_of_present_illness ; general_comments["history_of_present_illness"]; end
+  def related_conditions         ; Array(diagnosis_section["related_conditions"]); end
+  def unrelated_conditions       ; Array(diagnosis_section["unrelated_conditions"]); end
+  def fall_history               ; functional_decline["fall_history"]; end
+  def recent_functional_changes  ; functional_decline["recent_functional_changes"]; end
 
   def pps_object          ; functional_decline["pps"]; end
   def pps_score

@@ -98,6 +98,34 @@ class HosalivioBrain
       nil
     end
 
+    # Reads the polished narrative + the partially-populated eval
+    # JSON (post-heuristic-extraction) and fills in any blank fields
+    # the narrative explicitly supports. Returns a deltas hash to
+    # merge, or {} when both providers fail / nothing to add. Never
+    # overwrites fields that are already populated.
+    def fill_eval_gaps(narrative:, partial_json:)
+      return {} if narrative.to_s.strip.empty?
+      payload = {
+        NARRATIVE:    narrative.to_s,
+        PARTIAL_JSON: partial_json
+      }.to_json
+      PROVIDER_CHAIN.each do |provider|
+        next unless provider_enabled?(provider)
+        begin
+          raw    = (provider == :claude) ? request_eval_fill_claude(payload) : request_eval_fill_openai(payload)
+          parsed = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
+          deltas = parsed["deltas"]
+          return {} unless deltas.is_a?(Hash)
+          # Belt-and-suspenders em-dash scrub on string values.
+          scrub_em_dashes!(deltas)
+          return deltas
+        rescue => e
+          Rails.logger.warn("[HosalivioBrain.fill_eval_gaps:#{provider}] #{e.class}: #{e.message}")
+        end
+      end
+      {}
+    end
+
     # Polishes the raw voice transcript into a clean clinical
     # narrative ready for the chart. Returns:
     #   { "polished" => String, "source" => "claude:..." }
@@ -145,6 +173,19 @@ class HosalivioBrain
         end
       end
       nil
+    end
+
+    # Recursively walks a Hash/Array structure replacing em/en-dashes
+    # in any String value with ", ". Mutates in place. Used as a
+    # safety net on LLM outputs because the prompt rule is an
+    # imperfect deterrent.
+    def scrub_em_dashes!(node)
+      case node
+      when Hash  then node.each { |_k, v| scrub_em_dashes!(v) }
+      when Array then node.each { |v| scrub_em_dashes!(v) }
+      when String then node.gsub!(/\s*[—–]\s*/, ", ")
+      end
+      node
     end
 
     def provider_enabled?(provider)
@@ -610,6 +651,83 @@ class HosalivioBrain
       { "answer": "<your reply, plain text, 1-5 sentences>" }
   SYS
 
+  EVAL_GAP_FILL_SYSTEM_PROMPT = <<~SYS.freeze
+    You are a clinical scribe filling in missing fields on a hospice
+    pre-admit evaluation. You have:
+      1. NARRATIVE: the polished RN visit note
+      2. PARTIAL_JSON: an eval document with some fields already populated
+         from heuristic extraction (vitals, PPS, ADLs, etc.)
+
+    Your job: fill in BLANK or MISSING fields that the narrative
+    explicitly supports. Use only what's in the narrative. Never
+    invent, never extrapolate beyond the text, never overwrite
+    fields that are already populated.
+
+    Fields you may fill (only when the narrative supports them):
+
+      general_comments:
+        chief_complaint              (one sentence)
+        history_of_present_illness   (1-3 sentences)
+
+      diagnosis:
+        related_conditions           (array of strings, conditions related to the terminal dx)
+        unrelated_conditions         (array of strings, conditions NOT related)
+
+      medicare_lcd_criteria:
+        lcd_type                     ("Cancer", "CHF", "COPD", "Dementia", "Debility", etc.)
+        supporting_documentation     (1-3 sentences citing narrative phrases that support LCD criteria)
+
+      functional_decline:
+        fall_history                 (one sentence)
+        recent_functional_changes    (1-2 sentences)
+
+      nutritional_decline:
+        appetite                     (poor / fair / good / declining etc.)
+        dysphagia                    (yes / no / specific finding)
+        tube_feeding                 (yes / no / type)
+        hydration_status             (adequate / dehydrated etc.)
+
+      cognitive_decline:
+        orientation                  (e.g., "alert and oriented x3", "confused")
+        memory_loss                  (yes / no / specific finding)
+        decision_making_ability      (intact / impaired / specific finding)
+        sundowning                   (yes / no / specific finding)
+
+      other_symptoms:
+        delirium                     (yes / no / specific finding)
+        wounds                       (yes / no / specific finding)
+        infections                   (yes / no / specific finding)
+
+      general:
+        equipment:
+          oxygen                     (in use / not in use / specific finding)
+          hospital_bed               (in use / not in use)
+          walker                     (in use / not in use)
+          wheelchair                 (in use / not in use)
+          commode                    (in use / not in use)
+          other                      (free text)
+
+      final_review:
+        hospice_eligibility_statement   (1-2 sentences citing the supporting clinical evidence)
+        prognosis_estimate              (e.g., "weeks to months", "less than 6 months")
+        rn_recommendation               (1-2 sentences with the next step the RN wants the MD or team to take)
+
+    Hard rules:
+      - If a field is already populated in PARTIAL_JSON, DO NOT include it in your output.
+      - If the narrative does not support a field, DO NOT include it in your output.
+      - Do NOT use em-dashes (use commas, periods, parentheses).
+      - Do NOT invent ICD-10 codes, drug doses, or vitals values.
+      - For the final_review block, you may synthesize across the
+        narrative + partial JSON to compose the eligibility statement
+        and recommendation, but ground every claim in the actual data.
+      - Output ONLY a JSON object with key "deltas" containing the
+        nested fields to add. Use empty objects/arrays sparingly;
+        omit a section entirely if there's nothing to add.
+
+    Output format (no preamble, no markdown fences):
+      { "deltas": { "<section>": { "<field>": <value>, ... }, ... } }
+  SYS
+
   POLISH_SYSTEM_PROMPT = <<~SYS.freeze
     You are a clinical scribe polishing an RN's voice-dictated visit
     narrative for the medical record. Your job is FORMAT, not content.
@@ -694,6 +812,42 @@ class HosalivioBrain
       ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
+
+  def self.request_eval_fill_claude(payload_json)
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = {
+      model:      CLAUDE_MODEL,
+      max_tokens: 2000,
+      system:     [{ type: "text", text: EVAL_GAP_FILL_SYSTEM_PROMPT }],
+      messages:   [{ role: "user", content: payload_json }]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
+    raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  def self.request_eval_fill_openai(payload_json)
+    uri = URI(OPENAI_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req.body = {
+      model:           OPENAI_MODEL,
+      max_tokens:      2000,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: EVAL_GAP_FILL_SYSTEM_PROMPT },
+        { role: "user",   content: payload_json }
+      ]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
     raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
     JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
   end

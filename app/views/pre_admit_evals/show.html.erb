@@ -252,12 +252,30 @@
     <% end %>
 
     <div class="space-y-4">
-      <%# === General Comments ====================================== %>
+      <%# === General Comments + Chief Complaint + HPI ============== %>
       <section class="<%= card %>">
         <h2 class="<%= h2 %>"><i class="ri-edit-line text-[#6B665F]"></i> General comments</h2>
+        <% if gc["chief_complaint"].to_s.strip.present? %>
+          <div class="mb-3">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Chief complaint</div>
+            <div class="text-[13px] text-[#1D1C1A] mt-0.5"><%= gc["chief_complaint"] %></div>
+          </div>
+        <% end %>
+        <% if gc["history_of_present_illness"].to_s.strip.present? %>
+          <div class="mb-3">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">History of present illness</div>
+            <p class="text-[13px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap mt-0.5"><%= gc["history_of_present_illness"] %></p>
+          </div>
+        <% end %>
         <% if gc["narrative_summary"].to_s.strip.present? %>
-          <p class="text-[13px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= gc["narrative_summary"] %></p>
-        <% else %>
+          <div class="<%= "mb-3" if gc["chief_complaint"].present? || gc["history_of_present_illness"].present? %>">
+            <% if gc["chief_complaint"].present? || gc["history_of_present_illness"].present? %>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Narrative summary</div>
+            <% end %>
+            <p class="text-[13px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap mt-0.5"><%= gc["narrative_summary"] %></p>
+          </div>
+        <% end %>
+        <% if gc["chief_complaint"].blank? && gc["history_of_present_illness"].blank? && gc["narrative_summary"].blank? %>
           <p class="text-[12px] text-[#6B665F] italic">No narrative captured.</p>
         <% end %>
         <div class="grid grid-cols-2 gap-3 mt-3 text-[12px]">
@@ -309,9 +327,36 @@
             </ul>
           </div>
         <% end %>
-        <% if Array(dx["lcd_criteria_met"]).any? %>
+        <% related = Array(dx["related_conditions"]); unrelated = Array(dx["unrelated_conditions"]) %>
+        <% if related.any? || unrelated.any? %>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-[#EFECE6]">
+            <% if related.any? %>
+              <div class="text-[12px]">
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Related conditions</div>
+                <ul class="list-disc ml-5 text-[#1D1C1A] space-y-0.5">
+                  <% related.each do |c| %><li><%= c %></li><% end %>
+                </ul>
+              </div>
+            <% end %>
+            <% if unrelated.any? %>
+              <div class="text-[12px]">
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Unrelated conditions</div>
+                <ul class="list-disc ml-5 text-[#1D1C1A] space-y-0.5">
+                  <% unrelated.each do |c| %><li><%= c %></li><% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <% lcd = @eval.medicare_lcd %>
+        <% if Array(dx["lcd_criteria_met"]).any? || lcd["lcd_type"].present? || lcd["supporting_documentation"].present? %>
           <div class="text-[12px] mt-3 pt-3 border-t border-[#EFECE6]">
-            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Medicare LCD criteria met</div>
+            <div class="flex items-baseline justify-between gap-2 mb-1.5">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Medicare LCD criteria met</div>
+              <% if lcd["lcd_type"].present? %>
+                <span class="text-[10px] text-[#6B665F] font-mono">LCD: <%= lcd["lcd_type"] %></span>
+              <% end %>
+            </div>
             <div class="flex flex-wrap gap-1.5">
               <% Array(dx["lcd_criteria_met"]).each do |c| %>
                 <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-[#E6F0EE] border border-[#2F6F4E] text-[#2F6F4E]">
@@ -319,6 +364,11 @@
                 </span>
               <% end %>
             </div>
+            <% if lcd["supporting_documentation"].to_s.strip.present? %>
+              <div class="mt-2 pt-2 text-[11px] text-[#3A3936] italic leading-relaxed pl-3 border-l-2 border-[#D9D5CD]">
+                <%= lcd["supporting_documentation"] %>
+              </div>
+            <% end %>
           </div>
         <% end %>
       </section>
@@ -405,6 +455,20 @@
               </div>
             </div>
           </div>
+
+          <%# Additional symptom flags — delirium, active wounds,
+              infections. Render only when populated. %>
+          <% extra_sx = %w[delirium wounds infections].select { |k| sx[k].to_s.strip.present? } %>
+          <% if extra_sx.any? %>
+            <div class="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-[#EFECE6] text-[12px]">
+              <% extra_sx.each do |key| %>
+                <div>
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= key.titleize %></div>
+                  <div class="text-[#1D1C1A]"><%= sx[key] %></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
         </section>
       <% end %>
 
@@ -426,6 +490,17 @@
               <div class="text-[#1D1C1A] font-mono"><%= cog["bims_mmse_score"].presence || "—" %></div>
             </div>
           </div>
+          <% extra_cog = %w[orientation memory_loss decision_making_ability sundowning].select { |k| cog[k].to_s.strip.present? } %>
+          <% if extra_cog.any? %>
+            <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-[#EFECE6] text-[12px]">
+              <% extra_cog.each do |key| %>
+                <div>
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= key.tr("_", " ").titleize %></div>
+                  <div class="text-[#1D1C1A]"><%= cog[key] %></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
           <% if Array(cog["behavioral_symptoms"]).any? %>
             <div class="text-[11px] text-[#6B665F] mt-2">Behaviors: <%= Array(cog["behavioral_symptoms"]).join(", ") %></div>
           <% end %>
@@ -465,6 +540,22 @@
               <div class="text-[#1D1C1A]"><%= nut["intake"].presence || "—" %></div>
             </div>
           </div>
+
+          <%# Additional nutritional risk indicators — appetite,
+              dysphagia, tube feeding, hydration. Each renders only
+              when populated so a sparse intake-stage eval doesn't
+              show a wall of "—". %>
+          <% extra_nut = %w[appetite dysphagia tube_feeding hydration_status].select { |k| nut[k].to_s.strip.present? } %>
+          <% if extra_nut.any? %>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 pt-3 border-t border-[#EFECE6] text-[12px]">
+              <% extra_nut.each do |key| %>
+                <div>
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= key.tr("_", " ").titleize %></div>
+                  <div class="text-[#1D1C1A]"><%= nut[key] %></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
 
           <%# Decline trajectory since referral. Surveyors specifically
               look for documented decline between referral and admission
@@ -548,6 +639,23 @@
               <div class="text-[#1D1C1A]"><%= fd["mobility"].presence || "—" %></div>
             </div>
           </div>
+
+          <% if fd["fall_history"].present? || fd["recent_functional_changes"].present? %>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-[12px]">
+              <% if fd["fall_history"].present? %>
+                <div>
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Fall history</div>
+                  <div class="text-[#1D1C1A]"><%= fd["fall_history"] %></div>
+                </div>
+              <% end %>
+              <% if fd["recent_functional_changes"].present? %>
+                <div>
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Recent functional changes</div>
+                  <div class="text-[#1D1C1A]"><%= fd["recent_functional_changes"] %></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
 
           <% adl = fd["adl_dependencies"].is_a?(Hash) ? fd["adl_dependencies"] : {} %>
           <% if adl.values.compact_blank.any? %>
@@ -633,6 +741,111 @@
           <p class="text-[12px] text-[#3A3936] mt-3 italic"><%= gen["notes"] %></p>
         <% end %>
       </section>
+
+      <%# === Equipment ============================================
+          Granular equipment status (oxygen / hospital_bed / walker /
+          wheelchair / commode etc.). Renders only when at least one
+          item has a value. Complements the lighter `dme_needs` array
+          which captures upcoming requests. %>
+      <% eq = @eval.equipment %>
+      <% if eq.values.compact_blank.any? %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-tools-line text-[#6B665F]"></i> Equipment</h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
+            <% %w[oxygen hospital_bed walker wheelchair commode other].each do |item| %>
+              <% val = eq[item].to_s.strip %>
+              <% next if val.empty? %>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= item.tr("_", " ").titleize %></div>
+                <div class="text-[#1D1C1A]"><%= val %></div>
+              </div>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+
+      <%# === Final review =========================================
+          Free-text fields the RN writes to summarize eligibility,
+          prognosis, and the recommendation to the MD. These show up
+          on the printed PDF + travel into the certification packet. %>
+      <% fr = @eval.final_review_section %>
+      <% if fr["hospice_eligibility_statement"].present? || fr["prognosis_estimate"].present? || fr["rn_recommendation"].present? %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-quill-pen-line text-[#2B4A7A]"></i> RN final review</h2>
+          <% if fr["hospice_eligibility_statement"].present? %>
+            <div class="mb-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-0.5">Hospice eligibility statement</div>
+              <p class="text-[13px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= fr["hospice_eligibility_statement"] %></p>
+            </div>
+          <% end %>
+          <% if fr["prognosis_estimate"].present? %>
+            <div class="mb-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-0.5">Prognosis estimate</div>
+              <p class="text-[13px] text-[#1D1C1A] leading-relaxed"><%= fr["prognosis_estimate"] %></p>
+            </div>
+          <% end %>
+          <% if fr["rn_recommendation"].present? %>
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-0.5">RN recommendation</div>
+              <p class="text-[13px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= fr["rn_recommendation"] %></p>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
+
+      <%# === Referral context =====================================
+          Operational metadata from the referral that triggered the
+          eval (referring physician, location, insurance, family
+          caller). Useful for the MD reading the cert and for
+          future surveyor audit ("where did this patient come from?"). %>
+      <% rc = @eval.referral_context %>
+      <% if rc["referral_id"].present? || rc["referring_physician"].present? || rc["caller"].is_a?(Hash) %>
+        <section class="<%= card %>">
+          <h2 class="<%= h2 %>"><i class="ri-mail-send-line text-[#6B665F]"></i> Referral context</h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
+            <% if rc["referral_id"].present? %>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Referral ID</div>
+                <div class="text-[#1D1C1A] font-mono"><%= rc["referral_id"] %></div>
+              </div>
+            <% end %>
+            <% if rc["case_id"].present? %>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Case ID</div>
+                <div class="text-[#1D1C1A] font-mono"><%= rc["case_id"] %></div>
+              </div>
+            <% end %>
+            <% if rc["referring_physician"].present? %>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Referring MD</div>
+                <div class="text-[#1D1C1A]"><%= rc["referring_physician"] %></div>
+              </div>
+            <% end %>
+            <% if rc["location"].present? %>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Location</div>
+                <div class="text-[#1D1C1A]"><%= rc["location"] %></div>
+              </div>
+            <% end %>
+            <% if rc["insurance"].present? %>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Insurance</div>
+                <div class="text-[#1D1C1A]"><%= rc["insurance"] %></div>
+              </div>
+            <% end %>
+          </div>
+          <% caller = rc["caller"].is_a?(Hash) ? rc["caller"] : {} %>
+          <% if caller.values.compact_blank.any? %>
+            <div class="mt-3 pt-3 border-t border-[#EFECE6] text-[12px]">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Caller</div>
+              <div class="text-[#1D1C1A]">
+                <%= caller["name"] %><% if caller["relationship"].present? %> <span class="text-[#6B665F]">(<%= caller["relationship"] %>)</span><% end %>
+                <% if caller["phone"].present? %><span class="ml-2 font-mono text-[#6B665F]">· <%= caller["phone"] %></span><% end %>
+              </div>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
     </div>
 
     <%# Print-only signature footer. Renders only inside the printed

@@ -33,7 +33,7 @@ class PreAdmitEvalsController < ApplicationController
       header general_comments diagnosis current_medications other_symptoms
       cognitive_decline nutritional_decline functional_decline general
       informed_consent election_of_benefit financial_consent billing
-      final_review medicare_lcd_criteria
+      final_review medicare_lcd_criteria referral_context
     ].each do |section|
       next unless params.dig(:pre_admit_eval, section).is_a?(ActionController::Parameters) ||
                   params.dig(:pre_admit_eval, section).is_a?(Hash)
@@ -158,11 +158,39 @@ class PreAdmitEvalsController < ApplicationController
       reasoning: "MD certification by #{current_user.full_name}",
       source:    "ui:md_certify"
     })
+
+    # Notify the assigned RN (the one who did the admission visit)
+    # that their eval was certified. Goes through the same Notification
+    # → OutboundPing pipeline as everything else, so Pascal gets a
+    # Telegram / SMS / email ping if those channels are enabled.
+    notify_admission_rn_of_certification(@eval.reload)
+
     flash[:notice] = "Certification signed. Routed to Insurance for NOE filing."
-    redirect_to pre_admit_eval_path(@eval.reload)
+    redirect_to pre_admit_eval_path(@eval)
   end
 
   private
+
+  # Sends one Notification to the eval's evaluator (typically the
+  # admission RN) and another to the patient's assigned_rn if that's
+  # a different person. The Notification's after_create_commit hook
+  # auto-enqueues an OutboundPing for the user's preferred channels.
+  # Idempotent — Notification is keyed on (user, kind, linked_id).
+  def notify_admission_rn_of_certification(eval_rec)
+    targets = [eval_rec.evaluator, eval_rec.patient&.assigned_rn].compact.uniq
+    targets.each do |target|
+      next if Notification.exists?(user: target, kind: "pre_admit_certified", linked: eval_rec)
+      Notification.create!(
+        agency: eval_rec.agency,
+        user:   target,
+        kind:   "pre_admit_certified",
+        title:  "Pre-admit eval certified for #{eval_rec.patient&.full_name}",
+        linked: eval_rec
+      )
+    end
+  rescue => e
+    Rails.logger.warn("[pre_admit_evals#certify] notify failed: #{e.message}")
+  end
 
   def set_eval
     ActsAsTenant.with_tenant(current_user.agency) do
