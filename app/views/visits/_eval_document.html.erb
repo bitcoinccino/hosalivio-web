@@ -1,0 +1,210 @@
+<%# Document-style render of a PreAdmitEval, modeled on the EMR-style
+    pre-admit_note.txt the openclaw save_case script produces. Used
+    on the visit edit page when the visit is an admission with a
+    linked eval. Each section is read-only here; full editing happens
+    via "Edit eval" → /pre_admit_evals/:id/edit.
+
+    Local: `eval_rec` (PreAdmitEval), `visit` (Visit). %>
+<%
+  pae        = eval_rec.raw_json["pre_admit_eval"] || {}
+  hd         = eval_rec.header
+  gc         = eval_rec.general_comments
+  dx         = eval_rec.diagnosis_section
+  pdx        = dx["primary_terminal_diagnosis"].is_a?(Hash) ? dx["primary_terminal_diagnosis"] : {}
+  meds       = eval_rec.current_medications
+  sx         = eval_rec.other_symptoms
+  pain       = sx["pain"].is_a?(Hash) ? sx["pain"] : {}
+  dyspnea    = sx["dyspnea"].is_a?(Hash) ? sx["dyspnea"] : {}
+  gi         = sx["gi_symptoms"].is_a?(Hash) ? sx["gi_symptoms"] : {}
+  psy        = sx["psychosocial"].is_a?(Hash) ? sx["psychosocial"] : {}
+  cog        = eval_rec.cognitive_decline
+  nut        = eval_rec.nutritional_decline
+  fd         = eval_rec.functional_decline
+  adl        = fd["adl_dependencies"].is_a?(Hash) ? fd["adl_dependencies"] : {}
+  pps_obj    = eval_rec.pps_object.is_a?(Hash) ? eval_rec.pps_object : {}
+  gen        = eval_rec.general
+  equip      = eval_rec.equipment
+  fr         = eval_rec.final_review_section
+  lcd        = eval_rec.medicare_lcd
+  rc         = eval_rec.referral_context
+
+  unknown    = "Unknown"
+  blank_or   = ->(v) { v.to_s.strip.empty? ? unknown : v }
+
+  section_h  = "text-[10px] uppercase tracking-[0.2em] text-[#1D1C1A] font-bold mt-5 mb-1"
+  field_lbl  = "text-[#6B665F]"
+  field_val  = "text-[#1D1C1A] font-mono"
+
+  generated_at = Time.current
+%>
+<div class="rounded-2xl bg-white border border-[#EFECE6] p-6 font-mono text-[12px] text-[#1D1C1A] leading-relaxed">
+  <%# Document header — mirrors the openclaw pre-admit_note.txt
+      shape (Case ID, Clinician, Generated, status). %>
+  <div class="text-[14px] font-bold uppercase tracking-[0.15em] mb-3 border-b border-[#EFECE6] pb-2">
+    Hospice Pre-Admit Evaluation (<%= eval_rec.status.to_s.upcase %>)
+  </div>
+  <div><span class="<%= field_lbl %>">Case ID:</span> <span class="<%= field_val %>"><%= eval_rec.id %></span></div>
+  <div><span class="<%= field_lbl %>">Clinician:</span> <span class="<%= field_val %>"><%= eval_rec.evaluator&.full_name || hd["clinician_name"] %></span></div>
+  <div><span class="<%= field_lbl %>">Patient:</span> <span class="<%= field_val %>"><%= eval_rec.patient.full_name %> (MRN <%= eval_rec.patient.mrn %>)</span></div>
+  <div><span class="<%= field_lbl %>">Generated:</span> <span class="<%= field_val %>"><%= generated_at.iso8601 %></span></div>
+
+  <%# Each labeled block below maps 1:1 to the openclaw EMR-style
+      sections. Empty values render as "Unknown" so the document
+      always shows the structural skeleton, even on a sparse draft. %>
+
+  <% if gc["narrative_summary"].present? %>
+    <div class="<%= section_h %>">Nurse Narrative (Conversational):</div>
+    <div class="whitespace-pre-wrap font-serif text-[13px]"><%= gc["narrative_summary"] %></div>
+  <% end %>
+
+  <div class="<%= section_h %>">Chief Complaint:</div>
+  <div><%= blank_or.call(gc["chief_complaint"]) %></div>
+
+  <div class="<%= section_h %>">HPI:</div>
+  <div class="whitespace-pre-wrap"><%= blank_or.call(gc["history_of_present_illness"]) %></div>
+
+  <div class="<%= section_h %>">Primary Hospice Diagnosis:</div>
+  <div><%= [pdx["description"], pdx["icd10"]].compact_blank.join(" · ").presence || unknown %></div>
+
+  <div class="<%= section_h %>">Related Conditions:</div>
+  <div><%= Array(dx["related_conditions"]).join(", ").presence || unknown %></div>
+
+  <div class="<%= section_h %>">Unrelated Conditions:</div>
+  <div><%= Array(dx["unrelated_conditions"]).join(", ").presence || unknown %></div>
+
+  <div class="<%= section_h %>">Functional Status:</div>
+  <div><span class="<%= field_lbl %>">PPS:</span> <span class="<%= field_val %>"><%= pps_obj["score"].present? ? "#{pps_obj["score"]}%" : unknown %><%= " · #{pps_obj["source"]}" if pps_obj["source"].present? %></span></div>
+  <% if pps_obj["justification"].present? %>
+    <div class="text-[11px] text-[#6B665F] italic ml-2 whitespace-pre-wrap"><%= pps_obj["justification"] %></div>
+  <% end %>
+
+  <div class="<%= section_h %>">ADL Dependence:</div>
+  <% %w[bathing dressing toileting transferring continence feeding].each do |k| %>
+    <div>- <span class="<%= field_lbl %>"><%= k.titleize %>:</span> <%= blank_or.call(adl[k]) %></div>
+  <% end %>
+
+  <div class="<%= section_h %>">Mobility:</div>
+  <div><%= blank_or.call(fd["mobility"]) %></div>
+
+  <div class="<%= section_h %>">Fall History:</div>
+  <div><%= blank_or.call(fd["fall_history"]) %></div>
+
+  <div class="<%= section_h %>">Recent Functional Changes:</div>
+  <div class="whitespace-pre-wrap"><%= blank_or.call(fd["recent_functional_changes"]) %></div>
+
+  <div class="<%= section_h %>">Nutritional Status:</div>
+  <div><span class="<%= field_lbl %>">Appetite/Intake:</span> <%= blank_or.call(nut["appetite"] || nut["intake"]) %></div>
+  <div><span class="<%= field_lbl %>">Weight loss:</span> <%= [nut["weight_loss_lbs"] && "#{nut["weight_loss_lbs"]} lb", nut["weight_loss_pct"] && "#{nut["weight_loss_pct"]}%"].compact_blank.join(" · ").presence || unknown %></div>
+  <div><span class="<%= field_lbl %>">Percent weight loss (6 mo):</span> <%= nut["weight_loss_pct"].present? ? "#{nut["weight_loss_pct"]}%" : unknown %></div>
+  <div><span class="<%= field_lbl %>">Albumin:</span> <%= nut["albumin_g_dl"].present? ? "#{nut["albumin_g_dl"]} g/dL" : unknown %></div>
+  <div><span class="<%= field_lbl %>">Dysphagia:</span> <%= blank_or.call(nut["dysphagia"]) %></div>
+  <div><span class="<%= field_lbl %>">Tube feeding:</span> <%= blank_or.call(nut["tube_feeding"]) %></div>
+  <div><span class="<%= field_lbl %>">Hydration:</span> <%= blank_or.call(nut["hydration_status"]) %></div>
+
+  <div class="<%= section_h %>">Cognitive Status:</div>
+  <div><span class="<%= field_lbl %>">Orientation:</span> <%= blank_or.call(cog["orientation"] || cog["mental_status"]) %></div>
+  <div><span class="<%= field_lbl %>">Memory loss:</span> <%= blank_or.call(cog["memory_loss"]) %></div>
+  <div><span class="<%= field_lbl %>">Decision making:</span> <%= blank_or.call(cog["decision_making_ability"]) %></div>
+  <div><span class="<%= field_lbl %>">Behavior changes:</span> <%= Array(cog["behavioral_symptoms"]).join(", ").presence || unknown %></div>
+  <div><span class="<%= field_lbl %>">Sundowning:</span> <%= blank_or.call(cog["sundowning"]) %></div>
+  <div><span class="<%= field_lbl %>">FAST:</span> <%= cog["fast_score"] %></div>
+
+  <div class="<%= section_h %>">Symptoms:</div>
+  <div><span class="<%= field_lbl %>">Pain:</span> <%= pain["score"].to_i.positive? ? "#{pain["score"]}/10#{pain["location"].present? ? " (#{pain["location"]})" : ''}" : unknown %></div>
+  <div><span class="<%= field_lbl %>">Dyspnea:</span> <%= blank_or.call(dyspnea["severity"]) %></div>
+  <div><span class="<%= field_lbl %>">Nausea:</span> <%= blank_or.call(gi["nausea"]) %></div>
+  <div><span class="<%= field_lbl %>">Anxiety:</span> <%= blank_or.call(psy["anxiety"]) %></div>
+  <div><span class="<%= field_lbl %>">Wounds:</span> <%= blank_or.call(sx["wounds"]) %></div>
+  <div><span class="<%= field_lbl %>">Delirium:</span> <%= blank_or.call(sx["delirium"]) %></div>
+  <div><span class="<%= field_lbl %>">Infections:</span> <%= blank_or.call(sx["infections"]) %></div>
+
+  <div class="<%= section_h %>">Equipment:</div>
+  <% %w[oxygen walker wheelchair hospital_bed commode other].each do |k| %>
+    <div><span class="<%= field_lbl %>"><%= k.tr("_", " ").titleize %>:</span> <%= blank_or.call(equip[k]) %></div>
+  <% end %>
+
+  <div class="<%= section_h %>">Diagnosis / Coding:</div>
+  <div><span class="<%= field_lbl %>">Primary ICD-10:</span> <span class="<%= field_val %>"><%= pdx["icd10"] %></span></div>
+  <div><span class="<%= field_lbl %>">Secondary ICD-10:</span> <span class="<%= field_val %>"><%= Array(dx["secondary_diagnoses"]).map { |s| s.is_a?(Hash) ? s["icd10"] : s }.compact_blank.join(", ") %></span></div>
+
+  <div class="<%= section_h %>">Medicare LCD Support:</div>
+  <% if lcd["lcd_type"].present? %>
+    <div><span class="<%= field_lbl %>">LCD type:</span> <%= lcd["lcd_type"] %></div>
+  <% end %>
+  <div><span class="<%= field_lbl %>">Criteria met:</span></div>
+  <% Array(dx["lcd_criteria_met"]).each do |c| %>
+    <div class="ml-3">- <%= c %></div>
+  <% end %>
+  <% if Array(dx["lcd_criteria_met"]).empty? %>
+    <div class="ml-3 italic text-[#6B665F]">None recorded</div>
+  <% end %>
+  <% if (sd = lcd["supporting_documentation"]).present? %>
+    <div class="<%= field_lbl %> mt-1">Supporting documentation:</div>
+    <div class="whitespace-pre-wrap ml-3"><%= sd %></div>
+  <% end %>
+
+  <% if meds.any? %>
+    <div class="<%= section_h %>">Current Medications:</div>
+    <% meds.each do |m| %>
+      <% next unless m.is_a?(Hash) %>
+      <div>- <span class="<%= field_val %>"><%= m["name"] %> <%= m["dose"] %></span> · <%= [m["route"], m["frequency"]].compact_blank.join(" ") %><%= " · for #{m["indication"]}" if m["indication"].present? %></div>
+    <% end %>
+  <% end %>
+
+  <% if fr["hospice_eligibility_statement"].present? || fr["prognosis_estimate"].present? || fr["rn_recommendation"].present? %>
+    <div class="<%= section_h %>">Final Review:</div>
+    <% if fr["hospice_eligibility_statement"].present? %>
+      <div><span class="<%= field_lbl %>">Hospice eligibility statement:</span></div>
+      <div class="whitespace-pre-wrap ml-3"><%= fr["hospice_eligibility_statement"] %></div>
+    <% end %>
+    <% if fr["prognosis_estimate"].present? %>
+      <div class="mt-1"><span class="<%= field_lbl %>">Prognosis estimate:</span> <%= fr["prognosis_estimate"] %></div>
+    <% end %>
+    <% if fr["rn_recommendation"].present? %>
+      <div class="mt-1"><span class="<%= field_lbl %>">RN recommendation:</span></div>
+      <div class="whitespace-pre-wrap ml-3"><%= fr["rn_recommendation"] %></div>
+    <% end %>
+  <% end %>
+
+  <% if rc["referral_id"].present? || rc["referring_physician"].present? %>
+    <div class="<%= section_h %>">Referral Context:</div>
+    <% rc.each do |k, v| %>
+      <% next if v.blank? || v.is_a?(Hash) %>
+      <div><span class="<%= field_lbl %>"><%= k.titleize %>:</span> <%= v %></div>
+    <% end %>
+    <% if (caller = rc["caller"]).is_a?(Hash) && caller.values.compact_blank.any? %>
+      <div><span class="<%= field_lbl %>">Caller:</span> <%= caller["name"] %><%= " (#{caller["relationship"]})" if caller["relationship"].present? %><%= " · #{caller["phone"]}" if caller["phone"].present? %></div>
+    <% end %>
+  <% end %>
+
+  <%# Signatures block — placeholder lines for paper signing, plus
+      electronic stamp when MD has certified. %>
+  <div class="<%= section_h %>">Signatures:</div>
+  <div class="mt-2">
+    RN: <span class="<%= field_val %>">_______________________________</span>
+    Date: <span class="<%= field_val %>">__________</span>
+  </div>
+  <% if eval_rec.status_certified? && eval_rec.certified_by.present? %>
+    <div class="mt-2">
+      MD: <span class="<%= field_val %>"><%= eval_rec.certified_by.full_name %>, MD (electronically signed)</span>
+      Date: <span class="<%= field_val %>"><%= eval_rec.certified_at.strftime("%Y-%m-%d") %></span>
+    </div>
+  <% else %>
+    <div class="mt-2">
+      MD: <span class="<%= field_val %>">_______________________________</span>
+      Date: <span class="<%= field_val %>">__________</span>
+      <span class="text-[11px] text-[#6B665F] italic ml-2">(pending certification)</span>
+    </div>
+  <% end %>
+
+  <div class="mt-5 pt-3 border-t border-[#EFECE6] flex items-center gap-3 flex-wrap">
+    <%= link_to edit_pre_admit_eval_path(eval_rec),
+          class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#223d66] text-white font-medium" do %>
+      <i class="ri-edit-line"></i> Edit eval sections
+    <% end %>
+    <%= link_to pre_admit_eval_path(eval_rec),
+          class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-white" do %>
+      <i class="ri-external-link-line"></i> Open eval show page
+    <% end %>
+  </div>
+</div>

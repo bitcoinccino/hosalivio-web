@@ -155,38 +155,23 @@
     <%= metadata_block %>
   <% end %>
 
-  <% mic = mic_controller_name(current_user.agency) %>
-  <%# vitals-extractor-auto-extract-value flips the extractor's
-      connect() to auto-run on page load when the RN just landed
-      from the recording screen (?just_recorded=1 in the URL). %>
-  <div data-controller="<%= mic %> vitals-extractor"
-       data-<%= mic %>-lang-value="en-US"
+  <%# Edit page is text-only. All recording (mic + audio capture)
+      happens at /visits/:id/record — the dedicated recording page.
+      The Dictate button + bedside MediaRecorder block were removed;
+      the RN edits the saved chart entry here, doesn't re-record. %>
+  <div data-controller="vitals-extractor"
        data-vitals-extractor-auto-extract-value="<%= local_assigns[:just_recorded] ? 'true' : 'false' %>"
        class="space-y-3">
     <div>
       <div class="flex items-center justify-between mb-1">
-        <%= f.label :narrative, "Narrative" + (completed ? "" : " (optional, can fill at the bedside)"), class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium" %>
+        <%= f.label :narrative, "Narrative", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium" %>
         <% if completed %>
           <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-2 py-0.5 font-bold">
             <i class="ri-lock-2-line"></i> Locked
           </span>
-        <% else %>
-          <div class="flex items-center gap-2">
-            <span data-<%= mic %>-target="status" class="text-[11px] text-[#6B665F]"></span>
-            <button type="button"
-                    data-action="click-><%= mic %>#toggle"
-                    data-<%= mic %>-target="button"
-                    class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#FBF9F5] text-[#D97757] hover:bg-[#EFECE6] border border-[#EFECE6] transition"
-                    title="Tap to dictate">
-              <i class="ri-mic-line"></i> Dictate
-            </button>
-          </div>
         <% end %>
       </div>
       <% if completed %>
-        <%# Hidden round-trip so the locked narrative value is
-            re-submitted alongside vitals/metadata edits without
-            getting nulled out on save. %>
         <%= f.hidden_field :narrative %>
         <% has_raw = @visit.narrative_raw.present? && @visit.narrative_raw != @visit.narrative %>
         <% if has_raw %>
@@ -199,9 +184,6 @@
           <%= @visit.narrative.presence || content_tag(:span, "No narrative recorded.", class: "text-[#6B665F] italic") %>
         </div>
         <% if has_raw %>
-          <%# Original voice transcript stays accessible for surveyors
-              and any clinician who wants to verify the polish didn't
-              add or drop facts. Collapsed by default. %>
           <details class="mt-2 rounded-xl border border-[#EFECE6] bg-white">
             <summary class="cursor-pointer list-none flex items-center justify-between px-3 py-2 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
               <span class="inline-flex items-center gap-1.5">
@@ -219,68 +201,23 @@
           <span>Narrative is part of the medical record. To add a correction, create a late-entry note from the patient chart.</span>
         </div>
       <% else %>
-        <%= f.text_area :narrative, rows: 4,
-              data: { "#{mic}_target": "output", vitals_extractor_target: "narrative" },
-              placeholder: "Type, or tap Dictate to speak. e.g. \"BP 128/76, pulse 88, pain 4/10. Patient resting comfortably after morphine dose.\"",
-              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+        <%= f.text_area :narrative, rows: 6,
+              data: { vitals_extractor_target: "narrative" },
+              placeholder: "Edit the recorded narrative here. To capture new audio, use Record on the patient chart instead.",
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-serif leading-relaxed" %>
       <% end %>
     </div>
 
-    <%# Clinical audio recorder — separate from Dictate. Captures the
-        bedside (breath sounds, family voice, exact phrasing) as an
-        ActiveStorage attachment on the Visit. Played back from the
-        chart. Uses MediaRecorder + a hidden file input so the blob
-        ships with the normal form submit. Hidden on completed visits
-        — once the chart entry is saved, the audio is frozen. %>
-    <div data-controller="audio-recorder" class="<%= 'hidden' if completed %> rounded-xl border border-dashed border-[#D9D5CD] bg-white p-3">
-      <div class="flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-medium">Bedside audio (optional)</div>
-          <div class="text-[11px] text-[#6B665F] mt-0.5">Records breath sounds, family voice, exact phrasing — saved with this visit.</div>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <span data-audio-recorder-target="timer" class="text-[11px] font-mono text-[#6B665F] min-w-[3ch] text-right"></span>
-          <button type="button"
-                  data-action="click->audio-recorder#togglePause"
-                  data-audio-recorder-target="pauseButton"
-                  class="hidden w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#3A3936] flex items-center justify-center transition"
-                  title="Pause / resume">
-            <i class="ri-pause-line"></i>
-          </button>
-          <button type="button"
-                  data-action="click->audio-recorder#toggle"
-                  data-audio-recorder-target="recordButton"
-                  data-state="idle"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FBF9F5] text-[#C1403A] hover:bg-[#FFEDE2] border border-[#EFECE6] transition text-[12px] font-medium"
-                  title="Record bedside audio">
-            <i class="ri-voiceprint-line"></i>
-            <span>Record</span>
-          </button>
-        </div>
+    <%# Saved bedside audio — read-only playback when the recording
+        page captured it. Purely informational here; new audio
+        capture lives only on the recording page. %>
+    <% if @visit.persisted? && @visit.audio_note.attached? %>
+      <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3 flex items-center gap-2">
+        <i class="ri-voiceprint-line text-[#D97757]"></i>
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-medium">Saved bedside audio</div>
+        <%= audio_tag url_for(@visit.audio_note), controls: true, class: "flex-1 h-9" %>
       </div>
-
-      <%# File input is hidden — the recorder's MediaRecorder Blob is
-          stuffed into .files via DataTransfer on stop, so the form
-          submit ships the audio as visit[audio_note]. %>
-      <%= f.file_field :audio_note, accept: "audio/*", class: "hidden", data: { "audio-recorder-target": "fileInput" } %>
-
-      <div data-audio-recorder-target="preview" hidden class="mt-3 flex items-center gap-2">
-        <audio data-audio-recorder-target="player" controls class="flex-1 h-9"></audio>
-        <button type="button"
-                data-action="click->audio-recorder#discard"
-                class="text-[11px] text-[#6B665F] hover:text-[#C1403A] underline"
-                title="Discard this recording">
-          Remove
-        </button>
-      </div>
-
-      <% if @visit.persisted? && @visit.audio_note.attached? %>
-        <div class="mt-3 flex items-center gap-2">
-          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Saved audio:</div>
-          <%= audio_tag url_for(@visit.audio_note), controls: true, class: "flex-1 h-9" %>
-        </div>
-      <% end %>
-    </div>
+    <% end %>
 
     <%# On completed visits the audio recorder block above is hidden,
         but we still want playback if there's saved audio. Surface it
