@@ -1,0 +1,51 @@
+<%# Card body for the Overdue comfort meds section. Locals:
+    `overdue_meds` (array of { order:, schedule: } hashes) and
+    `viewer_user_id` for stable turbo-frame nesting. Wrapped in a
+    turbo-frame so live broadcasts can replace just this body. %>
+<%= turbo_frame_tag "dashboard-overdue-meds-#{viewer_user_id}" do %>
+  <section class="rounded-2xl bg-white border-2 <%= overdue_meds.any? ? 'border-[#C1403A]' : 'border-[#EFECE6]' %> overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+      <h3 class="text-[11px] uppercase tracking-widest font-bold flex items-center gap-2 <%= overdue_meds.any? ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+        <i class="ri-capsule-line"></i> Overdue comfort meds (<%= overdue_meds.size %>)
+      </h3>
+    </div>
+    <% if overdue_meds.empty? %>
+      <div class="px-5 py-6 text-center text-[12px] text-[#6B665F]">All meds on time.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]" data-controller="dashboard-clock">
+        <% overdue_meds.each do |row| %>
+          <% o = row[:order]; s = row[:schedule] %>
+          <li class="px-5 py-3">
+            <div class="flex items-baseline justify-between gap-2 mb-1">
+              <%= link_to patient_path(o.patient), class: "text-[13px] text-[#1D1C1A] truncate hover:underline font-medium" do %>
+                <%= o.drug_name %> <%= o.dose %>
+              <% end %>
+              <%# data-since lets the dashboard-clock controller
+                  re-render this label every 30s so "51h 51m" ticks
+                  forward without needing a full page refresh. %>
+              <div class="text-[11px] text-[#C1403A] font-bold flex-shrink-0"
+                   data-dashboard-clock-target="overdueLabel"
+                   data-since="<%= s[:next_due_at]&.iso8601 %>">
+                <%= s[:label] %>
+              </div>
+            </div>
+            <div class="text-[11px] text-[#6B665F] truncate"><%= o.patient.full_name %> · <%= o.route.upcase %> · <%= o.frequency %></div>
+            <div class="mt-2 flex items-center gap-2">
+              <%= button_to medication_logs_path(medication_order_id: o.id),
+                    method: :post,
+                    data: { turbo_confirm: "Log #{o.drug_name} #{o.dose} as given to #{o.patient.full_name} right now?" },
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
+                <i class="ri-check-line"></i> Mark as given
+              <% end %>
+              <%= button_to escalate_medication_logs_path(medication_order_id: o.id),
+                    method: :post,
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+                <i class="ri-stethoscope-line"></i> Escalate to MD
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+<% end %>

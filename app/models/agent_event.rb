@@ -18,6 +18,31 @@ class AgentEvent < ApplicationRecord
   # and depth-capped inside AgentResponseJob / AgentBrain.
   after_create_commit :wake_target_agent, if: -> { action.to_s == "handoff" }
 
+  # Live-update My Day for clinicians whose role queue this handoff
+  # targets (e.g. action="handoff" + target_role="rn" refreshes every
+  # RN's Handoffs Waiting card without a page reload).
+  after_create_commit :broadcast_dashboard_handoff, if: -> { action.to_s == "handoff" }
+
+  def broadcast_dashboard_handoff
+    role = change_set.is_a?(Hash) ? change_set["target_role"].to_s : nil
+    return if role.blank?
+    User.unscoped
+        .where(agency_id: agency_id, active: true, family_access: false)
+        .joins(user_roles: :role)
+        .where(roles: { name: role })
+        .find_each do |target|
+      data = DashboardData.for(target)
+      Turbo::StreamsChannel.broadcast_replace_to(
+        "dashboard:user:#{target.id}",
+        target:  "dashboard-handoffs-#{target.id}",
+        partial: "dashboards/handoffs_card",
+        locals:  { pending_handoffs: data.pending_handoffs, viewer_user_id: target.id }
+      )
+    end
+  rescue => e
+    Rails.logger.warn("[AgentEvent#broadcast_dashboard_handoff] #{e.class}: #{e.message}")
+  end
+
   def wake_target_agent
     AgentResponseJob.perform_later(id)
   end

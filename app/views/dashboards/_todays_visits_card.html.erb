@@ -1,0 +1,57 @@
+<%# Card body for the Today's Visits section. Locals:
+    `todays_visits` (Visit collection) and `viewer_user_id`. %>
+<%= turbo_frame_tag "dashboard-todays-visits-#{viewer_user_id}" do %>
+  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-calendar-line"></i> Today's visits (<%= todays_visits.size %>)</h3>
+      <%= link_to "Full calendar", calendar_path, class: "text-[11px] text-[#D97757] hover:underline" %>
+    </div>
+    <% if todays_visits.empty? %>
+      <div class="px-5 py-10 text-center text-[13px] text-[#6B665F]">
+        Nothing scheduled for today. Enjoy the calm.
+      </div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% todays_visits.each do |v| %>
+          <li class="flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition">
+            <div class="text-[13px] font-mono text-[#1D1C1A] w-20 flex-shrink-0"><%= v.anchor_start&.strftime("%-l:%M %p") %></div>
+            <%= link_to patient_path(v.patient), class: "flex-1 min-w-0" do %>
+              <div class="text-[14px] text-[#1D1C1A] truncate"><%= v.patient&.full_name %></div>
+              <div class="text-[11px] text-[#6B665F] truncate">
+                <%= v.visit_type.to_s.tr("_", " ") %>
+                <% if v.service_location.to_s != "home" %>
+                  · <%= v.service_location.to_s.tr("_", " ") %>
+                  <% if v.facility_name.present? %> (<%= v.facility_name %>)<% end %>
+                <% else %>
+                  · home
+                <% end %>
+              </div>
+            <% end %>
+            <% if v.agent_authored %>
+              <span title="AI-scheduled" class="text-[#6B665F] flex-shrink-0">🤖</span>
+            <% end %>
+            <% if v.ended_at %>
+              <%= link_to edit_visit_path(v),
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white font-medium flex-shrink-0" do %>
+                <i class="ri-edit-2-line"></i> Completed
+              <% end %>
+            <% elsif v.started_at %>
+              <%= link_to edit_visit_path(v),
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium flex-shrink-0",
+                    title: "Continue this visit" do %>
+                <i class="ri-pause-circle-line"></i> In progress
+              <% end %>
+            <% else %>
+              <%= button_to begin_visit_path(v), method: :post,
+                    form: { class: "inline" },
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium flex-shrink-0",
+                    title: "Start timer + open documentation" do %>
+                <i class="ri-mic-line"></i> Start visit
+              <% end %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+<% end %>

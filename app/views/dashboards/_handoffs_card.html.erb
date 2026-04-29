@@ -1,0 +1,70 @@
+<%# Card body for the Handoffs Waiting section. Locals:
+    `pending_handoffs` (AgentEvent collection) and `viewer_user_id`. %>
+<%= turbo_frame_tag "dashboard-handoffs-#{viewer_user_id}" do %>
+  <% sorted_handoffs = pending_handoffs.sort_by { |ev|
+       u = ev.change_set.is_a?(Hash) ? ev.change_set["urgency"].to_s : ""
+       rank = { "crisis" => 0, "urgent" => 1 }[u] || 2
+       [rank, -(ev.happened_at&.to_i || 0)]
+     } %>
+  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6]">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-send-plane-2-line"></i> Handoffs waiting for you (<%= sorted_handoffs.size %>)</h3>
+    </div>
+    <% if sorted_handoffs.empty? %>
+      <div class="px-5 py-6 text-center text-[12px] text-[#6B665F]">Nothing pending.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% sorted_handoffs.each do |ev| %>
+          <%
+            change       = ev.change_set.is_a?(Hash) ? ev.change_set : {}
+            intent_label = (change["intent"] || "handoff").to_s.tr("_", " ").capitalize
+            resolved_patient = if ev.subject.is_a?(Patient)
+                                 ev.subject
+                               elsif ev.subject.respond_to?(:patient)
+                                 ev.subject.patient
+                               end
+            patient_name = resolved_patient&.full_name.presence ||
+                           change["patient_name"].presence ||
+                           "Unknown patient"
+            detail_bits = []
+            detail_bits << "ICD #{change['primary_icd10']}" if change["primary_icd10"].present?
+            detail_bits << "drug: #{change['drug']}"        if change["drug"].present?
+            if change["blockers"].is_a?(Array) && change["blockers"].any?
+              detail_bits << "needs #{change['blockers'].first}"
+            end
+            raised_by = change["raised_by"].presence
+            urgency   = change["urgency"].to_s
+            deep_link = if resolved_patient
+                          patient_path(resolved_patient)
+                        elsif ev.subject.respond_to?(:patient_id) && ev.subject.patient_id
+                          patient_path(ev.subject.patient_id)
+                        else
+                          "#"
+                        end
+          %>
+          <li>
+            <%= link_to deep_link, class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <div class="flex items-baseline justify-between gap-2">
+                <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= patient_name %></div>
+                <span class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= ev.happened_at&.strftime("%-l:%M %p") %></span>
+              </div>
+              <div class="text-[12px] text-[#3A3936] mt-0.5 truncate">
+                <%= intent_label %><% if detail_bits.any? %> · <%= detail_bits.join(" · ") %><% end %>
+              </div>
+              <div class="flex items-center gap-2 mt-1">
+                <% if %w[crisis urgent].include?(urgency) %>
+                  <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded <%= urgency == 'crisis' ? 'bg-[#C1403A] text-white' : 'bg-[#D97757] text-white' %>">
+                    <%= urgency %>
+                  </span>
+                <% end %>
+                <% if raised_by %>
+                  <span class="text-[10px] text-[#6B665F]">from <%= raised_by %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+<% end %>

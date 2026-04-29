@@ -51,6 +51,32 @@ class Visit < ApplicationRecord
   validate  :ended_after_started
   validate  :no_overlap_with_clinicians_other_visits
 
+  # Live-update the assigned clinician's Today's Visits card when
+  # the visit transitions (started_at / ended_at flips). Refresh on
+  # create too so a brand-new scheduled visit shows up without page
+  # reload for the assignee.
+  after_commit :broadcast_dashboard_visit_change, on: %i[create update],
+               if: :affects_dashboard?
+
+  def affects_dashboard?
+    return true if previous_changes.key?("started_at") || previous_changes.key?("ended_at")
+    return true if previous_changes.key?("scheduled_at") || previous_changes.key?("user_id")
+    false
+  end
+
+  def broadcast_dashboard_visit_change
+    return unless user
+    data = DashboardData.for(user)
+    Turbo::StreamsChannel.broadcast_replace_to(
+      "dashboard:user:#{user.id}",
+      target:  "dashboard-todays-visits-#{user.id}",
+      partial: "dashboards/todays_visits_card",
+      locals:  { todays_visits: data.todays_visits, viewer_user_id: user.id }
+    )
+  rescue => e
+    Rails.logger.warn("[Visit#broadcast_dashboard_visit_change] #{e.class}: #{e.message}")
+  end
+
   # Minutes of drive time we assume before AND after any visit.
   # Hospice nursing is mobile; this is the windshield buffer rule.
   WINDSHIELD_BUFFER_MINUTES = 30
