@@ -106,10 +106,68 @@
             the card refreshes itself without a full page reload. %>
         <%= turbo_stream_from "dashboard:user:#{current_user.id}" %>
 
-        <%# ── Top action row ───────────────────────────────────
-            Two urgent cards side-by-side on wide screens, stacked
-            on narrow. Overdue meds (left) is patient-safety, handoffs
-            (right) is incoming work. %>
+        <%# ── Daily context row (top) ───────────────────────────
+            Today's visits + My caseload — what an RN opens the app
+            to see first ("what am I doing today, who am I
+            responsible for"). Side-by-side on wide screens, stacked
+            on narrow. %>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <%= render "dashboards/todays_visits_card",
+                todays_visits:  @todays_visits,
+                viewer_user_id: current_user.id %>
+
+          <%# Caseload card — kept inline (no partial yet) since it
+              doesn't have a live broadcast hook. Same visual shape
+              as the other cards. %>
+          <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+            <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+              <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+                <i class="ri-team-line"></i> My caseload (<%= @caseload.count %><% if current_user.max_caseload.to_i > 0 %>/<%= current_user.max_caseload %><% end %>)
+              </h3>
+            </div>
+            <% if @caseload.empty? %>
+              <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No assigned patients.</div>
+            <% else %>
+              <ul class="divide-y divide-[#EFECE6]">
+                <% @caseload.each do |p| %>
+                  <%
+                    last_visit = p.visits.where("started_at IS NOT NULL").order(started_at: :desc).first
+                    last_seen  = last_visit&.started_at&.strftime("%b %-d")
+                  %>
+                  <li>
+                    <%= link_to patient_path(p), class: "flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+                      <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#EFECE6] text-[#1D1C1A] text-[12px] font-bold flex items-center justify-center">
+                        <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <span class="text-[14px] text-[#1D1C1A] truncate"><%= p.full_name %></span>
+                          <% if p.dnr? || p.dnr_dni? %>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">DNR</span>
+                          <% end %>
+                        </div>
+                        <div class="text-[11px] text-[#6B665F] truncate">
+                          <span class="font-mono"><%= p.mrn %></span>
+                          <% if p.primary_diagnosis.present? %> · <%= p.primary_diagnosis.to_s[0, 50] %><% end %>
+                        </div>
+                      </div>
+                      <div class="text-right flex-shrink-0">
+                        <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Last seen</div>
+                        <div class="text-[11px] font-mono text-[#1D1C1A]"><%= last_seen || "—" %></div>
+                      </div>
+                    <% end %>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </section>
+        </div>
+
+        <%# ── Action / alerts row (bottom) ─────────────────────
+            Overdue meds + Handoffs. These are exception alerts that
+            sit BELOW the daily context — they're loud (red borders,
+            crisis pills) so they don't get missed even when not at
+            the top. %>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <%= render "dashboards/overdue_meds_card",
                 overdue_meds:   @overdue_meds,
@@ -118,55 +176,6 @@
                 pending_handoffs: @pending_handoffs,
                 viewer_user_id:   current_user.id %>
         </div>
-
-        <%# ── Today's visits ──────────────────────────────── %>
-        <%= render "dashboards/todays_visits_card",
-              todays_visits:  @todays_visits,
-              viewer_user_id: current_user.id %>
-
-        <!-- My caseload -->
-        <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
-          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
-            <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
-              <i class="ri-team-line"></i> My caseload (<%= @caseload.count %><% if current_user.max_caseload.to_i > 0 %>/<%= current_user.max_caseload %><% end %>)
-            </h3>
-          </div>
-          <% if @caseload.empty? %>
-            <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No assigned patients.</div>
-          <% else %>
-            <ul class="divide-y divide-[#EFECE6]">
-              <% @caseload.each do |p| %>
-                <%
-                  last_visit = p.visits.where("started_at IS NOT NULL").order(started_at: :desc).first
-                  last_seen  = last_visit&.started_at&.strftime("%b %-d")
-                %>
-                <li>
-                  <%= link_to patient_path(p), class: "flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
-                    <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#EFECE6] text-[#1D1C1A] text-[12px] font-bold flex items-center justify-center">
-                      <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
-                        <span class="text-[14px] text-[#1D1C1A] truncate"><%= p.full_name %></span>
-                        <% if p.dnr? || p.dnr_dni? %>
-                          <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">DNR</span>
-                        <% end %>
-                      </div>
-                      <div class="text-[11px] text-[#6B665F] truncate">
-                        <span class="font-mono"><%= p.mrn %></span>
-                        <% if p.primary_diagnosis.present? %> · <%= p.primary_diagnosis.to_s[0, 50] %><% end %>
-                      </div>
-                    </div>
-                    <div class="text-right flex-shrink-0">
-                      <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Last seen</div>
-                      <div class="text-[11px] font-mono text-[#1D1C1A]"><%= last_seen || "—" %></div>
-                    </div>
-                  <% end %>
-                </li>
-              <% end %>
-            </ul>
-          <% end %>
-        </section>
       </div>
     </div>
   </main>
