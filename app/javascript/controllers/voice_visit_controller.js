@@ -244,7 +244,22 @@ export default class extends Controller {
   }
 
   cancel(event) {
-    // The cancel link is a real <a>; let it navigate but stop streams first.
+    // The cancel link is a real <a>; let it navigate but stop
+    // streams first. Critical: detach the MediaRecorder.onstop
+    // handler before _teardown() so we DON'T accidentally fire
+    // _finalizeAndUpload — that PATCH would push the captured
+    // audio + transcript into the visit and the server-side
+    // discard would then refuse to destroy it (visit no longer
+    // "empty"). This is the difference between Cancel and Stop.
+    this._cancelling = true
+    if (this._recorder) {
+      this._recorder.onstop = null
+      this._recorder.ondataavailable = null
+    }
+    if (this._asr && typeof this._asr.stop === "function") {
+      try { this._asr.stop() } catch (_) {}
+      this._asr = null
+    }
     this._teardown()
     // No preventDefault — let the link follow.
     return true
@@ -483,6 +498,10 @@ export default class extends Controller {
   }
 
   _finalizeAndUpload() {
+    // Bail if the user explicitly cancelled — Cancel must NOT
+    // PATCH audio + transcript, otherwise the visit becomes
+    // "non-empty" and the server-side discard refuses to destroy.
+    if (this._cancelling) return
     const type = this._recorder.mimeType || "audio/webm"
     const ext  = type.includes("ogg") ? "ogg" : (type.includes("mp4") ? "m4a" : "webm")
     const blob = new Blob(this._audioChunks, { type })

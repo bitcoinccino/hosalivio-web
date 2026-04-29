@@ -285,8 +285,11 @@
         narrative gets saved on Stop. %>
     <div data-voice-visit-target="transcript"
          class="w-full max-w-[640px] min-h-[60px] max-h-[120px] overflow-y-auto rounded-2xl bg-white/5 border border-white/10 p-3 text-[13px] text-white/90 leading-relaxed font-serif italic whitespace-pre-wrap">
-      <%# Filled by the controller as Web Speech delivers interim + final results %>
-      <span class="text-white/40 not-italic">Recording the full visit. Your words and the patient's words appear here. Tap the buttons above to label who is speaking.</span>
+      <%# Filled by the controller as the recognizer delivers interim
+          + final results. Copy stays mode-agnostic because the
+          speaker-tag pills only appear in Web Speech fallback —
+          Deepgram auto-tags via diarization. %>
+      <span class="text-white/40 not-italic">Recording the full visit. Your words and the patient's words will appear here as you speak.</span>
     </div>
 
     <div class="text-[11px] text-white/40 text-center">
