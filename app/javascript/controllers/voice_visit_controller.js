@@ -34,7 +34,10 @@ export default class extends Controller {
   static targets = ["timer", "status", "canvas", "transcript",
                     "recordButton", "recordIcon", "pauseButton", "stopButton",
                     "consentPanel", "typePickerPanel", "stage",
-                    "langButton", "langFlag", "langLabel", "langMenu", "syncLangCheckbox"]
+                    "langButton", "langFlag", "langLabel", "langMenu", "syncLangCheckbox",
+                    "speakerPills", "soloButton",
+                    "asrBadge", "asrDot", "asrMode",
+                    "asrToast", "asrToastText"]
   static values = {
     updateUrl:        String,
     editUrl:          String,
@@ -282,6 +285,7 @@ export default class extends Controller {
 
     this._recorder.start(1000)
     this._listening = true
+    this._paintAsrMode(this._asrConfig.provider, { mid: false })
     this._setStatus(this._asrConfig.provider === "deepgram" ? "Recording (Deepgram)…" : "Recording…")
     this._paintRecording()
     this._showStopAndPause()
@@ -315,18 +319,102 @@ export default class extends Controller {
       websocketUrl: cfg.websocket_url,
       token:        cfg.token,
       onTranscript: ({ kind, text, latest, speechFinal }) => {
+        // When Solo dictation is on, strip Deepgram's [Speaker N:]
+        // tags so the transcript reads as one continuous narrative.
+        const strip = (s) => this._solo ? s.replace(/\[Speaker \d+:\]\s*/gi, "").replace(/\n+/g, " ").trim() : s
         if (kind === "final") {
-          this._finalText   = text
+          this._finalText   = strip(text)
           this._interimText = ""
         } else {
-          this._interimText = latest
+          this._interimText = strip(latest)
         }
         this._renderTranscript()
       },
-      onError: (e) => console.warn("[voice-visit] deepgram error:", e),
-      onClose: ()  => { /* nothing to do — stream ended */ }
+      onError: (e) => {
+        console.warn("[voice-visit] deepgram error:", e)
+        this._handleDeepgramFailure("error")
+      },
+      onClose: (evt) => {
+        // Treat unclean closes during an active recording as a
+        // mid-session failure. Clean closes after stop() are
+        // ignored (we set _userStopped first).
+        if (this._listening && !this._userStopped) {
+          this._handleDeepgramFailure(`close ${evt?.code || ""}`.trim())
+        }
+      }
     })
     await this._asr.start(stream)
+  }
+
+  // Mid-session degrade: Deepgram dropped, swap to Web Speech with
+  // existing transcript preserved. Surfaces speaker pills + flips
+  // the badge + shows a brief toast so the RN sees the change.
+  _handleDeepgramFailure(reason) {
+    if (this._asrFellBack) return  // only do this once per session
+    this._asrFellBack = true
+    console.warn("[voice-visit] deepgram fell back to web_speech:", reason)
+    try { this._asr?.stop() } catch (_) {}
+    this._asr = null
+    this._initSpeech()
+    try { this._speech?.start() } catch (_) {}
+    this._paintAsrMode("web_speech", { mid: true })
+    this._setStatus("Recording (fallback mode)…")
+    this._showAsrToast("Switched to backup transcription. Diarization paused.")
+  }
+
+  // Visual-mode painter. Called once on _start with {mid:false} and
+  // again from _handleDeepgramFailure with {mid:true}. Badge goes
+  // green for Deepgram, amber for Web Speech. Speaker pills show
+  // when manual labels are needed (Web Speech) and hide when
+  // diarization is on (Deepgram).
+  _paintAsrMode(provider, { mid }) {
+    const isDeepgram = provider === "deepgram"
+    if (this.hasAsrBadgeTarget) this.asrBadgeTarget.classList.remove("hidden")
+    if (this.hasAsrDotTarget)   this.asrDotTarget.className = `w-1.5 h-1.5 rounded-full ${isDeepgram ? "bg-[#2F6F4E]" : "bg-[#D97757]"}`
+    if (this.hasAsrModeTarget)  this.asrModeTarget.textContent = isDeepgram ? "Deepgram + diarize" : "Web Speech (manual labels)"
+    if (this.hasSpeakerPillsTarget) {
+      // Show pills when fallback / Web Speech is active OR Solo isn't on
+      const showPills = !isDeepgram && !this._solo
+      this.speakerPillsTarget.classList.toggle("hidden", !showPills)
+      this.speakerPillsTarget.classList.toggle("flex",  showPills)
+    }
+  }
+
+  _showAsrToast(text) {
+    if (!this.hasAsrToastTarget) return
+    if (this.hasAsrToastTextTarget) this.asrToastTextTarget.textContent = text
+    this.asrToastTarget.classList.remove("hidden")
+    this.asrToastTarget.classList.add("inline-flex")
+    this.asrToastTarget.style.opacity = "0"
+    requestAnimationFrame(() => { this.asrToastTarget.style.opacity = "1" })
+    clearTimeout(this._asrToastTimer)
+    this._asrToastTimer = setTimeout(() => {
+      this.asrToastTarget.style.opacity = "0"
+      setTimeout(() => {
+        this.asrToastTarget.classList.add("hidden")
+        this.asrToastTarget.classList.remove("inline-flex")
+      }, 320)
+    }, 5000)
+  }
+
+  // Solo dictation toggle — RN tapping this signals "I'm alone, no
+  // need to track speakers". Hides speaker pills entirely and
+  // strips speaker tags from the live transcript display. Resets
+  // the underlying _finalText with tags stripped so subsequent text
+  // doesn't get tagged either.
+  toggleSolo() {
+    this._solo = !this._solo
+    if (this.hasSoloButtonTarget) {
+      this.soloButtonTarget.classList.toggle("bg-[#D97757]", this._solo)
+      this.soloButtonTarget.classList.toggle("text-white",   this._solo)
+      this.soloButtonTarget.classList.toggle("bg-white/10",  !this._solo)
+      this.soloButtonTarget.classList.toggle("text-white/90", !this._solo)
+    }
+    if (this._solo && this._finalText) {
+      this._finalText = this._finalText.replace(/\[(?:Patient|RN|Speaker \d+):\]\s*/gi, "").replace(/\n+/g, " ").trim()
+      this._renderTranscript()
+    }
+    this._paintAsrMode(this._asrConfig?.provider || "web_speech", { mid: !!this._asrFellBack })
   }
 
   stop() {

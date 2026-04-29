@@ -137,6 +137,15 @@
       viewport height with the mic button always above the fold. %>
   <main data-voice-visit-target="stage"
         class="hidden flex-1 flex-col items-center justify-center px-6 gap-5 pb-6">
+    <%# Transient toast for ASR-mode changes (e.g., Deepgram dropped
+        mid-session, fell back to Web Speech). JS shows + auto-hides
+        after a few seconds. Hidden by default. %>
+    <div data-voice-visit-target="asrToast"
+         class="hidden mx-auto max-w-md rounded-full bg-[#1D1C1A] border border-[#D97757]/40 px-4 py-2 text-[12px] text-white/90 inline-flex items-center gap-2 transition-opacity duration-300">
+      <i class="ri-alert-line text-[#D97757]"></i>
+      <span data-voice-visit-target="asrToastText">Switched to backup transcription.</span>
+    </div>
+
     <div class="text-center">
       <div data-voice-visit-target="timer"
            class="font-mono text-[48px] md:text-[64px] tracking-[0.05em] text-[#D97757] tabular-nums leading-none">0:00</div>
@@ -188,18 +197,45 @@
         the choice back to Patient#preferred_language as the new
         default for future visits. Web Speech doesn't diarize and is
         language-specific, so both labels and language are manual v1. %>
+    <%# Recognizer status badge — set by JS once the ASR session is
+        resolved. Green dot + "Deepgram + diarize" when streaming is
+        live; amber dot + "Web Speech (manual labels)" when the
+        fallback is in use. Hidden until the recording starts. %>
+    <div data-voice-visit-target="asrBadge"
+         class="hidden inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-white/60 font-bold mx-auto">
+      <span data-voice-visit-target="asrDot" class="w-1.5 h-1.5 rounded-full bg-[#2F6F4E]"></span>
+      <span data-voice-visit-target="asrMode">Deepgram + diarize</span>
+    </div>
+
     <div class="flex items-center justify-center gap-3 flex-wrap">
+      <%# Speaker-tag pills — visible only when manual diarization is
+          needed (Web Speech path or Deepgram fell back mid-session).
+          Hidden by default; voice_visit_controller#_paintAsrMode
+          flips visibility based on the live ASR backend. %>
+      <div data-voice-visit-target="speakerPills" class="hidden flex items-center gap-3">
+        <button type="button"
+                data-action="click->voice-visit#tagSpeaker"
+                data-speaker="Patient"
+                class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
+          <i class="ri-user-voice-line text-[#D97757]"></i> Patient said…
+        </button>
+        <button type="button"
+                data-action="click->voice-visit#tagSpeaker"
+                data-speaker="RN"
+                class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
+          <i class="ri-stethoscope-line text-[#D97757]"></i> RN said…
+        </button>
+      </div>
+
+      <%# Solo dictation toggle — when on, the live transcript renders
+          without speaker tags (single continuous narrative). RN flips
+          this on for "driving home, narrating alone" cases. %>
       <button type="button"
-              data-action="click->voice-visit#tagSpeaker"
-              data-speaker="Patient"
+              data-action="click->voice-visit#toggleSolo"
+              data-voice-visit-target="soloButton"
+              title="Solo dictation (no speaker tags)"
               class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
-        <i class="ri-user-voice-line text-[#D97757]"></i> Patient said…
-      </button>
-      <button type="button"
-              data-action="click->voice-visit#tagSpeaker"
-              data-speaker="RN"
-              class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
-        <i class="ri-stethoscope-line text-[#D97757]"></i> RN said…
+        <i class="ri-user-voice-line text-[#D97757]"></i> Solo
       </button>
 
       <div class="relative">
