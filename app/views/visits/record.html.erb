@@ -258,8 +258,12 @@
                     data-code="<%= opt[:code] %>"
                     data-bcp47="<%= opt[:bcp47] %>"
                     data-label="<%= opt[:label] %>"
-                    data-flag-html="<%= language_flag(opt[:code]) %>"
                     class="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-white/90 hover:bg-white/10 transition">
+              <%# The visible SVG flag here doubles as the source the JS
+                  copies into the pill on selection — see selectLang. We
+                  used to also stash it in a data-flag-html attribute,
+                  but the SVG's inner quotes broke out of that attribute
+                  and dumped raw markup into the menu UI. %>
               <%= language_flag(opt[:code]) %>
               <span class="flex-1"><%= opt[:label] %></span>
               <% if opt[:code] == current_lang[:code] %>

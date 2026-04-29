@@ -201,8 +201,11 @@ export default class extends Controller {
     }
 
     if (this.hasLangLabelTarget && label) this.langLabelTarget.textContent = label
-    const flagHtml = btn?.dataset?.flagHtml
-    if (this.hasLangFlagTarget && flagHtml) this.langFlagTarget.innerHTML = flagHtml
+    // Pull the visible SVG flag out of the clicked menu button instead
+    // of carrying it through a data-attribute (the SVG's inner quotes
+    // break out of the attribute and dump raw HTML into the menu).
+    const flagSvg = btn?.querySelector("svg")
+    if (this.hasLangFlagTarget && flagSvg) this.langFlagTarget.innerHTML = flagSvg.outerHTML
     if (this.hasLangMenuTarget) this.langMenuTarget.classList.add("hidden")
 
     if (this.hasSyncLangCheckboxTarget && this.syncLangCheckboxTarget.checked) {
