@@ -12,6 +12,25 @@ class Note < ApplicationRecord
   belongs_to :agency
   belongs_to :patient
   belongs_to :author_user, class_name: "User", optional: true
+  # The clinician who scored this note's quality (thumbs up/down on
+  # AI replies). Distinct from author_user — feedback can come from a
+  # different clinician than the one who wrote (or in the AI case, the
+  # one who triggered) the message.
+  belongs_to :feedback_by, class_name: "User", optional: true
+
+  # Standardized reason codes for thumbs-down feedback. Free text in
+  # `feedback_notes` captures anything not in this list. Adding a new
+  # code here is safe; removing one would orphan historical rows so
+  # don't do that without a backfill.
+  FEEDBACK_REASONS = %w[
+    factually_wrong
+    tone
+    too_clinical
+    too_vague
+    wrong_audience
+    missing_context
+    other
+  ].freeze
 
   # Optional voice recording attached to a chat message — Carlos can hold
   # the phone near Maria and capture her breathing for Pascal to hear,
@@ -47,6 +66,11 @@ class Note < ApplicationRecord
   ACTION_BODY_RE = /\A\[ACTION:([a-z_]+)\]\s*(.*)\z/m
 
   after_create_commit :broadcast_to_patient_channel
+  # Page mentioned clinicians out-of-app when this note is a
+  # clinician-only crisis or urgent message containing @mentions.
+  # Family-facing notes go through HosalivioTriager which has its own
+  # pathway; we don't want to ping for routine charts.
+  after_create_commit :enqueue_outbound_pings_for_mentions
 
   def mark_read!(user = nil)
     update!(read_at: Time.current) if read_at.nil?
@@ -129,6 +153,12 @@ class Note < ApplicationRecord
   end
 
   private
+
+  def enqueue_outbound_pings_for_mentions
+    return unless clinician_only
+    return unless %w[urgent crisis].include?(urgency.to_s)
+    OutboundPings::Enqueuer.from_note(self)
+  end
 
   def broadcast_to_patient_channel
     audio_url = nil

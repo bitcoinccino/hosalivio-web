@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_28_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_29_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -253,6 +253,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_190000) do
     t.text "body", null: false
     t.boolean "clinician_only", default: false, null: false
     t.datetime "created_at", null: false
+    t.datetime "feedback_at"
+    t.uuid "feedback_by_id"
+    t.text "feedback_notes"
+    t.jsonb "feedback_reasons", default: [], null: false
+    t.integer "feedback_score"
     t.uuid "patient_id", null: false
     t.datetime "read_at"
     t.integer "source", default: 0, null: false
@@ -263,6 +268,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_190000) do
     t.index ["agency_id"], name: "index_notes_on_agency_id"
     t.index ["author_user_id"], name: "index_notes_on_author_user_id"
     t.index ["clinician_only"], name: "index_notes_on_clinician_only"
+    t.index ["feedback_by_id"], name: "index_notes_on_feedback_by_id"
+    t.index ["feedback_score"], name: "index_notes_on_feedback_score", where: "(feedback_score IS NOT NULL)"
     t.index ["patient_id"], name: "index_notes_on_patient_id"
   end
 
@@ -282,6 +289,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_190000) do
     t.index ["agency_id"], name: "index_notifications_on_agency_id"
     t.index ["linked_type", "linked_id"], name: "index_notifications_on_linked_type_and_linked_id"
     t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
+  create_table "outbound_pings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.datetime "consumed_at"
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.jsonb "delivered_channels", default: [], null: false
+    t.string "kind", null: false
+    t.text "last_error"
+    t.datetime "link_expires_at", null: false
+    t.string "link_token", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.string "preview", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["agency_id"], name: "index_outbound_pings_on_agency_id"
+    t.index ["consumed_at"], name: "index_outbound_pings_on_consumed_at", where: "(consumed_at IS NOT NULL)"
+    t.index ["created_at"], name: "index_outbound_pings_on_created_at"
+    t.index ["kind"], name: "index_outbound_pings_on_kind"
+    t.index ["link_token"], name: "index_outbound_pings_on_link_token", unique: true
+    t.index ["user_id", "delivered_at"], name: "index_outbound_pings_on_user_id_and_delivered_at"
+    t.index ["user_id"], name: "index_outbound_pings_on_user_id"
   end
 
   create_table "patients", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -411,6 +441,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_190000) do
     t.date "license_expires_on"
     t.string "license_number"
     t.integer "max_caseload", default: 15, null: false
+    t.jsonb "notification_channels", default: {}, null: false
     t.string "npi", limit: 10
     t.boolean "on_call", default: false, null: false
     t.uuid "patient_id"
@@ -497,8 +528,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_190000) do
   add_foreign_key "notes", "agencies"
   add_foreign_key "notes", "patients"
   add_foreign_key "notes", "users", column: "author_user_id"
+  add_foreign_key "notes", "users", column: "feedback_by_id"
   add_foreign_key "notifications", "agencies"
   add_foreign_key "notifications", "users"
+  add_foreign_key "outbound_pings", "agencies"
+  add_foreign_key "outbound_pings", "users"
   add_foreign_key "patients", "agencies"
   add_foreign_key "patients", "branches"
   add_foreign_key "patients", "users", column: "assigned_chaplain_id"

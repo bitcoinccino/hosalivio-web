@@ -38,6 +38,56 @@ class User < ApplicationRecord
   has_many :visits,                           inverse_of: :user
   has_many :prescribed_medication_orders,     class_name: "MedicationOrder", foreign_key: :prescribed_by_id
   has_many :administered_medication_logs,     class_name: "MedicationLog",   foreign_key: :administered_by_id
+  has_many :outbound_pings,                   dependent: :destroy
+
+  # Out-of-app notification channels (Telegram chat_id, WhatsApp /
+  # SMS phone, email opt-in). HIPAA: only PHI-free preview strings
+  # ever flow through these channels; the actual content stays
+  # behind the deeplink + an authenticated HosAlivio session.
+  CHANNEL_KEYS = %w[telegram whatsapp sms email].freeze
+
+  def notification_channel(key)
+    (notification_channels || {})[key.to_s] || {}
+  end
+
+  def channel_enabled?(key)
+    !!notification_channel(key)["enabled"]
+  end
+
+  def enabled_channels
+    CHANNEL_KEYS.select { |k| channel_enabled?(k) }
+  end
+
+  # Returns true if `now` falls inside the user's configured quiet
+  # hours. Crisis pings ignore quiet hours; everything else gets
+  # suppressed. Times are treated in the user's timezone (falls
+  # back to UTC if unset).
+  def in_quiet_hours?(now = Time.current)
+    qh = (notification_channels || {})["quiet_hours"]
+    return false unless qh.is_a?(Hash) && qh["start"].present? && qh["end"].present?
+    tz = ActiveSupport::TimeZone[qh["timezone"].to_s] || ActiveSupport::TimeZone[timezone.to_s] || Time.zone
+    local = now.in_time_zone(tz)
+    start_min = parse_clock(qh["start"])
+    end_min   = parse_clock(qh["end"])
+    return false if start_min.nil? || end_min.nil?
+    cur_min = local.hour * 60 + local.min
+    if start_min < end_min
+      cur_min >= start_min && cur_min < end_min
+    else
+      # Overnight window (e.g., 22:00 → 07:00)
+      cur_min >= start_min || cur_min < end_min
+    end
+  end
+
+  private
+
+  def parse_clock(str)
+    h, m = str.to_s.split(":").map(&:to_i)
+    return nil unless h && m && h.between?(0, 23) && m.between?(0, 59)
+    h * 60 + m
+  end
+
+  public
 
   # Tenant scope: non-system users are constrained to their agency
   acts_as_tenant :agency, has_global_records: true

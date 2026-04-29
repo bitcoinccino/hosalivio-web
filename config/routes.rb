@@ -36,6 +36,12 @@ Rails.application.routes.draw do
       # Whisper transcription for voice dictation (family chat, visit narratives).
       # Dormant until OPENAI_API_KEY is set; falls back to browser Web Speech.
       post "transcribe", to: "transcriptions#create"
+
+      # Out-of-app push pings — openclaw poller uses these to fetch pending
+      # rows and confirm delivery. Auth via OPENCLAW_PINGS_SECRET (separate
+      # from per-tenant AgentToken because this is cross-tenant infra).
+      get  "outbound_pings/pending",         to: "outbound_pings#pending"
+      post "outbound_pings/:id/delivered",   to: "outbound_pings#delivered"
     end
   end
 
@@ -85,12 +91,24 @@ Rails.application.routes.draw do
       post :quick_set
     end
   end
+  # Clinician thumbs-up / thumbs-down on AI-authored notes
+  post "notes/:note_id/feedback", to: "note_feedbacks#create", as: :note_feedback
+
+  # Aggregated AI feedback dashboard (admin / DON / curators)
+  resource :agent_feedback, only: [:show], controller: "agent_feedbacks"
+
   resource  :agency_features, only: [:edit, :update], controller: "agency_features"
   resource  :agency_profile,  only: [:edit, :update], controller: "agency_profile"
   resources :branches, only: [:index, :new, :create, :edit, :update, :destroy]
   resources :team_members, only: [:index, :new, :create, :destroy] do
     member { post :reactivate }
   end
+
+  # Out-of-app deeplink: openclaw scripts send Telegram / SMS / email
+  # pings that include a signed link to /inbox?t=<token>. The
+  # InboxLinksController validates + consumes the token and signs
+  # the user in for the matching session.
+  get "inbox", to: "inbox_links#show", as: :inbox_link
 
   # Clinician notifications inbox (reminders, etc.)
   resources :notifications, only: [:index] do

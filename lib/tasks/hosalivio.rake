@@ -5,6 +5,12 @@ namespace :hosalivio do
     puts "HosAlivio triaged #{n} note#{n == 1 ? '' : 's'}."
   end
 
+  desc "Enqueue recert reminders for assigned RNs at 7/3/1/0-day milestones. Run daily via cron."
+  task recert_reminders: :environment do
+    n = RecertReminders.run_today
+    puts "Enqueued #{n} recert reminder ping#{n == 1 ? '' : 's'} for #{Date.current.iso8601}."
+  end
+
   desc "Print API tokens for each agent role (for the first agency)"
   task tokens: :environment do
     agency = Agency.first

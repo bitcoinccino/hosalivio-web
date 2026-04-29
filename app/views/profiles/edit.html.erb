@@ -151,6 +151,100 @@
       <% end %>
 
       <!-- Password -->
+      <%# ── Out-of-app notifications ────────────────────────────
+          Channels HosAlivio uses to ping the clinician when they
+          aren't in the web app. Messages are PHI-free; the patient
+          context stays behind the deeplink + an authenticated
+          session. Quiet hours suppress all but crisis pings. %>
+      <% nc = u.notification_channels.is_a?(Hash) ? u.notification_channels : {} %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Out-of-app notifications</h2>
+        <p class="text-[12px] text-[#6B665F] mb-4">Where should HosAlivio reach you when you're not in the app? Pings are PHI-free; tap the link to sign in and read the actual message.</p>
+
+        <div class="space-y-3">
+          <%# Telegram %>
+          <% tg = nc["telegram"] || {} %>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
+            <i class="ri-telegram-line text-[#0088cc] text-[20px] flex-shrink-0"></i>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" name="user[notification_channels][telegram][enabled]" value="1" <%= "checked" if tg["enabled"] %> class="accent-[#D97757]">
+                <span class="text-[13px] font-medium text-[#1D1C1A]">Telegram</span>
+              </div>
+              <input type="text" name="user[notification_channels][telegram][chat_id]"
+                     value="<%= tg["chat_id"] %>"
+                     placeholder="Telegram chat ID (DM @hosalivio_bot to get yours)"
+                     class="<%= input_cls %> mt-2 text-[12px]">
+            </div>
+          </div>
+
+          <%# WhatsApp %>
+          <% wa = nc["whatsapp"] || {} %>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
+            <i class="ri-whatsapp-line text-[#25D366] text-[20px] flex-shrink-0"></i>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" name="user[notification_channels][whatsapp][enabled]" value="1" <%= "checked" if wa["enabled"] %> class="accent-[#D97757]">
+                <span class="text-[13px] font-medium text-[#1D1C1A]">WhatsApp</span>
+              </div>
+              <input type="tel" name="user[notification_channels][whatsapp][phone]"
+                     value="<%= wa["phone"] %>"
+                     placeholder="+1 555 123 4567"
+                     class="<%= input_cls %> mt-2 text-[12px]">
+            </div>
+          </div>
+
+          <%# SMS %>
+          <% sms = nc["sms"] || {} %>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
+            <i class="ri-message-3-line text-[#1D1C1A] text-[20px] flex-shrink-0"></i>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" name="user[notification_channels][sms][enabled]" value="1" <%= "checked" if sms["enabled"] %> class="accent-[#D97757]">
+                <span class="text-[13px] font-medium text-[#1D1C1A]">SMS</span>
+              </div>
+              <input type="tel" name="user[notification_channels][sms][phone]"
+                     value="<%= sms["phone"] %>"
+                     placeholder="+1 555 123 4567"
+                     class="<%= input_cls %> mt-2 text-[12px]">
+            </div>
+          </div>
+
+          <%# Email %>
+          <% em = nc["email"] || {} %>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
+            <i class="ri-mail-line text-[#6B665F] text-[20px] flex-shrink-0"></i>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" name="user[notification_channels][email][enabled]" value="1" <%= "checked" if em["enabled"] %> class="accent-[#D97757]">
+                <span class="text-[13px] font-medium text-[#1D1C1A]">Email <span class="text-[11px] text-[#6B665F] font-normal">to <%= u.email %></span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <%# Quiet hours %>
+        <% qh = nc["quiet_hours"] || {} %>
+        <div class="mt-5 pt-5 border-t border-[#EFECE6]">
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Quiet hours</h3>
+          <p class="text-[11px] text-[#6B665F] mb-3">Suppresses non-crisis pings during this window. Crisis-level messages always page through.</p>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="<%= label_cls %>">From</label>
+              <input type="time" name="user[notification_channels][quiet_hours][start]" value="<%= qh["start"] %>" class="<%= input_cls %> font-mono">
+            </div>
+            <div>
+              <label class="<%= label_cls %>">To</label>
+              <input type="time" name="user[notification_channels][quiet_hours][end]" value="<%= qh["end"] %>" class="<%= input_cls %> font-mono">
+            </div>
+            <div>
+              <label class="<%= label_cls %>">Timezone</label>
+              <input type="text" name="user[notification_channels][quiet_hours][timezone]" value="<%= qh["timezone"].presence || u.timezone %>" class="<%= input_cls %> text-[12px]">
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
         <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Password</h2>
         <div class="text-[12px] text-[#6B665F]">
