@@ -141,7 +141,7 @@
         mid-session, fell back to Web Speech). JS shows + auto-hides
         after a few seconds. Hidden by default. %>
     <div data-voice-visit-target="asrToast"
-         class="hidden mx-auto max-w-md rounded-full bg-[#1D1C1A] border border-[#D97757]/40 px-4 py-2 text-[12px] text-white/90 inline-flex items-center gap-2 transition-opacity duration-300">
+         class="hidden mx-auto max-w-md rounded-full bg-[#1D1C1A] border border-[#D97757]/40 px-4 py-2 text-[12px] text-white/90 items-center gap-2 transition-opacity duration-300">
       <i class="ri-alert-line text-[#D97757]"></i>
       <span data-voice-visit-target="asrToastText">Switched to backup transcription.</span>
     </div>
@@ -202,7 +202,7 @@
         live; amber dot + "Web Speech (manual labels)" when the
         fallback is in use. Hidden until the recording starts. %>
     <div data-voice-visit-target="asrBadge"
-         class="hidden inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-white/60 font-bold mx-auto">
+         class="hidden items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-white/60 font-bold mx-auto">
       <span data-voice-visit-target="asrDot" class="w-1.5 h-1.5 rounded-full bg-[#2F6F4E]"></span>
       <span data-voice-visit-target="asrMode">Deepgram + diarize</span>
     </div>
@@ -212,7 +212,7 @@
           needed (Web Speech path or Deepgram fell back mid-session).
           Hidden by default; voice_visit_controller#_paintAsrMode
           flips visibility based on the live ASR backend. %>
-      <div data-voice-visit-target="speakerPills" class="hidden flex items-center gap-3">
+      <div data-voice-visit-target="speakerPills" class="hidden items-center gap-3">
         <button type="button"
                 data-action="click->voice-visit#tagSpeaker"
                 data-speaker="Patient"

@@ -369,7 +369,10 @@ export default class extends Controller {
   // diarization is on (Deepgram).
   _paintAsrMode(provider, { mid }) {
     const isDeepgram = provider === "deepgram"
-    if (this.hasAsrBadgeTarget) this.asrBadgeTarget.classList.remove("hidden")
+    if (this.hasAsrBadgeTarget) {
+      this.asrBadgeTarget.classList.remove("hidden")
+      this.asrBadgeTarget.classList.add("inline-flex")
+    }
     if (this.hasAsrDotTarget)   this.asrDotTarget.className = `w-1.5 h-1.5 rounded-full ${isDeepgram ? "bg-[#2F6F4E]" : "bg-[#D97757]"}`
     if (this.hasAsrModeTarget)  this.asrModeTarget.textContent = isDeepgram ? "Deepgram + diarize" : "Web Speech (manual labels)"
     if (this.hasSpeakerPillsTarget) {
@@ -384,7 +387,7 @@ export default class extends Controller {
     if (!this.hasAsrToastTarget) return
     if (this.hasAsrToastTextTarget) this.asrToastTextTarget.textContent = text
     this.asrToastTarget.classList.remove("hidden")
-    this.asrToastTarget.classList.add("inline-flex")
+    this.asrToastTarget.classList.add("flex")
     this.asrToastTarget.style.opacity = "0"
     requestAnimationFrame(() => { this.asrToastTarget.style.opacity = "1" })
     clearTimeout(this._asrToastTimer)
@@ -392,7 +395,7 @@ export default class extends Controller {
       this.asrToastTarget.style.opacity = "0"
       setTimeout(() => {
         this.asrToastTarget.classList.add("hidden")
-        this.asrToastTarget.classList.remove("inline-flex")
+        this.asrToastTarget.classList.remove("flex")
       }, 320)
     }, 5000)
   }
