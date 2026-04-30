@@ -1,0 +1,60 @@
+<%# Visit history sidebar (left column on the visit edit page).
+    Lists every visit for the patient, newest first. The current
+    visit is highlighted; clicking another row navigates to its
+    edit page so the RN can flip between recordings without going
+    back through the dashboard. Locals: `current_visit`. %>
+<%
+  patient = current_visit.patient
+  history = patient.visits.unscoped
+                          .where(agency_id: patient.agency_id)
+                          .order(Arel.sql("COALESCE(started_at, scheduled_at) DESC"))
+                          .limit(30)
+%>
+<aside class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden xl:sticky xl:top-4 xl:self-start">
+  <div class="px-4 py-3 border-b border-[#EFECE6]">
+    <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+      <i class="ri-history-line"></i> Visit history
+    </h3>
+    <div class="text-[11px] text-[#6B665F] mt-0.5"><%= patient.full_name %> · <%= history.size %> visit<%= history.size == 1 ? "" : "s" %></div>
+  </div>
+  <% if history.empty? %>
+    <div class="px-4 py-6 text-center text-[12px] text-[#6B665F]">No prior visits.</div>
+  <% else %>
+    <ul class="divide-y divide-[#EFECE6] max-h-[480px] overflow-y-auto">
+      <% history.each do |v| %>
+        <%
+          is_current = v.id == current_visit.id
+          row_state =
+            if v.ended_at         then ["Completed",   "text-[#2F6F4E]", "ri-check-double-line"]
+            elsif v.started_at    then ["In progress", "text-[#D97757]", "ri-pause-circle-line"]
+            elsif v.scheduled_at  then ["Scheduled",   "text-[#6B665F]", "ri-calendar-line"]
+            else                       ["Draft",       "text-[#6B665F]", "ri-edit-line"]
+            end
+          stamp = (v.started_at || v.scheduled_at)
+        %>
+        <li>
+          <%= link_to edit_visit_path(v),
+                class: "block px-4 py-3 transition #{is_current ? "bg-[#FBF9F5] border-l-4 border-[#D97757]" : "hover:bg-[#FBF9F5]"}" do %>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[12px] font-mono <%= is_current ? "text-[#1D1C1A] font-bold" : "text-[#1D1C1A]" %>">
+                <%= stamp&.strftime("%b %-d") %>
+              </span>
+              <% if is_current %>
+                <span class="text-[9px] uppercase tracking-widest font-bold text-[#D97757]">Current</span>
+              <% end %>
+            </div>
+            <div class="text-[11px] text-[#6B665F] mt-0.5">
+              <%= v.visit_type.to_s.tr("_", " ").titleize %><% if v.discipline.present? %> · <%= v.discipline.to_s.upcase %><% end %>
+            </div>
+            <div class="inline-flex items-center gap-1 text-[10px] mt-1 <%= row_state[1] %>">
+              <i class="<%= row_state[2] %>"></i> <%= row_state[0] %>
+              <% if v.audio_note.attached? %>
+                <i class="ri-voiceprint-line ml-1" title="Has bedside audio"></i>
+              <% end %>
+            </div>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</aside>

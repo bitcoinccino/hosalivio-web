@@ -13,7 +13,7 @@
   just_recorded = params[:just_recorded] == "1"
 %>
 <% if just_recorded %>
-  <div class="max-w-3xl mx-auto px-4 pt-4">
+  <div class="max-w-7xl mx-auto px-4 pt-4">
     <div class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-3 text-[12px] text-[#1D1C1A]">
       <i class="ri-check-line text-[#2F6F4E]"></i>
       Recording saved. Review the narrative + vitals below, then tap <strong>Finish visit</strong>.
@@ -65,54 +65,60 @@
 %>
 <% content_for :title, page_title %>
 <div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
-  <div class="max-w-3xl mx-auto">
-    <a href="<%= current_user.role_names.include?("don") ? dashboard_path : dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+  <div class="max-w-7xl mx-auto">
+    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to My Day
     </a>
-    <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm p-6">
-      <div class="flex items-center justify-between mb-2">
-        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] font-bold" style="color: <%= header_color %>;">
-          <i class="<%= header_icon %>"></i> <%= header_label %>
-        </div>
-        <% if state == :recording %>
-          <div class="inline-flex items-center gap-1.5 text-[11px] text-[#C1403A]">
-            <span class="w-2 h-2 rounded-full bg-[#C1403A] animate-pulse"></span>
-            Started <%= @visit.started_at.strftime("%-l:%M %p") %>
+
+    <%# Three-column workspace: visit history (left) | structured
+        chart entry (middle) | recording transcript + audio (right).
+        Stacks single-column under xl breakpoint so phones / narrow
+        laptops still get a readable layout. %>
+    <div class="grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)_320px] gap-4">
+
+      <%# ── Left: visit history ───────────────────────── %>
+      <%= render "visit_history_sidebar", current_visit: @visit %>
+
+      <%# ── Middle: structured chart entry + edit form ── %>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm p-6">
+        <div class="flex items-center justify-between mb-2">
+          <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] font-bold" style="color: <%= header_color %>;">
+            <i class="<%= header_icon %>"></i> <%= header_label %>
           </div>
+          <% if state == :recording %>
+            <div class="inline-flex items-center gap-1.5 text-[11px] text-[#C1403A]">
+              <span class="w-2 h-2 rounded-full bg-[#C1403A] animate-pulse"></span>
+              Started <%= @visit.started_at.strftime("%-l:%M %p") %>
+            </div>
+          <% end %>
+        </div>
+        <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">
+          <%= @visit.patient&.full_name %>
+        </h1>
+        <div class="text-[11px] text-[#6B665F] mb-5">
+          <% if @visit.agent_authored %>
+            🤖 Scheduled by HosAlivio
+          <% elsif scheduler %>
+            👤 Scheduled by <%= scheduler_role&.tr("_", " ")&.titleize&.then { |r| "#{r} " } %><strong class="text-[#1D1C1A] font-medium">@<%= scheduler.full_name.split.first %></strong>
+          <% else %>
+            👤 Scheduled by a human
+          <% end %>
+        </div>
+
+        <%# Admission visit with a linked eval renders the structured
+            chart entry as a document (matching the openclaw EMR-style
+            pre-admit_note.txt shape). The detailed editable form
+            lives on /pre_admit_evals/:id/edit. %>
+        <% if is_admission && linked_eval %>
+          <%= render "eval_document", eval_rec: linked_eval, visit: @visit %>
         <% end %>
-      </div>
-      <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">
-        <%= @visit.patient&.full_name %>
-      </h1>
-      <div class="text-[11px] text-[#6B665F] mb-5">
-        <% if @visit.agent_authored %>
-          🤖 Scheduled by HosAlivio
-        <% elsif scheduler %>
-          👤 Scheduled by <%= scheduler_role&.tr("_", " ")&.titleize&.then { |r| "#{r} " } %><strong class="text-[#1D1C1A] font-medium">@<%= scheduler.full_name.split.first %></strong>
-        <% else %>
-          👤 Scheduled by a human
-        <% end %>
+
+        <%= render "form", just_recorded: just_recorded %>
       </div>
 
-      <%# Admission visit with a linked eval renders the structured
-          chart entry as a document (matching the openclaw EMR-style
-          pre-admit_note.txt shape). The detailed editable form lives
-          on /pre_admit_evals/:id/edit; this view is read-only +
-          one-tap to that editor. %>
-      <% if is_admission && linked_eval %>
-        <%= render "eval_document", eval_rec: linked_eval, visit: @visit %>
-      <% end %>
+      <%# ── Right: recording transcript + audio ────────── %>
+      <%= render "visit_transcript_sidebar", visit: @visit %>
 
-      <%# Legacy structured preview banner — kept hidden but in place
-          while we transition; remove after the document view is
-          confirmed in production. %>
-
-      <%= render "form", just_recorded: just_recorded %>
-
-      <%# Finish button moved into the form (same submit, name=
-          submit_action value=finish) so pending edits ride along
-          and the finish flow runs server-side after a successful
-          update. See app/views/visits/_form.html.erb. %>
     </div>
   </div>
 </div>

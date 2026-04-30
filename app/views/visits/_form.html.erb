@@ -191,17 +191,9 @@
           <%= @visit.narrative.presence || content_tag(:span, "No narrative recorded.", class: "text-[#6B665F] italic") %>
         </div>
         <% if has_raw %>
-          <details class="mt-2 rounded-xl border border-[#EFECE6] bg-white">
-            <summary class="cursor-pointer list-none flex items-center justify-between px-3 py-2 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
-              <span class="inline-flex items-center gap-1.5">
-                <i class="ri-mic-line"></i> View original voice transcript
-              </span>
-              <i class="ri-arrow-down-s-line"></i>
-            </summary>
-            <div class="px-3 pb-3 pt-1 text-[13px] text-[#3A3936] whitespace-pre-wrap font-serif italic leading-relaxed">
-              <%= @visit.narrative_raw %>
-            </div>
-          </details>
+          <%# Original transcript is now shown in the right-column
+              transcript sidebar on the visit edit page; the inline
+              disclosure here used to duplicate it. %>
         <% end %>
         <div class="mt-1 text-[11px] text-[#6B665F] inline-flex items-start gap-1.5">
           <i class="ri-information-line mt-0.5"></i>

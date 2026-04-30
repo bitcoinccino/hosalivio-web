@@ -1,0 +1,53 @@
+<%# Transcript sidebar (right column on the visit edit page).
+    Shows the raw recorded transcript with speaker tags + the
+    bedside audio playback. Read-only here — the polished version
+    lands in the middle column's note. Locals: `visit`. %>
+<%
+  raw   = visit.narrative_raw.to_s
+  poly  = visit.narrative.to_s
+  text  = raw.presence || poly.presence
+  has_audio = visit.persisted? && visit.audio_note.attached?
+%>
+<aside class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden xl:sticky xl:top-4 xl:self-start">
+  <div class="px-4 py-3 border-b border-[#EFECE6]">
+    <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+      <i class="ri-mic-line"></i> Recording transcript
+    </h3>
+    <div class="text-[11px] text-[#6B665F] mt-0.5">
+      <% if raw.present? %>
+        Raw transcript with speaker tags
+      <% elsif poly.present? %>
+        Polished narrative (no raw transcript saved)
+      <% else %>
+        No transcript yet
+      <% end %>
+    </div>
+  </div>
+
+  <% if has_audio %>
+    <div class="px-4 py-3 border-b border-[#EFECE6] bg-[#FBF9F5]">
+      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1.5">Bedside audio</div>
+      <%= audio_tag url_for(visit.audio_note), controls: true, class: "w-full h-9" %>
+    </div>
+  <% end %>
+
+  <div class="px-4 py-3 max-h-[60vh] overflow-y-auto">
+    <% if text.present? %>
+      <pre class="whitespace-pre-wrap font-serif italic text-[12px] text-[#3A3936] leading-relaxed"><%= text %></pre>
+    <% else %>
+      <div class="text-[12px] text-[#6B665F] italic text-center py-6">
+        No transcript yet.
+        <% if visit.started_at.nil? %>
+          <br>Start the visit on the recording page.
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if raw.present? && poly.present? && raw != poly %>
+    <div class="px-4 py-2 text-[10px] text-[#6B665F] border-t border-[#EFECE6] bg-[#FBF9F5]">
+      <i class="ri-information-line"></i>
+      The middle column shows the AI-polished version of this transcript.
+    </div>
+  <% end %>
+</aside>
