@@ -35,7 +35,8 @@ class DeepgramTokenIssuer
     }.to_json
 
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 10) { |h| h.request(req) }
-    if resp.code.to_i == 201
+    # Deepgram returns 200 on successful key mint (not 201). Accept any 2xx.
+    if resp.code.to_i.between?(200, 299)
       data = JSON.parse(resp.body)
       {
         "key"             => data["key"],
