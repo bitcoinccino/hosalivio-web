@@ -13,7 +13,7 @@
   just_recorded = params[:just_recorded] == "1"
 %>
 <% if just_recorded %>
-  <div class="max-w-7xl mx-auto px-4 pt-4">
+  <div class="px-6 lg:px-8 pt-4">
     <div class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-3 text-[12px] text-[#1D1C1A]">
       <i class="ri-check-line text-[#2F6F4E]"></i>
       Recording saved. Review the narrative + vitals below, then tap <strong>Finish visit</strong>.
@@ -69,8 +69,11 @@
   scheduler_role = scheduler ? (scheduler.role_names & %w[admin don admissions rn md sw social_worker chaplain aide]).first : nil
 %>
 <% content_for :title, page_title %>
-<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
-  <div class="max-w-7xl mx-auto">
+<div class="min-h-screen bg-[#FBF9F5] py-6 px-6 lg:px-8">
+  <%# Full-width patient workspace — three columns spread edge-to-
+      edge so the visit edit page reads like the main dashboard
+      for the patient instead of a centered detail card. %>
+  <div>
     <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to My Day
     </a>
