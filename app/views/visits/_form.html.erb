@@ -358,15 +358,18 @@
         </button>
       </div>
       <button type="submit" name="submit_action" value="finish"
-              data-turbo-confirm="Finish this visit for <%= @visit.patient&.full_name %>? This saves your edits, stamps end time, and routes the chart for review."
+              data-turbo-confirm="Finish this visit for <%= @visit.patient&.full_name %>? This saves your edits, stamps end time, and lands you on the chart for review."
               class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-semibold shadow-sm">
-        <i class="ri-check-double-line text-lg"></i> Finish visit and route to MD
+        <i class="ri-check-double-line text-lg"></i> Finish visit (review chart)
       </button>
       <div class="text-[11px] text-[#6B665F] text-center">
         <% if @visit.visit_type_admission? %>
-          Finish saves any pending edits, stamps end time, polishes the narrative, and routes the eval to the on-call MD.
+          Finish saves your edits, stamps end time, polishes the
+          narrative, and runs the eval extractor. You'll review the
+          chart on the next page and tap <strong>Route to MD</strong>
+          when ready.
         <% else %>
-          Finish saves any pending edits and stamps end time. Returns to My Day.
+          Finish saves your edits and stamps end time. Returns to My Day.
         <% end %>
       </div>
     </div>

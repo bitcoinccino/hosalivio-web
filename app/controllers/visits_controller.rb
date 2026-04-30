@@ -171,11 +171,39 @@ class VisitsController < ApplicationController
         patient:       @visit.patient
       )
       eval_rec.update!(raw_json: result.json)
-      notify_md_for_certification(eval_rec)
-      flash[:notice] = "Visit completed. Pre-admit eval updated and routed to MD for certification."
+      # MD routing is now an explicit second step (Route to MD button
+      # on the visit edit page). Lets the RN review the polished
+      # narrative + extracted eval JSON before shipping it to the
+      # MD's queue. notify_md_for_certification fires from
+      # VisitsController#route_to_md when the RN signs off.
+      flash[:notice] = "Visit completed. Review the chart, then tap Route to MD when ready."
     end
 
-    redirect_to dashboard_path
+    redirect_to edit_visit_path(@visit)
+  end
+
+  # POST /visits/:id/route_to_md — explicit step the RN takes after
+  # reviewing the polished chart entry + extracted eval. Fires the
+  # MD notification + handoff that used to happen automatically on
+  # Finish. Idempotent: if the eval was already routed, just
+  # acknowledges so a double-click doesn't double-page MDs.
+  def route_to_md
+    ActsAsTenant.with_tenant(current_user.agency) do
+      unless @visit.visit_type_admission?
+        redirect_to(edit_visit_path(@visit), alert: "Only admission visits route to MD for certification.") and return
+      end
+      unless (eval_rec = @visit.pre_admit_eval)
+        redirect_to(edit_visit_path(@visit), alert: "No linked pre-admit eval to route.") and return
+      end
+      already = Notification.exists?(kind: "pre_admit_review_ready", linked: eval_rec)
+      if already
+        redirect_to(edit_visit_path(@visit), notice: "Already routed to MD.") and return
+      end
+
+      notify_md_for_certification(eval_rec)
+      flash[:notice] = "Routed to MD for certification. They'll get a ping shortly."
+      redirect_to edit_visit_path(@visit)
+    end
   end
 
   def destroy

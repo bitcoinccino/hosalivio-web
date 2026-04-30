@@ -80,6 +80,7 @@ Rails.application.routes.draw do
       post :finish
       post :sync_to_eval
       post :discard
+      post :route_to_md
     end
   end
 
