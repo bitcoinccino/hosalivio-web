@@ -123,6 +123,11 @@ Rails.application.routes.draw do
   # the user in for the matching session.
   get "inbox", to: "inbox_links#show", as: :inbox_link
 
+  # Acknowledge a handoff from the My Day dashboard inline button.
+  post "agent_events/:agent_event_id/acknowledge",
+       to:   "handoff_acknowledgments#create",
+       as:   :handoff_acknowledgment
+
   # Clinician notifications inbox (reminders, etc.)
   resources :notifications, only: [:index] do
     member     { post :mark_read }

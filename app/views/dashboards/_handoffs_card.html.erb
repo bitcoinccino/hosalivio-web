@@ -32,7 +32,6 @@
             if change["blockers"].is_a?(Array) && change["blockers"].any?
               detail_bits << "needs #{change['blockers'].first}"
             end
-            raised_by = change["raised_by"].presence
             urgency   = change["urgency"].to_s
             deep_link = if resolved_patient
                           patient_path(resolved_patient)
@@ -41,27 +40,71 @@
                         else
                           "#"
                         end
+
+            # Find the originating note: most recent family/clinician
+            # message for this patient within 5 min before the handoff.
+            # Provides the body excerpt + raised-by attribution that
+            # turns the queue from "stack of identical alarms" into a
+            # triageable list.
+            origin_note = nil
+            if resolved_patient
+              window_start = (ev.happened_at || Time.current) - 5.minutes
+              window_end   = (ev.happened_at || Time.current) + 30.seconds
+              origin_note = resolved_patient.notes
+                                            .where(created_at: window_start..window_end)
+                                            .where.not(author_role: "admissions")
+                                            .where.not(source: "system")
+                                            .order(created_at: :desc)
+                                            .first
+            end
+            raised_by_name =
+              origin_note&.author_user&.full_name.presence ||
+              change["raised_by"].presence
+            raised_by_relation =
+              origin_note&.author_user&.relationship.presence ||
+              (origin_note&.author_role.to_s == "family" ? "Family" : nil) ||
+              origin_note&.author_role&.to_s&.tr("_", " ")&.titleize
+
+            body_excerpt = origin_note&.body.to_s.strip
+            body_excerpt = nil if body_excerpt.blank?
+            body_excerpt = body_excerpt && body_excerpt.length > 110 ? "#{body_excerpt[0, 110].rstrip}…" : body_excerpt
           %>
-          <li>
-            <%= link_to deep_link, class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
-              <div class="flex items-baseline justify-between gap-2">
-                <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= patient_name %></div>
-                <span class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= ev.happened_at&.strftime("%-l:%M %p") %></span>
-              </div>
-              <div class="text-[12px] text-[#3A3936] mt-0.5 truncate">
-                <%= intent_label %><% if detail_bits.any? %> · <%= detail_bits.join(" · ") %><% end %>
-              </div>
-              <div class="flex items-center gap-2 mt-1">
-                <% if %w[crisis urgent].include?(urgency) %>
-                  <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded <%= urgency == 'crisis' ? 'bg-[#C1403A] text-white' : 'bg-[#D97757] text-white' %>">
-                    <%= urgency %>
-                  </span>
+          <li class="px-5 py-3 hover:bg-[#FBF9F5] transition">
+            <div class="flex items-start gap-3">
+              <%= link_to deep_link, class: "flex-1 min-w-0 block" do %>
+                <div class="flex items-baseline justify-between gap-2">
+                  <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= patient_name %></div>
+                  <span class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= ev.happened_at&.strftime("%-l:%M %p") %></span>
+                </div>
+                <div class="text-[12px] text-[#3A3936] mt-0.5 truncate">
+                  <%= intent_label %><% if detail_bits.any? %> · <%= detail_bits.join(" · ") %><% end %>
+                </div>
+                <% if body_excerpt %>
+                  <div class="text-[12px] text-[#1D1C1A] mt-1 italic line-clamp-2">
+                    "<%= body_excerpt %>"
+                  </div>
                 <% end %>
-                <% if raised_by %>
-                  <span class="text-[10px] text-[#6B665F]">from <%= raised_by %></span>
-                <% end %>
-              </div>
-            <% end %>
+                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <% if %w[crisis urgent].include?(urgency) %>
+                    <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded <%= urgency == 'crisis' ? 'bg-[#C1403A] text-white' : 'bg-[#D97757] text-white' %>">
+                      <%= urgency %>
+                    </span>
+                  <% end %>
+                  <% if raised_by_name %>
+                    <span class="text-[10px] text-[#6B665F]">
+                      from <strong class="text-[#1D1C1A] font-medium"><%= raised_by_name %></strong><% if raised_by_relation %> · <%= raised_by_relation %><% end %>
+                    </span>
+                  <% end %>
+                </div>
+              <% end %>
+              <%= button_to handoff_acknowledgment_path(agent_event_id: ev.id),
+                    method: :post,
+                    data: { turbo_confirm: "Mark this #{intent_label.downcase} acknowledged?" },
+                    form: { class: "flex-shrink-0" },
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
+                <i class="ri-check-line"></i> Got it
+              <% end %>
+            </div>
           </li>
         <% end %>
       </ul>

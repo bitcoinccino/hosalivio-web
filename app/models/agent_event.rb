@@ -7,8 +7,21 @@ class AgentEvent < ApplicationRecord
 
   belongs_to :agency
   belongs_to :subject, polymorphic: true, optional: true
+  belongs_to :acknowledged_by_user, class_name: "User", optional: true
 
   validates :agent_id, :action, :happened_at, presence: true
+
+  scope :pending,      -> { where(acknowledged_at: nil) }
+  scope :acknowledged, -> { where.not(acknowledged_at: nil) }
+
+  def acknowledged?
+    acknowledged_at.present?
+  end
+
+  def acknowledge!(user)
+    return false if acknowledged?
+    update!(acknowledged_at: Time.current, acknowledged_by_user: user)
+  end
 
   # Broadcast to the patient's live channel + the agency's mission stage
   # when the subject is a clinical record.

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_29_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -89,6 +89,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_180000) do
   end
 
   create_table "agent_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "acknowledged_at"
+    t.uuid "acknowledged_by_user_id"
     t.string "action", null: false
     t.uuid "agency_id", null: false
     t.string "agent_id", null: false
@@ -99,6 +101,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_180000) do
     t.uuid "subject_id"
     t.string "subject_type"
     t.datetime "updated_at", null: false
+    t.index ["acknowledged_at"], name: "index_agent_events_on_acknowledged_at", where: "(acknowledged_at IS NOT NULL)"
+    t.index ["acknowledged_by_user_id"], name: "index_agent_events_on_acknowledged_by_user_id"
     t.index ["agency_id", "agent_id", "happened_at"], name: "idx_agent_events_on_agency_agent_time"
     t.index ["agency_id", "happened_at"], name: "index_agent_events_on_agency_id_and_happened_at"
     t.index ["agency_id"], name: "index_agent_events_on_agency_id"
@@ -510,6 +514,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_180000) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "agent_events", "agencies"
+  add_foreign_key "agent_events", "users", column: "acknowledged_by_user_id"
   add_foreign_key "branches", "agencies"
   add_foreign_key "branches", "users", column: "clinical_supervisor_id"
   add_foreign_key "branches", "users", column: "director_of_nursing_id"

@@ -30,7 +30,7 @@ class DashboardData
   def pending_handoffs
     role_keys = user.role_names
     AgentEvent.unscoped
-              .where(agency_id: agency.id, action: "handoff")
+              .where(agency_id: agency.id, action: "handoff", acknowledged_at: nil)
               .where("change_set->>'target_role' IN (?)", role_keys)
               .order(happened_at: :desc)
               .limit(50)
