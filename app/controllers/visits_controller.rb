@@ -141,7 +141,13 @@ class VisitsController < ApplicationController
     @visit.update!(ended_at: Time.current)
     flash[:notice] = "Visit completed. Thank you."
 
-    if @visit.visit_type_admission? && @visit.narrative.to_s.strip.present? && @visit.narrative_raw.blank?
+    # Polish runs on every visit type (not just admissions) so the
+    # raw speaker-tagged transcript ("[Pascal:] Hello. How are you?
+    # [Maria:] my back hurts") becomes a clean clinical chart entry
+    # ("Patient reports back pain on greeting...") regardless of
+    # whether an eval gets generated downstream. The raw transcript
+    # is preserved in narrative_raw for survey verification.
+    if @visit.narrative.to_s.strip.present? && @visit.narrative_raw.blank?
       raw = @visit.narrative.to_s
       @visit.update!(narrative_raw: raw)
       if (polish = HosalivioBrain.polish_narrative(raw))
@@ -382,7 +388,7 @@ class VisitsController < ApplicationController
         # so surveyors can verify nothing was added or dropped, then
         # replace `narrative` with the polished version that drives
         # the chart + downstream extraction.
-        if @visit.visit_type_admission? && @visit.narrative.to_s.strip.present? && @visit.narrative_raw.blank?
+        if @visit.narrative.to_s.strip.present? && @visit.narrative_raw.blank?
           raw     = @visit.narrative.to_s
           @visit.update!(narrative_raw: raw)
           if (polish = HosalivioBrain.polish_narrative(raw))

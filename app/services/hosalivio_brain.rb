@@ -804,6 +804,20 @@ class HosalivioBrain
       - Replace lay phrasing with clinical terms only when the meaning is
         unambiguous (e.g., "blood from her mouth" → "hemoptysis";
         "trouble breathing" → "dyspnea"). When unsure, KEEP the lay phrase.
+      - Convert SPEAKER TAGS into natural clinical prose. The raw
+        transcript may contain bracketed labels like [Pascal:],
+        [Maria:], [Carlos:], [RN:], [Patient:], or [Speaker 1:].
+        Weave the attribution into the sentence rather than echoing
+        the bracket. Examples:
+          "[Maria:] my back is killing me"
+            -> "Patient reports back pain ('killing me')."
+          "[Pascal:] BP 110 over 70"
+            -> "BP 110/70 noted on exam."
+          "[Carlos:] she has not slept all night"
+            -> "Family (son) reports patient has not slept overnight."
+        DO strip the bracketed labels from the polished version
+        entirely. The raw transcript with tags stays preserved
+        separately for surveyor verification.
 
     Forbidden transformations:
       - Do NOT add facts that are not explicitly in the original text.
