@@ -85,7 +85,7 @@
         <% end %>
       </section>
 
-      <%# Audit row — IP / user-agent / verification method %>
+      <%# Audit row — IP / user-agent / verification method / hash %>
       <% if sig %>
         <section class="rounded-xl bg-[#FBF9F5] border border-[#EFECE6] p-4">
           <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Audit</div>
@@ -95,6 +95,17 @@
               <br><span class="text-[#1D1C1A] font-mono text-[10px]"><%= sig.user_agent.truncate(80) %></span>
             <% end %>
           </div>
+          <% if sig.document_hash.present? %>
+            <div class="mt-2 pt-2 border-t border-[#EFECE6]">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-0.5 inline-flex items-center gap-1">
+                <i class="ri-fingerprint-line"></i> Security hash (SHA-256)
+              </div>
+              <div class="font-mono text-[10px] text-[#1D1C1A] break-all leading-tight"
+                   title="Hash of the signed payload at signing time. Any change to the underlying record after this would produce a different hash.">
+                <%= sig.document_hash %>
+              </div>
+            </div>
+          <% end %>
         </section>
       <% end %>
     </div>

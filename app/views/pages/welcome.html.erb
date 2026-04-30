@@ -48,10 +48,6 @@
         </button>
       </div>
 
-      <p class="mt-6 pb-5 border-b border-[#D9D5CD] text-[13px] text-[#3A3936] leading-relaxed group-data-[collapsed=true]/sb:hidden">
-        Gentle, expert hospice care. Covered by Medicare. Always at home.
-      </p>
-
       <%# Section nav: each row reveals the matching content section in
           the main column. Sections are hidden until a row is clicked.
           The nav carries data-active-section, which the per-row
@@ -79,8 +75,8 @@
                 class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
                        group-data-[active-section=family]/nav:bg-[#FFF3EC] group-data-[active-section=family]/nav:text-[#D97757]
                        group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#D97757]
-                       group-data-[active-section=family]/nav:border-[#D97757]">
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#1D1C1A]
+                       group-data-[active-section=family]/nav:text-[#D97757] group-data-[active-section=family]/nav:border-[#D97757]">
             <i class="ri-user-heart-line"></i>
           </span>
           <span class="flex-1 group-data-[collapsed=true]/sb:hidden">For families</span>
@@ -92,7 +88,7 @@
                 class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
                        group-data-[active-section=partner]/nav:bg-[#FFF3EC] group-data-[active-section=partner]/nav:text-[#D97757]
                        group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#2F6F4E]
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#1D1C1A]
                        group-data-[active-section=partner]/nav:text-[#D97757] group-data-[active-section=partner]/nav:border-[#D97757]">
             <i class="ri-hospital-line"></i>
           </span>
@@ -105,7 +101,7 @@
                 class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
                        group-data-[active-section=faq]/nav:bg-[#FFF3EC] group-data-[active-section=faq]/nav:text-[#D97757]
                        group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#6B665F]
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#1D1C1A]
                        group-data-[active-section=faq]/nav:text-[#D97757] group-data-[active-section=faq]/nav:border-[#D97757]">
             <i class="ri-question-answer-line"></i>
           </span>
@@ -173,47 +169,139 @@
     <!-- Hero -->
     <section class="px-4 md:px-10 pt-4 pb-4 w-full">
       <div class="max-w-3xl mx-auto text-center">
-        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-3">
-          <i class="ri-sparkling-2-line"></i> Care That Listens · HosAlivio
+        <div class="font-serif text-3xl md:text-4xl text-[#D97757] font-bold tracking-tight mb-4">
+          HosAlivio
         </div>
-        <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-2">
-          Hospice care that picks up the phone.
-        </h1>
-        <p class="text-[15px] text-[#3A3936] mx-auto max-w-2xl leading-relaxed">
-          Tell HosAlivio what you need, in plain English. We match you with a vetted Medicare hospice partner near you, then your nurse, doctor, and chaplain are one message away.
+        <%# Typewriter tagline — types itself out on first paint
+            with a short pause between the two beats. Honors
+            prefers-reduced-motion (just renders the final string). %>
+        <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-3 min-h-[1.5em]"
+            data-controller="typewriter"
+            data-typewriter-phrases-value='["Care that listens..","Relief that lasts."]'
+            data-typewriter-speed-value="55"
+            data-typewriter-erase-speed-value="32"
+            data-typewriter-hold-value="1600"
+            aria-label="Care that listens. Relief that lasts."></h1>
+        <p class="text-[15px] text-[#3A3936] mx-auto max-w-2xl leading-relaxed italic">
+          Even when the rest of the world is asleep.
         </p>
       </div>
     </section>
 
-    <!-- HosAlivio Co-Pilot search -->
+    <!-- Ask HosAlivio chat — composer pill + inline transcript.
+         Single entry point: Q&A goes through /public_chat, agency
+         lookup through /public_chat/agencies. JS detects a 5-digit
+         ZIP (or "in <City>") and fires both calls in parallel so
+         partner agency cards show up alongside the friendly answer. -->
     <section class="px-4 md:px-10 pt-4 pb-6 w-full">
-      <%= form_with(url: root_path, method: :get, local: true, html: { class: "max-w-3xl mx-auto" }) do %>
-        <% Array(params[:specialty]).each { |v| %>
-          <%= hidden_field_tag "specialty[]", v %>
-        <% } %>
-        <% Array(params[:insurance]).each { |v| %>
-          <%= hidden_field_tag "insurance[]", v %>
-        <% } %>
-        <% Array(params[:language]).each { |v| %>
-          <%= hidden_field_tag "language[]", v %>
-        <% } %>
-        <% if params[:zip].present? %>
-          <%= hidden_field_tag :zip, params[:zip] %>
-        <% end %>
+      <div class="max-w-3xl mx-auto"
+           data-controller="welcome-chat"
+           data-welcome-chat-url-value="<%= public_chat_path %>"
+           data-welcome-chat-agencies-url-value="<%= public_chat_agencies_path %>"
+           data-welcome-chat-callback-url-value="<%= new_inquiry_path rescue '#' %>">
 
-        <div class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-3 pr-2 py-2">
-          <div class="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-white border border-[#EFECE6]">
-            <%= image_tag "hosalivio_assistant.png", class: "w-full h-full object-cover object-top scale-125 origin-top", alt: "HosAlivio" %>
+        <%# Audience switcher — same pattern as the patient
+            dashboard's segmented controls. Defaults to family. %>
+        <div class="flex items-center justify-center mb-3">
+          <div class="inline-flex p-1.5 bg-[#FBF9F5] rounded-full border border-[#EFECE6] gap-1 text-[12px] font-bold uppercase tracking-widest">
+            <button type="button"
+                    data-welcome-chat-target="audienceBtn"
+                    data-action="click->welcome-chat#setAudience"
+                    data-welcome-chat-audience-param="family"
+                    class="inline-flex items-center gap-1.5 px-5 py-2.5 min-h-[40px] rounded-full bg-white text-[#1D1C1A] shadow-sm transition">
+              <i class="ri-user-heart-line text-[15px]"></i> Family / patient
+            </button>
+            <button type="button"
+                    data-welcome-chat-target="audienceBtn"
+                    data-action="click->welcome-chat#setAudience"
+                    data-welcome-chat-audience-param="partner"
+                    class="inline-flex items-center gap-1.5 px-5 py-2.5 min-h-[40px] rounded-full text-[#6B665F] transition">
+              <i class="ri-hospital-line text-[15px]"></i> Agency partner
+            </button>
           </div>
-          <input type="text" name="q" value="<%= @active_query %>"
-                 class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
-                 placeholder="e.g. Miami agency with dementia care that accepts Medicare">
-          <button type="submit" class="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
-            <i class="ri-search-line"></i> Ask HosAlivio
+        </div>
+
+        <%# Transcript area — fills as turns happen. Empty by
+            default so the composer leads the page; the assistant
+            only speaks once the visitor sends their first message. %>
+        <div data-welcome-chat-target="transcript"
+             class="space-y-4 mb-4 max-h-[60vh] overflow-y-auto px-1"></div>
+
+        <%# Quick-start chips ─ "Three-Tap" relief framing
+            (financial · environment · logistical). Helps visitors
+            in cognitive tunneling pick a path without having to
+            phrase the question themselves. Hidden after the first
+            turn so they don't keep occupying space. %>
+        <div data-welcome-chat-target="quickStart"
+             class="flex flex-wrap items-center justify-center gap-2.5 mb-4">
+          <button type="button"
+                  data-action="click->welcome-chat#quickStart"
+                  data-welcome-chat-question-param="What does hospice cost?"
+                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
+            <i class="ri-money-dollar-circle-line text-[17px]"></i>
+            What does hospice cost?
+          </button>
+          <button type="button"
+                  data-action="click->welcome-chat#quickStart"
+                  data-welcome-chat-question-param="Can care happen at home?"
+                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
+            <i class="ri-home-heart-line text-[17px]"></i>
+            Can care happen at home?
+          </button>
+          <button type="button"
+                  data-action="click->welcome-chat#quickStart"
+                  data-welcome-chat-question-param="How do we get started?"
+                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
+            <i class="ri-route-line text-[17px]"></i>
+            How do we get started?
           </button>
         </div>
 
-      <% end %>
+        <%# Composer pill — visually mirrors the patient-dashboard
+            chat composer (rounded shape, avatar on the left, big
+            terracotta send button on the right). %>
+        <%# Composer with no explicit send button — submission rides
+            on Enter (the form's submit handler stays the same).
+            Avatar is the same orange heart-pulse mark used in the
+            sidebar header + assistant chat bubbles. The hidden
+            send target stays so the JS can still toggle disabled
+            during in-flight requests. %>
+        <form data-welcome-chat-target="form"
+              data-action="submit->welcome-chat#ask"
+              class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-3 pr-4 py-2">
+          <input type="hidden" name="audience" value="family" data-welcome-chat-target="audience">
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+            <i class="ri-heart-pulse-line text-lg"></i>
+          </div>
+          <input type="text" name="q"
+                 data-welcome-chat-target="input"
+                 autocomplete="off"
+                 class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
+                 placeholder="Ask HosAlivio… or share your ZIP to find a partner near you">
+          <button type="submit" data-welcome-chat-target="send" class="hidden" aria-hidden="true"></button>
+        </form>
+
+        <%# 24/7 clinical lifeline ─ different role from the per-card
+            "Request call" CTA: that one is agency-shopping; this is
+            "talk to a real nurse right now." Pulsing green dot
+            signals "someone is actually there" without being loud.
+            Pushed further from the composer so it reads as its own
+            commitment, not a footnote on the chat. %>
+        <div class="text-center mt-10 pt-6 border-t border-[#EFECE6]">
+          <a href="<%= new_inquiry_path rescue '#' %>"
+             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#2F6F4E] text-[#2F6F4E] hover:bg-[#E6F0EE] text-[12px] font-bold uppercase tracking-widest shadow-sm transition">
+            <span class="relative inline-flex w-2.5 h-2.5">
+              <span class="absolute inline-flex w-full h-full rounded-full bg-[#2F6F4E] opacity-60 animate-ping"></span>
+              <span class="relative inline-flex w-2.5 h-2.5 rounded-full bg-[#2F6F4E]"></span>
+            </span>
+            <i class="ri-phone-fill"></i>
+            Talk to a hospice nurse · 24/7
+          </a>
+          <div class="text-[10px] text-[#6B665F] mt-2 italic">
+            Day or night. Even when the rest of the world is asleep.
+          </div>
+        </div>
+      </div>
     </section>
 
     </div><%# end vertical-center wrapper %>
@@ -273,14 +361,14 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <%
             family_benefits = [
-              { icon: "ri-mic-line",          title: "Voice notes for breath sounds",
-                body: "Hold the phone near Mom. Your nurse hears the exact rasp instead of you trying to describe it." },
-              { icon: "ri-customer-service-2-line", title: "Real humans, named on every reply",
-                body: "Pascal, RN. Dr. Esther. Geoginio, chaplain. You see who picked up your message and when." },
-              { icon: "ri-shield-check-line", title: "Medicare-covered, no bill",
-                body: "If a doctor says six months or less, the Medicare Hospice Benefit covers care, meds, and equipment." },
-              { icon: "ri-home-heart-line",   title: "At home, with your people",
-                body: "Hospice keeps you in your bed, in your room, surrounded by who you want there." }
+              { icon: "ri-mic-line",                title: "Don't describe it. Let us hear it.",
+                body: "Hold the phone near Mom and tap record. Your nurse hears the exact rasp, the cough, the silence between breaths, instead of you struggling to find the words." },
+              { icon: "ri-customer-service-2-line", title: "The right human, right now.",
+                body: "Smart routing, human response. HosAlivio instantly pages the exact clinician you need, Pascal (RN), Dr. Esther, or Chaplain Geoginio, and you see exactly who picked up and when." },
+              { icon: "ri-shield-check-line",       title: "100% covered. Zero out-of-pocket.",
+                body: "When a physician confirms eligibility, the Medicare hospice benefit covers care, medications, and equipment. You focus on family; we handle the paperwork." },
+              { icon: "ri-home-heart-line",         title: "Home is where the heart stays.",
+                body: "We bring the care to your bedside, so you stay exactly where you belong: in your bed, in your room, surrounded by your people." }
             ]
           %>
           <% family_benefits.each do |b| %>
@@ -298,36 +386,267 @@
       <%# Partner panel: shown when audience=partner. %>
       <div class="hidden group-data-[audience=partner]/aud:block">
         <div class="text-center mb-8">
-          <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Run your agency without burning out your nurses.</h2>
+          <h2 class="font-serif text-[28px] md:text-[32px] text-[#1D1C1A] leading-tight">Run your agency at scale, not at its breaking point.</h2>
           <p class="text-[14px] text-[#6B665F] mt-3 max-w-2xl mx-auto leading-relaxed">
-            HosAlivio handles the front door so your clinicians focus on the bedside.
-            AI triages every family message, routes to the right human, drafts CMS-compliant
-            documentation, and keeps the Notice of Election clock from running out.
+            HosAlivio is the intelligent front door for your hospice. We triage family
+            messages, automate CMS-compliant charting, and protect your revenue, so your
+            nurses can get back to being nurses.
           </p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <%
             partner_benefits = [
-              { icon: "ri-customer-service-2-line", title: "AI front-door triage 24/7",
-                body: "HosAlivio answers family chats in under a minute, classifies urgency, and only pages your on-call when it actually has to." },
-              { icon: "ri-file-shield-2-line",      title: "Audit-proof charting on autopilot",
-                body: "Visit narratives, pre-admit eval JSON, and recert justifications generated in CMS-compliant phrasing. Survey-ready." },
-              { icon: "ri-time-line",               title: "Notice of Election deadlines, defended",
-                body: "5-day NOE clock auto-tracked the moment the MD certifies. Insurance agent files before the window closes." },
-              { icon: "ri-stack-line",              title: "Plays nice with your stack",
-                body: "Hooks into Homecare Homebase, Netsmart, MatrixCare, and WellSky. Or runs standalone if you want." }
+              { icon: "ri-customer-service-2-line", title: "Triage that actually saves your on-call.",
+                body: "Stop paging your RNs for non-clinical noise. HosAlivio answers family chats in seconds, classifies urgency, and only interrupts your on-call team when a human touch is required.",
+                result: "A 40% reduction in unnecessary after-hours pings." },
+              { icon: "ri-file-shield-2-line",      title: "Survey-ready charting, drafted in real-time.",
+                body: "Our AI transforms visit narratives and pre-admit evaluations into structured, CMS-compliant JSON and text. It captures the clinical decline required for reimbursement, minimizing ADR (Additional Documentation Request) risks.",
+                result: "Audit-proof documentation that's finished before the clinician leaves the driveway." },
+              { icon: "ri-time-line",               title: "Defend your NOE (Notice of Election) window.",
+                body: "The 5-day clock is ruthless. HosAlivio tracks the timeline from the moment the MD certifies, alerting your billing team and preparing the files to ensure you never miss a reimbursement day.",
+                result: "No more \"untimely filing\" penalties." },
+              { icon: "ri-stack-line",              title: "Integrated or standalone: your choice.",
+                body: "We don't replace your EMR; we make it smarter. HosAlivio hooks directly into Homecare Homebase, Netsmart, MatrixCare, and WellSky via secure API, or runs as a high performance standalone for growing teams.",
+                result: nil }
             ]
           %>
           <% partner_benefits.each do |b| %>
-            <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 hover:shadow-sm transition">
+            <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 hover:shadow-sm transition flex flex-col">
               <div class="w-10 h-10 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[#2F6F4E] flex items-center justify-center mb-3">
                 <i class="<%= b[:icon] %> text-lg"></i>
               </div>
               <div class="font-serif text-[16px] text-[#1D1C1A] mb-1"><%= b[:title] %></div>
-              <p class="text-[13px] text-[#3A3936] leading-relaxed"><%= b[:body] %></p>
+              <p class="text-[13px] text-[#3A3936] leading-relaxed flex-1"><%= b[:body] %></p>
+              <% if b[:result] %>
+                <div class="mt-3 pt-3 border-t border-[#EFECE6] inline-flex items-start gap-1.5 text-[12px] text-[#2F6F4E] font-medium">
+                  <i class="ri-arrow-right-circle-line mt-0.5 flex-shrink-0"></i>
+                  <span><strong class="uppercase tracking-widest text-[10px] mr-1">Result:</strong><%= b[:result] %></span>
+                </div>
+              <% end %>
             </div>
           <% end %>
         </div>
+        <%# ── ROI block ─ static "what a typical 10-nurse agency
+            saves" panel + an interactive slider calculator that
+            updates the totals + headline live. Numbers calibrated
+            so the default state (10 nurses · 25% turnover) matches
+            the static example above. %>
+        <div class="mt-12 max-w-4xl mx-auto">
+          <div class="text-center mb-6">
+            <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-[#2F6F4E] font-bold mb-2">
+              <i class="ri-line-chart-line"></i> ROI · Annual Savings Estimate
+            </div>
+            <h3 class="font-serif text-[24px] md:text-[28px] text-[#1D1C1A] leading-tight">
+              Protect your bottom line, not just your nurses.
+            </h3>
+            <p class="text-[12px] text-[#6B665F] mt-2 max-w-2xl mx-auto leading-relaxed">
+              For a hospice agency owner, the ROI of HosAlivio isn't just about saving time, it's about protecting the bottom line from the high costs of nurse turnover and CMS penalties. Numbers below assume a 10-nurse agency with an average $95k salary.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div class="rounded-2xl border border-[#EFECE6] bg-white p-4">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Nurse retention</div>
+              <div class="font-serif text-[26px] text-[#1D1C1A] mt-1">$30,000</div>
+              <p class="text-[12px] text-[#3A3936] mt-2 leading-relaxed">
+                Reducing after-hours burnout typically lowers turnover by ~30%. Replacing one RN runs about $40,000 in recruiting and training.
+              </p>
+            </div>
+            <div class="rounded-2xl border border-[#EFECE6] bg-white p-4">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Clinical efficiency</div>
+              <div class="font-serif text-[26px] text-[#1D1C1A] mt-1">$285,457</div>
+              <p class="text-[12px] text-[#3A3936] mt-2 leading-relaxed">
+                Reclaim 1.5 hours/day on charting plus 5 hours/week on triage, across 10 nurses, in real labor hours back.
+              </p>
+            </div>
+            <div class="rounded-2xl border border-[#EFECE6] bg-white p-4">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Compliance &amp; NOE protection</div>
+              <div class="font-serif text-[26px] text-[#1D1C1A] mt-1">$43,800</div>
+              <p class="text-[12px] text-[#3A3936] mt-2 leading-relaxed">
+                Eliminating "untimely filing" penalties on the Notice of Election typically saves about 0.5% of annual revenue.
+              </p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-5 text-center mb-8">
+            <div class="text-[10px] uppercase tracking-widest text-[#2F6F4E] font-bold">Total annual ROI</div>
+            <div class="font-serif text-[40px] md:text-[48px] text-[#2F6F4E] leading-none mt-1">$359,257</div>
+          </div>
+
+          <%# Interactive calculator ─ two sliders, live re-compute,
+              big-reveal headline at the bottom. %>
+          <div class="rounded-2xl border border-[#EFECE6] bg-white p-5"
+               data-controller="partner-roi">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3 inline-flex items-center gap-1.5">
+              <i class="ri-equalizer-2-line"></i> See your own number
+            </div>
+
+            <div class="space-y-5">
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold">How many clinicians do you employ?</label>
+                  <span data-partner-roi-target="teamLabel" class="text-[12px] font-mono text-[#2F6F4E] font-bold">10 clinicians</span>
+                </div>
+                <input type="range" min="1" max="100" value="10" step="1"
+                       data-partner-roi-target="teamInput"
+                       data-action="input->partner-roi#recompute"
+                       class="w-full accent-[#D97757]">
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold">Current annual nurse turnover</label>
+                  <span data-partner-roi-target="turnoverLabel" class="text-[12px] font-mono text-[#2F6F4E] font-bold">25% turnover</span>
+                </div>
+                <input type="range" min="5" max="60" value="25" step="1"
+                       data-partner-roi-target="turnoverInput"
+                       data-action="input->partner-roi#recompute"
+                       class="w-full accent-[#D97757]">
+                <div class="text-[10px] text-[#6B665F] mt-1 italic">Industry average sits around 25%.</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-[#EFECE6] text-center">
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Retention</div>
+                <div data-partner-roi-target="retention" class="font-mono text-[15px] text-[#1D1C1A] mt-1">$30,000</div>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Efficiency</div>
+                <div data-partner-roi-target="efficiency" class="font-mono text-[15px] text-[#1D1C1A] mt-1">$296,855</div>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Compliance</div>
+                <div data-partner-roi-target="compliance" class="font-mono text-[15px] text-[#1D1C1A] mt-1">$43,800</div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-[#EFECE6] text-center">
+              <div class="text-[10px] uppercase tracking-widest text-[#2F6F4E] font-bold mb-1">The big reveal</div>
+              <p data-partner-roi-target="reveal" class="text-[16px] text-[#1D1C1A] leading-relaxed">
+                HosAlivio could save you <strong class="text-[#2F6F4E]">$370,655</strong> per year while giving your nurses their weekends back.
+              </p>
+              <div class="font-serif text-[28px] text-[#2F6F4E] mt-2 leading-none">
+                <span data-partner-roi-target="total">$370,655</span>
+                <span class="text-[12px] text-[#6B665F] uppercase tracking-widest font-bold ml-2">per year</span>
+              </div>
+
+              <%# Philosophical closer ─ pivots the conversation from
+                  "spreadsheet ROI" to "this is also why families choose
+                  you." Ties back to the front-door/bedside framing
+                  already established up the page. %>
+              <p class="font-serif text-[15px] md:text-[16px] text-[#1D1C1A] italic leading-relaxed mt-5 pt-4 border-t border-[#EFECE6] max-w-xl mx-auto">
+                Attention is the new currency.
+                <span class="not-italic text-[#6B665F]">We pay it at the front door, so your nurses can earn it at the bedside.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <%# ── "How it works" deep-dive ─ explains the mechanics
+            behind the ROI numbers above. Three numbered cards
+            (Charting, Triage, NOE) plus a side-by-side comparison
+            table that lands the punchline. %>
+        <div class="mt-12 max-w-4xl mx-auto">
+          <div class="text-center mb-6">
+            <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-[#2F6F4E] font-bold mb-2">
+              <i class="ri-time-line"></i> How it works · Reclaiming the 2.5 hours
+            </div>
+            <h3 class="font-serif text-[24px] md:text-[28px] text-[#1D1C1A] leading-tight">
+              Eliminate the invisible labor pulling nurses away from the bedside.
+            </h3>
+            <p class="text-[13px] text-[#6B665F] mt-3 max-w-2xl mx-auto leading-relaxed">
+              On average, a hospice nurse spends 25% to 35% of their 12-hour shift on documentation. HosAlivio targets the three biggest time leaks and converts them back into revenue-generating clinical time.
+            </p>
+          </div>
+
+          <%
+            mechanics = [
+              { num: "1", icon: "ri-edit-2-line", save: "~90 mins/day",
+                title: "Automated clinical charting",
+                problem: "Nurses spend 3+ hours per week on duplicative charting across flowsheets.",
+                fix: "Our AI drafts the visit narrative, pre-admit evaluation, and recert justification straight from the visit's voice notes. A 45-minute post-visit charting session becomes a 10-minute review and sign-off." },
+              { num: "2", icon: "ri-customer-service-2-line", save: "~60 mins/on-call shift",
+                title: "Intelligent after-hours triage",
+                problem: "Roughly 37.7% of hospice after-hours calls are non-clinical (supply requests, med refills). These pings interrupt rest and drive burnout.",
+                fix: "The front-door AI handles routine inquiries instantly. On-call nurses are only paged for urgent clinical needs, cutting cognitive load and preventing midnight fatigue." },
+              { num: "3", icon: "ri-shield-check-line", save: "Revenue protection",
+                title: "NOE &amp; compliance defense",
+                problem: "Missing the 5-day Notice of Election window means total loss of reimbursement for those days. Insufficient narratives drive a 6% improper payment rate (~$2B annually industry-wide).",
+                fix: "The system auto-tracks the NOE clock the moment an MD certifies a patient and ensures the physician narrative includes the specific clinical findings CMS requires to prove terminal prognosis. Audit-proof from the start." }
+            ]
+          %>
+          <div class="space-y-3 mb-8">
+            <% mechanics.each do |m| %>
+              <div class="rounded-2xl border border-[#EFECE6] bg-white p-5 flex items-start gap-4">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#D97757] flex items-center justify-center font-serif text-[20px] font-bold">
+                  <%= m[:num] %>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div class="font-serif text-[17px] text-[#1D1C1A] inline-flex items-center gap-2">
+                      <i class="<%= m[:icon] %> text-[#D97757]"></i> <%= m[:title].html_safe %>
+                    </div>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold bg-[#E6F0EE] text-[#2F6F4E] border border-[#2F6F4E]">
+                      <i class="ri-arrow-down-circle-line"></i> Save <%= m[:save] %>
+                    </span>
+                  </div>
+                  <p class="text-[12px] text-[#6B665F] mt-2 leading-relaxed">
+                    <strong class="uppercase tracking-widest text-[10px] text-[#C1403A] mr-1">Problem:</strong>
+                    <%= m[:problem] %>
+                  </p>
+                  <p class="text-[13px] text-[#1D1C1A] mt-2 leading-relaxed">
+                    <strong class="uppercase tracking-widest text-[10px] text-[#2F6F4E] mr-1">HosAlivio fix:</strong>
+                    <%= m[:fix] %>
+                  </p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Comparison table ─ punchline. Side-by-side so the
+              gap between status quo and HosAlivio is visceral. %>
+          <div class="rounded-2xl border border-[#EFECE6] bg-white overflow-hidden">
+            <div class="px-5 py-3 bg-[#FBF9F5] border-b border-[#EFECE6]">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">
+                <i class="ri-scales-3-line"></i> The bottom line for the agency
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead>
+                  <tr class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold border-b border-[#EFECE6]">
+                    <th class="px-5 py-3">Category</th>
+                    <th class="px-5 py-3">Traditional agency</th>
+                    <th class="px-5 py-3 bg-[#E6F0EE] text-[#2F6F4E]">HosAlivio agency</th>
+                    <th class="px-5 py-3">Impact</th>
+                  </tr>
+                </thead>
+                <tbody class="text-[13px]">
+                  <tr class="border-b border-[#EFECE6]">
+                    <td class="px-5 py-4 font-bold text-[#1D1C1A]">Nurse turnover</td>
+                    <td class="px-5 py-4 text-[#3A3936]">~25.5% annual rate</td>
+                    <td class="px-5 py-4 bg-[#E6F0EE]/40 text-[#1D1C1A] font-medium">~15% (projected)</td>
+                    <td class="px-5 py-4 text-[#2F6F4E] font-medium">Saves $61,110 per nurse retained</td>
+                  </tr>
+                  <tr class="border-b border-[#EFECE6]">
+                    <td class="px-5 py-4 font-bold text-[#1D1C1A]">Visit capacity</td>
+                    <td class="px-5 py-4 text-[#3A3936]">4 to 6 visits per day</td>
+                    <td class="px-5 py-4 bg-[#E6F0EE]/40 text-[#1D1C1A] font-medium">5 to 8 visits per day</td>
+                    <td class="px-5 py-4 text-[#2F6F4E] font-medium">Up to 97% increase in total visit volume</td>
+                  </tr>
+                  <tr>
+                    <td class="px-5 py-4 font-bold text-[#1D1C1A]">Audit risk</td>
+                    <td class="px-5 py-4 text-[#3A3936]">High (6.8% improper rate)</td>
+                    <td class="px-5 py-4 bg-[#E6F0EE]/40 text-[#1D1C1A] font-medium">Low (AI-validated narratives)</td>
+                    <td class="px-5 py-4 text-[#2F6F4E] font-medium">Protects ~$4,000/patient in denied claims</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <div class="text-center mt-8">
           <%= link_to new_partner_path,
                 class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
@@ -653,3 +972,8 @@
     </div>
   </div>
 </div>
+
+<%# Floating chat bubble removed — the hero "Ask HosAlivio" pill
+    is the canonical entry point and now does both Q&A + agency
+    lookup. See the welcome-chat Stimulus controller wired into
+    that hero form. %>

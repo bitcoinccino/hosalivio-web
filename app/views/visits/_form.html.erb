@@ -232,67 +232,94 @@
     <%# Bedside audio playback lives in the footer audio bar on the
         edit page; no inline player here to avoid duplication. %>
 
-    <!-- Vitals: freely editable, auto-fillable from the narrative above -->
-    <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-      <div class="flex items-center justify-between mb-2">
-        <div>
-          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-medium">Vitals at visit</div>
-          <span data-vitals-extractor-target="summary" class="text-[10px] text-[#6B665F]"></span>
-        </div>
-        <% unless completed %>
-          <button type="button"
-                  data-action="click->vitals-extractor#extract"
-                  class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-white text-[#1D1C1A] hover:bg-[#EFECE6] border border-[#D9D5CD] transition"
-                  title="Parse BP, temp, HR, RR, SpO2, and pain score out of the narrative">
-            <i class="ri-magic-line"></i> Auto-fill from narrative
-          </button>
-        <% end %>
-      </div>
+    <%# Vitals — only on routine/care visits where the nurse
+        actually takes vital signs at the bedside. Initial
+        (admission) and follow-up visits don't capture vitals
+        through this form (admission gets them from the eval; FU
+        visits aren't vitals-driven). The pain_score field rides
+        with vitals so it's hidden too on non-routine visits. %>
+    <% if @visit.visit_category == :routine %>
+      <%# Collapsible vitals — captured but not always front-and-
+          center, so default to closed. Auto-opens when a freshly-
+          recorded visit lands here (?just_recorded=1) so the RN
+          sees the auto-extracted vitals without an extra click. %>
       <% vitals_source = (@visit.vitals.presence || {}) %>
-      <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
-        <div class="col-span-2">
-          <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">BP</label>
-          <input type="text" name="visit[vitals][bp]" value="<%= vitals_source["bp"] %>"
-                 placeholder="128/76"
-                 data-vitals-extractor-target="bp"
-                 class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
+      <% any_vitals = vitals_source.values.any? { |v| v.to_s.strip.present? } || @visit.pain_score.to_i.positive? %>
+      <details class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] group" <%= "open" if local_assigns[:just_recorded] || any_vitals %>>
+        <summary class="cursor-pointer list-none flex items-center justify-between p-3 [&::-webkit-details-marker]:hidden">
+          <div class="inline-flex items-center gap-2">
+            <i class="ri-pulse-line text-[#D97757]"></i>
+            <div>
+              <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-medium">Vitals at visit</div>
+              <span data-vitals-extractor-target="summary" class="text-[10px] text-[#6B665F]"></span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <% if any_vitals %>
+              <span class="text-[10px] uppercase tracking-widest font-bold text-[#2F6F4E] bg-[#E6F0EE] border border-[#2F6F4E] rounded-full px-2 py-0.5">Captured</span>
+            <% else %>
+              <span class="text-[10px] uppercase tracking-widest text-[#6B665F]">None yet</span>
+            <% end %>
+            <i class="ri-arrow-down-s-line text-[#6B665F] group-open:rotate-180 transition-transform"></i>
+          </div>
+        </summary>
+        <div class="px-3 pb-3">
+          <% unless completed %>
+            <div class="flex justify-end mb-2">
+              <button type="button"
+                      data-action="click->vitals-extractor#extract"
+                      class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-white text-[#1D1C1A] hover:bg-[#EFECE6] border border-[#D9D5CD] transition"
+                      title="Parse BP, temp, HR, RR, SpO2, and pain score out of the narrative">
+                <i class="ri-magic-line"></i> Auto-fill from narrative
+              </button>
+            </div>
+          <% end %>
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+          <div class="col-span-2">
+            <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">BP</label>
+            <input type="text" name="visit[vitals][bp]" value="<%= vitals_source["bp"] %>"
+                   placeholder="128/76"
+                   data-vitals-extractor-target="bp"
+                   class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
+          </div>
+          <div>
+            <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">Temp</label>
+            <input type="text" name="visit[vitals][temp]" value="<%= vitals_source["temp"] %>"
+                   placeholder="98.6"
+                   data-vitals-extractor-target="temp"
+                   class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
+          </div>
+          <div>
+            <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">Pulse</label>
+            <input type="text" name="visit[vitals][pulse]" value="<%= vitals_source["pulse"] %>"
+                   placeholder="88"
+                   data-vitals-extractor-target="pulse"
+                   class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
+          </div>
+          <div>
+            <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">RR</label>
+            <input type="text" name="visit[vitals][resp]" value="<%= vitals_source["resp"] %>"
+                   placeholder="16"
+                   data-vitals-extractor-target="resp"
+                   class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
+          </div>
+          <div>
+            <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">SpO2</label>
+            <input type="text" name="visit[vitals][o2]" value="<%= vitals_source["o2"] %>"
+                   placeholder="95"
+                   data-vitals-extractor-target="o2"
+                   class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
+          </div>
         </div>
-        <div>
-          <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">Temp</label>
-          <input type="text" name="visit[vitals][temp]" value="<%= vitals_source["temp"] %>"
-                 placeholder="98.6"
-                 data-vitals-extractor-target="temp"
-                 class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
+        <div class="mt-2">
+          <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">Pain score (0–10)</label>
+          <%= f.number_field :pain_score, min: 0, max: 10, step: 1,
+                data: { vitals_extractor_target: "painScore" },
+                class: "mt-0.5 w-20 px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono" %>
         </div>
-        <div>
-          <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">Pulse</label>
-          <input type="text" name="visit[vitals][pulse]" value="<%= vitals_source["pulse"] %>"
-                 placeholder="88"
-                 data-vitals-extractor-target="pulse"
-                 class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
         </div>
-        <div>
-          <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">RR</label>
-          <input type="text" name="visit[vitals][resp]" value="<%= vitals_source["resp"] %>"
-                 placeholder="16"
-                 data-vitals-extractor-target="resp"
-                 class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
-        </div>
-        <div>
-          <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">SpO2</label>
-          <input type="text" name="visit[vitals][o2]" value="<%= vitals_source["o2"] %>"
-                 placeholder="95"
-                 data-vitals-extractor-target="o2"
-                 class="mt-0.5 w-full px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono">
-        </div>
-      </div>
-      <div class="mt-2">
-        <label class="block text-[9px] uppercase tracking-widest text-[#6B665F]">Pain score (0–10)</label>
-        <%= f.number_field :pain_score, min: 0, max: 10, step: 1,
-              data: { vitals_extractor_target: "painScore" },
-              class: "mt-0.5 w-20 px-2 py-1 rounded border border-[#D9D5CD] bg-white text-[13px] font-mono" %>
-      </div>
-    </div>
+      </details>
+    <% end %>
   </div>
 
   <% if collapse_metadata %>

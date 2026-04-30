@@ -145,6 +145,12 @@ Rails.application.routes.draw do
   # Public landing
   get "welcome", to: "pages#welcome", as: :welcome
 
+  # Public landing-page chat — unauthenticated, IP-rate-limited.
+  # Drives the HosAlivio bubble widget on /welcome. Family +
+  # partner audiences route through different system prompts.
+  post "public_chat",          to: "public_chats#create",   as: :public_chat
+  get  "public_chat/agencies", to: "public_chats#agencies", as: :public_chat_agencies
+
   # 'Coming soon' upsell page for the agency-admin Upgrade link in the menu
   get "upgrade", to: "pages#upgrade", as: :upgrade
 

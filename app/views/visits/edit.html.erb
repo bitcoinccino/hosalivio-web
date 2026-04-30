@@ -156,17 +156,20 @@
           </div>
         </div>
 
-        <%# ── Stage banner ─ visit lifecycle in one full-width strip
-            so Pascal sees where in the admission flow he is without
-            decoding small icons in the header. %>
+        <%# Stage banner is computed up here but rendered at the
+            bottom of the middle column (below the form) so it
+            doesn't push the chart content + flags down. The
+            variables stay in scope for the bottom render. %>
         <%
           stage_label, stage_sub, stage_bg, stage_fg, stage_border, stage_icon =
             if state == :completed && is_admission && linked_eval && routed_to_md
               ["Routed to MD",            "Awaiting physician certification",                  "#E6F0EE", "#2F6F4E", "#2F6F4E", "ri-send-plane-line"]
             elsif state == :completed && is_admission && linked_eval
               ["General chart · review",  "Polished narrative + extracted eval ready for RN review", "#FFF3EC", "#D97757", "#D97757", "ri-edit-2-line"]
+            elsif state == :completed && @visit.signed_off_by_rn?
+              ["Signed & locked",         "Chart entry signed by clinician — corrections need a late-entry note.", "#E6F0EE", "#2F6F4E", "#2F6F4E", "ri-shield-check-line"]
             elsif state == :completed
-              ["Completed",               "Chart entry signed",                                 "#FBF9F5", "#1D1C1A", "#EFECE6", "ri-check-double-line"]
+              ["Completed · awaiting sign-off", "Visit ended. Sign the note below to lock the chart entry.", "#FFF3EC", "#D97757", "#D97757", "ri-time-line"]
             elsif state == :recording
               ["Visit in progress",       "Recording started · finish to lock the chart",       "#FFE9E0", "#C1403A", "#C1403A", "ri-time-line"]
             elsif state == :ready
@@ -175,16 +178,6 @@
               ["Scheduled",               "Visit not yet started",                              "#FBF9F5", "#6B665F", "#EFECE6", "ri-calendar-event-line"]
             end
         %>
-        <div class="mt-5 rounded-2xl p-4 flex items-start gap-3"
-             style="background-color: <%= stage_bg %>; border: 1px solid <%= stage_border %>;">
-          <i class="<%= stage_icon %> text-lg mt-0.5" style="color: <%= stage_fg %>;"></i>
-          <div class="flex-1 min-w-0">
-            <div class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: <%= stage_fg %>;">
-              Stage · <%= stage_label %>
-            </div>
-            <div class="text-[12px] text-[#1D1C1A] mt-0.5"><%= stage_sub %></div>
-          </div>
-        </div>
 
         <%# ── Clinical flags ─ at-a-glance chips for what's actually
             wrong with this patient. Pulled from the eval (when an
@@ -302,41 +295,24 @@
           <% end %>
         <% end %>
 
-        <%# ── Non-admission visit sign-off ─ admission visits flow
-            through Route-to-MD instead, so this panel is for routine
-            / follow-up / inquiry / recert visits where the only
-            sign step is the RN's own attestation. Once signed, the
-            visit chart locks (Visit#chart_locked?). %>
-        <% if state == :completed && !is_admission %>
-          <% rn_visit_sig = @visit.signatures.where(verification_method: "rn_visit_signoff").order(:signed_at).last %>
-          <% if rn_visit_sig %>
-            <div class="mt-5 rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-4">
-              <div class="flex items-start gap-3">
-                <i class="ri-shield-check-line text-[#2F6F4E] text-lg mt-0.5 flex-shrink-0"></i>
-                <div class="flex-1 min-w-0">
-                  <div class="text-[11px] uppercase tracking-widest text-[#2F6F4E] font-bold">Visit note signed</div>
-                  <% if rn_visit_sig.signature_blob_id && (blob = ActiveStorage::Blob.find_by(id: rn_visit_sig.signature_blob_id)) %>
-                    <div class="mt-2 bg-white rounded-lg border border-[#EFECE6] p-3 inline-block">
-                      <%= image_tag blob, class: "h-24 max-w-[480px] object-contain" %>
-                    </div>
-                  <% end %>
-                  <div class="text-[12px] text-[#1D1C1A] mt-1"><%= rn_visit_sig.signed_name %></div>
-                  <div class="text-[11px] text-[#6B665F] mt-0.5"><%= rn_visit_sig.short_audit_line %></div>
-                </div>
-              </div>
-            </div>
-          <% else %>
-            <div class="mt-5">
-              <%= render "shared/signature_panel",
-                    submit_path:   sign_note_visit_path(@visit),
-                    submit_method: :post,
-                    submit_label:  "Sign visit note",
-                    headline:      "Sign · visit note",
-                    intent_text:   "I, the signing clinician, attest that this visit note is accurate and complete to the best of my knowledge.",
-                    confirm:       "Sign and lock this visit note for #{@visit.patient&.full_name}? Future corrections require a late-entry note.",
-                    tone:          :certify %>
-            </div>
-          <% end %>
+        <%# Non-admission visit sign-off — when the visit is already
+            signed, the confirmation card is purely informational so
+            it renders below the form (next to the stage banner) so
+            the chart content stays at the top. The active sign
+            panel still surfaces above the form so the RN sees the
+            action they need to take. %>
+        <% rn_visit_sig = (state == :completed && !is_admission) ? @visit.signatures.where(verification_method: "rn_visit_signoff").order(:signed_at).last : nil %>
+        <% if state == :completed && !is_admission && rn_visit_sig.nil? %>
+          <div class="mt-5">
+            <%= render "shared/signature_panel",
+                  submit_path:   sign_note_visit_path(@visit),
+                  submit_method: :post,
+                  submit_label:  "Sign visit note",
+                  headline:      "Sign · visit note",
+                  intent_text:   "I, the signing clinician, attest that this visit note is accurate and complete to the best of my knowledge.",
+                  confirm:       "Sign and lock this visit note for #{@visit.patient&.full_name}? Future corrections require a late-entry note.",
+                  tone:          :certify %>
+          </div>
         <% end %>
 
         <%# Route-to-MD banner (admission visits with linked eval). %>
@@ -675,6 +651,64 @@
         <div class="mt-6">
           <%= render "form", just_recorded: just_recorded %>
         </div>
+
+        <%# ── Stage banner (footer position) ─ visit lifecycle
+            sits at the bottom so the chart + flags don't get
+            pushed below the fold. Same data, just lower in the
+            visual hierarchy. %>
+        <div class="mt-6 rounded-2xl p-4 flex items-start gap-3"
+             style="background-color: <%= stage_bg %>; border: 1px solid <%= stage_border %>;">
+          <i class="<%= stage_icon %> text-lg mt-0.5" style="color: <%= stage_fg %>;"></i>
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: <%= stage_fg %>;">
+              Stage · <%= stage_label %>
+            </div>
+            <div class="text-[12px] text-[#1D1C1A] mt-0.5"><%= stage_sub %></div>
+          </div>
+        </div>
+
+        <%# ── Signature & audit (collapsible) ─ when the visit
+            note is already RN-signed, show a tight summary line
+            with a chevron; expanding reveals the full signature
+            image + audit fingerprint. Default-closed because once
+            it's signed, the confirmation is purely historical. %>
+        <% if rn_visit_sig %>
+          <details class="mt-3 rounded-2xl border border-[#2F6F4E] bg-[#E6F0EE] group">
+            <summary class="cursor-pointer list-none flex items-center justify-between p-4 [&::-webkit-details-marker]:hidden">
+              <div class="inline-flex items-center gap-2 min-w-0">
+                <i class="ri-shield-check-line text-[#2F6F4E] text-lg flex-shrink-0"></i>
+                <div class="min-w-0">
+                  <div class="text-[10px] uppercase tracking-widest text-[#2F6F4E] font-bold">Visit note signed</div>
+                  <div class="text-[12px] text-[#1D1C1A] truncate">
+                    <strong><%= rn_visit_sig.signed_name %></strong> · <%= rn_visit_sig.signed_at.strftime("%b %-d, %Y · %-l:%M %p") %>
+                  </div>
+                </div>
+              </div>
+              <i class="ri-arrow-down-s-line text-[#2F6F4E] group-open:rotate-180 transition-transform flex-shrink-0"></i>
+            </summary>
+            <div class="px-4 pb-4 border-t border-[#2F6F4E]/30">
+              <% if rn_visit_sig.signature_blob_id && (blob = ActiveStorage::Blob.find_by(id: rn_visit_sig.signature_blob_id)) %>
+                <div class="mt-3 bg-white rounded-lg border border-[#EFECE6] p-3 inline-block">
+                  <%= image_tag blob, class: "h-24 max-w-[480px] object-contain" %>
+                </div>
+              <% end %>
+              <div class="text-[11px] text-[#6B665F] mt-2 leading-relaxed">
+                <%= rn_visit_sig.short_audit_line %>
+              </div>
+              <% if rn_visit_sig.document_hash.present? %>
+                <div class="mt-2 pt-2 border-t border-[#2F6F4E]/20">
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-0.5 inline-flex items-center gap-1">
+                    <i class="ri-fingerprint-line"></i> Security hash (SHA-256)
+                  </div>
+                  <div class="font-mono text-[10px] text-[#1D1C1A] break-all leading-tight"
+                       title="Hash of the signed payload at signing time. Any change to the underlying record after this would produce a different hash.">
+                    <%= rn_visit_sig.document_hash %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
 
       </div>
 
