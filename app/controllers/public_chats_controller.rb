@@ -102,6 +102,9 @@ class PublicChatsController < ActionController::Base
     what how when why who can will should is are does do tell explain
     cost price insurance medicare medicaid eligible hospice elder
     dementia cancer help mom dad mother father husband wife
+    thank thanks hello hi hey ok okay yes no yeah nope sure good bad
+    great sorry please bye you your yours my me i it this that these
+    those here there now then
   ].freeze
 
   # Florida is HosAlivio's statewide service area for now. We
