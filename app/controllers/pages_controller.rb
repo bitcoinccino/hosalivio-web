@@ -31,6 +31,14 @@ class PagesController < ApplicationController
     head(:forbidden) and return unless user_signed_in? && current_user.role_names.include?("admin")
   end
 
+  # Public pricing page for prospective hospice agency partners.
+  # Two-tier hybrid model: per-clinician base + per-admission usage,
+  # plus a flat Emerging tier for small agencies. The page is the
+  # canonical answer to "what does HosAlivio cost?" so the public
+  # chat can deep-link here when families/owners ask.
+  def pricing
+  end
+
   # Left intact from earlier FAQ tree (still used by the educational prompts
   # in the side panel — we keep them as a secondary layer under the directory).
   HOSPICE_FAQS = [].freeze

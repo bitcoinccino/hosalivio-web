@@ -21,24 +21,39 @@ class PublicChatsController < ActionController::Base
       return render(json: { error: "Keep your question under #{MAX_QUESTION_LENGTH} characters." }, status: :unprocessable_entity)
     end
     if rate_limited?
-      return render(json: { error: "You've hit the limit for this hour. Try again later or tap 'Request a callback' so a human can help." }, status: :too_many_requests)
+      return render(json: { error: "You've hit the limit for this hour. Try again later or tap 'Talk to a hospice nurse · 24/7' so a human can help." }, status: :too_many_requests)
     end
 
     # Detect ZIP / city / agency-name in the question so the bot's
     # reply can be aware of what cards are about to render below
     # it. The agency lookup runs once, server-side, and the result
-    # rides back in the same JSON payload as the answer — no
-    # parallel JS fetch needed.
+    # rides back in the same JSON payload as the answer.
     locator = audience == "family" ? extract_locator(question) : nil
     cards   = locator ? lookup_branches_as_cards(**locator) : []
-    context = build_brain_context(question: question, locator: locator, cards_count: cards.size)
 
+    # Single source of truth: when the visitor handed us a real
+    # locator AND we have zero matches, skip the brain call entirely
+    # and ship just the structured "no results" payload. Avoids the
+    # double-fallback bug where the bot says "thank you for sharing"
+    # and then the JS renders its own "I couldn't find a partner"
+    # bubble. Also saves an API call we don't need.
+    if locator && cards.empty?
+      bump_rate_counter
+      return render(json: {
+        audience:   audience,
+        query:      locator,
+        agencies:   [],
+        no_results: true
+      })
+    end
+
+    context = build_brain_context(question: question, locator: locator, cards_count: cards.size)
     answer = HosalivioBrain.answer_public_question(
       question: context.present? ? "#{context}\n\n#{question}" : question,
       audience: audience.to_sym
     )
     if answer.blank?
-      return render(json: { error: "We couldn't reach the assistant right now. Please tap 'Request a callback' below." }, status: :bad_gateway)
+      return render(json: { error: "We couldn't reach the assistant right now. Please tap 'Talk to a hospice nurse · 24/7' below." }, status: :bad_gateway)
     end
 
     bump_rate_counter
@@ -90,6 +105,39 @@ class PublicChatsController < ActionController::Base
       query:    { zip: zip.presence, city: city.presence, name: name.presence, state: state.presence },
       agencies: cards
     }
+  end
+
+  # POST /public_chat/feedback — anonymous reaction on an AI reply.
+  # Hover-revealed thumbs widget on the family/partner chat sends
+  # { rating, question, answer, audience, comment } here. Same
+  # per-IP rate limit as #create. Stored on chat_feedbacks for
+  # later prompt tuning + eval clustering.
+  def feedback
+    payload = parse_payload
+    rating  = payload["rating"].to_s
+    unless ChatFeedback::RATINGS.include?(rating)
+      return render(json: { error: "Unknown rating." }, status: :unprocessable_entity)
+    end
+    if rate_limited?
+      return render(json: { error: "You've hit the limit for this hour." }, status: :too_many_requests)
+    end
+
+    fb = ChatFeedback.new(
+      rating:     rating,
+      audience:   ChatFeedback::AUDIENCES.include?(payload["audience"].to_s) ? payload["audience"] : nil,
+      question:   payload["question"].to_s.first(2_000),
+      answer:     payload["answer"].to_s.first(4_000),
+      comment:    payload["comment"].to_s.first(1_000).presence,
+      ip_address: request.remote_ip,
+      user_agent: request.user_agent.to_s.first(255)
+    )
+
+    if fb.save
+      bump_rate_counter
+      render json: { ok: true }
+    else
+      render json: { error: fb.errors.full_messages.first || "Couldn't save." }, status: :unprocessable_entity
+    end
   end
 
   private
@@ -161,23 +209,20 @@ class PublicChatsController < ActionController::Base
     if (m = question.match(/\b\d{5}\b/))
       return { zip: m[0] }
     end
-    # Known FL city scan first — beats state-wide because it's
-    # more specific. Multi-word cities resolve via the longest-
-    # first regex above, so "Fort Lauderdale" doesn't get split
-    # into "Fort" + something else.
+    # Known FL city scan — multi-word cities resolve via the
+    # longest-first regex above, so "Fort Lauderdale" doesn't
+    # get split into "Fort" + something else. We do NOT keep a
+    # generic "in/near/at <Capitalized phrase>" fallback because
+    # it false-positives on questions like "Can care happen at
+    # home?" (capturing "home" as a city). HosAlivio's footprint
+    # is FL-only today; if a known FL city isn't in the message,
+    # let the bot answer naturally.
     if (m = question.match(KNOWN_FL_CITIES_RE))
       city = KNOWN_FL_CITIES.find { |c| c.downcase == m[1].downcase } || m[1]
       return { city: city }
     end
     STATE_KEYWORDS.each do |code, re|
       return { state: code } if question.match?(re)
-    end
-    # Fallback city detector for cities outside our known list:
-    # any "in/near/at <Capitalized phrase>" still matches, then
-    # the lookup either hits a non-FL branch we have or returns
-    # the friendly no-results message.
-    if (m = question.match(/\b(?:in|near|around|at|for|serving)\s+([A-Za-z][A-Za-z]+(?:\s+[A-Za-z][A-Za-z]+)?)\b/i))
-      return { city: m[1].split.map(&:capitalize).join(" ") }
     end
     cleaned = question.gsub(/[?.!,]/, "").strip
     if cleaned.length.between?(3, 60)
@@ -238,9 +283,12 @@ class PublicChatsController < ActionController::Base
                                                     accepting_referrals: true })
     if zip.present?
       prefix = zip[0, 3]
+      # Qualify `service_area_zips` with the `branches.` prefix —
+      # both `agencies` and `branches` carry that column, so an
+      # unqualified reference here raises PG::AmbiguousColumn.
       scope = scope.where(<<~SQL, full: zip, prefix: prefix, like: "#{zip}%")
-        service_area_zips @> :full::jsonb
-        OR service_area_zips @> :prefix::jsonb
+        branches.service_area_zips @> :full::jsonb
+        OR branches.service_area_zips @> :prefix::jsonb
         OR branches.zip LIKE :like
       SQL
     elsif state.present?

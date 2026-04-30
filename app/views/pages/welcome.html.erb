@@ -107,6 +107,20 @@
           </span>
           <span class="flex-1 group-data-[collapsed=true]/sb:hidden">FAQ</span>
         </button>
+
+        <%# Pricing page link — opens the full /pricing page in
+            the same tab. Distinct from the showHome / showFamily
+            buttons above because it's a separate route, not a
+            section reveal on the welcome page. %>
+        <%= link_to pricing_path,
+              title: "Pricing",
+              class: "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
+                      group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0" do %>
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#1D1C1A]">
+            <i class="ri-price-tag-3-line"></i>
+          </span>
+          <span class="flex-1 group-data-[collapsed=true]/sb:hidden">Pricing</span>
+        <% end %>
       </nav>
 
       <div class="mt-6 rounded-lg bg-[#FBF9F5] border border-[#D9D5CD] p-3 group-data-[collapsed=true]/sb:hidden">
@@ -198,6 +212,7 @@
            data-controller="welcome-chat"
            data-welcome-chat-url-value="<%= public_chat_path %>"
            data-welcome-chat-agencies-url-value="<%= public_chat_agencies_path %>"
+           data-welcome-chat-feedback-url-value="<%= public_chat_feedback_path %>"
            data-welcome-chat-callback-url-value="<%= new_inquiry_path rescue '#' %>">
 
         <%# Audience switcher — same pattern as the patient

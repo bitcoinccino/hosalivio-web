@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_30_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_30_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -145,6 +145,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_30_160000) do
     t.index ["npi"], name: "index_branches_on_npi"
     t.index ["service_area_counties"], name: "index_branches_on_service_area_counties", using: :gin
     t.index ["service_area_zips"], name: "index_branches_on_service_area_zips", using: :gin
+  end
+
+  create_table "chat_feedbacks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "answer", null: false
+    t.string "audience"
+    t.text "comment"
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.text "question", null: false
+    t.string "rating", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.index ["created_at"], name: "index_chat_feedbacks_on_created_at"
+    t.index ["rating"], name: "index_chat_feedbacks_on_rating"
   end
 
   create_table "consent_forms", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

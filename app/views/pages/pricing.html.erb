@@ -1,0 +1,287 @@
+<% content_for :title, "Pricing · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5]">
+
+  <%# ── Header bar ─────────────────────────────────────────── %>
+  <header class="bg-white border-b border-[#EFECE6] px-6 lg:px-8 py-4">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <a href="<%= welcome_path %>" class="inline-flex items-center gap-2 text-[#1D1C1A] hover:text-[#D97757]">
+        <span class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+          <i class="ri-heart-pulse-line text-sm"></i>
+        </span>
+        <span class="font-serif text-xl">HosAlivio</span>
+      </a>
+      <%= link_to new_partner_path,
+            class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
+        <i class="ri-user-add-line"></i> Sign up your agency
+      <% end %>
+    </div>
+  </header>
+
+  <%# ── Hero ───────────────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 pt-12 pb-8 text-center">
+    <div class="max-w-3xl mx-auto">
+      <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-3">
+        <i class="ri-line-chart-line"></i> Scalable relief pricing
+      </div>
+      <h1 class="font-serif text-[32px] md:text-[40px] text-[#1D1C1A] leading-tight">
+        Pay for the relief, not the software.
+      </h1>
+      <p class="text-[15px] text-[#3A3936] mt-4 leading-relaxed max-w-2xl mx-auto">
+        HosAlivio's pricing has two parts: a fixed monthly fee that powers your
+        front-door AI, signature pipeline, and clinician dashboard, plus a
+        per-admission fee on the high-liability work that actually generates
+        revenue. We don't charge for patients you don't have.
+      </p>
+    </div>
+  </section>
+
+  <%# ── Pricing tiers ──────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 pb-12">
+    <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5">
+
+      <%# Emerging — flat, predictable, for agencies still under 5 clinicians %>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 flex flex-col">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Emerging</div>
+        <div class="font-serif text-[22px] text-[#1D1C1A]">For agencies under 5 clinicians</div>
+        <div class="mt-4 mb-1">
+          <span class="font-serif text-[40px] text-[#1D1C1A] leading-none">$1,950</span>
+          <span class="text-[12px] text-[#6B665F]">/ month</span>
+        </div>
+        <div class="text-[11px] text-[#6B665F] italic">Up to 10 admissions included.</div>
+        <ul class="mt-5 space-y-2 text-[13px] text-[#1D1C1A] flex-1">
+          <% [
+            "24/7 front-door AI for family chats",
+            "Smart routing to your on-call clinician",
+            "Audit-grade signature pipeline",
+            "Real-time DON dashboard",
+            "Voice-note charting with AI polish",
+            "Up to 10 admission evals included",
+            "Overflow billed at $195 per eval"
+          ].each do |feature| %>
+            <li class="flex items-start gap-2">
+              <i class="ri-check-line text-[#2F6F4E] mt-0.5"></i>
+              <span><%= feature %></span>
+            </li>
+          <% end %>
+        </ul>
+        <%= link_to new_partner_path,
+              class: "mt-5 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-white border border-[#D97757] hover:bg-[#FFF3EC] text-[#D97757] text-sm font-medium transition" do %>
+          Start with Emerging
+        <% end %>
+        <div class="text-[10px] text-[#6B665F] mt-2 text-center italic">
+          $3,000 one-time setup &middot; 15% off with annual prepay
+        </div>
+      </div>
+
+      <%# Growth — recommended, the mid-market standard %>
+      <div class="rounded-2xl bg-white border-2 border-[#D97757] p-6 flex flex-col shadow-lg relative">
+        <span class="absolute -top-3 left-6 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold bg-[#D97757] text-white">
+          <i class="ri-star-fill"></i> Most popular
+        </span>
+        <div class="text-[10px] uppercase tracking-widest text-[#D97757] font-bold mb-1">Growth</div>
+        <div class="font-serif text-[22px] text-[#1D1C1A]">The mid-market standard</div>
+        <div class="mt-4 mb-1">
+          <span class="font-serif text-[40px] text-[#1D1C1A] leading-none">$275</span>
+          <span class="text-[12px] text-[#6B665F]">/ clinician / month</span>
+        </div>
+        <div class="text-[11px] text-[#6B665F] italic">Plus $195 per admission eval.</div>
+        <ul class="mt-5 space-y-2 text-[13px] text-[#1D1C1A] flex-1">
+          <% [
+            "Everything in Emerging",
+            "Per-clinician seat licensing",
+            "Pre-admit eval extractor + MD certify pipeline",
+            "Two-way Telegram / WhatsApp / SMS routing",
+            "Pre-admit eval JSON in CMS-compliant phrasing",
+            "NOE 5-day clock auto-tracker, no extra fee",
+            "EMR integration with HCHB / Netsmart / WellSky / MatrixCare",
+            "Priority partner-success support"
+          ].each do |feature| %>
+            <li class="flex items-start gap-2">
+              <i class="ri-check-line text-[#2F6F4E] mt-0.5"></i>
+              <span><%= feature %></span>
+            </li>
+          <% end %>
+        </ul>
+        <%= link_to new_partner_path,
+              class: "mt-5 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-semibold shadow-sm transition" do %>
+          Start with Growth
+        <% end %>
+        <div class="text-[10px] text-[#6B665F] mt-2 text-center italic">
+          $5,000 one-time setup &middot; 15% off seat fees with annual prepay
+        </div>
+      </div>
+
+      <%# Enterprise — custom, 50+ clinicians %>
+      <div class="rounded-2xl bg-[#1D1C1A] text-white border border-[#1D1C1A] p-6 flex flex-col">
+        <div class="text-[10px] uppercase tracking-widest text-[#D97757] font-bold mb-1">Enterprise</div>
+        <div class="font-serif text-[22px]">For 50+ clinicians</div>
+        <div class="mt-4 mb-1">
+          <span class="font-serif text-[40px] leading-none">Custom</span>
+        </div>
+        <div class="text-[11px] text-[#D9D5CD] italic">Negotiated annual contract.</div>
+        <ul class="mt-5 space-y-2 text-[13px] flex-1">
+          <% [
+            "Everything in Growth",
+            "Volume discounts on seats and admissions",
+            "Dedicated SLAs for chat + ASR uptime",
+            "BAA + custom data-residency options",
+            "Multi-branch and multi-tenant rollups",
+            "Quarterly business reviews with our partnerships lead",
+            "Custom AI persona + agency-branded chat surface",
+            "On-call success engineer during go-live"
+          ].each do |feature| %>
+            <li class="flex items-start gap-2">
+              <i class="ri-check-line text-[#D97757] mt-0.5"></i>
+              <span><%= feature %></span>
+            </li>
+          <% end %>
+        </ul>
+        <%= link_to (new_inquiry_path rescue inquiries_path),
+              class: "mt-5 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-white text-[#1D1C1A] hover:bg-[#FBF9F5] text-sm font-semibold shadow-sm transition" do %>
+          Talk to partnerships
+        <% end %>
+        <div class="text-[10px] text-[#D9D5CD] mt-2 text-center italic">
+          Custom setup &middot; flexible billing terms
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <%# ── At-a-glance comparison ─────────────────────────────── %>
+  <section class="px-6 lg:px-8 pb-12">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-[#2F6F4E] font-bold mb-2">
+          <i class="ri-scales-3-line"></i> Quick comparison
+        </div>
+        <h2 class="font-serif text-[24px] md:text-[28px] text-[#1D1C1A]">
+          Plans at a glance
+        </h2>
+      </div>
+      <div class="rounded-2xl border border-[#EFECE6] bg-white overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold border-b border-[#EFECE6]">
+              <th class="px-5 py-3">Component</th>
+              <th class="px-5 py-3">Emerging</th>
+              <th class="px-5 py-3 bg-[#FFF3EC] text-[#D97757]">Growth</th>
+              <th class="px-5 py-3">Enterprise</th>
+            </tr>
+          </thead>
+          <tbody class="text-[13px]">
+            <% rows = [
+              ["Base fee",         "$1,950 / mo",            "$275 / clinician / mo",  "Custom"],
+              ["Admissions",       "10 included / mo",       "$195 per eval",          "Volume rate"],
+              ["Overflow",         "$195 per eval",          "Included in usage",      "Custom"],
+              ["Setup fee",        "$3,000 (one-time)",      "$5,000 (one-time)",      "Custom (often waived)"],
+              ["Annual prepay",    "15% off base",           "15% off seats",          "Negotiated"],
+              ["NOE 5-day defense","Included",               "Included",               "Included"],
+              ["EMR integration",  "Included",               "Included",               "Included + custom APIs"],
+              ["SLA",              "Standard",               "Priority",               "Dedicated"]
+            ] %>
+            <% rows.each_with_index do |row, idx| %>
+              <tr class="<%= 'border-b border-[#EFECE6]' unless idx == rows.size - 1 %>">
+                <td class="px-5 py-3.5 font-bold text-[#1D1C1A]"><%= row[0] %></td>
+                <td class="px-5 py-3.5 text-[#3A3936]"><%= row[1] %></td>
+                <td class="px-5 py-3.5 bg-[#FFF3EC]/50 text-[#1D1C1A] font-medium"><%= row[2] %></td>
+                <td class="px-5 py-3.5 text-[#3A3936]"><%= row[3] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <%# ── How the pricing thinks ─────────────────────────────── %>
+  <section class="px-6 lg:px-8 pb-12">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-8">
+        <h2 class="font-serif text-[24px] md:text-[28px] text-[#1D1C1A]">
+          How the pricing thinks
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <% [
+          { icon: "ri-trophy-line", title: "We only win when you grow.",
+            body: "The per-admission fee means our revenue scales with your census. Slow months cost you less; growth months pay for themselves through the 90 minutes of nursing time we reclaim on every admission." },
+          { icon: "ri-shield-check-line", title: "NOE defense is free.",
+            body: "We track the 5-day Notice of Election clock for every admission you process, alert your billing team, and prepare the files. It's our way of ensuring the work we did together actually gets paid." },
+          { icon: "ri-bank-card-line", title: "Annual prepay reduces friction.",
+            body: "15% off the base fee for paying upfront annually. Your CFO gets a clean budget line; your monthly statement focuses only on the variable admission volume. No re-sell at renewal." },
+          { icon: "ri-tools-line", title: "White-glove migration, not a free trial.",
+            body: "The one-time setup fee covers EMR API sync, a 60-minute Train-the-Trainer session for your DON, and a clean import of the past 3 months of patient history. This isn't a demo; we move you." }
+        ].each do |b| %>
+          <div class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+            <div class="w-10 h-10 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[#D97757] flex items-center justify-center mb-3">
+              <i class="<%= b[:icon] %> text-lg"></i>
+            </div>
+            <div class="font-serif text-[16px] text-[#1D1C1A] mb-1"><%= b[:title] %></div>
+            <p class="text-[13px] text-[#3A3936] leading-relaxed"><%= b[:body] %></p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <%# ── FAQ ────────────────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 pb-12">
+    <div class="max-w-3xl mx-auto">
+      <div class="text-center mb-6">
+        <h2 class="font-serif text-[24px] md:text-[28px] text-[#1D1C1A]">
+          Pricing FAQ
+        </h2>
+      </div>
+      <div class="space-y-2">
+        <% [
+          ["Why not a flat per-seat price like Homecare Homebase?",
+           "Flat-seat pricing penalizes you when census is low and overcharges fast-growing teams. Our hybrid lets the base cover always-on infrastructure (chat, dashboard, signatures) while the admission fee captures the high-liability work that actually generates revenue."],
+          ["What if my agency has fewer than 10 admissions in a slow month?",
+           "On Emerging you keep your full $1,950 base regardless. On Growth you only pay seat fees for that month, no admission fees. We literally do not charge you for patients you don't have."],
+          ["Are upgrades and downgrades flexible?",
+           "Yes. You can move between Emerging and Growth at any monthly billing cycle. We pro-rate seat counts at the next cycle, so a clinician hired mid-month doesn't trigger immediate billing."],
+          ["Do you take a percentage of NOE revenue?",
+           "No. Auditing 'this NOE was filed on time because of HosAlivio' is a counterfactual mess. We bake NOE protection into the admission fee instead and stay aligned with your billing team, not adversarial to it."],
+          ["What does the migration fee actually buy?",
+           "API sync with your existing EMR (HCHB / Netsmart / WellSky / MatrixCare), a 60-minute Train-the-Trainer session for your DON or Clinical Supervisor, and a clean import of the past 3 months of patient history so your team doesn't start with an empty chart."],
+          ["Can the setup fee be waived?",
+           "We waive it for the first three partners in any new territory and occasionally as a closing incentive. Beyond that, charging it signals that this is an infrastructure upgrade, not a free trial, and our partners actually invest in the integration."]
+        ].each_with_index do |(q, a), i| %>
+          <details class="rounded-2xl border border-[#EFECE6] bg-white group">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+              <span class="font-serif text-[15px] text-[#1D1C1A]"><%= q %></span>
+              <i class="ri-arrow-down-s-line text-[#6B665F] group-open:rotate-180 transition-transform"></i>
+            </summary>
+            <div class="px-5 pb-4 text-[13px] text-[#3A3936] leading-relaxed border-t border-[#EFECE6] pt-3">
+              <%= a %>
+            </div>
+          </details>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <%# ── Final CTA ──────────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 pb-16">
+    <div class="max-w-3xl mx-auto rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-8 text-center">
+      <h2 class="font-serif text-[24px] md:text-[28px] text-[#1D1C1A] leading-tight">
+        Ready to see the numbers on your own agency?
+      </h2>
+      <p class="text-[14px] text-[#3A3936] mt-3 max-w-xl mx-auto leading-relaxed">
+        Tell us your team size and we'll send a personalized ROI projection within one business day. No demo gauntlet.
+      </p>
+      <div class="mt-5 flex items-center justify-center gap-3 flex-wrap">
+        <%= link_to new_partner_path,
+              class: "inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-semibold shadow-sm transition" do %>
+          <i class="ri-user-add-line"></i> Sign up your agency
+        <% end %>
+        <%= link_to (new_inquiry_path rescue inquiries_path),
+              class: "inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-white border border-[#2F6F4E] hover:bg-[#FBF9F5] text-[#2F6F4E] text-sm font-semibold transition" do %>
+          <i class="ri-phone-line"></i> Talk to partnerships
+        <% end %>
+      </div>
+    </div>
+  </section>
+</div>

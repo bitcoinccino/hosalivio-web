@@ -20,7 +20,7 @@ import { Controller } from "@hotwired/stimulus"
 //                 (cost / home / how to start). Hidden after first turn.
 export default class extends Controller {
   static targets = ["transcript", "form", "input", "send", "intro", "audience", "audienceBtn", "quickStart"]
-  static values  = { url: String, agenciesUrl: String, callbackUrl: String }
+  static values  = { url: String, agenciesUrl: String, callbackUrl: String, feedbackUrl: String }
 
   connect() {
     this._sending = false
@@ -75,24 +75,22 @@ export default class extends Controller {
     thinking.remove()
 
     const cardsReady = !!data?.agencies?.length
-    const lookupTried = !!data?.query
+    const noResults  = data?.no_results === true
     const where = data?.query?.zip || data?.query?.city || data?.query?.name ||
                   (data?.query?.state === "FL" ? "Florida" : data?.query?.state)
 
     if (data?.error) {
       this._renderAssistant(data.error, "error")
+    } else if (noResults) {
+      this._renderNoResultsCard(data.query, where)
     } else if (data?.answer) {
-      this._renderAssistant(data.answer)
+      const wrap = this._renderAssistant(data.answer)
+      this._attachFeedback(wrap, q, data.answer, audience)
     } else if (!cardsReady) {
-      this._renderAssistant("We couldn't reach the assistant right now. Tap 'Request a callback' below.", "error")
+      this._renderAssistant("We couldn't reach the assistant right now. Tap 'Talk to a hospice nurse · 24/7' below.", "error")
     }
 
-    if (cardsReady) {
-      this._renderAgencyCards(data.agencies)
-    } else if (lookupTried) {
-      const noun = data.query.name ? `partner named "${data.query.name}"` : "partner"
-      this._renderAssistant(`I couldn't find a HosAlivio ${noun} around or near ${where}. We're adding new partners every week. Tap "Request a callback" below and our team will personally help you find a vetted hospice that serves you.`)
-    }
+    if (cardsReady) this._renderAgencyCards(data.agencies)
 
     this._sending = false
     this.sendTarget.disabled = false
@@ -163,6 +161,141 @@ export default class extends Controller {
     this.transcriptTarget.appendChild(wrap)
     this._scrollBottom()
     return wrap
+  }
+
+  // ── Feedback widget ────────────────────────────────────────
+  // Hover-revealed "Did this help?" with thumbs up/down at the
+  // bottom of an answer bubble. Soft language, low-opacity icons,
+  // hospice-appropriate. Thumbs-down expands an inline comment
+  // field + the 24/7 nurse CTA so the visitor isn't left in a
+  // dead end. POSTs to /public_chat/feedback on click.
+  _attachFeedback(wrap, question, answer, audience) {
+    if (!this.hasFeedbackUrlValue) return
+    const bubble = wrap.querySelector("div:last-child")
+    if (!bubble) return
+
+    const fb = document.createElement("div")
+    fb.className = "mt-3 pt-2 border-t border-[#EFECE6] flex items-center justify-end gap-2 text-[11px] text-[#6B665F]"
+    fb.innerHTML = `
+      <span class="italic">Did this help?</span>
+      <button type="button" data-rating="helpful" aria-label="Yes, this helped"
+              class="w-8 h-8 rounded-full bg-[#FBF9F5] border border-[#EFECE6] hover:bg-[#E6F0EE] hover:border-[#2F6F4E] hover:text-[#2F6F4E] flex items-center justify-center transition">
+        <i class="ri-thumb-up-line text-[14px]"></i>
+      </button>
+      <button type="button" data-rating="not_helpful" aria-label="No, this missed the mark"
+              class="w-8 h-8 rounded-full bg-[#FBF9F5] border border-[#EFECE6] hover:bg-[#FFF3EC] hover:border-[#D97757] hover:text-[#C1403A] flex items-center justify-center transition">
+        <i class="ri-thumb-down-line text-[14px]"></i>
+      </button>
+    `
+    bubble.appendChild(fb)
+
+    fb.querySelectorAll("button[data-rating]").forEach(btn => {
+      btn.addEventListener("click", () => this._submitFeedback(fb, bubble, btn.dataset.rating, question, answer, audience))
+    })
+  }
+
+  async _submitFeedback(fbBar, bubble, rating, question, answer, audience, comment = null) {
+    try {
+      await fetch(this.feedbackUrlValue, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body:    JSON.stringify({ rating, question, answer, audience, comment })
+      })
+    } catch (_) { /* best-effort, silent */ }
+
+    if (rating === "helpful") {
+      fbBar.innerHTML = `<span class="text-[#2F6F4E] inline-flex items-center gap-1"><i class="ri-heart-fill"></i> Thank you, glad we could help.</span>`
+      fbBar.classList.remove("opacity-30")
+      fbBar.classList.add("opacity-100")
+      return
+    }
+
+    // Thumbs down — expand into comment + nurse CTA so the
+    // visitor isn't left at a dead end after rating.
+    if (comment != null) {
+      // Comment already submitted — collapse to thanks
+      fbBar.innerHTML = `<span class="text-[#2F6F4E] inline-flex items-center gap-1"><i class="ri-heart-fill"></i> Thanks, we'll improve.</span>`
+      fbBar.classList.remove("opacity-30")
+      fbBar.classList.add("opacity-100")
+      return
+    }
+
+    const followUp = document.createElement("div")
+    followUp.className = "mt-3 pt-3 border-t border-[#EFECE6] space-y-2"
+    followUp.innerHTML = `
+      <div class="text-[11px] text-[#6B665F] italic">We're sorry. What did we miss? <span class="not-italic">(optional)</span></div>
+      <textarea rows="2" maxlength="500" placeholder="A line or two helps us improve…"
+                class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[12px] resize-none"></textarea>
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <a href="${escapeHtml(this.callbackUrlValue || '#')}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[11px] font-bold uppercase tracking-widest">
+          <i class="ri-phone-fill"></i> Talk to a nurse · 24/7
+        </a>
+        <button type="button" class="text-[11px] text-[#D97757] hover:text-[#c46a4b] font-bold uppercase tracking-widest">
+          Send feedback
+        </button>
+      </div>
+    `
+    bubble.appendChild(followUp)
+    fbBar.remove()
+    const ta = followUp.querySelector("textarea")
+    const send = followUp.querySelector("button")
+    ta.focus()
+    send.addEventListener("click", () => {
+      const text = ta.value.trim()
+      followUp.remove()
+      const collapsed = document.createElement("div")
+      collapsed.className = "mt-2 pt-2 border-t border-[#EFECE6] text-[11px] text-[#2F6F4E] italic"
+      collapsed.innerHTML = `<i class="ri-heart-fill"></i> Thanks, we'll improve.`
+      bubble.appendChild(collapsed)
+      // Best-effort second POST with the comment
+      fetch(this.feedbackUrlValue, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body:    JSON.stringify({ rating: "not_helpful", question, answer, audience, comment: text })
+      }).catch(() => {})
+    })
+  }
+
+  // Structured "still growing" card. Renders alongside the
+  // assistant avatar so it reads as part of the conversation,
+  // but the CTA lives on the card itself (single source of
+  // truth: no extra chatty bubble repeating the action).
+  _renderNoResultsCard(query, where) {
+    const headline = query?.zip
+      ? `We're still growing in ${where}.`
+      : query?.name
+        ? `We don't have a partner named "${query.name}" yet.`
+        : query?.state
+          ? `Our partner network is still expanding in ${where}.`
+          : `We don't have a partner near ${where} yet.`
+
+    const subline = query?.zip
+      ? `We don't have a direct partner in ${where} yet, but we can still help you find a vetted hospice today.`
+      : `New partners are added every week, and our team can match you with a vetted hospice today.`
+
+    const cta = this.callbackUrlValue || "#"
+
+    const wrap = document.createElement("div")
+    wrap.className = "flex items-start gap-2"
+    wrap.innerHTML = `
+      <div class="w-8 h-8 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+        <i class="ri-heart-pulse-line text-sm"></i>
+      </div>
+      <div class="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EFECE6] bg-white shadow-sm px-4 py-3">
+        <div class="font-serif text-[15px] text-[#1D1C1A] mb-1">${escapeHtml(headline)}</div>
+        <p class="text-[13px] text-[#3A3936] leading-relaxed mb-3">${escapeHtml(subline)}</p>
+        <a href="${escapeHtml(cta)}" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[12px] font-bold uppercase tracking-widest shadow-sm transition">
+          <span class="relative inline-flex w-2 h-2">
+            <span class="absolute inline-flex w-full h-full rounded-full bg-white opacity-60 animate-ping"></span>
+            <span class="relative inline-flex w-2 h-2 rounded-full bg-white"></span>
+          </span>
+          <i class="ri-phone-fill"></i>
+          Talk to a hospice nurse · 24/7
+        </a>
+      </div>
+    `
+    this.transcriptTarget.appendChild(wrap)
+    this._scrollBottom()
   }
 
   _renderAgencyCards(agencies) {

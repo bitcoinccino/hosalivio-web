@@ -150,9 +150,13 @@ Rails.application.routes.draw do
   # partner audiences route through different system prompts.
   post "public_chat",          to: "public_chats#create",   as: :public_chat
   get  "public_chat/agencies", to: "public_chats#agencies", as: :public_chat_agencies
+  post "public_chat/feedback", to: "public_chats#feedback", as: :public_chat_feedback
 
   # 'Coming soon' upsell page for the agency-admin Upgrade link in the menu
   get "upgrade", to: "pages#upgrade", as: :upgrade
+
+  # Public pricing page for prospective partners
+  get "pricing", to: "pages#pricing", as: :pricing
 
   # Public 3-step partner-signup wizard. Session-backed until step 3 so
   # abandoning the flow never creates a half-provisioned Agency.
