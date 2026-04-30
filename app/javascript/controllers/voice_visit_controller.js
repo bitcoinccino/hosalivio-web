@@ -47,7 +47,8 @@ export default class extends Controller {
     langCode:         { type: String, default: "en" },
     needsTypePicker:  { type: Boolean, default: false },
     suggestedType:    { type: String, default: "" },
-    patientId:        { type: String, default: "" }
+    patientId:        { type: String, default: "" },
+    speakerRoster:    { type: Array,  default: [] }
   }
 
   connect() {
@@ -336,6 +337,11 @@ export default class extends Controller {
     this._asr = new Client({
       websocketUrl: cfg.websocket_url,
       token:        cfg.token,
+      // Roster is RN first, patient second, family after — first
+      // diarized voice claims slot 0 (the RN, who typically speaks
+      // first when starting the visit). Past the end of the roster
+      // we fall back to "Speaker N" labels.
+      roster:       this.speakerRosterValue,
       onTranscript: ({ kind, text, latest, speechFinal }) => {
         // When Solo dictation is on, strip Deepgram's [Speaker N:]
         // tags so the transcript reads as one continuous narrative.

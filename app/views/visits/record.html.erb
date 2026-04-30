@@ -29,7 +29,20 @@
      data-voice-visit-lang-code-value="<%= current_lang[:code] %>"
      data-voice-visit-needs-type-picker-value="<%= @needs_type_picker ? 'true' : 'false' %>"
      data-voice-visit-suggested-type-value="<%= @suggested_type %>"
-     data-voice-visit-patient-id-value="<%= @visit.patient_id %>">
+     data-voice-visit-patient-id-value="<%= @visit.patient_id %>"
+     <%# Speaker roster — first diarized voice → RN (current_user),
+         second → patient, third+ → family in roster order. The
+         AsrDeepgramClient claims slots in order as new speaker
+         indices appear. JSON-encoded; controller decodes via the
+         Stimulus Array value type. %>
+     <%
+       speaker_roster = []
+       speaker_roster << current_user.full_name.to_s.split.first if current_user&.full_name.present?
+       speaker_roster << @visit.patient.first_name if @visit.patient&.first_name.present?
+       fam = User.where(patient_id: @visit.patient_id, family_access: true).order(:full_name).limit(2)
+       fam.each { |f| speaker_roster << f.full_name.to_s.split.first if f.full_name.present? }
+     %>
+     data-voice-visit-speaker-roster-value="<%= speaker_roster.compact.uniq.to_json %>">
 
   <%# Top bar: patient name + cancel link %>
   <header class="flex items-center justify-between px-6 py-5">

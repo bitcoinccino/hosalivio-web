@@ -12,7 +12,7 @@
 // unavailable, e.g. Creole patients on Web Speech).
 
 export default class AsrDeepgramClient {
-  constructor({ websocketUrl, token, onTranscript, onError, onClose }) {
+  constructor({ websocketUrl, token, roster, onTranscript, onError, onClose }) {
     this.websocketUrl = websocketUrl
     this.token        = token
     this.onTranscript = onTranscript || (() => {})
@@ -25,10 +25,15 @@ export default class AsrDeepgramClient {
     this._finalText   = ""
     this._lastSpeaker = null
     // Speaker label mapping is built lazily as new speaker indices
-    // appear. Index 0 -> "Speaker 1", 1 -> "Speaker 2", etc. We
-    // surface them as bracket tags in the transcript so the
-    // downstream extractor can read them the same way it reads
-    // manual [Patient:] / [RN:] tags today.
+    // appear. Each new index claims the next slot in the roster
+    // (typically [RN, Patient, Family member 1, ...]). Past the end
+    // of the roster, falls back to "Speaker N" so unknown voices
+    // still get distinguishable tags. Mapping persists for the
+    // session so once Speaker 0 is named "Pascal", every chunk that
+    // returns index 0 stays "Pascal".
+    this._roster        = Array.isArray(roster) && roster.length > 0
+                            ? roster
+                            : []
     this._speakerLabels = new Map()
   }
 
@@ -120,7 +125,9 @@ export default class AsrDeepgramClient {
 
   _labelFor(speakerIdx) {
     if (this._speakerLabels.has(speakerIdx)) return this._speakerLabels.get(speakerIdx)
-    const label = `Speaker ${this._speakerLabels.size + 1}`
+    const slot = this._speakerLabels.size
+    const fromRoster = this._roster[slot]
+    const label = fromRoster || `Speaker ${slot + 1}`
     this._speakerLabels.set(speakerIdx, label)
     return label
   }
