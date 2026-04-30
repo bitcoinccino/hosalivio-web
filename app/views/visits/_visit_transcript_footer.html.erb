@@ -1,0 +1,20 @@
+<%# Audio footer on the visit edit page. Spans the full width
+    below the three-column grid. Inline player only — the raw
+    transcript lives in the right sidebar. Locals: `visit`. %>
+<%
+  has_audio = visit.persisted? && visit.audio_note.attached?
+%>
+<section class="rounded-2xl bg-white border border-[#EFECE6] px-5 py-3 flex items-center gap-4 flex-wrap">
+  <div class="inline-flex items-center gap-2 flex-shrink-0">
+    <i class="ri-voiceprint-line text-[#D97757] text-lg"></i>
+    <div>
+      <div class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">Bedside audio</div>
+      <% if !has_audio %>
+        <div class="text-[11px] text-[#6B665F]">No audio captured yet.</div>
+      <% end %>
+    </div>
+  </div>
+  <% if has_audio %>
+    <%= audio_tag url_for(visit.audio_note), controls: true, class: "flex-1 min-w-[280px] h-9" %>
+  <% end %>
+</section>

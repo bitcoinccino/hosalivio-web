@@ -31,6 +31,54 @@ module IcdHelper
     render_icd_token(code.to_s.strip, audience: audience).html_safe
   end
 
+  # Plain-English definition for a code, for clinician views (no
+  # tooltip wrapper). Falls back to the `description` text from the
+  # eval JSON when the explanation table doesn't have a row for the
+  # code yet.
+  def icd_definition(code, fallback_description = nil)
+    exp = Icd10Explanation.lookup(code)
+    return [exp.simple_description, exp.hospice_context].compact_blank.join(" — ") if exp
+    fallback_description.to_s.presence
+  end
+
+  # Pull supporting sentences out of `narrative` that mention the
+  # given diagnosis. Two-stage match: keywords from the friendly
+  # description + a curated map of ICD-10 prefix → common synonyms
+  # so a code like E11.9 still surfaces sentences talking about
+  # "blood sugar" or "insulin", not just "diabetes".
+  def icd_evidence(code, description, narrative, limit: 2)
+    return [] if narrative.blank?
+    keys = icd_evidence_keywords(code, description)
+    return [] if keys.empty?
+    narrative.split(/(?<=[.!?])\s+/).map(&:strip).reject(&:blank?).select do |s|
+      lower = s.downcase
+      keys.any? { |k| lower.include?(k) }
+    end.first(limit)
+  end
+
+  ICD_PREFIX_KEYWORDS = {
+    /\AE1[0-3]/  => %w[diabetes diabetic glucose insulin a1c hyperglyc hypoglyc blood sugar],
+    /\AE08|\AE09/ => %w[diabetes diabetic glucose],
+    /\AI50/      => %w[chf heart failure ejection fraction edema dyspnea],
+    /\AJ44/      => %w[copd emphysema bronchitis dyspnea oxygen],
+    /\AC/        => %w[cancer tumor metastat malignan chemo radiation],
+    /\AG30/      => %w[alzheimer dementia memory cognitive],
+    /\AF0[123]/  => %w[dementia memory cognitive confusion],
+    /\AI6[0-7]/  => %w[stroke cva hemiparesis hemiplegia],
+    /\AN18/      => %w[kidney renal dialysis creatinine],
+    /\AK7[024]/  => %w[liver hepatic cirrhosis ascites],
+    /\AI10|\AI11/ => %w[hypertension blood pressure],
+    /\AJ96/      => %w[respiratory failure oxygen ventilator]
+  }.freeze
+
+  ICD_STOPWORDS = %w[with without other unspecified type stage acute chronic primary secondary disease syndrome condition end-stage end stage].freeze
+
+  def icd_evidence_keywords(code, description)
+    desc_words = description.to_s.downcase.scan(/[a-z]{4,}/).reject { |w| ICD_STOPWORDS.include?(w) }.uniq
+    prefix_keywords = ICD_PREFIX_KEYWORDS.find { |re, _| code.to_s.upcase.match?(re) }&.last || []
+    (desc_words + prefix_keywords).uniq
+  end
+
   private
 
   def render_icd_token(code, audience:)

@@ -11,22 +11,7 @@
   # screen. The narrative is fresh; auto-extract vitals into the
   # form on page load so the RN sees them pre-filled before Finish.
   just_recorded = params[:just_recorded] == "1"
-%>
-<% if just_recorded %>
-  <div class="px-6 lg:px-8 pt-4">
-    <div class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-3 text-[12px] text-[#1D1C1A]">
-      <i class="ri-check-line text-[#2F6F4E]"></i>
-      Recording saved. Review the narrative + vitals below, then tap <strong>Finish visit</strong>.
-    </div>
-  </div>
-<% end %>
-<%
 
-  # Visit lifecycle states drive the entire page language:
-  #   scheduled    — start time in the future, not yet begun
-  #   ready        — scheduled time is now or passed, not yet begun
-  #   recording    — started_at set, ended_at nil (actively documenting)
-  #   completed    — both timestamps set (editing a past visit)
   now      = Time.current
   state = if @visit.ended_at
             :completed
@@ -61,71 +46,124 @@
       ["Edit visit · HosAlivio",         "Edit scheduled visit",     "ri-calendar-event-line", "#D97757"]
     end
 
-  # "Scheduled by" line: prefer the actual human who created the
-  # visit (admin / admissions / on-call RN). Fall back to the assigned
-  # clinician for legacy visits with no created_by stamp. AI-scheduled
-  # visits show the persona instead.
   scheduler = @visit.created_by_user || (@visit.agent_authored ? nil : @visit.user)
   scheduler_role = scheduler ? (scheduler.role_names & %w[admin don admissions rn md sw social_worker chaplain aide]).first : nil
+
+  patient = @visit.patient
+  patient_initials = patient ? [patient.first_name, patient.last_name].compact.map { |n| n[0] }.join.upcase : ""
+
+  status_color = case patient&.status
+    when "active"     then "#2F6F4E"
+    when "admitted"   then "#D97757"
+    when "referred"   then "#6B665F"
+    when "revoked"    then "#C1403A"
+    when "discharged" then "#6B665F"
+    when "deceased"   then "#1D1C1A"
+    else                   "#6B665F"
+    end
+
+  rn_role = (current_user.role_names & %w[rn md don sw chaplain aide social_worker admissions admin]).first
 %>
 <% content_for :title, page_title %>
-<div class="min-h-screen bg-[#FBF9F5] py-6 px-6 lg:px-8">
-  <%# Full-width patient workspace — three columns spread edge-to-
-      edge so the visit edit page reads like the main dashboard
-      for the patient instead of a centered detail card. %>
-  <div>
-    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
-      <i class="ri-arrow-left-line"></i> Back to My Day
-    </a>
 
-    <%# Three-column workspace: visit history (left) | structured
-        chart entry (middle) | recording transcript + audio (right).
-        Sidebars are collapsible (chevron in their header, persisted
-        per user via localStorage). Grid uses auto sizing for the
-        sidebars so when they collapse to ~48px the middle column
-        gets the reclaimed space automatically. Stacks single-column
-        under xl breakpoint so phones / narrow laptops still get a
-        readable layout. %>
-    <div class="grid grid-cols-1 xl:grid-cols-[auto_minmax(0,1fr)_auto] gap-4">
+<div class="min-h-screen bg-[#FBF9F5]" data-controller="narrative-link">
 
-      <%# ── Left: visit history ───────────────────────── %>
+  <%# ── Top navbar ──────────────────────────────────────
+      Back arrow returns to the patient main dashboard.
+      Right side shows the signed-in clinician's avatar
+      + name + role so Pascal always sees who he is on the
+      chart he's about to sign. %>
+  <header class="bg-white border-b border-[#EFECE6] px-6 lg:px-8 py-3 sticky top-0 z-20">
+    <div class="flex items-center justify-between gap-4">
+      <a href="<%= patient ? patient_path(patient) : dashboard_path %>"
+         class="inline-flex items-center gap-2 text-[13px] text-[#1D1C1A] hover:text-[#D97757] font-medium">
+        <i class="ri-arrow-left-line text-lg"></i>
+        <span>Back<% if patient %> to <%= patient.full_name %><% end %></span>
+      </a>
+
+      <div class="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.2em] font-bold" style="color: <%= header_color %>;">
+        <i class="<%= header_icon %>"></i> <%= header_label %>
+      </div>
+
+      <div class="inline-flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <div class="text-[13px] text-[#1D1C1A] font-medium leading-tight"><%= current_user.full_name %></div>
+          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">
+            <% if rn_role %><%= rn_role.tr("_", " ") %><% end %>
+            <% if current_user.respond_to?(:branch) && current_user.branch %> · <%= current_user.branch.name %><% end %>
+          </div>
+        </div>
+        <% if current_user.has_avatar? %>
+          <%= image_tag current_user.avatar,
+                class: "w-10 h-10 rounded-full object-cover border border-[#EFECE6]" %>
+        <% else %>
+          <div class="w-10 h-10 rounded-full bg-[#FBF9F5] border border-[#EFECE6] flex items-center justify-center text-[12px] font-bold text-[#D97757]">
+            <%= current_user.initials %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </header>
+
+  <% if just_recorded %>
+    <div class="px-6 lg:px-8 pt-4">
+      <div class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-3 text-[12px] text-[#1D1C1A]">
+        <i class="ri-check-line text-[#2F6F4E]"></i>
+        Recording saved. Review the narrative + vitals below, then tap <strong>Finish visit</strong>.
+      </div>
+    </div>
+  <% end %>
+
+  <%# ── Main row: full sidebar (left) + middle + transcript (right) ── %>
+  <%# Bottom padding leaves room for the fixed audio footer so the
+      last form button isn't hidden under it. %>
+  <div class="px-6 lg:px-8 py-6 pb-24">
+    <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_380px] 2xl:grid-cols-[360px_minmax(0,1fr)_420px] gap-4">
+
       <%= render "visit_history_sidebar", current_visit: @visit %>
 
-      <%# ── Middle: structured chart entry + edit form ── %>
       <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm p-6">
-        <div class="flex items-center justify-between mb-2">
-          <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] font-bold" style="color: <%= header_color %>;">
-            <i class="<%= header_icon %>"></i> <%= header_label %>
+
+        <%# Patient hero — photo (initials), name, age, status. %>
+        <div class="text-center pb-6 border-b border-[#EFECE6]">
+          <div class="mx-auto w-24 h-24 rounded-full bg-[#FBF9F5] border-2 border-[#EFECE6] flex items-center justify-center text-2xl font-bold text-[#D97757] mb-3">
+            <%= patient_initials.presence || "?" %>
           </div>
-          <% if state == :recording %>
-            <div class="inline-flex items-center gap-1.5 text-[11px] text-[#C1403A]">
-              <span class="w-2 h-2 rounded-full bg-[#C1403A] animate-pulse"></span>
-              Started <%= @visit.started_at.strftime("%-l:%M %p") %>
-            </div>
-          <% end %>
-        </div>
-        <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">
-          <%= @visit.patient&.full_name %>
-        </h1>
-        <div class="text-[11px] text-[#6B665F] mb-5">
-          <% if @visit.agent_authored %>
-            🤖 Scheduled by HosAlivio
-          <% elsif scheduler %>
-            👤 Scheduled by <%= scheduler_role&.tr("_", " ")&.titleize&.then { |r| "#{r} " } %><strong class="text-[#1D1C1A] font-medium">@<%= scheduler.full_name.split.first %></strong>
-          <% else %>
-            👤 Scheduled by a human
-          <% end %>
+          <h1 class="font-serif text-2xl text-[#1D1C1A]">
+            <%= patient&.full_name || "—" %>
+          </h1>
+          <div class="text-[12px] text-[#6B665F] mt-1 inline-flex items-center gap-2 flex-wrap justify-center">
+            <% if patient&.age_years %>
+              <span>Age <%= patient.age_years %></span>
+              <span class="text-[#D9D5CD]">·</span>
+            <% end %>
+            <% if patient&.status %>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold"
+                    style="color: <%= status_color %>; background-color: <%= status_color %>10; border: 1px solid <%= status_color %>40;">
+                <%= patient.status.to_s.titleize %>
+              </span>
+            <% end %>
+            <% if patient %>
+              <span class="text-[#D9D5CD]">·</span>
+              <span class="font-mono text-[11px] text-[#6B665F]"><%= patient.mrn %></span>
+            <% end %>
+          </div>
+          <div class="text-[11px] text-[#6B665F] mt-3">
+            <% if @visit.agent_authored %>
+              🤖 Scheduled by HosAlivio
+            <% elsif scheduler %>
+              👤 Scheduled by <%= scheduler_role&.tr("_", " ")&.titleize&.then { |r| "#{r} " } %><strong class="text-[#1D1C1A] font-medium">@<%= scheduler.full_name.split.first %></strong>
+            <% else %>
+              👤 Scheduled by a human
+            <% end %>
+          </div>
         </div>
 
-        <%# Route-to-MD banner: shown on completed admission visits
-            with a linked eval, indicates the chart's review status
-            ("General Chart" vs "Routed to MD"). Lets the RN review
-            the polished narrative + extracted eval, then explicitly
-            ship to the MD's queue when ready. %>
+        <%# Route-to-MD banner (admission visits with linked eval). %>
         <% if is_admission && linked_eval && state == :completed %>
           <% routed_at = Notification.where(kind: "pre_admit_review_ready", linked: linked_eval).order(:created_at).first&.created_at %>
           <% if routed_at %>
-            <div class="mb-5 rounded-2xl border border-[#2F6F4E] bg-[#E6F0EE] p-4 flex items-start gap-3">
+            <div class="mt-5 rounded-2xl border border-[#2F6F4E] bg-[#E6F0EE] p-4 flex items-start gap-3">
               <i class="ri-send-plane-line text-[#2F6F4E] text-lg mt-0.5"></i>
               <div class="flex-1">
                 <div class="text-[11px] uppercase tracking-widest text-[#2F6F4E] font-bold">Routed to MD</div>
@@ -136,7 +174,7 @@
               </div>
             </div>
           <% else %>
-            <div class="mb-5 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 flex items-start gap-3">
+            <div class="mt-5 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 flex items-start gap-3">
               <i class="ri-edit-2-line text-[#D97757] text-lg mt-0.5 flex-shrink-0"></i>
               <div class="flex-1 min-w-0">
                 <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold">General chart · awaiting RN review</div>
@@ -153,20 +191,272 @@
           <% end %>
         <% end %>
 
-        <%# Admission visit with a linked eval renders the structured
-            chart entry as a document (matching the openclaw EMR-style
-            pre-admit_note.txt shape). The detailed editable form
-            lives on /pre_admit_evals/:id/edit. %>
-        <% if is_admission && linked_eval %>
-          <%= render "eval_document", eval_rec: linked_eval, visit: @visit %>
-        <% end %>
+        <%# ── Note format tabs: Medicaid (structured eval doc),
+            Team (conversational IDT narrative), JSON (raw payload).
+            All three panes render even when content is missing —
+            empty panes show a placeholder so the toggle is always
+            visible and the RN can audit what's in the chart. %>
+        <%
+          has_eval_doc = is_admission && linked_eval
+          has_team_narrative = @visit.narrative.present?
+          json_payload =
+            if linked_eval
+              JSON.pretty_generate(linked_eval.raw_json || {})
+            else
+              JSON.pretty_generate({
+                visit: @visit.attributes.except("encrypted_password", "created_at", "updated_at"),
+                narrative: @visit.narrative,
+                narrative_raw: @visit.narrative_raw,
+                vitals: @visit.vitals
+              }.compact)
+            end
+          initial_tab = has_eval_doc ? "medicaid" : (has_team_narrative ? "team" : "json")
+        %>
+        <div data-controller="note-tabs" data-note-tabs-initial="<%= initial_tab %>" class="mt-6">
+          <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <div class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+              <i class="ri-file-text-line"></i> Note
+            </div>
+            <div class="inline-flex p-1 bg-[#FBF9F5] rounded-full border border-[#EFECE6] gap-1 flex-wrap">
+              <button type="button"
+                      data-note-tabs-target="button"
+                      data-action="click->note-tabs#show"
+                      data-note-tabs-pane-param="medicaid"
+                      class="px-4 py-1.5 rounded-full text-[12px] font-medium transition">
+                Medicaid
+              </button>
+              <button type="button"
+                      data-note-tabs-target="button"
+                      data-action="click->note-tabs#show"
+                      data-note-tabs-pane-param="icd"
+                      class="px-4 py-1.5 rounded-full text-[12px] font-medium transition">
+                ICD Codes
+              </button>
+              <button type="button"
+                      data-note-tabs-target="button"
+                      data-action="click->note-tabs#show"
+                      data-note-tabs-pane-param="team"
+                      class="px-4 py-1.5 rounded-full text-[12px] font-medium transition">
+                Team
+              </button>
+              <button type="button"
+                      data-note-tabs-target="button"
+                      data-action="click->note-tabs#show"
+                      data-note-tabs-pane-param="json"
+                      class="px-4 py-1.5 rounded-full text-[12px] font-medium transition">
+                JSON
+              </button>
+            </div>
+          </div>
 
-        <%= render "form", just_recorded: just_recorded %>
+          <div data-note-tabs-target="pane" data-note-tabs-pane="medicaid" data-narrative-link-target="source" class="hidden">
+            <% if has_eval_doc %>
+              <%= render "eval_document", eval_rec: linked_eval, visit: @visit %>
+            <% else %>
+              <div class="rounded-2xl bg-white border border-dashed border-[#EFECE6] p-6 text-center text-[12px] text-[#6B665F] italic">
+                Medicaid view is generated from the linked pre-admit eval.
+                Available on admission visits once the extractor has run.
+              </div>
+            <% end %>
+          </div>
+
+          <div data-note-tabs-target="pane" data-note-tabs-pane="icd" data-narrative-link-target="source" class="hidden">
+            <%
+              dx_section  = linked_eval&.diagnosis_section || {}
+              primary_dx  = dx_section["primary_terminal_diagnosis"].is_a?(Hash) ? dx_section["primary_terminal_diagnosis"] : {}
+              secondary   = Array(dx_section["secondary_diagnoses"])
+              related     = Array(dx_section["related_conditions"])
+              unrelated   = Array(dx_section["unrelated_conditions"])
+              lcd_section = linked_eval&.medicare_lcd || {}
+              lcd_met     = Array(dx_section["lcd_criteria_met"])
+              icd_avail   = primary_dx["icd10"].present? || secondary.any? || related.any?
+            %>
+            <div class="rounded-2xl bg-white border border-[#EFECE6] p-6">
+              <div class="text-[10px] uppercase tracking-[0.2em] text-[#1D1C1A] font-bold mb-4 border-b border-[#EFECE6] pb-2 inline-flex items-center gap-1">
+                <i class="ri-hospital-line"></i> ICD-10 Coding
+              </div>
+
+              <% if icd_avail %>
+                <%# Primary terminal Dx ─ the one that drives hospice
+                    eligibility. Code, description, friendly definition
+                    from the explanation table, plus any sentences in
+                    the narrative that support it. %>
+                <%
+                  primary_code = primary_dx["icd10"].presence
+                  primary_desc = primary_dx["description"].presence
+                  primary_def  = primary_code ? icd_definition(primary_code, primary_desc) : nil
+                  primary_evi  = primary_code ? icd_evidence(primary_code, primary_desc, @visit.narrative) : []
+                %>
+                <div class="mb-5">
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Primary terminal diagnosis</div>
+                  <div class="rounded-xl border border-[#D97757] bg-[#FFF3EC] p-3">
+                    <div class="flex items-baseline gap-3 flex-wrap">
+                      <span class="font-mono text-[16px] font-bold text-[#1D1C1A]"><%= primary_code || "—" %></span>
+                      <span class="text-[13px] text-[#1D1C1A]"><%= primary_desc || "—" %></span>
+                    </div>
+                    <% if primary_def.present? %>
+                      <div class="mt-2 pt-2 border-t border-[#D97757]/30 text-[12px] text-[#1D1C1A] leading-relaxed">
+                        <span class="text-[10px] uppercase tracking-widest text-[#D97757] font-bold mr-1">Definition</span>
+                        <%= primary_def %>
+                      </div>
+                    <% end %>
+                    <% if primary_evi.any? %>
+                      <div class="mt-2 pt-2 border-t border-[#D97757]/30">
+                        <div class="text-[10px] uppercase tracking-widest text-[#D97757] font-bold mb-1">
+                          <i class="ri-double-quotes-l"></i> Note evidence
+                        </div>
+                        <% primary_evi.each do |s| %>
+                          <div class="text-[12px] italic text-[#3A3936] leading-relaxed border-l-2 border-[#D97757] pl-2 mt-1">
+                            <%= s %>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                  <% if lcd_section["lcd_type"].present? %>
+                    <div class="text-[11px] text-[#6B665F] mt-1.5">
+                      <i class="ri-shield-check-line"></i>
+                      LCD: <span class="text-[#1D1C1A] font-medium"><%= lcd_section["lcd_type"] %></span>
+                    </div>
+                  <% end %>
+                </div>
+
+                <%# Secondary diagnoses ─ each row gets its own definition
+                    + evidence block so the MD can audit every code. %>
+                <% if secondary.any? %>
+                  <div class="mb-5">
+                    <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Secondary diagnoses</div>
+                    <ul class="space-y-3">
+                      <% secondary.each do |sd| %>
+                        <%
+                          sec_code = sd.is_a?(Hash) ? sd["icd10"].presence : sd.to_s.presence
+                          sec_desc = sd.is_a?(Hash) ? sd["description"].presence : nil
+                          sec_def  = sec_code ? icd_definition(sec_code, sec_desc) : nil
+                          sec_evi  = sec_code ? icd_evidence(sec_code, sec_desc, @visit.narrative) : []
+                        %>
+                        <li class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+                          <div class="flex items-baseline gap-3 flex-wrap">
+                            <span class="font-mono text-[13px] font-bold text-[#1D1C1A] min-w-[80px]"><%= sec_code || "—" %></span>
+                            <span class="text-[13px] text-[#1D1C1A]"><%= sec_desc || sec_def || "—" %></span>
+                          </div>
+                          <% if sec_def.present? && sec_def != sec_desc %>
+                            <div class="mt-1.5 text-[12px] text-[#3A3936] leading-relaxed">
+                              <span class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mr-1">Definition</span>
+                              <%= sec_def %>
+                            </div>
+                          <% end %>
+                          <% if sec_evi.any? %>
+                            <div class="mt-1.5">
+                              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">
+                                <i class="ri-double-quotes-l"></i> Note evidence
+                              </div>
+                              <% sec_evi.each do |s| %>
+                                <div class="text-[12px] italic text-[#3A3936] leading-relaxed border-l-2 border-[#D9D5CD] pl-2 mt-1">
+                                  <%= s %>
+                                </div>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
+
+                <%# Related vs unrelated ─ Medicare needs both buckets;
+                    related conditions are covered under the hospice
+                    benefit, unrelated billed separately. %>
+                <% if related.any? || unrelated.any? %>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                    <% if related.any? %>
+                      <div>
+                        <div class="text-[10px] uppercase tracking-widest text-[#2F6F4E] font-bold mb-1">Related conditions</div>
+                        <ul class="text-[12px] text-[#1D1C1A] space-y-0.5">
+                          <% related.each do |c| %>
+                            <li class="flex gap-2"><span class="text-[#2F6F4E]">●</span> <span><%= c %></span></li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    <% end %>
+                    <% if unrelated.any? %>
+                      <div>
+                        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Unrelated conditions</div>
+                        <ul class="text-[12px] text-[#1D1C1A] space-y-0.5">
+                          <% unrelated.each do |c| %>
+                            <li class="flex gap-2"><span class="text-[#6B665F]">○</span> <span><%= c %></span></li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <%# LCD criteria the eval claims are met ─ each bullet
+                    has to map to clinical evidence in the chart for
+                    the MD's certification to hold up. %>
+                <% if lcd_met.any? %>
+                  <div>
+                    <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">LCD criteria met</div>
+                    <ul class="text-[12px] text-[#1D1C1A] space-y-1">
+                      <% lcd_met.each do |c| %>
+                        <li class="flex gap-2"><i class="ri-check-line text-[#2F6F4E] mt-0.5"></i><span><%= c %></span></li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
+              <% else %>
+                <div class="text-center text-[12px] text-[#6B665F] italic py-6">
+                  No ICD codes captured yet. They populate from the
+                  pre-admit eval once the extractor has run.
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <div data-note-tabs-target="pane" data-note-tabs-pane="team" data-narrative-link-target="source" class="hidden">
+            <% if has_team_narrative %>
+              <div class="rounded-2xl bg-white border border-[#EFECE6] p-6">
+                <div class="text-[10px] uppercase tracking-[0.2em] text-[#1D1C1A] font-bold mb-3 border-b border-[#EFECE6] pb-2">
+                  Team Narrative (IDT Admission Note)
+                </div>
+                <div class="whitespace-pre-wrap font-serif text-[14px] text-[#1D1C1A] leading-relaxed">
+                  <%= @visit.narrative %>
+                </div>
+              </div>
+            <% else %>
+              <div class="rounded-2xl bg-white border border-dashed border-[#EFECE6] p-6 text-center text-[12px] text-[#6B665F] italic">
+                No team narrative yet. Capture a recording on the
+                visit's record page; the polish step will write it here.
+              </div>
+            <% end %>
+          </div>
+
+          <div data-note-tabs-target="pane" data-note-tabs-pane="json" class="hidden">
+            <div class="rounded-2xl bg-[#1D1C1A] text-[#EFECE6] p-4 overflow-auto max-h-[60vh]">
+              <pre class="font-mono text-[11px] leading-relaxed whitespace-pre"><%= json_payload %></pre>
+            </div>
+          </div>
+        </div>
+
+        <%# Editable form (vitals + metadata + buttons). %>
+        <div class="mt-6">
+          <%= render "form", just_recorded: just_recorded %>
+        </div>
+
       </div>
 
-      <%# ── Right: recording transcript + audio ────────── %>
       <%= render "visit_transcript_sidebar", visit: @visit %>
 
+    </div>
+
+  </div>
+
+  <%# ── Fixed audio footer: pinned to the bottom of the viewport
+      so the player stays in reach while the RN scrolls through
+      the note + transcript. %>
+  <div class="fixed bottom-0 left-0 right-0 z-30 px-6 lg:px-8 pb-3 pt-2 bg-gradient-to-t from-[#FBF9F5] via-[#FBF9F5] to-transparent pointer-events-none">
+    <div class="pointer-events-auto shadow-[0_-4px_12px_rgba(29,28,26,0.06)] rounded-2xl">
+      <%= render "visit_transcript_footer", visit: @visit %>
     </div>
   </div>
 </div>

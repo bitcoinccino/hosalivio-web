@@ -8,32 +8,21 @@
   history = patient.visits.unscoped
                           .where(agency_id: patient.agency_id)
                           .order(Arel.sql("COALESCE(started_at, scheduled_at) DESC"))
-                          .limit(30)
+                          .limit(50)
 %>
-<div data-controller="sidebar" data-sidebar-storage-key-value="visitHistorySidebar">
-<aside data-sidebar-target="sidebar" data-collapsed="false"
-       class="group/sb rounded-2xl bg-white border border-[#EFECE6] overflow-hidden xl:sticky xl:top-4 xl:self-start
-              w-full xl:w-[220px] data-[collapsed=true]:xl:w-12 transition-[width] duration-200">
-  <div class="px-4 py-3 border-b border-[#EFECE6] flex items-center justify-between gap-2 group-data-[collapsed=true]/sb:px-2 group-data-[collapsed=true]/sb:flex-col">
-    <div class="min-w-0 group-data-[collapsed=true]/sb:hidden">
-      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
-        <i class="ri-history-line"></i> Visit history
-      </h3>
-      <div class="text-[11px] text-[#6B665F] mt-0.5 truncate"><%= patient.full_name %> · <%= history.size %> visit<%= history.size == 1 ? "" : "s" %></div>
+<aside class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden lg:sticky lg:top-20 lg:self-start w-full">
+  <div class="px-4 py-3 border-b border-[#EFECE6]">
+    <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+      <i class="ri-history-line"></i> Past visits
+    </h3>
+    <div class="text-[11px] text-[#6B665F] mt-0.5 truncate">
+      <%= patient.full_name %> · <%= history.size %> visit<%= history.size == 1 ? "" : "s" %>
     </div>
-    <i class="ri-history-line text-[#1D1C1A] text-[20px] hidden group-data-[collapsed=true]/sb:block"></i>
-    <button type="button" data-action="click->sidebar#toggle"
-            title="Toggle history"
-            class="w-7 h-7 rounded-full hover:bg-[#FBF9F5] text-[#6B665F] hover:text-[#1D1C1A] flex items-center justify-center flex-shrink-0 transition">
-      <i class="ri-arrow-left-s-line group-data-[collapsed=true]/sb:hidden"></i>
-      <i class="ri-arrow-right-s-line hidden group-data-[collapsed=true]/sb:block"></i>
-    </button>
   </div>
-  <div class="group-data-[collapsed=true]/sb:hidden">
   <% if history.empty? %>
     <div class="px-4 py-6 text-center text-[12px] text-[#6B665F]">No prior visits.</div>
   <% else %>
-    <ul class="divide-y divide-[#EFECE6] max-h-[480px] overflow-y-auto">
+    <ul class="divide-y divide-[#EFECE6] max-h-[calc(100vh-260px)] overflow-y-auto">
       <% history.each do |v| %>
         <%
           is_current = v.id == current_visit.id
@@ -50,7 +39,7 @@
                 class: "block px-4 py-3 transition #{is_current ? "bg-[#FBF9F5] border-l-4 border-[#D97757]" : "hover:bg-[#FBF9F5]"}" do %>
             <div class="flex items-center justify-between gap-2">
               <span class="text-[12px] font-mono <%= is_current ? "text-[#1D1C1A] font-bold" : "text-[#1D1C1A]" %>">
-                <%= stamp&.strftime("%b %-d") %>
+                <%= stamp&.strftime("%b %-d, %Y") %>
               </span>
               <% if is_current %>
                 <span class="text-[9px] uppercase tracking-widest font-bold text-[#D97757]">Current</span>
@@ -70,6 +59,4 @@
       <% end %>
     </ul>
   <% end %>
-  </div>
 </aside>
-</div>
