@@ -3,13 +3,17 @@ import { Controller } from "@hotwired/stimulus"
 // When the RN highlights a word / phrase / paragraph in the polished
 // note, find the closest matching span in the right-sidebar
 // transcript, scroll it into view, and wrap it in <mark>. Also
-// renders speaker tags ([Pascal:], [Maria:], …) as colored, bracket-
-// less labels so the transcript reads more like a script.
+// renders the transcript as turn-blocks (one block per speaker
+// utterance) with per-speaker backgrounds, bolded medical terms,
+// and supports a search box + speaker/keyword filter.
 //
 // Targets:
 //   source      — note panes the RN selects from (Medicaid / Team)
-//   transcript  — the <pre> holding the raw transcript
+//   transcript  — container the turn-blocks render into
 //   status      — small caption updated on hit/miss (optional)
+//   search      — text input that hides non-matching turns
+//   count       — caption showing "N visible / M total"
+//   filter      — buttons that switch between All / Patient / Clinician / Keywords
 const STOP = new Set([
   "the","and","for","with","that","this","from","into","over","about",
   "then","than","they","them","but","not","are","was","has","have","had",
@@ -20,24 +24,16 @@ const STOP = new Set([
 const PUNCT_RE = /[.,!?;:'"\(\)\[\]\-—]/g
 const SPEAKER_RE_GLOBAL = /\[([^\]]+):\]/g
 
-// Medical / hospice vocabulary that should pop visually in the
-// transcript so the RN can scan to clinical content fast. Multi-
-// word phrases come first so they win over single-word fragments
-// (e.g. "shortness of breath" before "breath"). Matched case-
-// insensitively with word boundaries.
 const MEDICAL_TERMS = [
-  // hospice / palliative
   "comfort-focused", "comfort care", "code status", "advance directive",
   "hospice", "palliative", "DNR", "DNI", "POLST", "MOLST",
   "prognosis", "terminal", "eligibility", "eligible", "certification", "recertification",
-  // symptoms
   "shortness of breath", "weight loss", "pressure injury",
   "pain", "dyspnea", "edema", "nausea", "vomiting", "fatigue", "hemoptysis",
   "delirium", "confusion", "agitation", "anxiety", "depression",
   "constipation", "diarrhea", "incontinence", "anorexia", "cachexia", "ascites",
   "fever", "cough", "wheezing", "bleeding", "weakness", "tremor", "seizure",
   "headache", "dizziness", "wound", "ulcer", "fall", "falls",
-  // conditions
   "metastatic", "myocardial infarction", "atrial fibrillation",
   "heart failure", "kidney disease", "renal failure", "liver disease",
   "cancer", "tumor", "metastasis", "malignancy", "carcinoma", "leukemia", "lymphoma",
@@ -46,10 +42,8 @@ const MEDICAL_TERMS = [
   "stroke", "CVA", "TIA", "dementia", "Alzheimer", "Parkinson", "ALS",
   "diabetes", "diabetic", "hypertension", "hyperlipidemia",
   "ESRD", "dialysis", "cirrhosis", "hepatitis",
-  // vitals
   "blood pressure", "heart rate", "respiratory rate",
   "BP", "pulse", "temperature", "oxygen", "SpO2", "O2", "saturation",
-  // medications
   "MS Contin", "Ativan", "Haldol", "Versed", "Zofran", "Reglan", "Coumadin", "Tylenol",
   "morphine", "oxycodone", "hydromorphone", "fentanyl", "methadone",
   "lorazepam", "haloperidol", "midazolam",
@@ -57,47 +51,47 @@ const MEDICAL_TERMS = [
   "ondansetron", "metoclopramide", "scopolamine", "atropine",
   "ibuprofen", "acetaminophen", "aspirin",
   "insulin", "metformin", "warfarin", "heparin",
-  // equipment
   "oxygen concentrator", "nasal cannula", "hospital bed", "bedside commode",
   "Foley catheter", "PEG tube", "G-tube", "feeding tube",
   "walker", "wheelchair", "commode",
-  // ADLs
   "bathing", "dressing", "toileting", "transferring", "feeding", "continence", "ambulation",
-  // roles
   "registered nurse", "social worker", "RN", "MD", "physician", "chaplain", "aide", "CNA",
   "caregiver", "IDT", "interdisciplinary",
-  // labs / measures
   "albumin", "creatinine", "GFR", "A1C", "PPS", "FAST", "Karnofsky"
 ]
 
 const MEDICAL_RE = new RegExp(
   "\\b(?:" +
     MEDICAL_TERMS
-      .sort((a, b) => b.length - a.length) // longer phrases first
+      .sort((a, b) => b.length - a.length)
       .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"))
       .join("|") +
   ")\\b",
   "gi"
 )
 
-// Stable color palette for speakers we know by name. Anyone we
-// don't recognize cycles through `palette` based on first-seen
-// order so two speakers never collide.
-const NAMED_COLORS = {
-  pascal: "#D97757",   // terracotta — clinician
-  maria:  "#2F6F4E",   // sage      — patient
-  rn:     "#D97757",
-  patient:"#2F6F4E"
+const NAMED_ROLES = {
+  pascal: "clinician", rn: "clinician", nurse: "clinician", clinician: "clinician",
+  maria:  "patient",   patient: "patient"
+}
+const ROLE_TINTS = {
+  clinician: { bg: "#FFF3EC", border: "#D97757" },
+  patient:   { bg: "#E6F0EE", border: "#2F6F4E" },
+  other:     { bg: "#FBF9F5", border: "#D9D5CD" }
 }
 const FALLBACK_PALETTE = ["#2B4A7A", "#7E3FAD", "#A8423E", "#1D1C1A", "#5C7A3E"]
 
 export default class extends Controller {
-  static targets = ["source", "transcript", "status"]
+  static targets = ["source", "transcript", "status", "search", "count", "filter"]
+  static values  = { filter: { type: String, default: "all" } }
 
   connect() {
     if (this.hasTranscriptTarget) {
-      this._originalText = this.transcriptTarget.textContent
+      const cached = this.transcriptTarget.dataset.transcriptText
+      this._originalText = (cached != null ? cached : this.transcriptTarget.textContent) || ""
+      this._turns = this._parseTurns(this._originalText)
       this._render()
+      this._applyVisibility()
     }
     this._handler = this._onMouseUp.bind(this)
     document.addEventListener("mouseup", this._handler)
@@ -107,6 +101,25 @@ export default class extends Controller {
     document.removeEventListener("mouseup", this._handler)
   }
 
+  // ── Filter / search actions ─────────────────────────────────
+  setFilter(event) {
+    const f = event?.params?.filter || event?.currentTarget?.dataset?.narrativeLinkFilterParam
+    if (!f) return
+    this.filterValue = f
+    this._paintFilterButtons()
+    this._applyVisibility()
+  }
+
+  search() {
+    this._applyVisibility()
+  }
+
+  clearSearch() {
+    if (this.hasSearchTarget) this.searchTarget.value = ""
+    this._applyVisibility()
+  }
+
+  // ── Selection-driven jump ───────────────────────────────────
   _onMouseUp() {
     setTimeout(() => this._process(), 0)
   }
@@ -129,21 +142,21 @@ export default class extends Controller {
   }
 
   _jumpTo(query) {
-    const transcript = this._originalText || ""
-    const span = this._findSpan(transcript, query)
+    const span = this._findSpan(this._originalText, query)
     if (!span) {
       this._render()
+      this._applyVisibility()
       this._setStatus(`No match for "${this._truncate(query, 40)}"`, "miss")
       return
     }
     this._render(span.start, span.end)
+    this._applyVisibility()
     this._setStatus("Jumped to matching spot in transcript", "hit")
     this._scroll()
   }
 
   _findSpan(text, query) {
     const lower = text.toLowerCase()
-
     const qLower = query.toLowerCase().replace(/\s+/g, " ").trim()
     let idx = lower.indexOf(qLower)
     if (idx >= 0) return { start: idx, end: idx + qLower.length }
@@ -177,72 +190,107 @@ export default class extends Controller {
     return null
   }
 
-  // Render the whole transcript: speaker tags become colored
-  // bracket-less labels; a match range (if given) gets wrapped
-  // in <mark>. Indices refer to positions in `_originalText`,
-  // i.e. the raw bracketed transcript.
-  _render(markStart, markEnd) {
-    const text = this._originalText || ""
-    const pre  = this.transcriptTarget
-    if (!pre) return
-
-    // Tokenize into speaker-tag segments and text segments.
-    const segments = []
-    let cursor = 0
+  // ── Turn parser ─────────────────────────────────────────────
+  _parseTurns(text) {
+    const turns = []
     SPEAKER_RE_GLOBAL.lastIndex = 0
+    const matches = []
     let m
     while ((m = SPEAKER_RE_GLOBAL.exec(text)) !== null) {
-      if (m.index > cursor) {
-        segments.push({ type: "text", start: cursor, end: m.index })
+      matches.push({ tagStart: m.index, tagEnd: m.index + m[0].length, name: m[1].trim() })
+    }
+    if (matches.length === 0) {
+      const trimmed = text.trim()
+      if (trimmed.length > 0) {
+        turns.push({ name: null, role: "other", bodyStart: 0, bodyEnd: text.length })
       }
-      segments.push({ type: "speaker", start: m.index, end: m.index + m[0].length, name: m[1] })
-      cursor = m.index + m[0].length
+      return turns
     }
-    if (cursor < text.length) {
-      segments.push({ type: "text", start: cursor, end: text.length })
+    if (matches[0].tagStart > 0) {
+      const lead = text.slice(0, matches[0].tagStart).trim()
+      if (lead.length > 0) {
+        turns.push({ name: null, role: "other", bodyStart: 0, bodyEnd: matches[0].tagStart })
+      }
     }
+    for (let i = 0; i < matches.length; i++) {
+      const cur  = matches[i]
+      const next = matches[i + 1]
+      const bodyEnd = next ? next.tagStart : text.length
+      turns.push({
+        name: cur.name,
+        role: NAMED_ROLES[cur.name.toLowerCase()] || "other",
+        bodyStart: cur.tagEnd,
+        bodyEnd
+      })
+    }
+    return turns
+  }
 
-    // Stable per-name color (first-seen order for unknowns).
-    const colorByName = {}
+  // ── Render turn-blocks ──────────────────────────────────────
+  _render(markStart, markEnd) {
+    if (!this.hasTranscriptTarget) return
+    const pre = this.transcriptTarget
+    pre.innerHTML = ""
+
+    const fallbackByName = {}
     let paletteIdx = 0
-    const colorFor = (name) => {
-      const key = name.trim().toLowerCase()
-      if (NAMED_COLORS[key]) return NAMED_COLORS[key]
-      if (colorByName[key]) return colorByName[key]
+    const colorFor = (name, role) => {
+      if (role !== "other" && ROLE_TINTS[role]) return ROLE_TINTS[role].border
+      const key = (name || "other").toLowerCase()
+      if (fallbackByName[key]) return fallbackByName[key]
       const c = FALLBACK_PALETTE[paletteIdx % FALLBACK_PALETTE.length]
       paletteIdx++
-      colorByName[key] = c
+      fallbackByName[key] = c
       return c
     }
 
-    pre.innerHTML = ""
+    for (const turn of this._turns) {
+      const tint  = ROLE_TINTS[turn.role] || ROLE_TINTS.other
+      const color = colorFor(turn.name, turn.role)
 
-    for (const seg of segments) {
-      if (seg.type === "speaker") {
-        const label = document.createElement("span")
-        label.textContent = seg.name + ":"
-        label.style.color = colorFor(seg.name)
+      const container = document.createElement("div")
+      container.dataset.role = turn.role
+      container.dataset.speaker = (turn.name || "").toLowerCase()
+      container.className = "rounded-lg px-3 py-2 mb-2 border-l-[3px] transition-opacity"
+      container.style.backgroundColor = tint.bg
+      container.style.borderLeftColor = color
+
+      if (turn.name) {
+        const label = document.createElement("div")
+        label.textContent = turn.name
+        label.style.color = color
         label.style.fontWeight = "700"
+        label.style.fontSize = "10px"
+        label.style.letterSpacing = "0.1em"
+        label.style.textTransform = "uppercase"
         label.style.fontStyle = "normal"
-        label.style.marginRight = "4px"
-        pre.appendChild(label)
-        continue
+        label.style.marginBottom = "2px"
+        container.appendChild(label)
       }
-      this._renderTextSegment(seg.start, seg.end, markStart, markEnd, pre)
+
+      const body = document.createElement("div")
+      body.className = "whitespace-pre-wrap font-serif italic text-[12px] text-[#3A3936] leading-relaxed"
+      this._renderBody(turn.bodyStart, turn.bodyEnd, markStart, markEnd, body)
+
+      // Cache for fast filter/search; pull plain text once.
+      const plain = this._originalText.slice(turn.bodyStart, turn.bodyEnd).toLowerCase()
+      const hasMedical = MEDICAL_RE.test(plain)
+      MEDICAL_RE.lastIndex = 0
+      container.dataset.text = plain
+      container.dataset.hasKeyword = hasMedical ? "true" : "false"
+
+      container.appendChild(body)
+      pre.appendChild(container)
     }
   }
 
-  // Walks one text segment, finds medical terms (bold) and any
-  // overlapping mark range, then emits DOM nodes that compose
-  // bold + mark cleanly.
-  _renderTextSegment(segStart, segEnd, markStart, markEnd, parent) {
+  _renderBody(segStart, segEnd, markStart, markEnd, parent) {
     const text = this._originalText.slice(segStart, segEnd)
     const segLen = text.length
     const lMs = markStart != null ? Math.max(0, markStart - segStart) : null
     const lMe = markEnd   != null ? Math.min(segLen, markEnd   - segStart) : null
     const hasMark = lMs != null && lMe != null && lMe > lMs
 
-    // Find bold ranges (medical terms) in segment-local coords
     const bolds = []
     MEDICAL_RE.lastIndex = 0
     let m
@@ -256,13 +304,11 @@ export default class extends Controller {
       return
     }
 
-    // Cut points where styling changes
     const cuts = new Set([0, segLen])
     for (const r of bolds) { cuts.add(r.start); cuts.add(r.end) }
     if (hasMark) { cuts.add(lMs); cuts.add(lMe) }
     const sorted = [...cuts].sort((a, b) => a - b)
 
-    // Emit pieces, coalescing contiguous marked pieces under one <mark>
     let markWrapper = null
     for (let i = 0; i < sorted.length - 1; i++) {
       const a = sorted[i], b = sorted[i + 1]
@@ -280,7 +326,6 @@ export default class extends Controller {
         strong.appendChild(node)
         node = strong
       }
-
       if (isMarked) {
         if (!markWrapper) {
           markWrapper = document.createElement("mark")
@@ -294,6 +339,50 @@ export default class extends Controller {
         parent.appendChild(node)
       }
     }
+  }
+
+  // ── Filter / search visibility ──────────────────────────────
+  _applyVisibility() {
+    if (!this.hasTranscriptTarget) return
+    const filter = this.filterValue
+    const q = (this.hasSearchTarget ? this.searchTarget.value : "").trim().toLowerCase()
+
+    let visible = 0
+    let total   = 0
+    this.transcriptTarget.querySelectorAll("[data-role]").forEach(el => {
+      total++
+      const role = el.dataset.role
+      const hasKw = el.dataset.hasKeyword === "true"
+      const text = el.dataset.text || ""
+
+      let ok = true
+      if (filter === "patient")        ok = role === "patient"
+      else if (filter === "clinician") ok = role === "clinician"
+      else if (filter === "keywords")  ok = hasKw
+
+      if (ok && q.length > 0) ok = text.includes(q)
+
+      el.style.display = ok ? "" : "none"
+      if (ok) visible++
+    })
+
+    if (this.hasCountTarget) {
+      const showsAll = filter === "all" && q.length === 0
+      this.countTarget.textContent = showsAll
+        ? `${total} turn${total === 1 ? "" : "s"}`
+        : `${visible} of ${total} turn${total === 1 ? "" : "s"}`
+    }
+  }
+
+  _paintFilterButtons() {
+    if (!this.hasFilterTarget) return
+    this.filterTargets.forEach(b => {
+      const isActive = b.dataset.narrativeLinkFilterParam === this.filterValue
+      b.classList.toggle("bg-white", isActive)
+      b.classList.toggle("text-[#1D1C1A]", isActive)
+      b.classList.toggle("shadow-sm", isActive)
+      b.classList.toggle("text-[#6B665F]", !isActive)
+    })
   }
 
   _scroll() {

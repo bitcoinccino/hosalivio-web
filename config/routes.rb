@@ -66,6 +66,7 @@ Rails.application.routes.draw do
   # Family-user invitations for a specific patient
   resources :patients, only: [] do
     resources :family, only: [:new, :create, :destroy], controller: "patient_families"
+    resources :consents, only: [:index, :new, :create, :show], controller: "consent_forms"
   end
 
   # Calendar + visit CRUD (clinician-facing scheduling)
@@ -81,12 +82,17 @@ Rails.application.routes.draw do
       post :sync_to_eval
       post :discard
       post :route_to_md
+      post :sign_note
     end
   end
 
   # Self-serve profile editing (all signed-in users, including family)
   resource :profile, only: [:edit, :update], controller: "profiles" do
     delete :avatar, action: :remove_avatar
+    get    :signature, action: :edit_signature, as: :signature
+    patch  :signature, action: :update_signature
+    delete :signature, action: :remove_signature
+    post   "notifications/test", action: :test_notification, as: :test_notification
   end
 
   # Quick clinician actions from the My Day overdue-meds card
@@ -103,6 +109,7 @@ Rails.application.routes.draw do
       post :certify
       post :finalize
       post :quick_set
+      post :request_changes
     end
   end
   # Clinician thumbs-up / thumbs-down on AI-authored notes

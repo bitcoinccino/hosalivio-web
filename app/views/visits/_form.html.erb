@@ -75,8 +75,12 @@
     <div class="grid grid-cols-2 gap-3 mt-3">
       <div>
         <%= f.label :visit_type, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%# Order matches the four categories the RN actually picks
+            from (initial / routine / follow-up / inquiry); the rest
+            sit below in the same select for billing parity. %>
+        <% visit_type_order = %w[admission routine follow_up inquiry recert face_to_face discharge death] %>
         <%= f.select :visit_type,
-              Visit.visit_types.keys.map { |vt| [vt.tr('_', ' ').titleize, vt] },
+              visit_type_order.map { |vt| [Visit::VISIT_TYPE_LABELS[vt] || vt.titleize, vt] },
               {},
               class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
       </div>
@@ -126,13 +130,39 @@
         ["Patient",         @visit.patient ? "#{@visit.patient.mrn} · #{@visit.patient.full_name}" : "—"],
         ["Clinician",       @visit.user ? "#{@visit.user.full_name} (#{(@visit.user.role_names & %w[rn md don sw chaplain aide social_worker admissions]).first || '—'})" : "—"],
         ["Discipline",      @visit.discipline.to_s.upcase],
-        ["Visit type",      @visit.visit_type.to_s.tr("_", " ").titleize],
+        ["Visit type",      @visit.visit_type_label],
         ["Place of service", location_labels_ro[@visit.service_location.to_s] || @visit.service_location.to_s.titleize],
         ["Facility",        @visit.facility_name.presence || "—"],
         ["Scheduled start", @visit.scheduled_at&.strftime("%a %b %-d, %Y · %-l:%M %p") || "—"],
         ["Started",         @visit.started_at&.strftime("%a %b %-d, %Y · %-l:%M %p") || "—"],
         ["Ended",           @visit.ended_at&.strftime("%a %b %-d, %Y · %-l:%M %p") || "—"]
       ]
+
+      # Patient-level fields the RN wants in the same locked panel
+      # (caregiver, language, home) without bouncing to the patient
+      # chat. Pulled inline so they don't ride in a separate widget.
+      patient_ro_rows = []
+      if (p = @visit.patient)
+        cg = [p.caregiver_name, p.caregiver_phone].compact_blank.join(" · ")
+        patient_ro_rows << ["Caregiver", cg] if cg.present?
+        if p.preferred_language.present?
+          lang_map = { "en" => "English", "es" => "Spanish", "ht" => "Haitian Creole", "pt" => "Portuguese", "other" => "Other" }
+          patient_ro_rows << ["Preferred language", lang_map[p.preferred_language] || p.preferred_language.titleize]
+        end
+        home = [p.city, p.state].compact_blank.join(", ")
+        patient_ro_rows << ["Home", home] if home.present?
+        if p.code_status.present?
+          cs_label = case p.code_status
+                     when "full_code"    then "Full Code"
+                     when "dnr"          then "DNR"
+                     when "dni"          then "DNI"
+                     when "dnr_dni"      then "DNR / DNI"
+                     when "comfort_only" then "Comfort Only"
+                     else p.code_status.to_s.titleize
+                     end
+          patient_ro_rows << ["Code status", cs_label]
+        end
+      end
     %>
     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
       <% ro_rows.each do |label, value| %>
@@ -142,6 +172,19 @@
         </div>
       <% end %>
     </dl>
+    <% if patient_ro_rows.any? %>
+      <div class="mt-3 pt-3 border-t border-[#EFECE6]">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Patient · home environment</div>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+          <% patient_ro_rows.each do |label, value| %>
+            <div>
+              <dt class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= label %></dt>
+              <dd class="text-[#1D1C1A]"><%= value %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    <% end %>
     <div class="mt-3 text-[11px] text-[#6B665F] inline-flex items-start gap-1.5">
       <i class="ri-lock-2-line mt-0.5"></i>
       <span>Visit metadata is locked once the chart entry is finished. Corrections require a late-entry note.</span>

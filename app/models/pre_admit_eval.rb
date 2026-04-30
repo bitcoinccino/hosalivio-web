@@ -22,6 +22,16 @@ class PreAdmitEval < ApplicationRecord
   belongs_to :evaluator,    class_name: "User", optional: true
   belongs_to :certified_by, class_name: "User", optional: true
 
+  # Polymorphic audit rows written by Signatures::Apply on RN
+  # route-to-MD and MD certification. The eval document partial
+  # renders the most recent of each verification_method.
+  has_many :signatures, as: :signable, dependent: :destroy
+
+  # Round-trip records when an MD asks the RN to revise. Open
+  # rows surface as a banner on the visit edit page; closed rows
+  # stay around for the audit trail.
+  has_many :revision_requests, class_name: "EvalRevisionRequest", dependent: :destroy
+
   validates :raw_json, presence: true
   validates :evaluator_name, presence: true, if: -> { status_final? || status_certified? || status_noe_filed? }
 

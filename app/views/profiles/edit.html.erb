@@ -12,16 +12,48 @@
   }[role] || "#6B665F"
   clinical = %w[rn md don admissions sw social_worker chaplain aide insurance billing dme pharmacy].include?(role)
   input_cls = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
-  label_cls = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
-%>
-<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
-  <div class="max-w-2xl mx-auto">
-    <a href="/dashboard" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
-      <i class="ri-arrow-left-line"></i> Dashboard
-    </a>
-    <h1 class="font-serif text-2xl text-[#1D1C1A] mb-1">Your profile</h1>
-    <div class="text-[12px] text-[#6B665F] mb-6"><%= u.agency&.name %> · <%= role&.tr("_", " ")&.upcase %></div>
+  label_cls = "block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1"
 
+  # Locate the agency DON for the "Message your DON" quick-action.
+  # Falls back to nil quietly if there's no DON role assigned yet
+  # (small agencies, or roles still being seeded).
+  don_user = u.agency &&
+             User.joins(:roles).where(agency_id: u.agency_id, active: true, roles: { name: "don" }).first
+%>
+<div class="min-h-screen bg-[#FBF9F5]">
+
+  <%# ── Sticky header ─ name, role badge, persistent Save button ── %>
+  <header class="bg-white border-b border-[#EFECE6] sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] flex-shrink-0">
+          <i class="ri-arrow-left-line"></i>
+        </a>
+        <div class="min-w-0">
+          <h1 class="font-serif text-xl text-[#1D1C1A] leading-tight truncate"><%= u.full_name %></h1>
+          <div class="text-[11px] text-[#6B665F] truncate">
+            <%= u.agency&.name %>
+            <% if role %>
+              <span class="text-[#D9D5CD]">·</span>
+              <span class="inline-flex items-center gap-1 ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold"
+                    style="color: <%= role_color %>; background-color: <%= role_color %>14; border: 1px solid <%= role_color %>40;">
+                <%= role.tr("_", " ") %>
+              </span>
+            <% end %>
+            <% if u.branch %>
+              <span class="text-[#D9D5CD]">·</span> <%= u.branch.name %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      <button type="submit" form="profile-form"
+              class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-semibold shadow-sm whitespace-nowrap">
+        <i class="ri-save-line"></i> Save changes
+      </button>
+    </div>
+  </header>
+
+  <div class="max-w-6xl mx-auto px-6 py-6">
     <% if flash[:notice] %>
       <div class="mb-4 px-4 py-3 rounded-lg bg-[#EEF5EC] border border-[#9BBF93] text-[#2F6F4E] text-[13px]"><%= flash[:notice] %></div>
     <% end %>
@@ -29,235 +61,444 @@
       <div class="mb-4 px-4 py-3 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-[13px]"><%= flash[:alert] %></div>
     <% end %>
 
-    <%= form_with model: u, url: profile_path, method: :patch, local: true, html: { multipart: true, class: "space-y-5" } do |f| %>
+    <%= form_with model: u, url: profile_path, method: :patch, local: true,
+          html: { id: "profile-form", multipart: true, class: "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6" } do |f| %>
 
-      <!-- Photo -->
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Photo</h2>
-        <div class="flex items-center gap-4">
-          <div class="w-28 h-28 rounded-full overflow-hidden flex items-center justify-center text-white text-2xl font-bold flex-shrink-0"
-               style="background: <%= role_color %>;">
-            <% if u.has_avatar? %>
-              <%= image_tag u.avatar.variant(resize_to_fill: [320, 320]).processed, class: "w-full h-full object-cover" %>
-            <% else %>
-              <%= u.initials %>
+      <%# ─────────────────────────────────────────────────────────
+          Left column ─ everything the clinician can edit themselves.
+          Identity → Signature → Notifications → Sign-in.
+          ───────────────────────────────────────────────────────── %>
+      <div class="space-y-5">
+
+        <%# ── Identity & credentials ──
+            Header: name + high-contrast role badge so the clinical
+            role reads as the dominant identity beat. Below: avatar
+            (clickable, camera-overlay) on the left, fields on the
+            right. License # surfaces at the bottom as a read-only
+            "Verified" row so the user can confirm it without
+            scrolling to the DON sidebar. %>
+        <section class="rounded-2xl bg-white border border-[#EFECE6] p-5"
+                 data-controller="profile-fields">
+          <div class="flex items-baseline justify-between gap-3 flex-wrap mb-1">
+            <h2 class="text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold">Identity & credentials</h2>
+          </div>
+          <div class="flex items-center gap-2 mb-5 flex-wrap">
+            <h3 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= u.full_name %></h3>
+            <% if role %>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] uppercase tracking-widest font-bold text-white shadow-sm"
+                    style="background: <%= role_color %>;">
+                <i class="ri-stethoscope-line"></i> <%= role.tr("_", " ") %>
+              </span>
             <% end %>
           </div>
-          <div class="flex-1 min-w-0">
-            <%= f.label :avatar, "Upload a new photo", class: label_cls %>
-            <%= f.file_field :avatar, accept: "image/jpeg,image/png,image/webp,image/gif",
-                  class: "block w-full text-[12px] text-[#6B665F] file:mr-3 file:px-3 file:py-1.5 file:rounded-full file:border-0 file:bg-[#D97757] file:text-white file:text-[12px] file:font-medium hover:file:bg-[#c46a4b] file:cursor-pointer" %>
-            <div class="text-[10px] text-[#6B665F] mt-1">JPEG, PNG, WebP, or GIF · under 5 MB</div>
-            <% if u.has_avatar? %>
-              <%= button_to avatar_profile_path, method: :delete,
-                    data: { turbo_confirm: "Remove your profile photo?" },
-                    class: "mt-2 inline-flex items-center gap-1 text-[11px] text-[#C1403A] hover:underline" do %>
-                <i class="ri-delete-bin-line"></i> Remove photo
+
+          <div class="flex items-start gap-5 flex-wrap">
+            <%# Avatar block — clickable circle with camera overlay.
+                The whole label triggers the hidden file input; when
+                a file is chosen, profile-fields auto-submits the
+                form so the photo updates without a separate Save.
+                Remove uses a small × overlay pinned to top-right
+                instead of a text link below. %>
+            <div class="flex-shrink-0 relative">
+              <%= f.label :avatar, class: "block cursor-pointer group" do %>
+                <div class="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-2xl font-bold border-2 border-[#EFECE6] group-hover:opacity-95 transition"
+                     style="background: <%= role_color %>;">
+                  <% if u.has_avatar? %>
+                    <%= image_tag u.avatar.variant(resize_to_fill: [320, 320]).processed, class: "w-full h-full object-cover" %>
+                  <% else %>
+                    <%= u.initials %>
+                  <% end %>
+                </div>
+                <span class="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#1D1C1A] border-2 border-white text-white text-[12px] flex items-center justify-center shadow group-hover:bg-[#D97757] transition"
+                      title="Change photo">
+                  <i class="ri-camera-line"></i>
+                </span>
               <% end %>
-            <% end %>
-          </div>
-        </div>
-      </section>
-
-      <!-- Identity -->
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Identity</h2>
-        <div class="space-y-3">
-          <div>
-            <%= f.label :full_name, class: label_cls %>
-            <%= f.text_field :full_name, class: input_cls %>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <%= f.label :email, class: label_cls %>
-              <%= f.email_field :email, class: input_cls %>
+              <%= f.file_field :avatar,
+                    accept: "image/jpeg,image/png,image/webp,image/gif",
+                    data: {
+                      profile_fields_target: "fileInput",
+                      action: "change->profile-fields#photoChosen"
+                    },
+                    class: "hidden" %>
+              <% if u.has_avatar? %>
+                <%= link_to avatar_profile_path,
+                      data: { turbo_method: :delete, turbo_confirm: "Remove your profile photo?" },
+                      title: "Remove photo",
+                      class: "absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white border border-[#EFECE6] text-[#C1403A] text-[12px] flex items-center justify-center shadow-sm hover:bg-[#FFF3EC]" do %>
+                  <i class="ri-close-line"></i>
+                <% end %>
+              <% end %>
             </div>
-            <div>
-              <%= f.label :phone_number, "Phone", class: label_cls %>
-              <%= f.telephone_field :phone_number, placeholder: "+1 407 555 0110", class: input_cls %>
-              <div class="text-[10px] text-[#6B665F] mt-1">Used for SMS visit reminders and after-hours alerts.</div>
-            </div>
-          </div>
-          <div>
-            <%= f.label :timezone, class: label_cls %>
-            <%= f.select :timezone,
-                  ActiveSupport::TimeZone.us_zones.map { |z| [z.name, z.name] },
-                  { selected: u.timezone },
-                  class: input_cls %>
-          </div>
-        </div>
-      </section>
 
-      <% if clinical %>
-        <!-- Professional (clinical-role only) -->
-        <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-          <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Professional</h2>
-          <div class="space-y-3">
-            <% if %w[md].include?(role) %>
+            <%# Field column — labels nudged darker (#4A4A45) for
+                better contrast in low-light bedside use. %>
+            <div class="flex-1 min-w-[280px] space-y-3">
               <div>
-                <%= f.label :npi, "NPI (10 digits)", class: label_cls %>
-                <%= f.text_field :npi, maxlength: 10, placeholder: "1234567890", class: "#{input_cls} font-mono" %>
+                <%= f.label :full_name, class: "block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1" %>
+                <%= f.text_field :full_name, class: input_cls %>
               </div>
-            <% end %>
-            <div>
-              <%= f.label :service_zips, "Service ZIPs within my branch (optional)", class: label_cls %>
-              <%= f.text_area :service_zips,
-                    value: Array(u.service_zips).join(", "),
-                    rows: 2,
-                    placeholder: "32801, 32802  — leave blank to cover the entire branch",
-                    class: input_cls %>
-              <div class="text-[10px] text-[#6B665F] mt-1">
-                Comma-separated. Empty = full branch coverage.
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <%= f.label :email, class: "block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1" %>
+                  <%= f.email_field :email, class: input_cls %>
+                </div>
+                <div>
+                  <%= f.label :phone_number, "Phone", class: "block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1" %>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-[#6B665F] font-mono">+1</span>
+                    <%= f.telephone_field :phone_number,
+                          placeholder: "(407) 555-0110",
+                          maxlength: 14,
+                          data: {
+                            profile_fields_target: "phone",
+                            action: "input->profile-fields#formatPhone"
+                          },
+                          class: "#{input_cls} pl-10 font-mono" %>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <%= f.label :timezone, class: "block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold" %>
+                  <button type="button"
+                          data-action="click->profile-fields#detectTimezone"
+                          class="inline-flex items-center gap-1 text-[10px] text-[#D97757] hover:text-[#c46a4b] font-bold uppercase tracking-widest">
+                    <i class="ri-global-line"></i> Detect
+                  </button>
+                </div>
+                <div class="relative">
+                  <i class="ri-global-line absolute left-3 top-1/2 -translate-y-1/2 text-[#6B665F] text-[14px] pointer-events-none"></i>
+                  <%= f.select :timezone,
+                        ActiveSupport::TimeZone.us_zones.map { |z| [z.name, z.name] },
+                        { selected: u.timezone },
+                        class: "#{input_cls} pl-9",
+                        data: { profile_fields_target: "timezone" } %>
+                </div>
+                <div data-profile-fields-target="tzStatus" class="text-[10px] mt-1 min-h-[12px] text-[#6B665F]"></div>
               </div>
             </div>
           </div>
+
+          <%# Read-only credential row — license + expiration shown
+              right where "Credentials" promises, even though edits
+              live in the DON sidebar. Color-coded badge mirrors the
+              sidebar so the clinician can self-verify at a glance. %>
+          <% if clinical && (u.license_number.present? || u.license_expires_on.present?) %>
+            <%
+              lic_color, lic_icon, lic_label =
+                if u.license_expired?
+                  ["#C1403A", "ri-error-warning-line", "Expired"]
+                elsif u.license_expiring_soon?(within: 60)
+                  ["#D97757", "ri-time-line", "Expires soon"]
+                else
+                  ["#2F6F4E", "ri-shield-check-line", "Verified"]
+                end
+            %>
+            <div class="mt-5 pt-4 border-t border-[#EFECE6] grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#4A4A45] font-bold mb-0.5">State license #</div>
+                <div class="font-mono text-[14px] text-[#1D1C1A]"><%= u.license_number.presence || "—" %></div>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest text-[#4A4A45] font-bold mb-0.5">Expires on</div>
+                <div class="font-mono text-[14px] text-[#1D1C1A]"><%= u.license_expires_on&.strftime("%b %-d, %Y") || "—" %></div>
+              </div>
+              <div class="flex items-center justify-start sm:justify-end">
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold"
+                      style="color: <%= lic_color %>; background-color: <%= lic_color %>14; border: 1px solid <%= lic_color %>40;">
+                  <i class="<%= lic_icon %>"></i> <%= lic_label %>
+                </span>
+              </div>
+            </div>
+            <div class="mt-2 text-[11px] text-[#6B665F] inline-flex items-start gap-1.5">
+              <i class="ri-lock-2-line mt-0.5"></i>
+              <span>Set by your DON. Updates flow through team management.</span>
+            </div>
+          <% end %>
         </section>
 
-        <!-- Read-only DON-controlled -->
-        <section class="rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] p-5">
-          <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Managed by your DON</h2>
-          <div class="text-[11px] text-[#6B665F] mb-3">These are read-only here. To update, ask your Director of Nursing.</div>
-          <div class="grid grid-cols-2 gap-3 text-[13px]">
-            <div>
-              <div class="<%= label_cls %>">State license #</div>
-              <div class="font-mono text-[#1D1C1A]"><%= u.license_number.presence || "—" %></div>
-            </div>
-            <div>
-              <div class="<%= label_cls %>">License expires on</div>
-              <div class="font-mono <%= u.license_expired? ? 'text-[#C1403A]' : (u.license_expiring_soon?(within: 60) ? 'text-[#D97757]' : 'text-[#1D1C1A]') %>">
-                <%= u.license_expires_on&.strftime("%b %-d, %Y") || "—" %>
+        <%# ── Signature trust widget ── %>
+        <% if u.signature_registered? %>
+          <section class="rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-5">
+            <div class="flex items-start gap-3">
+              <i class="ri-shield-check-line text-[#2F6F4E] text-2xl mt-0.5 flex-shrink-0"></i>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] uppercase tracking-widest text-[#2F6F4E] font-bold">Signature on file</div>
+                <div class="text-[12px] text-[#1D1C1A] mt-0.5">
+                  Registered <%= u.signature_registered_at.strftime("%b %-d, %Y · %-l:%M %p") %>.
+                  Applied with one tap on chart sign-offs.
+                </div>
+                <div class="mt-3 inline-block bg-white rounded-lg border border-[#EFECE6] p-2">
+                  <%= image_tag u.signature, class: "h-20 max-w-[400px] object-contain" %>
+                </div>
+                <div class="mt-3 flex items-center gap-2 flex-wrap">
+                  <%= link_to signature_profile_path,
+                        class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-white border border-[#2F6F4E] text-[#2F6F4E] hover:bg-[#FBF9F5] font-medium" do %>
+                    <i class="ri-quill-pen-line"></i> Replace signature
+                  <% end %>
+                  <%= link_to signature_profile_path,
+                        data: { turbo_method: :delete, turbo_confirm: "Remove your registered signature? Future sign-offs will need an inline draw." },
+                        class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full text-[#C1403A] hover:bg-white font-medium" do %>
+                    <i class="ri-delete-bin-line"></i> Remove
+                  <% end %>
+                </div>
               </div>
             </div>
-            <div>
-              <div class="<%= label_cls %>">Caseload cap</div>
-              <div class="font-mono text-[#1D1C1A]"><%= u.current_caseload %>/<%= u.max_caseload %></div>
-            </div>
-            <div>
-              <div class="<%= label_cls %>">On-call</div>
-              <div class="<%= u.on_call ? 'text-[#2B4A7A] font-medium' : 'text-[#6B665F]' %>">
-                <%= u.on_call ? "Yes · part of rotation" : "No" %>
+          </section>
+        <% else %>
+          <section class="rounded-2xl bg-[#FFF3EC] border border-[#D97757] p-5">
+            <div class="flex items-start gap-3">
+              <i class="ri-quill-pen-line text-[#D97757] text-2xl mt-0.5 flex-shrink-0"></i>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold">Signature not registered</div>
+                <div class="text-[12px] text-[#1D1C1A] mt-0.5 leading-relaxed">
+                  Required for HIPAA-compliant one-tap sign-offs (route to MD,
+                  eval certification, late-entry notes). Without it, every
+                  sign-off prompts you to draw your signature inline.
+                </div>
+                <%= link_to signature_profile_path,
+                      class: "mt-3 inline-flex items-center gap-1.5 text-[12px] px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-semibold" do %>
+                  <i class="ri-quill-pen-line"></i> Draw signature
+                <% end %>
               </div>
             </div>
-            <div>
-              <div class="<%= label_cls %>">Employment type</div>
-              <div class="text-[#1D1C1A]"><%= u.employment_type&.tr("_", " ")&.capitalize || "—" %></div>
+          </section>
+        <% end %>
+
+        <% if %w[md].include?(role) %>
+          <%# MD-specific: NPI is the doctor's personal credential
+              (not an agency assignment), so it stays self-serve. %>
+          <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+            <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Credentials</h2>
+            <%= f.label :npi, "NPI (10 digits)", class: label_cls %>
+            <%= f.text_field :npi, maxlength: 10, placeholder: "1234567890", class: "#{input_cls} font-mono" %>
+          </section>
+        <% end %>
+
+        <%# ── Out-of-app notifications ── %>
+        <% nc = u.notification_channels.is_a?(Hash) ? u.notification_channels : {} %>
+        <%# ── Notification matrix ────────────────────────────────
+            One row per channel: toggle · channel · contact · test.
+            Grouped into Instant (Telegram/WhatsApp/SMS) and Digest
+            (Email) so the urgency model is visible at a glance.
+            HIPAA badge in the header replaces the long preamble.
+        ─────────────────────────────────────────────────────────── %>
+        <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+          <div class="flex items-start justify-between gap-3 mb-4 flex-wrap">
+            <div class="min-w-0">
+              <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold inline-flex items-center gap-1.5">
+                Out-of-app notifications
+                <span title="Pings are PHI-free previews; the actual message stays behind a deeplink + your authenticated HosAlivio session."
+                      class="cursor-help text-[#6B665F] hover:text-[#1D1C1A]">
+                  <i class="ri-information-line"></i>
+                </span>
+              </h2>
+              <div class="text-[11px] text-[#6B665F] mt-0.5">Where HosAlivio reaches you outside the app.</div>
             </div>
-            <div>
-              <div class="<%= label_cls %>">Branch</div>
-              <div class="text-[#1D1C1A]"><%= u.branch&.name || "Unassigned" %></div>
-            </div>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold bg-[#E6F0EE] text-[#2F6F4E] border border-[#2F6F4E]">
+              <i class="ri-shield-check-line"></i> HIPAA secure
+            </span>
           </div>
+
+          <%
+            channel_rows = [
+              { key: "telegram", icon: "ri-telegram-line",  icon_color: "#0088cc", label: "Telegram",  contact_field: :chat_id, contact_type: "text", placeholder: "Telegram chat ID (DM @hosalivio_bot)" },
+              { key: "whatsapp", icon: "ri-whatsapp-line",  icon_color: "#25D366", label: "WhatsApp",  contact_field: :phone,   contact_type: "tel",  placeholder: "+1 555 123 4567" },
+              { key: "sms",      icon: "ri-message-3-line", icon_color: "#1D1C1A", label: "SMS",       contact_field: :phone,   contact_type: "tel",  placeholder: "+1 555 123 4567" },
+              { key: "email",    icon: "ri-mail-line",      icon_color: "#6B665F", label: "Email",     contact_field: nil,      contact_type: nil,    placeholder: nil }
+            ]
+            grouped = { "Instant" => channel_rows.first(3), "Digest" => channel_rows.last(1) }
+          %>
+
+          <% grouped.each do |group_label, rows| %>
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mt-3 mb-1.5 first:mt-0">
+              <% if group_label == "Instant" %>
+                <i class="ri-flashlight-line"></i>
+              <% else %>
+                <i class="ri-mail-send-line"></i>
+              <% end %>
+              <%= group_label %>
+            </div>
+            <div class="rounded-xl border border-[#EFECE6] overflow-hidden divide-y divide-[#EFECE6]">
+              <% rows.each do |row| %>
+                <%
+                  cfg     = nc[row[:key]] || {}
+                  enabled = !!cfg["enabled"]
+                  contact = row[:contact_field] ? cfg[row[:contact_field].to_s].to_s : u.email.to_s
+                  has_contact = contact.present?
+                %>
+                <div class="grid grid-cols-[auto_minmax(140px,1fr)_auto] sm:grid-cols-[auto_120px_minmax(180px,1fr)_auto] items-center gap-3 px-3 py-2.5 bg-white"
+                     data-controller="test-ping"
+                     data-test-ping-url-value="<%= test_notification_profile_path %>"
+                     data-test-ping-channel-value="<%= row[:key] %>">
+
+                  <%# Toggle switch — styled checkbox so the form
+                      submission still works without extra JS. %>
+                  <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                    <input type="hidden" name="user[notification_channels][<%= row[:key] %>][enabled]" value="0">
+                    <input type="checkbox" name="user[notification_channels][<%= row[:key] %>][enabled]" value="1" <%= "checked" if enabled %> class="peer sr-only">
+                    <span class="w-9 h-5 rounded-full bg-[#D9D5CD] peer-checked:bg-[#2F6F4E] transition-colors"></span>
+                    <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4"></span>
+                  </label>
+
+                  <%# Channel column — icon + label %>
+                  <div class="inline-flex items-center gap-1.5 min-w-0">
+                    <i class="<%= row[:icon] %> text-[16px] flex-shrink-0" style="color: <%= row[:icon_color] %>;"></i>
+                    <span class="text-[12px] font-medium text-[#1D1C1A] truncate"><%= row[:label] %></span>
+                  </div>
+
+                  <%# Contact column — input or read-only email %>
+                  <div class="min-w-0">
+                    <% if row[:contact_field] %>
+                      <input type="<%= row[:contact_type] %>"
+                             name="user[notification_channels][<%= row[:key] %>][<%= row[:contact_field] %>]"
+                             value="<%= contact %>"
+                             placeholder="<%= row[:placeholder] %>"
+                             class="w-full px-2 py-1 rounded-md border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[12px] font-mono">
+                    <% else %>
+                      <span class="text-[12px] text-[#6B665F] truncate block"><%= u.email %></span>
+                    <% end %>
+                  </div>
+
+                  <%# Action column — Test button (only useful when
+                      enabled + contact filled in). %>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <% if enabled && has_contact %>
+                      <button type="button"
+                              data-test-ping-target="button"
+                              data-action="click->test-ping#send"
+                              class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-white border border-[#D9D5CD] hover:bg-[#FBF9F5] text-[#1D1C1A] font-medium">
+                        <i class="ri-pulse-line"></i> Test
+                      </button>
+                    <% else %>
+                      <span class="text-[10px] uppercase tracking-widest text-[#6B665F] px-2 py-1 border border-dashed border-[#D9D5CD] rounded-full">
+                        <%= enabled ? "No contact" : "Off" %>
+                      </span>
+                    <% end %>
+                  </div>
+
+                  <%# Per-row status caption (full width on mobile,
+                      hidden when empty). %>
+                  <div class="col-span-full">
+                    <div data-test-ping-target="status" class="text-[10px] min-h-[12px]"></div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
         </section>
+
+        <%# ── Sign-in ──
+            HosAlivio is OTP-only — no passwords to manage. Each
+            sign-in mints a fresh 6-digit code emailed to the
+            address above, so the only "security setting" the
+            clinician needs to keep current is their email and
+            phone (already in the Identity card). %>
+        <section class="rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] p-5">
+          <h2 class="text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-2 inline-flex items-center gap-1.5">
+            <i class="ri-shield-keyhole-line"></i> Sign-in
+          </h2>
+          <p class="text-[12px] text-[#1D1C1A] leading-relaxed">
+            HosAlivio uses one-time email codes — no password to set or rotate.
+            Make sure your email above is current; your next sign-in code lands there.
+          </p>
+        </section>
+      </div>
+
+      <%# ─────────────────────────────────────────────────────────
+          Right sidebar ─ DON-managed credentials. Locked badges,
+          not greyed-out inputs, so it's clear these aren't broken
+          but intentionally read-only. Quick "message DON" link at
+          the bottom for corrections.
+          ───────────────────────────────────────────────────────── %>
+      <% if clinical %>
+        <aside class="space-y-5 lg:sticky lg:top-20 lg:self-start">
+          <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold inline-flex items-center gap-1">
+                <i class="ri-lock-2-line"></i> Managed by your DON
+              </h2>
+            </div>
+            <p class="text-[11px] text-[#6B665F] mb-4">These reflect what's verified on file. To update, ask your Director of Nursing.</p>
+
+            <%
+              license_status =
+                if u.license_expired?
+                  ["#C1403A", "ri-error-warning-line", "Expired"]
+                elsif u.license_expiring_soon?(within: 60)
+                  ["#D97757", "ri-time-line", "Expiring soon"]
+                else
+                  ["#2F6F4E", "ri-shield-check-line", "Active"]
+                end
+              don_rows = [
+                {
+                  label: "State license #",
+                  value: u.license_number.presence || "—",
+                  mono:  true,
+                  badge: u.license_number.present? ? license_status : nil
+                },
+                {
+                  label: "License expires on",
+                  value: u.license_expires_on&.strftime("%b %-d, %Y") || "—",
+                  mono:  true
+                },
+                {
+                  label: "Caseload",
+                  value: "#{u.current_caseload} / #{u.max_caseload}",
+                  mono:  true
+                },
+                {
+                  label: "On-call rotation",
+                  value: u.on_call ? "Yes · part of rotation" : "No",
+                  badge: u.on_call ? ["#2B4A7A", "ri-phone-line", "On-call"] : nil
+                },
+                {
+                  label: "Employment",
+                  value: u.employment_type&.tr("_", " ")&.capitalize || "—"
+                },
+                {
+                  label: "Branch",
+                  value: u.branch&.name || "Unassigned"
+                }
+              ]
+            %>
+            <ul class="space-y-3">
+              <% don_rows.each do |row| %>
+                <li>
+                  <div class="text-[10px] uppercase tracking-widest text-[#6B665F]"><%= row[:label] %></div>
+                  <div class="flex items-center justify-between gap-2 mt-0.5">
+                    <span class="<%= row[:mono] ? 'font-mono' : '' %> text-[13px] text-[#1D1C1A]"><%= row[:value] %></span>
+                    <% if row[:badge] %>
+                      <% color, icon, label = row[:badge] %>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold"
+                            style="color: <%= color %>; background-color: <%= color %>14; border: 1px solid <%= color %>40;">
+                        <i class="<%= icon %>"></i> <%= label %>
+                      </span>
+                    <% end %>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
+
+            <% if don_user && don_user.id != u.id %>
+              <%# Quick "message DON" — lands them in the patient
+                  chat scoped to whichever active patient is theirs;
+                  no Direct Messaging surface exists yet, so this
+                  drops them at the dashboard with a prefilled
+                  flash so they know who to find. Cheap MVP. %>
+              <div class="mt-5 pt-4 border-t border-[#EFECE6]">
+                <%= link_to dashboard_path,
+                      class: "inline-flex items-center gap-1.5 text-[12px] text-[#D97757] hover:text-[#c46a4b] font-medium" do %>
+                  <i class="ri-mail-send-line"></i>
+                  See an error? Message <%= don_user.full_name.split.first %> (DON)
+                <% end %>
+              </div>
+            <% end %>
+          </section>
+        </aside>
       <% end %>
 
-      <!-- Password -->
-      <%# ── Out-of-app notifications ────────────────────────────
-          Channels HosAlivio uses to ping the clinician when they
-          aren't in the web app. Messages are PHI-free; the patient
-          context stays behind the deeplink + an authenticated
-          session. Quiet hours suppress all but crisis pings. %>
-      <% nc = u.notification_channels.is_a?(Hash) ? u.notification_channels : {} %>
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Out-of-app notifications</h2>
-        <p class="text-[12px] text-[#6B665F] mb-4">Where should HosAlivio reach you when you're not in the app? Pings are PHI-free; tap the link to sign in and read the actual message.</p>
-
-        <div class="space-y-3">
-          <%# Telegram %>
-          <% tg = nc["telegram"] || {} %>
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
-            <i class="ri-telegram-line text-[#0088cc] text-[20px] flex-shrink-0"></i>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <input type="checkbox" name="user[notification_channels][telegram][enabled]" value="1" <%= "checked" if tg["enabled"] %> class="accent-[#D97757]">
-                <span class="text-[13px] font-medium text-[#1D1C1A]">Telegram</span>
-              </div>
-              <input type="text" name="user[notification_channels][telegram][chat_id]"
-                     value="<%= tg["chat_id"] %>"
-                     placeholder="Telegram chat ID (DM @hosalivio_bot to get yours)"
-                     class="<%= input_cls %> mt-2 text-[12px]">
-            </div>
-          </div>
-
-          <%# WhatsApp %>
-          <% wa = nc["whatsapp"] || {} %>
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
-            <i class="ri-whatsapp-line text-[#25D366] text-[20px] flex-shrink-0"></i>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <input type="checkbox" name="user[notification_channels][whatsapp][enabled]" value="1" <%= "checked" if wa["enabled"] %> class="accent-[#D97757]">
-                <span class="text-[13px] font-medium text-[#1D1C1A]">WhatsApp</span>
-              </div>
-              <input type="tel" name="user[notification_channels][whatsapp][phone]"
-                     value="<%= wa["phone"] %>"
-                     placeholder="+1 555 123 4567"
-                     class="<%= input_cls %> mt-2 text-[12px]">
-            </div>
-          </div>
-
-          <%# SMS %>
-          <% sms = nc["sms"] || {} %>
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
-            <i class="ri-message-3-line text-[#1D1C1A] text-[20px] flex-shrink-0"></i>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <input type="checkbox" name="user[notification_channels][sms][enabled]" value="1" <%= "checked" if sms["enabled"] %> class="accent-[#D97757]">
-                <span class="text-[13px] font-medium text-[#1D1C1A]">SMS</span>
-              </div>
-              <input type="tel" name="user[notification_channels][sms][phone]"
-                     value="<%= sms["phone"] %>"
-                     placeholder="+1 555 123 4567"
-                     class="<%= input_cls %> mt-2 text-[12px]">
-            </div>
-          </div>
-
-          <%# Email %>
-          <% em = nc["email"] || {} %>
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#FBF9F5] border border-[#EFECE6]">
-            <i class="ri-mail-line text-[#6B665F] text-[20px] flex-shrink-0"></i>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <input type="checkbox" name="user[notification_channels][email][enabled]" value="1" <%= "checked" if em["enabled"] %> class="accent-[#D97757]">
-                <span class="text-[13px] font-medium text-[#1D1C1A]">Email <span class="text-[11px] text-[#6B665F] font-normal">to <%= u.email %></span></span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <%# Quiet hours %>
-        <% qh = nc["quiet_hours"] || {} %>
-        <div class="mt-5 pt-5 border-t border-[#EFECE6]">
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Quiet hours</h3>
-          <p class="text-[11px] text-[#6B665F] mb-3">Suppresses non-crisis pings during this window. Crisis-level messages always page through.</p>
-          <div class="grid grid-cols-3 gap-3">
-            <div>
-              <label class="<%= label_cls %>">From</label>
-              <input type="time" name="user[notification_channels][quiet_hours][start]" value="<%= qh["start"] %>" class="<%= input_cls %> font-mono">
-            </div>
-            <div>
-              <label class="<%= label_cls %>">To</label>
-              <input type="time" name="user[notification_channels][quiet_hours][end]" value="<%= qh["end"] %>" class="<%= input_cls %> font-mono">
-            </div>
-            <div>
-              <label class="<%= label_cls %>">Timezone</label>
-              <input type="text" name="user[notification_channels][quiet_hours][timezone]" value="<%= qh["timezone"].presence || u.timezone %>" class="<%= input_cls %> text-[12px]">
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <h2 class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Password</h2>
-        <div class="text-[12px] text-[#6B665F]">
-          Password changes live in
-          <%= link_to "Settings", edit_user_registration_path, class: "text-[#D97757] hover:underline" %>
-          (Devise-managed for security).
-        </div>
-      </section>
-
-      <div class="flex items-center justify-end">
-        <%= f.submit "Save changes",
-              class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
-      </div>
     <% end %>
   </div>
 </div>

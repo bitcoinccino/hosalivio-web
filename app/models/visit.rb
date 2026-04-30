@@ -17,8 +17,40 @@ class Visit < ApplicationRecord
   }, prefix: true, validate: true
 
   enum :visit_type, {
-    routine: 0, admission: 1, recert: 2, face_to_face: 3, discharge: 4, death: 5
+    routine: 0, admission: 1, recert: 2, face_to_face: 3, discharge: 4, death: 5,
+    follow_up: 6, inquiry: 7
   }, prefix: true, validate: true
+
+  # Friendly category mapping the chart UI uses to gate the
+  # Medicaid pre-eval pane and to label visit-type pickers. The
+  # enum keeps every billable hospice variant Medicare cares
+  # about; this layer collapses them into the buckets the RN
+  # thinks about: initial / routine / follow_up / inquiry.
+  VISIT_TYPE_CATEGORIES = {
+    "admission"    => :initial,
+    "routine"      => :routine,
+    "recert"       => :routine,
+    "face_to_face" => :follow_up,
+    "follow_up"    => :follow_up,
+    "discharge"    => :follow_up,
+    "death"        => :follow_up,
+    "inquiry"      => :inquiry
+  }.freeze
+
+  VISIT_TYPE_LABELS = {
+    "admission"    => "Initial (new admission)",
+    "routine"      => "Routine",
+    "follow_up"    => "Follow-up",
+    "inquiry"      => "Inquiry",
+    "recert"       => "Recert (face-to-face)",
+    "face_to_face" => "Face-to-face",
+    "discharge"    => "Discharge",
+    "death"        => "Death"
+  }.freeze
+
+  def visit_category   = VISIT_TYPE_CATEGORIES[visit_type.to_s] || :follow_up
+  def needs_pre_eval?  = visit_category == :initial
+  def visit_type_label = VISIT_TYPE_LABELS[visit_type.to_s] || visit_type.to_s.tr("_", " ").titleize
 
   # HCPCS place-of-service codes for hospice (Q-codes). Drives billing AND the
   # Contact & Location block on the visit detail view.
@@ -46,6 +78,24 @@ class Visit < ApplicationRecord
   belongs_to :user  # clinician who visited
   belongs_to :created_by_user, class_name: "User", optional: true # whoever scheduled it (admin, admissions, RN one-tap, AI agent)
   has_one    :pre_admit_eval, dependent: :nullify
+
+  # Polymorphic audit rows from Signatures::Apply. For non-admission
+  # visits we stamp a `rn_visit_signoff` row when the RN signs the
+  # note (admission visits route via the eval, so their signature
+  # rows hang off PreAdmitEval instead).
+  has_many :signatures, as: :signable, dependent: :destroy
+
+  def signed_off_by_rn?
+    signatures.where(verification_method: "rn_visit_signoff").exists?
+  end
+
+  # Single predicate the chart UI uses to lock inline edits. True
+  # when the linked eval is MD-certified OR a non-admission visit's
+  # note has been RN-signed off — both cases mean the medical
+  # record is closed and corrections need a late-entry note.
+  def chart_locked?
+    pre_admit_eval&.status_certified? || signed_off_by_rn?
+  end
 
   validates :pain_score, inclusion: { in: 0..10, allow_nil: true }
   validate  :ended_after_started

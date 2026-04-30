@@ -177,25 +177,53 @@
     <% end %>
   <% end %>
 
-  <%# Signatures block — placeholder lines for paper signing, plus
-      electronic stamp when MD has certified. %>
+  <%# Signatures block — pulls the actual audit rows written by
+      Signatures::Apply on Route-to-MD (RN) and Certify (MD), so
+      what renders here matches what the auditor will see in the
+      `signatures` table. Falls back to placeholder underscores
+      when a side hasn't signed yet. %>
+  <%
+    rn_sig = eval_rec.signatures.where(verification_method: "rn_route_to_md").order(:signed_at).last
+    md_sig = eval_rec.signatures.where(verification_method: "md_certify").order(:signed_at).last
+    sig_blob = ->(sig) {
+      return nil if sig&.signature_blob_id.blank?
+      ActiveStorage::Blob.find_by(id: sig.signature_blob_id)
+    }
+  %>
   <div class="<%= section_h %>">Signatures:</div>
-  <div class="mt-2">
-    RN: <span class="<%= field_val %>">_______________________________</span>
-    Date: <span class="<%= field_val %>">__________</span>
+
+  <%# RN line %>
+  <div class="mt-3">
+    <% if rn_sig %>
+      <div class="text-[11px] text-[#6B665F] mb-0.5">RN sign-off</div>
+      <% if (blob = sig_blob.call(rn_sig)) %>
+        <%= image_tag blob, class: "h-24 max-w-[480px] object-contain bg-white" %>
+      <% end %>
+      <div class="<%= field_val %>"><%= rn_sig.signed_name %></div>
+      <div class="text-[11px] text-[#6B665F]"><%= rn_sig.short_audit_line %></div>
+    <% else %>
+      RN: <span class="<%= field_val %>">_______________________________</span>
+      Date: <span class="<%= field_val %>">__________</span>
+    <% end %>
   </div>
-  <% if eval_rec.status_certified? && eval_rec.certified_by.present? %>
-    <div class="mt-2">
-      MD: <span class="<%= field_val %>"><%= eval_rec.certified_by.full_name %>, MD (electronically signed)</span>
-      Date: <span class="<%= field_val %>"><%= eval_rec.certified_at.strftime("%Y-%m-%d") %></span>
-    </div>
-  <% else %>
-    <div class="mt-2">
+
+  <%# MD line %>
+  <div class="mt-4">
+    <% if md_sig %>
+      <div class="text-[11px] text-[#2F6F4E] mb-0.5 inline-flex items-center gap-1">
+        <i class="ri-shield-check-line"></i> MD certification
+      </div>
+      <% if (blob = sig_blob.call(md_sig)) %>
+        <%= image_tag blob, class: "h-24 max-w-[480px] object-contain bg-white" %>
+      <% end %>
+      <div class="<%= field_val %>"><%= md_sig.signed_name %>, MD <span class="text-[11px] text-[#6B665F]">(electronically signed)</span></div>
+      <div class="text-[11px] text-[#6B665F]"><%= md_sig.short_audit_line %></div>
+    <% else %>
       MD: <span class="<%= field_val %>">_______________________________</span>
       Date: <span class="<%= field_val %>">__________</span>
       <span class="text-[11px] text-[#6B665F] italic ml-2">(pending certification)</span>
-    </div>
-  <% end %>
+    <% end %>
+  </div>
 
   <div class="mt-5 pt-3 border-t border-[#EFECE6] flex items-center gap-3 flex-wrap">
     <%= link_to edit_pre_admit_eval_path(eval_rec),

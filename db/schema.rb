@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_30_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -147,6 +147,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
     t.index ["service_area_zips"], name: "index_branches_on_service_area_zips", using: :gin
   end
 
+  create_table "consent_forms", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.datetime "created_at", null: false
+    t.string "document_hash"
+    t.text "form_content"
+    t.string "kind", null: false
+    t.uuid "patient_id", null: false
+    t.datetime "signed_at", null: false
+    t.text "signer_authority"
+    t.string "signer_name", null: false
+    t.string "signer_relationship"
+    t.string "signer_role", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "witnessed_by_id", null: false
+    t.index ["agency_id"], name: "index_consent_forms_on_agency_id"
+    t.index ["patient_id", "kind"], name: "index_consent_forms_on_patient_id_and_kind"
+    t.index ["patient_id"], name: "index_consent_forms_on_patient_id"
+    t.index ["signed_at"], name: "index_consent_forms_on_signed_at"
+    t.index ["witnessed_by_id"], name: "index_consent_forms_on_witnessed_by_id"
+  end
+
   create_table "dme_orders", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "agency_id", null: false
     t.datetime "created_at", null: false
@@ -163,6 +184,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
     t.index ["agency_id", "patient_id", "status"], name: "index_dme_orders_on_agency_id_and_patient_id_and_status"
     t.index ["agency_id"], name: "index_dme_orders_on_agency_id"
     t.index ["patient_id"], name: "index_dme_orders_on_patient_id"
+  end
+
+  create_table "eval_revision_requests", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "comment", null: false
+    t.datetime "created_at", null: false
+    t.string "document_hash"
+    t.uuid "pre_admit_eval_id", null: false
+    t.uuid "requester_id", null: false
+    t.datetime "resolved_at"
+    t.datetime "updated_at", null: false
+    t.index ["pre_admit_eval_id"], name: "index_eval_revision_requests_on_pre_admit_eval_id"
+    t.index ["requester_id"], name: "index_eval_revision_requests_on_requester_id"
   end
 
   create_table "icd10_explanations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -422,6 +455,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
     t.index ["name"], name: "index_roles_on_name", unique: true
   end
 
+  create_table "signatures", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "document_hash", null: false
+    t.text "intent_text", null: false
+    t.string "ip_address"
+    t.uuid "signable_id", null: false
+    t.string "signable_type", null: false
+    t.uuid "signature_blob_id"
+    t.datetime "signed_at", null: false
+    t.string "signed_name"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.uuid "user_id", null: false
+    t.string "verification_method", null: false
+    t.index ["signable_type", "signable_id"], name: "index_signatures_on_signable_type_and_signable_id"
+    t.index ["signed_at"], name: "index_signatures_on_signed_at"
+    t.index ["user_id"], name: "index_signatures_on_user_id"
+  end
+
   create_table "user_roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "agency_id", null: false
     t.datetime "created_at", null: false
@@ -457,6 +509,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
     t.jsonb "service_zips", default: [], null: false
+    t.datetime "signature_registered_at"
     t.string "timezone", default: "America/New_York", null: false
     t.datetime "updated_at", null: false
     t.index ["agency_id"], name: "index_users_on_agency_id"
@@ -520,8 +573,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
   add_foreign_key "branches", "users", column: "director_of_nursing_id"
   add_foreign_key "branches", "users", column: "manager_id"
   add_foreign_key "branches", "users", column: "medical_director_id"
+  add_foreign_key "consent_forms", "agencies"
+  add_foreign_key "consent_forms", "patients"
   add_foreign_key "dme_orders", "agencies"
   add_foreign_key "dme_orders", "patients"
+  add_foreign_key "eval_revision_requests", "pre_admit_evals"
   add_foreign_key "inquiries", "agencies"
   add_foreign_key "inquiries", "patients", column: "converted_patient_id"
   add_foreign_key "inquiries", "users", column: "claimed_by_id"
@@ -555,6 +611,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_220000) do
   add_foreign_key "pre_admit_evals", "users", column: "certified_by_id"
   add_foreign_key "pre_admit_evals", "users", column: "evaluator_id"
   add_foreign_key "pre_admit_evals", "visits"
+  add_foreign_key "signatures", "users"
   add_foreign_key "user_roles", "agencies"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"

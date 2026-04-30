@@ -13,7 +13,7 @@ class OutboundPing < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
 
-  KINDS = %w[crisis urgent handoff recert visit_starting mention].freeze
+  KINDS = %w[crisis urgent handoff recert visit_starting mention test].freeze
   CRISIS_KINDS = %w[crisis].freeze
 
   belongs_to :agency

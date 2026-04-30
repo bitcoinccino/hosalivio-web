@@ -1,0 +1,168 @@
+<%
+  kind  = (@consent.kind.presence || "hospice_election")
+  label = ConsentForm::KIND_LABELS[kind] || kind.titleize
+
+  # Snapshot copy lives server-side too (controller#form_body_for)
+  # — this is what the signer is visually agreeing to. Keep in
+  # sync if you change the controller copy.
+  body = case kind
+         when "hospice_election"
+           "I elect to receive hospice care under the Medicare/Medicaid hospice benefit. I have been informed of the palliative (comfort-focused) nature of hospice care, the services available, and that hospice care waives my right to curative treatment for the terminal illness. I may revoke this election at any time."
+         when "dnr"
+           "I direct that, in the event my heart or breathing stops, no cardiopulmonary resuscitation (CPR) be initiated. Comfort-focused care will continue. I understand I may revoke this directive at any time by notifying the hospice team."
+         when "hipaa_acknowledgment"
+           "I acknowledge that I have received the agency's Notice of Privacy Practices describing how my protected health information may be used and disclosed."
+         when "plan_of_care"
+           "I have reviewed the hospice plan of care developed by the interdisciplinary team and agree to participate in the plan as described."
+         end
+%>
+<% content_for :title, "New consent · #{@patient.full_name}" %>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-6">
+  <div class="max-w-3xl mx-auto">
+    <a href="<%= patient_consents_path(@patient) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to consents
+    </a>
+
+    <%= form_with model: @consent, url: patient_consents_path(@patient), local: true,
+          data: {
+            controller: "consent-sign",
+            consent_sign_patient_name_value: @patient.full_name,
+            action: "submit->consent-sign#submit"
+          },
+          class: "space-y-5" do |f| %>
+
+      <%# Header — patient + consent kind %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Consent</div>
+        <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= label %></h1>
+        <div class="text-[12px] text-[#6B665F] mt-1">
+          For <strong class="text-[#1D1C1A] font-medium"><%= @patient.full_name %></strong>
+          · MRN <%= @patient.mrn %>
+          · witnessed by <%= current_user.full_name %>
+        </div>
+        <%= f.hidden_field :kind, value: kind %>
+      </section>
+
+      <%# The text the signer is agreeing to %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">What's being signed</div>
+        <p class="text-[14px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= body %></p>
+      </section>
+
+      <%# Who is signing — patient vs representative %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <div class="text-[10px] uppercase tracking-widest text-[#4A4A45] font-bold mb-3">Who is signing?</div>
+
+        <div class="inline-flex p-1 bg-[#FBF9F5] rounded-full border border-[#EFECE6] gap-1 mb-4">
+          <button type="button"
+                  data-action="click->consent-sign#signerPatient"
+                  class="px-4 py-1.5 rounded-full text-[12px] font-medium bg-white text-[#1D1C1A] shadow-sm">
+            The patient
+          </button>
+          <button type="button"
+                  data-action="click->consent-sign#signerRepresentative"
+                  class="px-4 py-1.5 rounded-full text-[12px] font-medium text-[#6B665F]">
+            A family member / representative
+          </button>
+        </div>
+
+        <%= f.hidden_field :signer_role, value: @consent.signer_role.presence || "patient",
+              data: { consent_sign_target: "roleInput" } %>
+
+        <%# Signer name — pre-filled with patient's name in patient
+            mode, editable + required in representative mode. %>
+        <div class="mb-3">
+          <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Signer name</label>
+          <%= f.text_field :signer_name,
+                value: @patient.full_name,
+                readonly: true,
+                required: true,
+                placeholder: "Type the signer's full name",
+                data: { consent_sign_target: "signerNameInput" },
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-serif uppercase tracking-wider" %>
+        </div>
+
+        <%# Patient-only block (currently empty — kept as the
+            target so future per-mode UI can hang off it cleanly). %>
+        <div data-consent-sign-target="patientFields">
+          <div class="text-[11px] text-[#6B665F] italic">
+            The patient is signing in person, witnessed by <%= current_user.full_name %>.
+          </div>
+        </div>
+
+        <%# Representative-only block — relationship + authority %>
+        <div data-consent-sign-target="repFields" class="hidden space-y-3 pt-3 border-t border-[#EFECE6]">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Relationship to patient</label>
+              <%= f.select :signer_role,
+                    [
+                      ["Spouse",          "spouse"],
+                      ["Son",             "son"],
+                      ["Daughter",        "daughter"],
+                      ["Parent",          "parent"],
+                      ["Sibling",         "sibling"],
+                      ["Other family",    "other_family"],
+                      ["Healthcare proxy","healthcare_proxy"],
+                      ["Power of attorney","poa"],
+                      ["Legal guardian",  "legal_guardian"]
+                    ],
+                    { include_blank: "Select…" },
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]",
+                    data: { consent_sign_target: "roleInput" } %>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Relationship label (free text, optional)</label>
+              <%= f.text_field :signer_relationship,
+                    placeholder: "e.g. eldest son",
+                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Authority to sign on patient's behalf</label>
+            <%= f.text_area :signer_authority, rows: 2,
+                  placeholder: "e.g. POA papers on file; patient unable to sign due to advanced confusion.",
+                  class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            <div class="text-[10px] text-[#6B665F] mt-1">CMS expects a written reason when a representative signs instead of the patient.</div>
+          </div>
+        </div>
+      </section>
+
+      <%# Signature canvas %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <div class="text-[10px] uppercase tracking-widest text-[#4A4A45] font-bold mb-2">Signature</div>
+        <div class="rounded-xl border-2 border-dashed border-[#D9D5CD] bg-[#FBF9F5] overflow-hidden mb-3" style="touch-action: none;">
+          <canvas data-consent-sign-target="canvas"
+                  class="w-full h-[200px] block bg-white"></canvas>
+        </div>
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="text-[11px] text-[#6B665F]">
+            Hand the tablet to the signer. They draw above; we'll smooth the strokes.
+          </div>
+          <button type="button"
+                  data-action="click->consent-sign#clearPad"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-[#6B665F] hover:bg-[#FBF9F5] border border-[#D9D5CD]">
+            <i class="ri-eraser-line"></i> Clear
+          </button>
+        </div>
+        <%= f.hidden_field :signature_data_url, data: { consent_sign_target: "dataField" } %>
+      </section>
+
+      <%# Errors %>
+      <% if @consent.errors.any? %>
+        <div class="rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-[12px] px-4 py-3">
+          <%= @consent.errors.full_messages.to_sentence %>
+        </div>
+      <% end %>
+
+      <div class="flex items-center justify-between gap-3">
+        <%= link_to "Cancel", patient_consents_path(@patient),
+              class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+        <button type="submit"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-semibold shadow-sm">
+          <i class="ri-quill-pen-line"></i> Capture signature
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>

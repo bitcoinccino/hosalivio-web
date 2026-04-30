@@ -1,0 +1,100 @@
+<%# Sign-off panel used at every chart-signing point (RN routing
+    to MD, MD certification, future late-entry notes). Two states:
+    registered → preview + intent checkbox + submit; unregistered →
+    "Set up signature first" prompt with a link to /profile/signature.
+    The form posts whatever params your action expects plus
+    apply_signature=1 + intent_confirmed=1, which the controller
+    must verify before calling Signatures::Apply.
+
+    Locals:
+      submit_path   — controller endpoint that consumes the form
+      submit_method — :post (default) or :patch
+      submit_label  — primary button copy (e.g. "Route to MD")
+      headline      — small uppercase header above the panel
+      intent_text   — exact "I certify…" copy the user accepts
+      confirm       — optional turbo_confirm string
+      tone          — :route (terracotta) or :certify (sage)
+%>
+<%
+  registered = current_user.signature_registered?
+  tone       = local_assigns[:tone] || :route
+  submit_method = local_assigns[:submit_method] || :post
+  intent_text   = local_assigns[:intent_text].presence ||
+                  "I certify that I have reviewed this document and authorized the application of my electronic signature."
+  bg, border, fg, hover_fg =
+    case tone
+    when :certify then ["#E6F0EE", "#2F6F4E", "#2F6F4E", "#265a3d"]
+    else               ["#FFF3EC", "#D97757", "#D97757", "#c46a4b"]
+    end
+%>
+
+<div class="rounded-2xl border p-5"
+     style="background-color: <%= bg %>; border-color: <%= border %>;">
+  <div class="text-[11px] uppercase tracking-widest font-bold mb-3 inline-flex items-center gap-1.5"
+       style="color: <%= fg %>;">
+    <i class="ri-quill-pen-line"></i>
+    <%= local_assigns[:headline].presence || "Sign & submit" %>
+  </div>
+
+  <% if registered %>
+    <%= form_with url: submit_path, method: submit_method, local: true, class: "space-y-3",
+          data: (local_assigns[:confirm].present? ? { turbo_confirm: confirm } : {}) do |f| %>
+      <input type="hidden" name="apply_signature"  value="1">
+
+      <%# Signature preview + change link %>
+      <div class="flex items-center gap-3">
+        <div class="bg-white border border-[#EFECE6] rounded-lg p-2 flex-shrink-0">
+          <%= image_tag current_user.signature, class: "h-16 max-w-[280px] object-contain" %>
+        </div>
+        <div class="text-[11px] text-[#6B665F] leading-relaxed">
+          <strong class="text-[#1D1C1A] font-medium"><%= current_user.full_name %></strong><br>
+          Registered signature ·
+          <%= link_to "change", signature_profile_path, class: "text-[#D97757] hover:underline" %>
+        </div>
+      </div>
+
+      <%# Intent — checkbox MUST be ticked or the controller bounces
+          back. We persist this exact text on the audit row so the
+          legal copy that was actually accepted lives in history. %>
+      <label class="flex items-start gap-2 p-3 rounded-lg bg-white border border-[#EFECE6] cursor-pointer">
+        <input type="checkbox" name="intent_confirmed" value="1" required class="mt-0.5 accent-[#D97757]">
+        <span class="text-[12px] text-[#1D1C1A] leading-relaxed"><%= intent_text %></span>
+      </label>
+      <input type="hidden" name="intent_text" value="<%= intent_text %>">
+
+      <%# Typed-name confirmation — the server matches this against
+          current_user.full_name (case + whitespace insensitive) so
+          a sleepy click on a colleague's logged-in tablet can't
+          ship a sign-off under the wrong name. %>
+      <div>
+        <label class="block text-[10px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">
+          Type your full name to confirm
+        </label>
+        <input type="text" name="typed_name" required
+               autocomplete="off"
+               placeholder="<%= current_user.full_name.upcase %>"
+               class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-white focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-serif uppercase tracking-wider">
+      </div>
+
+      <button type="submit"
+              class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-semibold shadow-sm"
+              style="background-color: <%= fg %>;"
+              onmouseover="this.style.backgroundColor='<%= hover_fg %>'"
+              onmouseout="this.style.backgroundColor='<%= fg %>'">
+        <i class="ri-send-plane-line"></i> <%= submit_label %>
+      </button>
+    <% end %>
+  <% else %>
+    <div class="rounded-lg bg-white border border-dashed border-[#D97757] p-3">
+      <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold mb-1">Signature required</div>
+      <div class="text-[12px] text-[#1D1C1A] mb-3 leading-relaxed">
+        You don't have a registered signature yet. Set one up once
+        and it'll apply with one tap on every sign-off.
+      </div>
+      <%= link_to signature_profile_path,
+            class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-semibold" do %>
+        <i class="ri-quill-pen-line"></i> Set up signature
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -124,40 +124,220 @@
 
       <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm p-6">
 
-        <%# Patient hero — photo (initials), name, age, status. %>
+        <%# Patient hero — avatar, name, then a single row of uniform
+            pill chips (age · status · MRN). Drops the schedule
+            attribution line; schedulers live in the locked Visit
+            details panel below. %>
         <div class="text-center pb-6 border-b border-[#EFECE6]">
-          <div class="mx-auto w-24 h-24 rounded-full bg-[#FBF9F5] border-2 border-[#EFECE6] flex items-center justify-center text-2xl font-bold text-[#D97757] mb-3">
+          <div class="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-[#FFF3EC] to-[#FBF9F5] border border-[#EFECE6] flex items-center justify-center text-[20px] font-bold text-[#D97757] mb-3 shadow-sm">
             <%= patient_initials.presence || "?" %>
           </div>
-          <h1 class="font-serif text-2xl text-[#1D1C1A]">
+          <h1 class="font-serif text-[26px] leading-tight text-[#1D1C1A] tracking-tight">
             <%= patient&.full_name || "—" %>
           </h1>
-          <div class="text-[12px] text-[#6B665F] mt-1 inline-flex items-center gap-2 flex-wrap justify-center">
+          <div class="mt-3 inline-flex items-center gap-1.5 flex-wrap justify-center">
             <% if patient&.age_years %>
-              <span>Age <%= patient.age_years %></span>
-              <span class="text-[#D9D5CD]">·</span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#FBF9F5] border border-[#EFECE6] text-[#1D1C1A]">
+                <i class="ri-user-3-line text-[#6B665F]"></i> <%= patient.age_years %> yrs
+              </span>
             <% end %>
             <% if patient&.status %>
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold"
-                    style="color: <%= status_color %>; background-color: <%= status_color %>10; border: 1px solid <%= status_color %>40;">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest"
+                    style="color: <%= status_color %>; background-color: <%= status_color %>14; border: 1px solid <%= status_color %>55;">
+                <span class="w-1.5 h-1.5 rounded-full" style="background-color: <%= status_color %>;"></span>
                 <%= patient.status.to_s.titleize %>
               </span>
             <% end %>
             <% if patient %>
-              <span class="text-[#D9D5CD]">·</span>
-              <span class="font-mono text-[11px] text-[#6B665F]"><%= patient.mrn %></span>
-            <% end %>
-          </div>
-          <div class="text-[11px] text-[#6B665F] mt-3">
-            <% if @visit.agent_authored %>
-              🤖 Scheduled by HosAlivio
-            <% elsif scheduler %>
-              👤 Scheduled by <%= scheduler_role&.tr("_", " ")&.titleize&.then { |r| "#{r} " } %><strong class="text-[#1D1C1A] font-medium">@<%= scheduler.full_name.split.first %></strong>
-            <% else %>
-              👤 Scheduled by a human
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono bg-white border border-[#EFECE6] text-[#6B665F]">
+                <i class="ri-hashtag text-[#D9D5CD]"></i><%= patient.mrn %>
+              </span>
             <% end %>
           </div>
         </div>
+
+        <%# ── Stage banner ─ visit lifecycle in one full-width strip
+            so Pascal sees where in the admission flow he is without
+            decoding small icons in the header. %>
+        <%
+          stage_label, stage_sub, stage_bg, stage_fg, stage_border, stage_icon =
+            if state == :completed && is_admission && linked_eval && routed_to_md
+              ["Routed to MD",            "Awaiting physician certification",                  "#E6F0EE", "#2F6F4E", "#2F6F4E", "ri-send-plane-line"]
+            elsif state == :completed && is_admission && linked_eval
+              ["General chart · review",  "Polished narrative + extracted eval ready for RN review", "#FFF3EC", "#D97757", "#D97757", "ri-edit-2-line"]
+            elsif state == :completed
+              ["Completed",               "Chart entry signed",                                 "#FBF9F5", "#1D1C1A", "#EFECE6", "ri-check-double-line"]
+            elsif state == :recording
+              ["Visit in progress",       "Recording started · finish to lock the chart",       "#FFE9E0", "#C1403A", "#C1403A", "ri-time-line"]
+            elsif state == :ready
+              ["Ready to start",          "Scheduled time has arrived",                         "#FFF3EC", "#D97757", "#D97757", "ri-calendar-check-line"]
+            else
+              ["Scheduled",               "Visit not yet started",                              "#FBF9F5", "#6B665F", "#EFECE6", "ri-calendar-event-line"]
+            end
+        %>
+        <div class="mt-5 rounded-2xl p-4 flex items-start gap-3"
+             style="background-color: <%= stage_bg %>; border: 1px solid <%= stage_border %>;">
+          <i class="<%= stage_icon %> text-lg mt-0.5" style="color: <%= stage_fg %>;"></i>
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: <%= stage_fg %>;">
+              Stage · <%= stage_label %>
+            </div>
+            <div class="text-[12px] text-[#1D1C1A] mt-0.5"><%= stage_sub %></div>
+          </div>
+        </div>
+
+        <%# ── Clinical flags ─ at-a-glance chips for what's actually
+            wrong with this patient. Pulled from the eval (when an
+            admission visit has one) plus visit-level vitals so they
+            update live with the chart. %>
+        <%
+          flags = []
+          if linked_eval
+            pae   = linked_eval.diagnosis_section || {}
+            pdx   = pae["primary_terminal_diagnosis"].is_a?(Hash) ? pae["primary_terminal_diagnosis"] : {}
+            sx    = linked_eval.other_symptoms || {}
+            pain  = sx["pain"].is_a?(Hash)    ? sx["pain"]    : {}
+            dysp  = sx["dyspnea"].is_a?(Hash) ? sx["dyspnea"] : {}
+            nut   = linked_eval.nutritional_decline || {}
+            fd    = linked_eval.functional_decline || {}
+
+            flags << { kind: "dx",       label: pdx["description"], sub: pdx["icd10"], tone: "primary" } if pdx["description"].present?
+            Array(pae["related_conditions"]).each do |c|
+              flags << { kind: "related", label: c, tone: "warn" }
+            end
+            if dysp["severity"].present?
+              flags << { kind: "dyspnea", label: "Dyspnea: #{dysp["severity"]}", tone: "alert" }
+            end
+            if nut["weight_loss_lbs"].present? || nut["weight_loss_pct"].present?
+              chunks = []
+              chunks << "#{nut["weight_loss_lbs"]} lb" if nut["weight_loss_lbs"].present?
+              chunks << "#{nut["weight_loss_pct"]}%"   if nut["weight_loss_pct"].present?
+              flags << { kind: "weight", label: "Weight loss: #{chunks.join(' / ')}", tone: "warn" }
+            end
+            flags << { kind: "fall",      label: "Fall risk: #{fd["fall_history"]}", tone: "warn"  } if fd["fall_history"].to_s.match?(/yes|history|recent|fall/i)
+            flags << { kind: "wounds",    label: "Wounds: #{sx["wounds"]}",          tone: "alert" } if sx["wounds"].to_s.present? && sx["wounds"].to_s.downcase != "none"
+            flags << { kind: "delirium",  label: "Delirium",                          tone: "alert" } if sx["delirium"].to_s.present? && sx["delirium"].to_s.downcase != "none"
+            flags << { kind: "infection", label: "Infection: #{sx["infections"]}",   tone: "alert" } if sx["infections"].to_s.present? && sx["infections"].to_s.downcase != "none"
+          end
+
+          # Visit-level pain score (vitals are always editable, even on completed visits)
+          if @visit.pain_score.to_i > 0
+            score = @visit.pain_score.to_i
+            tone  = score >= 7 ? "alert" : (score >= 4 ? "warn" : "info")
+            flags << { kind: "pain", label: "Pain #{score}/10", tone: tone }
+          end
+
+          # Code status: a hospice flag the team has to know on every visit
+          if patient&.code_status.present?
+            cs_label = case patient.code_status
+                       when "full_code"    then "Full Code"
+                       when "dnr"          then "DNR"
+                       when "dni"          then "DNI"
+                       when "dnr_dni"      then "DNR / DNI"
+                       when "comfort_only" then "Comfort Only"
+                       else patient.code_status.to_s.titleize
+                       end
+            cs_tone = patient.code_status == "full_code" ? "info" : "alert"
+            flags << { kind: "code_status", label: cs_label, tone: cs_tone }
+          end
+        %>
+        <% if flags.any? %>
+          <div class="mt-4">
+            <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2 inline-flex items-center gap-1">
+              <i class="ri-alarm-warning-line"></i> Clinical flags
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <% flags.each do |f| %>
+                <%
+                  fg, bg, border = case f[:tone]
+                    when "alert"   then ["#C1403A", "#FFE9E0", "#C1403A"]
+                    when "warn"    then ["#D97757", "#FFF3EC", "#D97757"]
+                    when "primary" then ["#2B4A7A", "#E8EEF7", "#2B4A7A"]
+                    else                ["#1D1C1A", "#FBF9F5", "#D9D5CD"]
+                    end
+                %>
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium"
+                      style="color: <%= fg %>; background-color: <%= bg %>; border: 1px solid <%= border %>;">
+                  <%= f[:label] %>
+                  <% if f[:sub].present? %>
+                    <span class="font-mono text-[10px] opacity-70">· <%= f[:sub] %></span>
+                  <% end %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Caregiver / language / home / code-status now live in the
+            "Patient · home environment" section of the locked Visit
+            details panel below — no separate widget so we don't show
+            the same data twice. %>
+
+        <%# Open MD revision request — when the on-call MD reviewed
+            the routed eval and asked the RN to revise something,
+            we surface their comment here so the RN sees exactly
+            what to fix before re-routing. Resolves automatically
+            when route_to_md fires again. %>
+        <% if linked_eval %>
+          <% open_request = linked_eval.revision_requests.open.recent_first.first %>
+          <% if open_request %>
+            <div class="mt-5 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 flex items-start gap-3">
+              <i class="ri-arrow-go-back-line text-[#D97757] text-lg mt-0.5 flex-shrink-0"></i>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold">
+                  MD requested changes
+                </div>
+                <div class="text-[12px] text-[#1D1C1A] mt-1 leading-relaxed">
+                  <strong><%= open_request.requester.full_name %></strong>
+                  on <%= open_request.created_at.strftime("%b %-d · %-l:%M %p") %>:
+                </div>
+                <blockquote class="mt-2 text-[13px] text-[#1D1C1A] italic border-l-2 border-[#D97757] pl-3 whitespace-pre-wrap">
+                  <%= open_request.comment %>
+                </blockquote>
+                <div class="text-[11px] text-[#6B665F] mt-2">
+                  Edit the eval (Medicaid tab) or the narrative (Team tab), then sign &amp; route to MD again.
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+
+        <%# ── Non-admission visit sign-off ─ admission visits flow
+            through Route-to-MD instead, so this panel is for routine
+            / follow-up / inquiry / recert visits where the only
+            sign step is the RN's own attestation. Once signed, the
+            visit chart locks (Visit#chart_locked?). %>
+        <% if state == :completed && !is_admission %>
+          <% rn_visit_sig = @visit.signatures.where(verification_method: "rn_visit_signoff").order(:signed_at).last %>
+          <% if rn_visit_sig %>
+            <div class="mt-5 rounded-2xl bg-[#E6F0EE] border border-[#2F6F4E] p-4">
+              <div class="flex items-start gap-3">
+                <i class="ri-shield-check-line text-[#2F6F4E] text-lg mt-0.5 flex-shrink-0"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] uppercase tracking-widest text-[#2F6F4E] font-bold">Visit note signed</div>
+                  <% if rn_visit_sig.signature_blob_id && (blob = ActiveStorage::Blob.find_by(id: rn_visit_sig.signature_blob_id)) %>
+                    <div class="mt-2 bg-white rounded-lg border border-[#EFECE6] p-3 inline-block">
+                      <%= image_tag blob, class: "h-24 max-w-[480px] object-contain" %>
+                    </div>
+                  <% end %>
+                  <div class="text-[12px] text-[#1D1C1A] mt-1"><%= rn_visit_sig.signed_name %></div>
+                  <div class="text-[11px] text-[#6B665F] mt-0.5"><%= rn_visit_sig.short_audit_line %></div>
+                </div>
+              </div>
+            </div>
+          <% else %>
+            <div class="mt-5">
+              <%= render "shared/signature_panel",
+                    submit_path:   sign_note_visit_path(@visit),
+                    submit_method: :post,
+                    submit_label:  "Sign visit note",
+                    headline:      "Sign · visit note",
+                    intent_text:   "I, the signing clinician, attest that this visit note is accurate and complete to the best of my knowledge.",
+                    confirm:       "Sign and lock this visit note for #{@visit.patient&.full_name}? Future corrections require a late-entry note.",
+                    tone:          :certify %>
+            </div>
+          <% end %>
+        <% end %>
 
         <%# Route-to-MD banner (admission visits with linked eval). %>
         <% if is_admission && linked_eval && state == :completed %>
@@ -174,19 +354,25 @@
               </div>
             </div>
           <% else %>
-            <div class="mt-5 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 flex items-start gap-3">
-              <i class="ri-edit-2-line text-[#D97757] text-lg mt-0.5 flex-shrink-0"></i>
-              <div class="flex-1 min-w-0">
-                <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold">General chart · awaiting RN review</div>
-                <div class="text-[12px] text-[#1D1C1A] mt-1">
-                  Polished narrative + extracted eval below. Review for accuracy. When ready, route to MD for certification.
+            <div class="mt-5 space-y-3">
+              <div class="rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 flex items-start gap-3">
+                <i class="ri-edit-2-line text-[#D97757] text-lg mt-0.5 flex-shrink-0"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold">General chart · awaiting RN review</div>
+                  <div class="text-[12px] text-[#1D1C1A] mt-1">
+                    Polished narrative + extracted eval below. Review for accuracy. When ready, sign and route to MD for certification.
+                  </div>
                 </div>
-                <%= button_to route_to_md_visit_path(@visit), method: :post,
-                      data: { turbo_confirm: "Route this pre-admit eval to the on-call MD for certification?" },
-                      class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium mt-3" do %>
-                  <i class="ri-send-plane-line"></i> Route to MD for certification
-                <% end %>
               </div>
+
+              <%= render "shared/signature_panel",
+                    submit_path:   route_to_md_visit_path(@visit),
+                    submit_method: :post,
+                    submit_label:  "Route to MD for certification",
+                    headline:      "Sign · route to MD",
+                    intent_text:   "I certify that I have reviewed this pre-admit evaluation and authorize routing it to the on-call MD for certification.",
+                    confirm:       "Apply your signature and route this eval to the on-call MD?",
+                    tone:          :route %>
             </div>
           <% end %>
         <% end %>
@@ -197,7 +383,6 @@
             empty panes show a placeholder so the toggle is always
             visible and the RN can audit what's in the chart. %>
         <%
-          has_eval_doc = is_admission && linked_eval
           has_team_narrative = @visit.narrative.present?
           json_payload =
             if linked_eval
@@ -210,7 +395,7 @@
                 vitals: @visit.vitals
               }.compact)
             end
-          initial_tab = has_eval_doc ? "medicaid" : (has_team_narrative ? "team" : "json")
+          initial_tab = linked_eval ? "medicaid" : (has_team_narrative ? "team" : "json")
         %>
         <div data-controller="note-tabs" data-note-tabs-initial="<%= initial_tab %>" class="mt-6">
           <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
@@ -250,12 +435,23 @@
           </div>
 
           <div data-note-tabs-target="pane" data-note-tabs-pane="medicaid" data-narrative-link-target="source" class="hidden">
-            <% if has_eval_doc %>
+            <% if linked_eval %>
               <%= render "eval_document", eval_rec: linked_eval, visit: @visit %>
             <% else %>
-              <div class="rounded-2xl bg-white border border-dashed border-[#EFECE6] p-6 text-center text-[12px] text-[#6B665F] italic">
-                Medicaid view is generated from the linked pre-admit eval.
-                Available on admission visits once the extractor has run.
+              <div class="rounded-2xl bg-white border border-dashed border-[#EFECE6] p-6 text-center text-[12px] text-[#6B665F] italic space-y-2">
+                <% if @visit.needs_pre_eval? %>
+                  <div>
+                    Initial visit · pre-eval not generated yet.
+                    Finish the recording and the extractor will populate this view.
+                  </div>
+                <% else %>
+                  <div>
+                    Medicaid pre-eval is only generated on
+                    <strong>Initial (new admission)</strong> visits.
+                    This is a <strong><%= @visit.visit_type_label %></strong>
+                    visit, so only the <strong>Team</strong> note applies.
+                  </div>
+                <% end %>
               </div>
             <% end %>
           </div>
@@ -415,12 +611,49 @@
 
           <div data-note-tabs-target="pane" data-note-tabs-pane="team" data-narrative-link-target="source" class="hidden">
             <% if has_team_narrative %>
-              <div class="rounded-2xl bg-white border border-[#EFECE6] p-6">
-                <div class="text-[10px] uppercase tracking-[0.2em] text-[#1D1C1A] font-bold mb-3 border-b border-[#EFECE6] pb-2">
-                  Team Narrative (IDT Admission Note)
+              <%
+                team_locked     = @visit.chart_locked? ? true : false
+                team_paragraphs = @visit.narrative.to_s.split(/\n{2,}/).map(&:strip).reject(&:blank?)
+              %>
+              <div class="rounded-2xl bg-white border border-[#EFECE6] p-6"
+                   data-controller="inline-edit"
+                   data-inline-edit-url-value="<%= visit_path(@visit) %>"
+                   data-inline-edit-field-value="narrative"
+                   data-inline-edit-locked-value="<%= team_locked ? 'true' : 'false' %>">
+                <div class="flex items-center justify-between mb-3 border-b border-[#EFECE6] pb-2 gap-2 flex-wrap">
+                  <div class="text-[10px] uppercase tracking-[0.2em] text-[#1D1C1A] font-bold">
+                    Team Narrative (IDT Admission Note)
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <% if team_locked %>
+                      <span class="text-[10px] text-[#2F6F4E] italic inline-flex items-center gap-1">
+                        <i class="ri-shield-check-line"></i>
+                        MD-signed · late-entry note for corrections
+                      </span>
+                    <% else %>
+                      <span class="text-[10px] text-[#6B665F] italic inline-flex items-center gap-1">
+                        <i class="ri-cursor-line"></i> Click any sentence to edit
+                      </span>
+                    <% end %>
+                    <span data-inline-edit-target="status" class="text-[10px] min-h-[14px]"></span>
+                  </div>
                 </div>
-                <div class="whitespace-pre-wrap font-serif text-[14px] text-[#1D1C1A] leading-relaxed">
-                  <%= @visit.narrative %>
+                <div class="font-serif text-[14px] text-[#1D1C1A] leading-relaxed">
+                  <% team_paragraphs.each do |para| %>
+                    <%
+                      sentences  = para.split(/(?<=[.!?])\s+/).map(&:strip).reject(&:blank?)
+                      span_class = team_locked ? "px-0.5" : "cursor-text hover:bg-[#FFF3EC] hover:rounded px-0.5 transition"
+                    %>
+                    <p class="mb-3" data-paragraph="true">
+                      <% sentences.each_with_index do |s, i| %>
+                        <span data-inline-edit-target="sentence"
+                              data-action="click->inline-edit#edit"
+                              data-original="<%= s %>"
+                              title="<%= team_locked ? "MD-signed — late-entry note for corrections" : "Click to edit" %>"
+                              class="<%= span_class %>"><%= s %></span><%= " " unless i == sentences.size - 1 %>
+                      <% end %>
+                    </p>
+                  <% end %>
                 </div>
               </div>
             <% else %>

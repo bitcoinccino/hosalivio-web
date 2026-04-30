@@ -27,6 +27,41 @@ class User < ApplicationRecord
     errors.add(:avatar, "must be under 5 MB") if avatar.byte_size > AVATAR_MAX_BYTES
   end
 
+  # Drawn e-signature — captured once via the profile signature pad,
+  # reused on every clinical sign-off (PreAdmitEval certification,
+  # Visit MD-routing, future late-entry notes). Stored as PNG so the
+  # eval document can render it inline. The audit trail lives in the
+  # `signatures` table, not on this attachment.
+  has_one_attached :signature
+  validate :signature_shape_and_size
+
+  SIGNATURE_MIMES = %w[image/png image/jpeg].freeze
+  SIGNATURE_MAX_BYTES = 512 * 1024  # 512 KB — drawn signatures should be tiny
+
+  def signature_shape_and_size
+    return unless signature.attached?
+    errors.add(:signature, "must be a PNG or JPEG") unless SIGNATURE_MIMES.include?(signature.content_type)
+    errors.add(:signature, "must be under 512 KB") if signature.byte_size > SIGNATURE_MAX_BYTES
+  end
+
+  def signature_registered?
+    signature.attached? && signature_registered_at.present?
+  end
+
+  # True when `typed` matches this user's full_name modulo case
+  # and whitespace (multiple spaces collapse, leading/trailing
+  # trimmed). Used by Signatures::Gate so a sign-off can only
+  # apply if the actor types their own name — closes the loop on
+  # "is this really me, intending to sign right now?" beyond just
+  # an intent checkbox.
+  def matches_full_name?(typed)
+    return false if typed.to_s.strip.empty?
+    norm = ->(s) { s.to_s.downcase.split.join(" ") }
+    norm.call(typed) == norm.call(full_name)
+  end
+
+  has_many :signatures, dependent: :destroy
+
   def initials
     full_name.to_s.split.map(&:first).first(2).join.upcase
   end

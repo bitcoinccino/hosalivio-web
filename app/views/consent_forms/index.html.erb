@@ -1,0 +1,54 @@
+<% content_for :title, "Consents · #{@patient.full_name}" %>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-6">
+  <div class="max-w-3xl mx-auto">
+    <a href="<%= patient_path(@patient) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to <%= @patient.full_name %>
+    </a>
+
+    <div class="flex items-center justify-between gap-3 flex-wrap mb-5">
+      <div>
+        <h1 class="font-serif text-2xl text-[#1D1C1A]">Consent forms</h1>
+        <div class="text-[12px] text-[#6B665F] mt-1"><%= @patient.full_name %> · <%= @patient.mrn %></div>
+      </div>
+    </div>
+
+    <%# Quick-add row — one button per consent kind. Click takes
+        the witnessing clinician to the inline-signing canvas. %>
+    <div class="rounded-2xl bg-white border border-[#EFECE6] p-4 mb-5">
+      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Capture new consent</div>
+      <div class="flex flex-wrap gap-2">
+        <% ConsentForm::KIND_LABELS.each do |kind, label| %>
+          <%= link_to new_patient_consent_path(@patient, kind: kind),
+                class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#FFF3EC] hover:bg-[#FCE9DD] border border-[#D97757] text-[#D97757] font-medium" do %>
+            <i class="ri-quill-pen-line"></i> <%= label %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Existing consents, newest first. Each row links to a
+        detail view that renders the signed form + audit trail. %>
+    <% if @consents.any? %>
+      <ul class="space-y-2">
+        <% @consents.each do |c| %>
+          <li class="rounded-2xl bg-white border border-[#EFECE6] p-4 flex items-start justify-between gap-3 hover:border-[#D97757] transition">
+            <div class="flex-1 min-w-0">
+              <div class="text-[13px] font-medium text-[#1D1C1A]"><%= c.kind_label %></div>
+              <div class="text-[11px] text-[#6B665F] mt-0.5">
+                Signed by <strong class="text-[#1D1C1A]"><%= c.signer_label %></strong>
+                · witnessed by <%= c.witnessed_by.full_name %>
+                · <%= c.signed_at.strftime("%b %-d, %Y · %-l:%M %p") %>
+              </div>
+            </div>
+            <%= link_to "Open", patient_consent_path(@patient, c),
+                  class: "text-[12px] px-3 py-1 rounded-full border border-[#D9D5CD] hover:bg-[#FBF9F5] text-[#1D1C1A] font-medium whitespace-nowrap" %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="rounded-2xl bg-white border border-dashed border-[#EFECE6] p-8 text-center text-[12px] text-[#6B665F] italic">
+        No consents captured yet. Pick a form above to start.
+      </div>
+    <% end %>
+  </div>
+</div>

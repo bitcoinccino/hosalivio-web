@@ -152,6 +152,20 @@ class PreAdmitEvalsController < ApplicationController
       redirect_to(pre_admit_eval_path(@eval), alert: "Resolve blockers first: #{@eval.certification_blockers.to_sentence}.") and return
     end
 
+    ok, err = Signatures::Gate.call(user: current_user, params: params)
+    unless ok
+      redirect_to(pre_admit_eval_path(@eval), alert: err) and return
+    end
+
+    Signatures::Apply.call(
+      signable: @eval,
+      user:     current_user,
+      request:  request,
+      method:   "md_certify",
+      intent:   params[:intent_text].to_s.presence ||
+                "I, the on-call physician, certify this pre-admit evaluation as supporting hospice eligibility and authorize the application of my electronic signature."
+    )
+
     AgentTriager.new(role: "md", agency: current_user.agency).apply({
       action:    "certify_pre_admit_eval",
       params:    { eval_id: @eval.id },
@@ -169,7 +183,59 @@ class PreAdmitEvalsController < ApplicationController
     redirect_to pre_admit_eval_path(@eval)
   end
 
+  # POST /pre_admit_evals/:id/request_changes — MD has reviewed the
+  # finalized eval and wants the RN to revise something before they
+  # certify. Bounces the eval back to :draft, captures the MD's
+  # comment + a snapshot hash for audit, and pings the RN through
+  # the same Notification → OutboundPing pipeline. The next time
+  # the RN re-routes via the visit edit page, route_to_md resolves
+  # any open requests.
+  def request_changes
+    unless current_user.role_names.include?("md")
+      redirect_to(pre_admit_eval_path(@eval), alert: "Only the MD can request changes.") and return
+    end
+    unless @eval.status_final?
+      redirect_to(pre_admit_eval_path(@eval), alert: "Eval isn't awaiting your review.") and return
+    end
+
+    comment = params[:comment].to_s.strip
+    if comment.length < 5
+      redirect_to(pre_admit_eval_path(@eval), alert: "Add a brief explanation of what needs to change.") and return
+    end
+
+    EvalRevisionRequest.create!(
+      pre_admit_eval: @eval,
+      requester:      current_user,
+      comment:        comment,
+      document_hash:  Digest::SHA256.hexdigest(@eval.attributes.except("updated_at").sort.to_h.to_json)
+    )
+    @eval.update!(status: :draft)
+
+    notify_rn_of_revision_request(@eval, comment)
+
+    flash[:notice] = "Sent back to the RN with your comment."
+    redirect_to pre_admit_eval_path(@eval)
+  end
+
   private
+
+  # Notify the eval's evaluator (admission RN) that the MD wants
+  # changes. Same pipeline as every other Notification — the RN
+  # gets an OutboundPing for their preferred channel(s).
+  def notify_rn_of_revision_request(eval_rec, comment)
+    target = eval_rec.evaluator || eval_rec.patient&.assigned_rn
+    return unless target
+    Notification.create!(
+      agency: eval_rec.agency,
+      user:   target,
+      kind:   "eval_revision_requested",
+      title:  "MD requested changes to the pre-admit eval for #{eval_rec.patient.full_name}",
+      body:   comment.truncate(280),
+      linked: eval_rec
+    )
+  rescue => e
+    Rails.logger.warn("[pre_admit_evals#request_changes] notify failed: #{e.message}")
+  end
 
   # Sends one Notification to the eval's evaluator (typically the
   # admission RN) and another to the patient's assigned_rn if that's

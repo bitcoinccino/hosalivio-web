@@ -1,7 +1,7 @@
 class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
-  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard]
+  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -44,24 +44,34 @@ class VisitsController < ApplicationController
       @clinicians = agency_clinicians
       @patients   = Patient.order(:mrn)
 
-      # Backfill: if this is an admission visit with no linked
-      # pre-admit eval (happens when the visit_type was changed to
-      # admission AFTER the visit was begun), create the draft eval
-      # now and run the narrative extractor so the eval block on
-      # this page populates immediately. Idempotent — only fires
-      # when nothing's linked.
-      if @visit.visit_type_admission? && @visit.pre_admit_eval.nil? &&
-         PreAdmitEval.where(patient_id: @visit.patient_id, status: [:draft, :final]).none?
-        eval_rec = PreAdmitEval.create!(
-          agency:       @visit.agency,
-          patient:      @visit.patient,
-          visit:        @visit,
-          evaluator:    @visit.user,
-          status:       :draft,
-          evaluated_at: @visit.started_at || Time.current,
-          raw_json:     { "pre_admit_eval" => {} }
-        )
-        if @visit.narrative.to_s.strip.present?
+      # Backfill: every admission visit needs its own linked
+      # pre-admit eval so the Medicaid pane on the edit page can
+      # render. Two paths in:
+      #   (1) Claim an existing unlinked draft for this patient
+      #       (e.g. one created at partner signup with no visit
+      #       attached yet) — avoids duplicate eval rows.
+      #   (2) Otherwise create a fresh draft. Each admission visit
+      #       gets exactly one eval (Visit has_one :pre_admit_eval),
+      #       so previous certified evals on the same patient don't
+      #       block this visit's eval from being generated.
+      if @visit.visit_type_admission? && @visit.pre_admit_eval.nil?
+        unclaimed = PreAdmitEval.where(patient_id: @visit.patient_id, visit_id: nil, status: :draft).order(:created_at).last
+        eval_rec  =
+          if unclaimed
+            unclaimed.update!(visit: @visit)
+            unclaimed
+          else
+            PreAdmitEval.create!(
+              agency:       @visit.agency,
+              patient:      @visit.patient,
+              visit:        @visit,
+              evaluator:    @visit.user,
+              status:       :draft,
+              evaluated_at: @visit.started_at || Time.current,
+              raw_json:     { "pre_admit_eval" => {} }
+            )
+          end
+        if @visit.narrative.to_s.strip.present? && !eval_rec.status_certified?
           result = PreAdmitNarrativeExtractor.call(
             narrative:     @visit.narrative,
             existing_json: eval_rec.raw_json,
@@ -85,18 +95,23 @@ class VisitsController < ApplicationController
         @visit.patient.update!(preferred_language: lang) if Patient::SUPPORTED_LANGUAGES.include?(lang)
       end
 
-      # Once the visit is finished, the chart entry (narrative,
-      # audio, patient/clinician/scheduled-times/visit-type/location
-      # metadata) is locked. Vitals stay editable for legitimate
-      # corrections without amending the chart. The form locks these
-      # fields client-side; this strips them server-side too so a
-      # crafted request can't bypass the lock.
+      # Lock tiers:
+      #   ended_at present → assignment + scheduling fields freeze
+      #     (audio capture is also done by then).
+      #   linked eval certified by MD → narrative joins the lock;
+      #     it's now a signed medical record and corrections need a
+      #     late-entry note. Until certification, the RN can keep
+      #     correcting the polished narrative inline so post-visit
+      #     review doesn't require filing an amendment for typos.
       attrs = visit_params
       if @visit.ended_at.present?
-        attrs = attrs.except(:narrative, :audio_note,
+        attrs = attrs.except(:audio_note,
                              :patient_id, :user_id, :discipline,
                              :scheduled_at, :ended_at,
                              :visit_type, :service_location, :facility_name)
+      end
+      if @visit.chart_locked?
+        attrs = attrs.except(:narrative)
       end
 
       # Visit metadata (assignment + schedule + type + location) is
@@ -121,13 +136,20 @@ class VisitsController < ApplicationController
           return
         end
 
-        redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
-                    notice: "Visit updated."
+        respond_to do |format|
+          format.html { redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date), notice: "Visit updated." }
+          format.json { head :ok }
+        end
       else
         @clinicians = agency_clinicians
         @patients   = Patient.order(:mrn)
-        flash.now[:alert] = @visit.errors.full_messages.to_sentence
-        render :edit, status: :unprocessable_entity
+        respond_to do |format|
+          format.html do
+            flash.now[:alert] = @visit.errors.full_messages.to_sentence
+            render :edit, status: :unprocessable_entity
+          end
+          format.json { render json: { errors: @visit.errors.full_messages }, status: :unprocessable_entity }
+        end
       end
     end
   end
@@ -200,8 +222,64 @@ class VisitsController < ApplicationController
         redirect_to(edit_visit_path(@visit), notice: "Already routed to MD.") and return
       end
 
+      ok, err = Signatures::Gate.call(user: current_user, params: params)
+      unless ok
+        redirect_to(edit_visit_path(@visit), alert: err) and return
+      end
+
+      Signatures::Apply.call(
+        signable: eval_rec,
+        user:     current_user,
+        request:  request,
+        method:   "rn_route_to_md",
+        intent:   params[:intent_text].to_s.presence ||
+                  "I certify that I have reviewed this pre-admit evaluation and authorize routing it to the on-call MD for certification."
+      )
+
+      # Transition draft → final so the MD's certify gate
+      # (status_final?) accepts this eval. Resolve any open MD
+      # revision requests at the same time so the RN's banner
+      # disappears once they re-route.
+      if eval_rec.status_draft?
+        eval_rec.update!(status: :final, finalized_at: Time.current)
+      end
+      eval_rec.revision_requests.open.each(&:mark_resolved!)
+
       notify_md_for_certification(eval_rec)
-      flash[:notice] = "Routed to MD for certification. They'll get a ping shortly."
+      flash[:notice] = "Signed and routed to MD for certification."
+      redirect_to edit_visit_path(@visit)
+    end
+  end
+
+  # POST /visits/:id/sign_note — RN sign-off for non-admission
+  # visits. Admission visits flow through #route_to_md instead
+  # (the eval is the signable there). Once signed, Visit#chart_locked?
+  # flips true and the team-narrative inline edit + the server-side
+  # narrative-strip both lock the medical record.
+  def sign_note
+    ActsAsTenant.with_tenant(current_user.agency) do
+      unless @visit.ended_at.present?
+        redirect_to(edit_visit_path(@visit), alert: "Finish the visit before signing.") and return
+      end
+      if @visit.signed_off_by_rn?
+        redirect_to(edit_visit_path(@visit), notice: "Already signed.") and return
+      end
+
+      ok, err = Signatures::Gate.call(user: current_user, params: params)
+      unless ok
+        redirect_to(edit_visit_path(@visit), alert: err) and return
+      end
+
+      Signatures::Apply.call(
+        signable: @visit,
+        user:     current_user,
+        request:  request,
+        method:   "rn_visit_signoff",
+        intent:   params[:intent_text].to_s.presence ||
+                  "I, the signing clinician, attest that this visit note is accurate and complete to the best of my knowledge."
+      )
+
+      flash[:notice] = "Visit note signed."
       redirect_to edit_visit_path(@visit)
     end
   end

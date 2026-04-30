@@ -1,0 +1,110 @@
+# Patient-side consent capture. The witnessing clinician (any role
+# — admissions RN, MD, SW) opens /patients/:id/consents/new on
+# their tablet, the patient or family member fills the signer block
+# + draws their signature on the canvas, and submitting persists
+# both the consent_forms row and a polymorphic Signature audit row.
+# No registered-signature reuse here — patient/family always sign
+# fresh, every time, in front of the witnessing clinician.
+class ConsentFormsController < ApplicationController
+  before_action :authenticate_user!
+  before_action :set_patient, only: [:index, :new, :create]
+
+  def index
+    ActsAsTenant.with_tenant(current_user.agency) do
+      @patient  = Patient.find(params[:patient_id])
+      @consents = @patient.consent_forms.recent_first
+    end
+  end
+
+  def show
+    ActsAsTenant.with_tenant(current_user.agency) do
+      @consent = ConsentForm.find(params[:id])
+      @patient = @consent.patient
+    end
+  end
+
+  def new
+    @consent = ConsentForm.new(
+      patient:  @patient,
+      kind:     params[:kind].to_s.presence || "hospice_election",
+      signer_role: "patient"
+    )
+  end
+
+  def create
+    permitted = consent_params
+    data_url  = permitted.delete(:signature_data_url).to_s
+
+    @consent = ConsentForm.new(permitted.merge(
+      patient:      @patient,
+      witnessed_by: current_user,
+      signed_at:    Time.current,
+      form_content: form_body_for(permitted[:kind])
+    ))
+
+    if data_url.blank? || !data_url.start_with?("data:image/")
+      @consent.errors.add(:base, "Signature is required — draw on the pad before submitting.")
+      return render(:new, status: :unprocessable_entity)
+    end
+
+    if @consent.save
+      bytes = Base64.decode64(data_url.split(",", 2).last.to_s)
+      @consent.signature_image.attach(
+        io:           StringIO.new(bytes),
+        filename:     "consent-#{@consent.id}.png",
+        content_type: "image/png"
+      )
+      Signatures::Apply.call(
+        signable: @consent,
+        user:     current_user,
+        request:  request,
+        method:   @consent.signed_by_patient? ? "drawn_inline_by_patient" : "drawn_inline_by_representative",
+        intent:   "Witnessed signature for #{@consent.kind_label}. Signer: #{@consent.signer_label}."
+      )
+
+      # If the consent is a DNR, mirror the patient's code_status so
+      # downstream views (clinical flags chip on visit edit) update
+      # without manual sync.
+      if @consent.kind == "dnr"
+        @patient.update(code_status: :dnr) if @patient.code_status != "dnr"
+      end
+
+      redirect_to patient_consent_path(@patient, @consent), notice: "Consent recorded."
+    else
+      render :new, status: :unprocessable_entity
+    end
+  end
+
+  private
+
+  def set_patient
+    ActsAsTenant.with_tenant(current_user.agency) do
+      @patient = Patient.find(params[:patient_id])
+    end
+  end
+
+  def consent_params
+    params.require(:consent_form).permit(
+      :kind, :signer_role, :signer_name, :signer_relationship,
+      :signer_authority, :signature_data_url
+    )
+  end
+
+  # Snapshotted at signing time so legal copy revisions don't
+  # rewrite history. Each kind has its own short attestation; the
+  # patient/family is signing exactly this text.
+  def form_body_for(kind)
+    case kind.to_s
+    when "hospice_election"
+      "I elect to receive hospice care under the Medicare/Medicaid hospice benefit. I have been informed of the palliative (comfort-focused) nature of hospice care, the services available, and that hospice care waives my right to curative treatment for the terminal illness. I may revoke this election at any time."
+    when "dnr"
+      "I direct that, in the event my heart or breathing stops, no cardiopulmonary resuscitation (CPR) be initiated. Comfort-focused care will continue. I understand I may revoke this directive at any time by notifying the hospice team."
+    when "hipaa_acknowledgment"
+      "I acknowledge that I have received the agency's Notice of Privacy Practices describing how my protected health information may be used and disclosed."
+    when "plan_of_care"
+      "I have reviewed the hospice plan of care developed by the interdisciplinary team and agree to participate in the plan as described."
+    else
+      ""
+    end
+  end
+end

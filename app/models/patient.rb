@@ -57,6 +57,7 @@ class Patient < ApplicationRecord
   has_many :notes,               dependent: :destroy
   has_many :pre_admit_evals,     dependent: :destroy
   has_many :family_users, class_name: "User"
+  has_many :consent_forms,       dependent: :destroy
 
   # --- Validations ---------------------------------------------------------
   validates :first_name, :last_name, :dob, presence: true
