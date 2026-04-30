@@ -179,9 +179,32 @@ class VisitsController < ApplicationController
   end
 
   def destroy
+    # Two real callers of destroy:
+    #   1. Calendar's "Remove from schedule" (typically a scheduler role
+    #      cleaning up a future or unstarted slot)
+    #   2. The "Discard draft" button on /visits/:id/edit (the assigned
+    #      clinician throwing away a draft they didn't intend to keep)
+    #
+    # Once a visit is completed (ended_at set) it's part of the medical
+    # record — destroy is refused; corrections go through a late-entry
+    # note instead.
+    if @visit.ended_at.present?
+      redirect_to(edit_visit_path(@visit), alert: "Completed visits can't be deleted. File a late-entry correction instead.") and return
+    end
+
+    is_scheduler = (current_user.role_names & %w[admin don admissions ceo]).any?
+    is_assigned  = @visit.user_id == current_user.id
+    unless is_scheduler || is_assigned
+      redirect_to(dashboard_path, alert: "Only the assigned clinician or admissions can discard a visit.") and return
+    end
+
     @visit.destroy
-    redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
-                notice: "Visit removed from the schedule."
+    if params[:from] == "edit"
+      redirect_to dashboard_path, notice: "Draft visit discarded."
+    else
+      redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
+                  notice: "Visit removed from the schedule."
+    end
   end
 
   # Pascal clicks "Start visit" on My Day → stamps started_at if not already

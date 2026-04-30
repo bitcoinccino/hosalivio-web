@@ -349,9 +349,17 @@
     <%# Two submit buttons, same form. submit_action=draft just
         saves; submit_action=finish saves AND triggers the
         finish flow (stamp ended_at, polish, extractor, route to
-        MD). Server reads params[:submit_action] in #update. %>
+        MD). Server reads params[:submit_action] in #update.
+        Discard draft is a separate DELETE link — out of the form
+        so it doesn't accidentally submit save+discard. %>
     <div class="pt-3 border-t border-[#EFECE6] flex flex-col gap-3">
-      <div class="flex items-center justify-end">
+      <div class="flex items-center justify-between gap-3">
+        <%= link_to visit_path(@visit, from: "edit"),
+              data: { turbo_method: :delete,
+                      turbo_confirm: "Discard this draft? The audio + transcript will be deleted permanently." },
+              class: "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[#C1403A] hover:bg-[#FFF3EC] text-[12px] font-medium" do %>
+          <i class="ri-delete-bin-line"></i> Discard draft
+        <% end %>
         <button type="submit" name="submit_action" value="draft"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] text-[12px] font-medium cursor-pointer">
           <i class="ri-save-line"></i> Save draft (stay)
