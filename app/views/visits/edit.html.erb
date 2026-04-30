@@ -72,9 +72,13 @@
 
     <%# Three-column workspace: visit history (left) | structured
         chart entry (middle) | recording transcript + audio (right).
-        Stacks single-column under xl breakpoint so phones / narrow
-        laptops still get a readable layout. %>
-    <div class="grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)_320px] gap-4">
+        Sidebars are collapsible (chevron in their header, persisted
+        per user via localStorage). Grid uses auto sizing for the
+        sidebars so when they collapse to ~48px the middle column
+        gets the reclaimed space automatically. Stacks single-column
+        under xl breakpoint so phones / narrow laptops still get a
+        readable layout. %>
+    <div class="grid grid-cols-1 xl:grid-cols-[auto_minmax(0,1fr)_auto] gap-4">
 
       <%# ── Left: visit history ───────────────────────── %>
       <%= render "visit_history_sidebar", current_visit: @visit %>

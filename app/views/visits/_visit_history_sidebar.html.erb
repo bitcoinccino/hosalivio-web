@@ -10,13 +10,26 @@
                           .order(Arel.sql("COALESCE(started_at, scheduled_at) DESC"))
                           .limit(30)
 %>
-<aside class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden xl:sticky xl:top-4 xl:self-start">
-  <div class="px-4 py-3 border-b border-[#EFECE6]">
-    <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
-      <i class="ri-history-line"></i> Visit history
-    </h3>
-    <div class="text-[11px] text-[#6B665F] mt-0.5"><%= patient.full_name %> · <%= history.size %> visit<%= history.size == 1 ? "" : "s" %></div>
+<div data-controller="sidebar" data-sidebar-storage-key-value="visitHistorySidebar">
+<aside data-sidebar-target="sidebar" data-collapsed="false"
+       class="group/sb rounded-2xl bg-white border border-[#EFECE6] overflow-hidden xl:sticky xl:top-4 xl:self-start
+              w-full xl:w-[220px] data-[collapsed=true]:xl:w-12 transition-[width] duration-200">
+  <div class="px-4 py-3 border-b border-[#EFECE6] flex items-center justify-between gap-2 group-data-[collapsed=true]/sb:px-2 group-data-[collapsed=true]/sb:flex-col">
+    <div class="min-w-0 group-data-[collapsed=true]/sb:hidden">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+        <i class="ri-history-line"></i> Visit history
+      </h3>
+      <div class="text-[11px] text-[#6B665F] mt-0.5 truncate"><%= patient.full_name %> · <%= history.size %> visit<%= history.size == 1 ? "" : "s" %></div>
+    </div>
+    <i class="ri-history-line text-[#1D1C1A] text-[20px] hidden group-data-[collapsed=true]/sb:block"></i>
+    <button type="button" data-action="click->sidebar#toggle"
+            title="Toggle history"
+            class="w-7 h-7 rounded-full hover:bg-[#FBF9F5] text-[#6B665F] hover:text-[#1D1C1A] flex items-center justify-center flex-shrink-0 transition">
+      <i class="ri-arrow-left-s-line group-data-[collapsed=true]/sb:hidden"></i>
+      <i class="ri-arrow-right-s-line hidden group-data-[collapsed=true]/sb:block"></i>
+    </button>
   </div>
+  <div class="group-data-[collapsed=true]/sb:hidden">
   <% if history.empty? %>
     <div class="px-4 py-6 text-center text-[12px] text-[#6B665F]">No prior visits.</div>
   <% else %>
@@ -57,4 +70,6 @@
       <% end %>
     </ul>
   <% end %>
+  </div>
 </aside>
+</div>
