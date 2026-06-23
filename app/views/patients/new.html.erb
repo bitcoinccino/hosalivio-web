@@ -12,6 +12,10 @@
   rel_opts    = ["Spouse", "Partner", "Son", "Daughter", "Parent", "Sibling", "Grandchild", "Friend", "Guardian", "Other"]
   vet_opts    = ["Not a veteran", "Veteran", "Spouse of veteran", "Unknown"]
   svc_opts    = ["Army", "Navy", "Air Force", "Marine Corps", "Coast Guard", "Space Force", "National Guard", "Reserves"]
+  pronoun_opts  = ["she/her", "he/him", "they/them", "she/they", "he/they", "ze/zir", "Prefer not to say"]
+  religion_opts = ["Catholic", "Baptist", "Methodist", "Lutheran", "Presbyterian", "Pentecostal", "Episcopalian",
+                   "Christian (other)", "Jewish", "Muslim", "Hindu", "Buddhist", "Jehovah's Witness",
+                   "Latter-day Saint", "Seventh-day Adventist", "None", "Other"]
   steps       = ["Identity & Contact", "Caregiver & Support", "Clinical & Insurance"]
 %>
 <div class="min-h-screen bg-[#FBF9F5] py-8 px-4 md:px-10">
@@ -79,7 +83,8 @@
               </div>
               <div>
                 <%= f.label :pronouns, "Pronouns", class: label %>
-                <%= f.text_field :pronouns, placeholder: "e.g. she/her", class: input %>
+                <%= f.text_field :pronouns, placeholder: "Select or type…", list: "pronoun_options", class: input %>
+                <datalist id="pronoun_options"><% pronoun_opts.each do |o| %><option value="<%= o %>"></option><% end %></datalist>
               </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -169,7 +174,8 @@
             </label>
             <div data-patient-form-target="religionReveal" class="<%= "hidden" if @patient.religion.blank? %>">
               <%= f.label :religion, "Religion / spiritual preference", class: label %>
-              <%= f.text_field :religion, placeholder: "e.g. Catholic, Baptist, Jewish, none", class: input %>
+              <%= f.text_field :religion, placeholder: "Select or type…", list: "religion_options", class: input %>
+              <datalist id="religion_options"><% religion_opts.each do |o| %><option value="<%= o %>"></option><% end %></datalist>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
