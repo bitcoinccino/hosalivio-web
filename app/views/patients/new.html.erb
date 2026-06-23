@@ -1,0 +1,269 @@
+<% content_for :title, "Register patient · HosAlivio" %>
+<%
+  input   = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
+  label   = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+  section = "text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold flex items-center gap-2"
+  lang_labels = { "en" => "English", "es" => "Spanish", "ht" => "Haitian Creole", "pt" => "Portuguese", "other" => "Other" }
+  code_labels = { "full_code" => "Full code", "dnr" => "DNR", "dni" => "DNI", "dnr_dni" => "DNR / DNI", "comfort_only" => "Comfort only" }
+  bp_labels   = { "bp1_90" => "1st period · 90 days", "bp2_90" => "2nd period · 90 days", "bp3_60n" => "3rd+ period · 60 days" }
+  bp_tips     = { "bp1_90" => "The initial 90-day hospice election period.",
+                  "bp2_90" => "The second 90-day period after the first is certified.",
+                  "bp3_60n" => "Unlimited 60-day periods after the first two." }
+  rel_opts    = ["Spouse", "Partner", "Son", "Daughter", "Parent", "Sibling", "Grandchild", "Friend", "Guardian", "Other"]
+  vet_opts    = ["Not a veteran", "Veteran", "Spouse of veteran", "Unknown"]
+  svc_opts    = ["Army", "Navy", "Air Force", "Marine Corps", "Coast Guard", "Space Force", "National Guard", "Reserves"]
+  steps       = ["Identity & Contact", "Caregiver & Support", "Clinical & Insurance"]
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4 md:px-10">
+  <div class="max-w-2xl mx-auto">
+    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to dashboard
+    </a>
+
+    <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm overflow-hidden"
+         data-controller="patient-form"
+         data-patient-form-zip-url-value="<%= "/lookups/zip" %>">
+      <div class="px-6 py-4 border-b border-[#EFECE6]">
+        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Admissions</div>
+        <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight">Register a patient</h1>
+        <p class="text-[12px] text-[#6B665F] mt-1">An MRN is assigned automatically. Only name and date of birth are required — fill in the rest as you have it.</p>
+      </div>
+
+      <%# ── Stepper ─────────────────────────────────────────── %>
+      <div class="sticky top-0 z-10 bg-white/95 backdrop-blur px-6 py-3 border-b border-[#EFECE6]">
+        <div class="flex items-center gap-2">
+          <% steps.each_with_index do |title, i| %>
+            <button type="button" data-patient-form-target="tab" data-step-index="<%= i %>"
+                    data-action="patient-form#goTo" data-state="<%= i.zero? ? "current" : "todo" %>"
+                    class="group flex items-center gap-2 flex-1 text-left">
+              <span class="w-6 h-6 shrink-0 rounded-full grid place-items-center text-[12px] font-semibold
+                           data-[state=current]:bg-[#D97757] data-[state=current]:text-white
+                           data-[state=done]:bg-[#2F6F4E] data-[state=done]:text-white
+                           data-[state=todo]:bg-[#EFECE6] data-[state=todo]:text-[#6B665F]"
+                    data-state="<%= i.zero? ? "current" : "todo" %>">
+                <%= i + 1 %>
+              </span>
+              <span class="hidden sm:block text-[12px] font-medium text-[#6B665F] group-data-[state=current]:text-[#1D1C1A]"><%= title %></span>
+              <% unless i == steps.length - 1 %><span class="flex-1 h-px bg-[#EFECE6] hidden sm:block"></span><% end %>
+            </button>
+          <% end %>
+        </div>
+      </div>
+
+      <%= form_with model: @patient, url: patients_path, method: :post, html: { class: "p-6" } do |f| %>
+        <% if @patient.errors.any? %>
+          <div class="rounded-lg bg-[#FFF3EC] border border-[#C1403A] px-3 py-2 text-[12px] text-[#C1403A] mb-4">
+            <%= @patient.errors.full_messages.to_sentence %>
+          </div>
+        <% end %>
+
+        <%# ══ STEP 1 · Identity & Contact ═══════════════════════ %>
+        <div data-patient-form-target="panel" class="space-y-6">
+          <section class="space-y-3">
+            <div class="<%= section %>"><i class="ri-user-3-line text-[#D97757]"></i> Identity</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <%= f.label :first_name, "First name", class: label %>
+                <%= f.text_field :first_name, required: true, autofocus: true, placeholder: "e.g. Maria", class: input %>
+              </div>
+              <div>
+                <%= f.label :last_name, "Last name", class: label %>
+                <%= f.text_field :last_name, required: true, placeholder: "e.g. Gonzalez", class: input %>
+              </div>
+            </div>
+            <%# Preferred name + pronouns share a line, directly under the legal name %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <%= f.label :preferred_name, "Preferred name", class: label %>
+                <%= f.text_field :preferred_name, placeholder: "What they like to be called — e.g. Mari", class: input %>
+              </div>
+              <div>
+                <%= f.label :pronouns, "Pronouns", class: label %>
+                <%= f.text_field :pronouns, placeholder: "e.g. she/her", class: input %>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <%= f.label :dob, "Date of birth", class: label %>
+                <div class="relative">
+                  <%= f.date_field :dob, required: true, class: input,
+                        data: { patient_form_target: "dob", action: "input->patient-form#updateAge" } %>
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium text-[#2F6F4E] pointer-events-none"
+                        data-patient-form-target="age"></span>
+                </div>
+              </div>
+              <div>
+                <%= f.label :gender, "Gender identity", class: label %>
+                <%= f.select :gender, ["Female", "Male", "Other"], { include_blank: "—" }, class: input %>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+              <div>
+                <%= f.label :preferred_language, "Preferred language", class: label %>
+                <%= f.select :preferred_language, Patient::SUPPORTED_LANGUAGES.map { |k| [lang_labels[k] || k.titleize, k] }, { include_blank: "—" }, class: input %>
+              </div>
+              <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] text-[13px] text-[#1D1C1A] cursor-pointer">
+                <%= f.check_box :interpreter_needed, class: "rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]" %>
+                Interpreter needed
+              </label>
+            </div>
+          </section>
+
+          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
+            <div class="<%= section %>"><i class="ri-map-pin-line text-[#2F6F4E]"></i> Contact &amp; address</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <%= f.label :phone, "Phone", class: label %>
+                <%= f.telephone_field :phone, placeholder: "(305) 555-0142", class: input, data: { patient_form_target: "patientPhone" } %>
+              </div>
+              <div><%= f.label :email, "Email", class: label %><%= f.email_field :email, placeholder: "name@example.com", class: input %></div>
+            </div>
+            <div><%= f.label :address_line1, "Address", class: label %><%= f.text_field :address_line1, placeholder: "123 Ocean Dr", class: input %></div>
+            <%= f.hidden_field :address_line2 %>
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-start">
+              <div>
+                <%= f.label :zip, "ZIP", class: label %>
+                <%= f.text_field :zip, placeholder: "33139", class: "#{input} font-mono",
+                      data: { patient_form_target: "zip", action: "input->patient-form#lookupZip blur->patient-form#lookupZip" } %>
+                <p class="text-[11px] text-[#6B665F] mt-1 hidden flex items-center gap-1" data-patient-form-target="branchHint"></p>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><%= f.label :city, "City", class: label %><%= f.text_field :city, placeholder: "Miami — auto-fills from ZIP", class: input, data: { patient_form_target: "city" } %></div>
+                <div><%= f.label :state, "State", class: label %><%= f.text_field :state, placeholder: "FL", class: input, data: { patient_form_target: "state" } %></div>
+              </div>
+            </div>
+            <%= f.hidden_field :branch_id, data: { patient_form_target: "branchId" } %>
+          </section>
+        </div>
+
+        <%# ══ STEP 2 · Caregiver & Support ══════════════════════ %>
+        <div data-patient-form-target="panel" class="space-y-6 hidden">
+          <section class="space-y-3">
+            <div class="<%= section %>"><i class="ri-parent-line text-[#8C6A2F]"></i> Primary caregiver</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><%= f.label :caregiver_name, "Name", class: label %><%= f.text_field :caregiver_name, placeholder: "e.g. John Gonzalez", class: input %></div>
+              <div>
+                <%= f.label :caregiver_relationship, "Relationship", class: label %>
+                <%= f.select :caregiver_relationship, rel_opts, { include_blank: "—" }, class: input %>
+              </div>
+            </div>
+            <div>
+              <%= f.label :caregiver_phone, "Phone", class: label %>
+              <%= f.telephone_field :caregiver_phone, placeholder: "(305) 555-0188", class: input, data: { patient_form_target: "caregiverPhone" } %>
+              <label class="mt-1.5 inline-flex items-center gap-2 text-[12px] text-[#6B665F] cursor-pointer">
+                <input type="checkbox" data-action="change->patient-form#toggleSamePhone"
+                       class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]">
+                Same phone as patient
+              </label>
+            </div>
+          </section>
+
+          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
+            <div class="<%= section %>"><i class="ri-heart-3-line text-[#7A4A8C]"></i> Personal &amp; spiritual</div>
+
+            <label class="inline-flex items-center gap-2 text-[13px] text-[#1D1C1A] cursor-pointer">
+              <input type="checkbox" data-action="change->patient-form#toggleReligion"
+                     class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]"
+                     <%= "checked" if @patient.religion.present? %>>
+              Record a spiritual or religious preference
+            </label>
+            <div data-patient-form-target="religionReveal" class="<%= "hidden" if @patient.religion.blank? %>">
+              <%= f.label :religion, "Religion / spiritual preference", class: label %>
+              <%= f.text_field :religion, placeholder: "e.g. Catholic, Baptist, Jewish, none", class: input %>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <%= f.label :veteran_status, "Veteran status", class: label %>
+                <%= f.select :veteran_status, vet_opts, { include_blank: "—" }, class: input,
+                      data: { action: "change->patient-form#toggleVeteran" } %>
+              </div>
+              <div data-patient-form-target="veteranReveal" class="<%= "hidden" unless @patient.veteran_status.to_s.match?(/veteran/i) && !@patient.veteran_status.to_s.match?(/not a/i) %>">
+                <%= f.label :veteran_branch, "Branch of service", class: label %>
+                <%= f.select :veteran_branch, svc_opts, { include_blank: "—" }, class: input %>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <%# ══ STEP 3 · Clinical & Insurance ═════════════════════ %>
+        <div data-patient-form-target="panel" class="space-y-6 hidden">
+          <section class="space-y-3">
+            <div class="<%= section %>"><i class="ri-stethoscope-line text-[#2B4A7A]"></i> Diagnosis</div>
+
+            <%# Primary diagnosis — predictive ICD-10 lookup, single value %>
+            <div data-controller="icd-autocomplete" data-icd-autocomplete-url-value="<%= icd10_lookup_path %>"
+                 data-icd-autocomplete-mode-value="single" class="relative">
+              <%= f.label :primary_diagnosis, "Primary diagnosis", class: label %>
+              <%= f.text_field :primary_diagnosis, placeholder: "Type a condition or ICD-10 code…", autocomplete: "off",
+                    class: input,
+                    data: { icd_autocomplete_target: "input",
+                            action: "input->icd-autocomplete#search keydown->icd-autocomplete#keydown" } %>
+              <div data-icd-autocomplete-target="results" data-action="click->icd-autocomplete#choose"
+                   class="hidden absolute z-20 left-0 right-0 mt-1 max-h-64 overflow-auto rounded-lg border border-[#E2DED7] bg-white shadow-lg"></div>
+            </div>
+
+            <%# Secondary diagnoses — tag-style entry, multiple values %>
+            <div data-controller="icd-autocomplete" data-icd-autocomplete-url-value="<%= icd10_lookup_path %>"
+                 data-icd-autocomplete-mode-value="tags" class="relative">
+              <%= label_tag nil, "Secondary diagnoses", class: label %>
+              <%= f.hidden_field :secondary_diagnoses, data: { icd_autocomplete_target: "hidden" } %>
+              <div data-icd-autocomplete-target="tags" class="flex flex-wrap gap-1.5 mb-1.5"></div>
+              <input type="text" placeholder="Add a diagnosis…" autocomplete="off" class="<%= input %>"
+                     data-icd-autocomplete-target="input"
+                     data-action="input->icd-autocomplete#search keydown->icd-autocomplete#keydown">
+              <div data-icd-autocomplete-target="results" data-action="click->icd-autocomplete#choose"
+                   class="hidden absolute z-20 left-0 right-0 mt-1 max-h-64 overflow-auto rounded-lg border border-[#E2DED7] bg-white shadow-lg"></div>
+            </div>
+          </section>
+
+          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
+            <div class="<%= section %>"><i class="ri-shield-cross-line text-[#C1403A]"></i> Code status &amp; election</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <%= f.label :code_status, "Code status", class: label %>
+                <%= f.select :code_status, Patient.code_statuses.keys.map { |k| [code_labels[k], k] }, {},
+                      class: "#{input} font-medium",
+                      data: { patient_form_target: "codeStatus", action: "change->patient-form#colorCodeStatus" } %>
+              </div>
+              <div>
+                <%= f.label :status, "Status", class: label %>
+                <%= f.select :status, %w[referred admitted].map { |s| [s.titleize, s] }, {}, class: input %>
+              </div>
+              <div>
+                <%= f.label :benefit_period, "Benefit period", class: label %>
+                <%= f.select :benefit_period, Patient.benefit_periods.keys.map { |k| [bp_labels[k], k] }, { include_blank: "—" },
+                      class: input, title: bp_tips[@patient.benefit_period] || "Hospice election period" %>
+                <p class="text-[11px] text-[#6B665F] mt-1">Defaults to the initial 90-day election period.</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="rounded-lg bg-[#FBF9F5] border border-[#EFECE6] px-3 py-2 text-[11px] text-[#6B665F] flex items-start gap-2">
+            <i class="ri-information-line text-[#2B4A7A] mt-0.5"></i>
+            <span>The case-managing RN is assigned automatically when you schedule this patient's admission visit — no need to set it here.</span>
+          </div>
+        </div>
+
+        <%# ── Navigation ─────────────────────────────────────── %>
+        <div class="pt-5 mt-5 border-t border-[#EFECE6] flex items-center justify-between gap-2">
+          <button type="button" data-patient-form-target="backBtn" data-action="patient-form#back"
+                  class="invisible inline-flex items-center gap-1 text-[13px] text-[#6B665F] hover:text-[#1D1C1A] px-3 py-2">
+            <i class="ri-arrow-left-line"></i> Back
+          </button>
+          <div class="flex items-center gap-3 sm:gap-5">
+            <%= link_to "Cancel", dashboard_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A] px-2 py-2" %>
+            <button type="button" data-patient-form-target="nextBtn" data-action="patient-form#next"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c56647] text-white text-sm font-medium cursor-pointer">
+              Continue <i class="ri-arrow-right-line"></i>
+            </button>
+            <%= f.submit "Register patient",
+                  data: { patient_form_target: "submitBtn" },
+                  style: "display:none",
+                  class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
