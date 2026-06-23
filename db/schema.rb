@@ -10,10 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_30_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_23_120300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "active_storage_attachments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "blob_id", null: false
@@ -212,6 +213,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_30_180000) do
     t.index ["requester_id"], name: "index_eval_revision_requests_on_requester_id"
   end
 
+  create_table "icd10_codes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "billable", default: true, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.string "description", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_icd10_codes_on_code", unique: true
+    t.index ["code"], name: "index_icd10_codes_on_code_pattern", opclass: :varchar_pattern_ops
+    t.index ["description"], name: "index_icd10_codes_on_description_trgm", opclass: :gin_trgm_ops, using: :gin
+  end
+
   create_table "icd10_explanations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "category"
     t.string "code", null: false
@@ -381,6 +393,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_30_180000) do
     t.uuid "branch_id"
     t.string "caregiver_name"
     t.string "caregiver_phone"
+    t.string "caregiver_relationship"
     t.date "cert_period_end"
     t.date "cert_period_start"
     t.string "city"
@@ -391,16 +404,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_30_180000) do
     t.string "first_name", null: false
     t.string "gender"
     t.date "hospice_election_date"
+    t.boolean "interpreter_needed", default: false, null: false
     t.string "last_name", null: false
     t.string "mrn", null: false
     t.string "phone"
     t.boolean "polst_on_file", default: false, null: false
     t.string "preferred_language", default: "en", null: false
+    t.string "preferred_name"
     t.string "primary_diagnosis"
+    t.string "pronouns"
+    t.string "religion"
     t.text "secondary_diagnoses"
     t.string "state"
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.string "veteran_branch"
+    t.string "veteran_status"
     t.string "zip"
     t.index ["agency_id", "code_status"], name: "index_patients_on_agency_id_and_code_status"
     t.index ["agency_id", "mrn"], name: "idx_patients_on_agency_mrn", unique: true
@@ -576,6 +595,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_30_180000) do
     t.index ["patient_id"], name: "index_visits_on_patient_id"
     t.index ["service_location"], name: "index_visits_on_service_location"
     t.index ["user_id"], name: "index_visits_on_user_id"
+  end
+
+  create_table "zip_codes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "city"
+    t.string "county"
+    t.datetime "created_at", null: false
+    t.string "state"
+    t.datetime "updated_at", null: false
+    t.string "zip", null: false
+    t.index ["zip"], name: "index_zip_codes_on_zip", unique: true
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"

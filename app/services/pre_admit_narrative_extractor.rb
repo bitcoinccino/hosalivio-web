@@ -54,6 +54,7 @@ class PreAdmitNarrativeExtractor
     # final_review, etc.). Runs only when the brain is configured.
     # Failures are non-blocking — heuristic-extracted fields stay.
     apply_llm_gap_fill(eval_root)
+    populate_lcd_criteria(eval_root)
 
     Result.new(json: @base, fields_updated: @updated.uniq)
   end
@@ -130,12 +131,27 @@ class PreAdmitNarrativeExtractor
       gc["narrative_summary"] = @text.strip
       touch("general_comments.narrative_summary")
     end
-    if @lower.match?(/\b(safety risk|fall risk|elopement|home unsafe)\b/) && Array(gc["immediate_safety_risks"]).empty?
-      gc["immediate_safety_risks"] = ["Identified during assessment, see narrative"]
+    risks = Array(gc["immediate_safety_risks"]).dup
+    {
+      "Hemoptysis reported" => /cough(?:ing)?\s+(?:up\s+)?blood|hemoptysis/,
+      "Fall risk / unsafe mobility" => /fall risk|falls?|needs? (?:help|assistance|assist).{0,60}(?:walking|transfer|ambulat)/,
+      "Unsafe home situation" => /home unsafe|unsafe home/,
+      "Oxygen safety risk" => /oxygen.{0,40}(?:risk|unsafe|smok)/
+    }.each do |label, rx|
+      risks << label if @lower.match?(rx) && !risks.include?(label)
+    end
+    if risks.empty? && @lower.match?(/\b(safety risk|elopement)\b/)
+      risks << "Identified during assessment, see narrative"
+    end
+    if risks.any? && risks != Array(gc["immediate_safety_risks"])
+      gc["immediate_safety_risks"] = risks
       touch("general_comments.immediate_safety_risks")
     end
     if gc["family_caregiver_status"].to_s.empty?
-      if @lower.match?(/(family\s+(is\s+)?supportive|family\s+present|spouse\s+(is\s+)?supportive|caregiver\s+available)/)
+      if @patient&.caregiver_name.present?
+        gc["family_caregiver_status"] = "#{@patient.caregiver_name} listed as caregiver"
+        touch("general_comments.family_caregiver_status")
+      elsif @lower.match?(/(family\s+(is\s+)?supportive|family\s+present|spouse\s+(is\s+)?supportive|caregiver\s+available)/)
         gc["family_caregiver_status"] = "Supportive"
         touch("general_comments.family_caregiver_status")
       elsif @lower.match?(/(caregiver\s+overwhelmed|caregiver\s+distress|family\s+conflict|no\s+caregiver)/)
@@ -149,17 +165,27 @@ class PreAdmitNarrativeExtractor
 
   def populate_diagnosis(eval_root)
     dx = (eval_root["diagnosis"] ||= {})
-    if @patient && (dx["primary_terminal_diagnosis"].is_a?(Hash) ? dx["primary_terminal_diagnosis"]["description"].to_s.empty? : true)
-      icd10 = @patient.primary_diagnosis.to_s[/\b([A-Z]\d{2}(?:\.\d{1,3})?)\b/, 1]
-      desc  = @patient.primary_diagnosis.to_s.sub(/\s*\(?ICD-?10\s*[:\-]?\s*[A-Z]\d{2}(?:\.\d{1,3})?\)?/i, "").strip
-      dx["primary_terminal_diagnosis"] = { "description" => desc, "icd10" => icd10 }.compact
-      touch("diagnosis.primary_terminal_diagnosis")
+    if @patient
+      primary = dx["primary_terminal_diagnosis"].is_a?(Hash) ? dx["primary_terminal_diagnosis"] : {}
+      parsed = parse_diagnosis(@patient.primary_diagnosis)
+      changed = false
+
+      if primary["description"].to_s.empty? && parsed["description"].present?
+        primary["description"] = parsed["description"]
+        changed = true
+      end
+      if primary["icd10"].to_s.empty? && parsed["icd10"].present?
+        primary["icd10"] = parsed["icd10"]
+        changed = true
+      end
+      if changed
+        dx["primary_terminal_diagnosis"] = primary
+        touch("diagnosis.primary_terminal_diagnosis")
+      end
     end
     if @patient && Array(dx["secondary_diagnoses"]).empty? && @patient.secondary_diagnoses.present?
       dx["secondary_diagnoses"] = @patient.secondary_diagnoses.to_s.split(/[,;]\s*/).map { |d|
-        icd10 = d[/\b([A-Z]\d{2}(?:\.\d{1,3})?)\b/, 1]
-        desc  = d.sub(/\s*\(?ICD-?10\s*[:\-]?\s*[A-Z]\d{2}(?:\.\d{1,3})?\)?/i, "").strip
-        { "description" => desc, "icd10" => icd10 }.compact
+        parse_diagnosis(d)
       }
       touch("diagnosis.secondary_diagnoses")
     end
@@ -295,6 +321,7 @@ class PreAdmitNarrativeExtractor
         # the narrative is too thin to score or no LLM is configured;
         # the Final Review UI then prompts the clinician to enter one.
         calc = HosalivioBrain.calculate_pps(narrative: @text)
+        calc ||= calculate_pps_from_functional_cues(fd)
         if calc && calc["score"].to_i.between?(10, 100)
           fd["pps"] = calc
           touch("functional_decline.pps")
@@ -316,23 +343,40 @@ class PreAdmitNarrativeExtractor
       fd["mobility"] =
         if @lower.match?(/\bbedbound\b/) then "Bedbound"
         elsif @lower.match?(/bed[\s-]*to[\s-]*chair/) then "Bed-to-chair with assist"
+        elsif @lower.match?(/(?:needs?|requires?)\s+(?:help|assistance|assist)[^.]{0,70}(?:walking|ambulat)/) then "Ambulatory with assist"
+        elsif @lower.match?(/(?:help|assistance|assist)[^.]{0,70}(?:walking|ambulat)/) then "Ambulatory with assist"
         elsif @lower.match?(/ambulat(?:es|ory|ing)\s+with\s+(assist|walker|cane)/) then "Ambulatory with assist"
         elsif @lower.match?(/ambulat(?:es|ory)/) then "Ambulatory"
-        end
+      end
       touch("functional_decline.mobility") if fd["mobility"]
     end
 
     adl = (fd["adl_dependencies"] ||= {})
-    %w[bathing dressing feeding toileting transferring].each do |task|
+    adl_aliases = {
+      "bathing"      => /bath(?:e|ing)|shower|washing/,
+      "dressing"     => /dress(?:ing)?|clothes/,
+      "feeding"      => /feed(?:ing)?|eat(?:ing)?|meals?/,
+      "toileting"    => /toilet(?:ing)?|bathroom|continence/,
+      "transferring" => /transfer(?:ring)?|bed\s+to\s+chair/,
+      "walking"      => /walk(?:ing)?|ambulat(?:e|es|ing|ion)/
+    }
+    adl_aliases.each do |task, task_re|
       next unless adl[task].to_s.empty?
-      task_re = task == "transferring" ? /transfer/ : Regexp.new(task)
       next unless @lower.match?(task_re)
       adl[task] =
-        if @lower.match?(/(total|full)\s+(assist|dependence)\s+(with\s+|in\s+)?#{task[0..5]}/) then "Dependent"
-        elsif @lower.match?(/(needs|requires|needs help with)\s+(assist|help)\s+(with\s+)?#{task[0..5]}/) then "Assist"
-        elsif @lower.match?(/independent\s+(with\s+|in\s+)?#{task[0..5]}/) then "Independent"
+        if @lower.match?(/(total|full)\s+(assist|dependence)[^.]{0,40}(?:#{task_re.source})/) then "Dependent"
+        elsif @lower.match?(/(?:needs?|requires?)\s+(?:help|assistance|assist)[^.]{0,70}(?:#{task_re.source})/) ||
+              @lower.match?(/(?:help|assistance|assist)\s+(?:with\s+)?(?:#{task_re.source})/) then "Assist"
+        elsif @lower.match?(/independent[^.]{0,40}(?:#{task_re.source})/) then "Independent"
         end
       touch("functional_decline.adl_dependencies.#{task}") if adl[task]
+    end
+
+    if fd["pps"].nil? || (fd["pps"].is_a?(Hash) && fd["pps"]["score"].to_i.zero?)
+      if (calc = calculate_pps_from_functional_cues(fd))
+        fd["pps"] = calc
+        touch("functional_decline.pps")
+      end
     end
   end
 
@@ -340,19 +384,25 @@ class PreAdmitNarrativeExtractor
 
   def populate_general(eval_root)
     g = (eval_root["general"] ||= {})
-    if g["election_of_benefits_signed"].nil? && @lower.match?(/(signed\s+(the\s+)?(election|mhes|medicare\s+hospice)|election\s+(of\s+benefits?\s+)?signed|mhes\s+signed)/)
+    if g["election_of_benefits_signed"].nil? &&
+       (@patient&.consent_forms&.where(kind: "hospice_election")&.exists? ||
+        @lower.match?(/(signed\s+(the\s+)?(election|mhes|medicare\s+hospice)|election\s+(of\s+benefits?\s+)?signed|mhes\s+signed)/))
       g["election_of_benefits_signed"] = true
       touch("general.election_of_benefits_signed")
     end
     if g["advance_directives"].to_s.empty?
       g["advance_directives"] =
-        if @lower.match?(/\bdnr\s*\/\s*dni\b|\bdnr\b.*\bdni\b/) then "DNR / DNI"
+        if @patient&.code_status.present? && @patient.code_status != "full_code"
+          @patient.code_status.to_s.tr("_", " ").upcase
+        elsif @lower.match?(/\bdnr\s*\/\s*dni\b|\bdnr\b.*\bdni\b/) then "DNR / DNI"
         elsif @lower.match?(/\bdnr\b/) then "DNR"
         elsif @lower.match?(/full\s+code/) then "Full code"
         end
       touch("general.advance_directives") if g["advance_directives"]
     end
-    if g["patient_rights_reviewed"].nil? && @lower.match?(/(patient(?:'s)?\s+rights\s+(reviewed|explained)|reviewed\s+patient\s+rights)/)
+    if g["patient_rights_reviewed"].nil? &&
+       (@patient&.consent_forms&.where(kind: %w[hipaa_acknowledgment plan_of_care])&.exists? ||
+        @lower.match?(/(patient(?:'s)?\s+rights\s+(reviewed|explained)|reviewed\s+patient\s+rights|rights\s+and\s+responsibilities\s+(reviewed|explained))/))
       g["patient_rights_reviewed"] = true
       touch("general.patient_rights_reviewed")
     end
@@ -366,14 +416,25 @@ class PreAdmitNarrativeExtractor
     end
 
     dme = Array(g["dme_needs"]).dup
+    if @patient
+      @patient.dme_orders.where.not(status: %i[picked_up returned]).find_each do |order|
+        label = order.equipment_type.to_s.tr("_", " ").titleize
+        dme << label unless dme.include?(label)
+      end
+    end
     {
       "Hospital bed"       => /hospital\s+bed/,
       "Oxygen concentrator" => /oxygen|o2\s+concentrator/,
       "Wheelchair"          => /wheel\s*chair|wheelchair/,
       "Walker"              => /\bwalker\b/,
       "Bedside commode"     => /bedside\s+commode|commode/,
-      "Hoyer lift"          => /hoyer|patient\s+lift/
+      "Hoyer lift"          => /hoyer|patient\s+lift/,
+      "Shower chair"        => /shower\s+chair/,
+      "Suction machine"     => /suction/
     }.each { |label, rx| dme << label if @lower.match?(rx) && !dme.include?(label) }
+    if @lower.match?(/\b(equipment|dme|those)\b/) && dme.empty?
+      dme << "Equipment needs to be assessed"
+    end
     if dme.any?
       g["dme_needs"] = dme
       touch("general.dme_needs")
@@ -414,5 +475,42 @@ class PreAdmitNarrativeExtractor
 
   def touch(path)
     @updated << path
+  end
+
+  def parse_diagnosis(value)
+    text = value.to_s.strip
+    icd10 = text[/\b([A-Z]\d{2}(?:\.\d{1,4})?)\b/i, 1]&.upcase
+    desc = text
+      .sub(/\s*\(?ICD-?10\s*[:\-]?\s*[A-Z]\d{2}(?:\.\d{1,4})?\)?/i, "")
+      .sub(/\s*\([A-Z]\d{2}(?:\.\d{1,4})?\)\s*/i, "")
+      .strip
+    { "description" => desc.presence, "icd10" => icd10 }.compact
+  end
+
+  def calculate_pps_from_functional_cues(fd)
+    adl = fd["adl_dependencies"].is_a?(Hash) ? fd["adl_dependencies"] : {}
+    assist_count = adl.values.count { |v| %w[Assist Dependent].include?(v.to_s) }
+    mobility = fd["mobility"].to_s
+    intake = @base.dig("pre_admit_eval", "nutritional_decline", "intake").to_s
+
+    score =
+      if mobility == "Bedbound"
+        30
+      elsif assist_count >= 3 || (assist_count >= 2 && intake.match?(/poor|minimal|none/i))
+        40
+      elsif assist_count >= 2 || mobility == "Ambulatory with assist"
+        50
+      end
+    return unless score
+
+    cues = []
+    cues << "#{assist_count} ADL dependencies" if assist_count.positive?
+    cues << mobility.downcase if mobility.present?
+    cues << "#{intake.downcase} intake" if intake.present?
+    {
+      "score" => score,
+      "source" => "calculated",
+      "justification" => "Suggested from admission cues: #{cues.to_sentence}."
+    }
   end
 end

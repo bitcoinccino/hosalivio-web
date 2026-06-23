@@ -70,10 +70,8 @@ const MEDICAL_RE = new RegExp(
   "gi"
 )
 
-const NAMED_ROLES = {
-  pascal: "clinician", rn: "clinician", nurse: "clinician", clinician: "clinician",
-  maria:  "patient",   patient: "patient"
-}
+const CLINICIAN_NAMES = new Set(["rn", "nurse", "clinician", "md", "doctor", "physician", "don", "aide", "chaplain", "social worker", "social_worker"])
+const PATIENT_NAMES = new Set(["patient", "maria"])
 const ROLE_TINTS = {
   clinician: { bg: "#FFF3EC", border: "#D97757" },
   patient:   { bg: "#E6F0EE", border: "#2F6F4E" },
@@ -89,6 +87,7 @@ export default class extends Controller {
     if (this.hasTranscriptTarget) {
       const cached = this.transcriptTarget.dataset.transcriptText
       this._originalText = (cached != null ? cached : this.transcriptTarget.textContent) || ""
+      this._roster = this._parseRoster()
       this._turns = this._parseTurns(this._originalText)
       this._render()
       this._applyVisibility()
@@ -218,12 +217,45 @@ export default class extends Controller {
       const bodyEnd = next ? next.tagStart : text.length
       turns.push({
         name: cur.name,
-        role: NAMED_ROLES[cur.name.toLowerCase()] || "other",
+        role: this._roleForSpeaker(cur.name),
         bodyStart: cur.tagEnd,
         bodyEnd
       })
     }
     return turns
+  }
+
+  _roleForSpeaker(name) {
+    const normalized = String(name || "").toLowerCase().trim()
+    if (!normalized) return "other"
+    if (CLINICIAN_NAMES.has(normalized)) return "clinician"
+    if (PATIENT_NAMES.has(normalized)) return "patient"
+    if (/^(rn|md|don|lpn|lvn|np|pa)\b/.test(normalized)) return "clinician"
+    if (/\b(rn|md|don|lpn|lvn|np|pa|nurse|clinician|doctor|physician)\b/.test(normalized)) return "clinician"
+    return "patient"
+  }
+
+  // Server-provided speaker directory: [{ match:[…], name, title, color, initials, photoUrl }]
+  _parseRoster() {
+    try {
+      const raw = this.transcriptTarget.dataset.roster
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch (_e) {
+      return []
+    }
+  }
+
+  // Resolve a [Speaker:] tag to a roster entry (name/title/photo/color).
+  _identityFor(name) {
+    const normalized = String(name || "").toLowerCase().trim()
+    if (!normalized || !this._roster) return null
+    return this._roster.find(e => Array.isArray(e.match) && e.match.includes(normalized)) || null
+  }
+
+  _initialsFrom(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean).map(w => w[0])
+    return parts.length ? parts.slice(0, 2).join("").toUpperCase() : "··"
   }
 
   // ── Render turn-blocks ──────────────────────────────────────
@@ -245,8 +277,9 @@ export default class extends Controller {
     }
 
     for (const turn of this._turns) {
-      const tint  = ROLE_TINTS[turn.role] || ROLE_TINTS.other
-      const color = colorFor(turn.name, turn.role)
+      const tint     = ROLE_TINTS[turn.role] || ROLE_TINTS.other
+      const identity = this._identityFor(turn.name)
+      const color    = (identity && identity.color) || colorFor(turn.name, turn.role)
 
       const container = document.createElement("div")
       container.dataset.role = turn.role
@@ -255,17 +288,48 @@ export default class extends Controller {
       container.style.backgroundColor = tint.bg
       container.style.borderLeftColor = color
 
-      if (turn.name) {
-        const label = document.createElement("div")
-        label.textContent = turn.name
-        label.style.color = color
-        label.style.fontWeight = "700"
-        label.style.fontSize = "10px"
-        label.style.letterSpacing = "0.1em"
-        label.style.textTransform = "uppercase"
-        label.style.fontStyle = "normal"
-        label.style.marginBottom = "2px"
-        container.appendChild(label)
+      if (turn.name || identity) {
+        const header = document.createElement("div")
+        header.className = "flex items-center gap-2 mb-1"
+
+        // Avatar: real photo if we have one, else a colored initials chip.
+        const photoUrl = identity && identity.photoUrl
+        const initials = (identity && identity.initials) || this._initialsFrom(turn.name)
+        if (photoUrl) {
+          const img = document.createElement("img")
+          img.src = photoUrl
+          img.alt = (identity && identity.name) || turn.name || ""
+          img.className = "w-6 h-6 rounded-full object-cover flex-shrink-0 border border-[#EFECE6]"
+          header.appendChild(img)
+        } else {
+          const chip = document.createElement("div")
+          chip.textContent = initials
+          chip.className = "w-6 h-6 rounded-full flex-shrink-0 inline-flex items-center justify-center text-white"
+          chip.style.backgroundColor = color
+          chip.style.fontSize = "9px"
+          chip.style.fontWeight = "700"
+          chip.style.fontStyle = "normal"
+          header.appendChild(chip)
+        }
+
+        const nameEl = document.createElement("span")
+        nameEl.textContent = (identity && identity.name) || turn.name
+        nameEl.style.color = color
+        nameEl.style.fontWeight = "700"
+        nameEl.style.fontSize = "11px"
+        nameEl.style.fontStyle = "normal"
+        header.appendChild(nameEl)
+
+        const title = identity && identity.title
+        if (title) {
+          const titleEl = document.createElement("span")
+          titleEl.textContent = title
+          titleEl.className = "text-[8px] uppercase tracking-widest text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-1.5 py-0.5"
+          titleEl.style.fontStyle = "normal"
+          header.appendChild(titleEl)
+        }
+
+        container.appendChild(header)
       }
 
       const body = document.createElement("div")

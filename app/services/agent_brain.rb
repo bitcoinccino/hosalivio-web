@@ -23,6 +23,7 @@ class AgentBrain
   ROLE_DIRS = {
     "admissions"    => "admission_coordinator",
     "rn"            => "registered_nurse",
+    "lpn"           => "licensed_practical_nurse",
     "md"            => "medical_director",
     "don"           => "director_of_nurse",
     "dme"           => "dme_coordinator",
@@ -62,7 +63,7 @@ class AgentBrain
   # produce structured records (pharm_delivery, dme_order, insurance note,
   # billing claim) are skipped to avoid prompt bloat without protection value.
   ROLES_REQUIRING_DOCUMENTATION_DISCIPLINE = %w[
-    admissions rn md don aide social_worker chaplain ceo
+    admissions rn lpn md don aide social_worker chaplain ceo
   ].freeze
 
   # Universal documentation hygiene. Non-negotiable. Appended to the system

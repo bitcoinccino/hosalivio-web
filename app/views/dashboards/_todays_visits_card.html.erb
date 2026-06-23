@@ -4,19 +4,52 @@
   <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
     <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
       <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-calendar-line"></i> Today's visits (<%= todays_visits.size %>)</h3>
-      <%= link_to "Full calendar", calendar_path, class: "text-[11px] text-[#D97757] hover:underline" %>
+      <%= link_to "Week calendar", calendar_path, class: "text-[11px] text-[#D97757] hover:underline" %>
     </div>
     <% if todays_visits.empty? %>
-      <div class="px-5 py-10 text-center text-[13px] text-[#6B665F]">
-        Nothing scheduled for today. Enjoy the calm.
+      <div class="px-5 py-10 text-center">
+        <div class="text-[13px] text-[#1D1C1A] font-medium">No visits scheduled today.</div>
+        <div class="mt-1 text-[12px] text-[#6B665F]">Use the time to review flagged patients or start an unscheduled visit from a patient chart.</div>
+        <div class="mt-4 flex items-center justify-center gap-2">
+          <%= link_to calendar_path,
+                class: "inline-flex items-center gap-1 rounded-full border border-[#D9D5CD] px-3 py-1.5 text-[12px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+            <i class="ri-calendar-line"></i> Open calendar
+          <% end %>
+          <%= link_to dashboard_path,
+                class: "inline-flex items-center gap-1 rounded-full bg-[#D97757] px-3 py-1.5 text-[12px] text-white hover:bg-[#c46a4b]" do %>
+            <i class="ri-team-line"></i> Review patients
+          <% end %>
+        </div>
       </div>
     <% else %>
       <ul class="divide-y divide-[#EFECE6]">
         <% todays_visits.each do |v| %>
+          <%
+            status_label =
+              if v.completed_visit?
+                "Completed"
+              elsif v.currently_in_progress?
+                "In progress"
+              elsif v.stale_in_progress?
+                "Needs review"
+              else
+                "Scheduled"
+              end
+            status_class =
+              case status_label
+              when "In progress" then "bg-[#FFF3EC] text-[#C1403A] border border-[#F3D7C8]"
+              when "Needs review" then "bg-[#FFF7F2] text-[#8A4B2F] border border-[#F3D7C8]"
+              when "Completed" then "bg-[#E6F0EE] text-[#2F6F4E] border border-[#C8DDD6]"
+              else "bg-[#FBF9F5] text-[#6B665F] border border-[#EFECE6]"
+              end
+          %>
           <li class="flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition">
             <div class="text-[13px] font-mono text-[#1D1C1A] w-20 flex-shrink-0"><%= v.anchor_start&.strftime("%-l:%M %p") %></div>
             <%= link_to patient_path(v.patient), class: "flex-1 min-w-0" do %>
-              <div class="text-[14px] text-[#1D1C1A] truncate"><%= v.patient&.full_name %></div>
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-[14px] text-[#1D1C1A] truncate"><%= v.patient&.full_name %></span>
+                <span class="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider flex-shrink-0 <%= status_class %>"><%= status_label %></span>
+              </div>
               <div class="text-[11px] text-[#6B665F] truncate">
                 <%= v.visit_type.to_s.tr("_", " ") %>
                 <% if v.service_location.to_s != "home" %>
@@ -28,25 +61,31 @@
               </div>
             <% end %>
             <% if v.agent_authored %>
-              <span title="AI-scheduled" class="text-[#6B665F] flex-shrink-0">🤖</span>
+              <span title="Suggested by HosAlivio" class="text-[#6B665F] flex-shrink-0"><i class="ri-sparkling-2-line"></i></span>
             <% end %>
-            <% if v.ended_at %>
+            <% if v.completed_visit? %>
               <%= link_to edit_visit_path(v),
                     class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white font-medium flex-shrink-0" do %>
-                <i class="ri-edit-2-line"></i> Completed
+                <i class="ri-file-edit-line"></i> Review note
               <% end %>
-            <% elsif v.started_at %>
+            <% elsif v.currently_in_progress? %>
               <%= link_to edit_visit_path(v),
                     class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium flex-shrink-0",
                     title: "Continue this visit" do %>
-                <i class="ri-pause-circle-line"></i> In progress
+                <i class="ri-arrow-right-circle-line"></i> Continue
+              <% end %>
+            <% elsif v.stale_in_progress? %>
+              <%= link_to edit_visit_path(v),
+                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#8A4B2F] hover:bg-[#6f3d27] text-white font-medium flex-shrink-0",
+                    title: "Review this unfinished visit" do %>
+                <i class="ri-file-warning-line"></i> Review
               <% end %>
             <% else %>
               <%= button_to begin_visit_path(v), method: :post,
                     form: { class: "inline" },
                     class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium flex-shrink-0",
                     title: "Start timer + open documentation" do %>
-                <i class="ri-mic-line"></i> Start visit
+                <i class="ri-mic-line"></i> Start
               <% end %>
             <% end %>
           </li>

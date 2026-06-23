@@ -245,10 +245,9 @@ class HosalivioTriager
 
   # Translates the brain's structured notify directive into actual
   # plumbing: find the right human (role-scoped, branch-preferred),
-  # post a clinician_only urgent note that @-mentions them, and let
-  # the existing Note after_create_commit hook enqueue the
-  # OutboundPing for their channels. If no human matches the role,
-  # fall back to a generic on-call notice for the role's queue.
+  # post a clinician_only chart note, and create a Notification for
+  # their inbox/outbound channels. If no human matches the role, fall
+  # back to a generic on-call notice for the role's queue.
   def execute_notify(notify)
     role   = notify["role"].to_s
     reason = notify["reason"].to_s.strip
@@ -264,14 +263,22 @@ class HosalivioTriager
     # is the safety net.
     reason = scrub_clinician_name(reason, target)
     body   = "@#{first} #{reason.presence || "family confirmed they want you to reach out"}"
-    Note.create!(
+    note = Note.create!(
       agency:         @agency,
       patient:        @patient,
       author_role:    "admissions",
       body:           body,
-      urgency:        "urgent",
+      urgency:        "normal",
       source:         "system",
       clinician_only: true
+    )
+    Notification.create!(
+      agency: @agency,
+      user:   target,
+      kind:   "mentioned",
+      title:  "HosAlivio flagged a patient for your review",
+      body:   "#{@patient.full_name}: #{reason.presence || "Follow-up requested."}",
+      linked: note
     )
   rescue => e
     Rails.logger.warn("[HosalivioTriager#execute_notify] #{e.class}: #{e.message}")

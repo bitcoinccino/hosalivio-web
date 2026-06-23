@@ -1,0 +1,158 @@
+<%
+  next_visit = @todays_visits.find { |v| v.currently_in_progress? } ||
+               @todays_visits.find { |v| !v.completed_visit? && (v.anchor_start || v.scheduled_at || Time.current) >= 30.minutes.ago } ||
+               @todays_visits.find { |v| !v.completed_visit? }
+
+  charts_needing_review = @todays_visits.select { |v|
+    v.completed_visit? && !v.chart_locked? && v.narrative.to_s.strip.present?
+  }
+
+  review_rows = @caseload.map do |patient|
+    open_crisis = @open_crises.find { |note| note.patient_id == patient.id }
+    med_row = @overdue_meds.find { |row| row[:order].patient_id == patient.id }
+    handoff = @pending_handoffs.find do |ev|
+      ev.subject == patient || (ev.subject.respond_to?(:patient_id) && ev.subject.patient_id == patient.id)
+    end
+    last_visit = patient.visits.where("started_at IS NOT NULL").order(started_at: :desc).first
+    days_since_seen = last_visit&.started_at ? ((Time.current - last_visit.started_at) / 1.day).floor : nil
+    recert_days = patient.cert_period_end ? (patient.cert_period_end - Date.current).to_i : nil
+    admit_eval = PreAdmitEval.where(patient_id: patient.id).order(created_at: :desc).first
+    blockers = admit_eval&.certification_blockers || []
+
+    reasons = []
+    reasons << { label: "Crisis message", color: "bg-[#C1403A] text-white", rank: 0 } if open_crisis
+    reasons << { label: "Med overdue", color: "bg-[#FFF3EC] text-[#C1403A] border border-[#F3D7C8]", rank: 1 } if med_row
+    reasons << { label: "Team request", color: "bg-[#FFF7F2] text-[#8A4B2F] border border-[#F3D7C8]", rank: 2 } if handoff
+    reasons << { label: "Admission blocker", color: "bg-[#FFF7F2] text-[#8A4B2F] border border-[#F3D7C8]", rank: 3 } if blockers.any?
+    reasons << { label: "Recert #{recert_days}d", color: "bg-[#E6F0EE] text-[#2F6F4E] border border-[#C8DDD6]", rank: 4 } if recert_days && recert_days <= 14
+    reasons << { label: "Not seen #{days_since_seen}d", color: "bg-[#FBF9F5] text-[#6B665F] border border-[#EFECE6]", rank: 5 } if days_since_seen && days_since_seen >= 5
+
+    next if reasons.empty?
+    { patient: patient, reasons: reasons, rank: reasons.map { |r| r[:rank] }.min, last_visit: last_visit }
+  end.compact.sort_by { |row| [row[:rank], row[:patient].last_name.to_s] }.first(5)
+
+  urgent_count = @open_crises.size + @overdue_meds.size + @pending_handoffs.size + charts_needing_review.size
+%>
+
+<section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+  <div class="px-5 py-4 border-b border-[#EFECE6] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h3 class="text-[12px] uppercase tracking-widest text-[#2F6F4E] font-bold">
+        <i class="ri-nurse-line"></i> RN command center
+      </h3>
+      <p class="text-[12px] text-[#6B665F] mt-1">Start with the next visit, then clear urgent patient work.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] bg-[#FBF9F5] border border-[#EFECE6] text-[#1D1C1A]">
+        <i class="ri-calendar-check-line"></i> <%= @todays_visits.size %> visits
+      </span>
+      <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] <%= urgent_count.positive? ? 'bg-[#FFF3EC] border border-[#F3D7C8] text-[#C1403A]' : 'bg-[#E6F0EE] border border-[#C8DDD6] text-[#2F6F4E]' %>">
+        <i class="<%= urgent_count.positive? ? 'ri-alarm-warning-line' : 'ri-check-line' %>"></i> <%= urgent_count %> needs action
+      </span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 divide-y xl:divide-y-0 xl:divide-x divide-[#EFECE6]">
+    <div class="p-5">
+      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Next up</div>
+      <% if next_visit %>
+        <div class="flex items-start gap-3">
+          <div class="w-11 h-11 rounded-full bg-[#E6F0EE] text-[#2F6F4E] flex items-center justify-center flex-shrink-0">
+            <i class="<%= next_visit.currently_in_progress? ? 'ri-record-circle-line' : 'ri-calendar-event-line' %> text-lg"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-[15px] font-medium text-[#1D1C1A] truncate"><%= next_visit.patient&.full_name || "Patient not set" %></div>
+            <div class="text-[12px] text-[#6B665F] mt-0.5">
+              <span class="font-mono"><%= next_visit.anchor_start&.strftime("%-l:%M %p") || "No time" %></span>
+              <span> · <%= next_visit.visit_type.to_s.tr("_", " ") %></span>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <% if next_visit.currently_in_progress? %>
+                <%= link_to edit_visit_path(next_visit), class: "inline-flex items-center gap-1 rounded-full bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#c46a4b]" do %>
+                  <i class="ri-arrow-right-circle-line"></i> Continue
+                <% end %>
+              <% elsif next_visit.completed_visit? %>
+                <%= link_to edit_visit_path(next_visit), class: "inline-flex items-center gap-1 rounded-full border border-[#D9D5CD] px-3 py-1.5 text-[12px] font-medium text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+                  <i class="ri-file-edit-line"></i> Review note
+                <% end %>
+              <% else %>
+                <%= button_to begin_visit_path(next_visit), method: :post,
+                      form: { class: "inline" },
+                      class: "inline-flex items-center gap-1 rounded-full bg-[#D97757] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#c46a4b]" do %>
+                  <i class="ri-mic-line"></i> Start
+                <% end %>
+              <% end %>
+              <% if next_visit.patient %>
+                <%= link_to patient_path(next_visit.patient), class: "inline-flex items-center gap-1 rounded-full border border-[#D9D5CD] px-3 py-1.5 text-[12px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+                  <i class="ri-folder-chart-line"></i> Chart
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% else %>
+        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] px-4 py-5 text-center">
+          <div class="text-[13px] text-[#1D1C1A] font-medium">No visits scheduled today</div>
+          <div class="mt-3 flex justify-center gap-2">
+            <%= link_to "Calendar", calendar_path, class: "rounded-full border border-[#D9D5CD] px-3 py-1.5 text-[12px] text-[#1D1C1A] hover:bg-white" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="p-5">
+      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Needs action now</div>
+      <div class="grid grid-cols-2 gap-2">
+        <% if @open_crises.first&.patient || @caseload.first %>
+          <%= link_to patient_path(@open_crises.first&.patient || @caseload.first), class: "rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3 hover:bg-white" do %>
+            <div class="text-[20px] font-serif text-[#C1403A]"><%= @open_crises.size %></div>
+            <div class="text-[11px] text-[#6B665F]">Crisis messages</div>
+          <% end %>
+        <% else %>
+          <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+          <div class="text-[20px] font-serif text-[#C1403A]"><%= @open_crises.size %></div>
+          <div class="text-[11px] text-[#6B665F]">Crisis messages</div>
+          </div>
+        <% end %>
+        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+          <div class="text-[20px] font-serif text-[#C1403A]"><%= @overdue_meds.size %></div>
+          <div class="text-[11px] text-[#6B665F]">Meds overdue</div>
+        </div>
+        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+          <div class="text-[20px] font-serif text-[#8A4B2F]"><%= @pending_handoffs.size %></div>
+          <div class="text-[11px] text-[#6B665F]">Team requests</div>
+        </div>
+        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+          <div class="text-[20px] font-serif text-[#2F6F4E]"><%= charts_needing_review.size %></div>
+          <div class="text-[11px] text-[#6B665F]">Notes to review</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-5">
+      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Patients needing review</div>
+      <% if review_rows.empty? %>
+        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] px-4 py-5 text-center text-[12px] text-[#6B665F]">
+          No patient review flags right now.
+        </div>
+      <% else %>
+        <div class="space-y-2">
+          <% review_rows.each do |row| %>
+            <% patient = row[:patient] %>
+            <%= link_to patient_path(patient), class: "block rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3 hover:bg-white" do %>
+              <div class="flex items-center justify-between gap-2">
+                <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= patient.full_name %></div>
+                <i class="ri-arrow-right-line text-[#6B665F]"></i>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <% row[:reasons].each do |reason| %>
+                  <span class="rounded-full px-2 py-0.5 text-[10px] font-medium <%= reason[:color] %>"><%= reason[:label] %></span>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,43 @@
+<%# Speaker-separated conversation from the recording. Each turn maps a
+    [Speaker:] tag to a real person (patient / clinician / family) and shows
+    their photo, name, and title. Locals: `turns` (Array<VisitsHelper::TranscriptTurn>). %>
+<div class="my-5 rounded-2xl border border-[#EFECE6] bg-white shadow-sm overflow-hidden">
+  <div class="px-4 py-3 border-b border-[#EFECE6] bg-[#FBF9F5] flex items-center gap-2">
+    <i class="ri-chat-voice-line text-[#D97757]"></i>
+    <span class="text-[11px] uppercase tracking-[0.16em] text-[#6B665F] font-bold">Conversation</span>
+    <span class="text-[10px] text-[#6B665F]"><%= pluralize(turns.size, "turn") %></span>
+  </div>
+
+  <div class="p-4 space-y-3">
+    <% turns.each do |turn| %>
+      <div class="flex items-start gap-3">
+        <%# Avatar: real photo when the speaker has one, else colored initials. %>
+        <% if turn.avatar&.attached? %>
+          <%= image_tag url_for(turn.avatar),
+                alt: turn.speaker_name,
+                class: "w-9 h-9 rounded-full object-cover flex-shrink-0 border border-[#EFECE6]" %>
+        <% else %>
+          <div class="w-9 h-9 rounded-full flex-shrink-0 inline-flex items-center justify-center text-white text-[11px] font-bold"
+               style="background: <%= turn.color %>;">
+            <%= turn.initials %>
+          </div>
+        <% end %>
+
+        <div class="min-w-0 flex-1">
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <span class="text-[12px] font-bold" style="color: <%= turn.color %>;"><%= turn.speaker_name %></span>
+            <% if turn.title.present? %>
+              <span class="text-[9px] uppercase tracking-widest text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-1.5 py-0.5">
+                <%= turn.title %>
+              </span>
+            <% end %>
+          </div>
+          <div class="mt-1 rounded-2xl rounded-tl-sm px-3 py-2 text-[13px] text-[#3A3936] leading-relaxed whitespace-pre-wrap"
+               style="background-color: <%= turn.color %>14; border: 1px solid <%= turn.color %>33;">
+            <%= turn.body %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

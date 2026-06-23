@@ -2,7 +2,7 @@ class Role < ApplicationRecord
   # Global vocabulary — not tenant-scoped. Every agency uses the same role names.
 
   ROLE_NAMES = %w[
-    rn md don admissions dme pharmacy insurance billing
+    rn lpn md don admissions dme pharmacy insurance billing
     chaplain social_worker aide family admin
   ].freeze
 

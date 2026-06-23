@@ -79,7 +79,7 @@ class VisitReminderJob < ApplicationJob
     Rails.logger.info(
       "[SMS Reminder stub] to=#{phone || visit.user.email} " \
       "for=#{visit.user.full_name} re=patient '#{visit.patient&.full_name}' " \
-      "at=#{visit.anchor_start&.strftime('%Y-%m-%d %-l:%M %p')} provenance=#{visit.agent_authored ? 'AI-scheduled' : 'human-scheduled'} " \
+      "at=#{visit.anchor_start&.strftime('%Y-%m-%d %-l:%M %p')} provenance=#{visit.agent_authored ? 'suggested_by_hosalivio' : 'scheduled_by_staff'} " \
       "notification_id=#{notification.id}"
     )
   end

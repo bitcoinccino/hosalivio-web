@@ -5,6 +5,7 @@ puts "== Seeding roles =="
 ROLES = {
   "admin"         => "System Admin",
   "rn"            => "Registered Nurse",
+  "lpn"           => "Licensed Practical Nurse",
   "md"            => "Hospice Physician",
   "don"           => "Director of Nursing",
   "admissions"    => "Admissions Coordinator",

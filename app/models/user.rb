@@ -70,6 +70,21 @@ class User < ApplicationRecord
     avatar.attached?
   end
 
+  PRESENCE_TTL = 5.minutes
+
+  def mark_seen!
+    return unless persisted?
+    Rails.cache.write(presence_cache_key, Time.current, expires_in: PRESENCE_TTL)
+  end
+
+  def last_seen_at
+    Rails.cache.read(presence_cache_key)
+  end
+
+  def online?
+    last_seen_at.present?
+  end
+
   has_many :visits,                           inverse_of: :user
   has_many :prescribed_medication_orders,     class_name: "MedicationOrder", foreign_key: :prescribed_by_id
   has_many :administered_medication_logs,     class_name: "MedicationLog",   foreign_key: :administered_by_id
@@ -115,6 +130,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def presence_cache_key
+    "users/#{id}/presence/last_seen_at"
+  end
 
   def parse_clock(str)
     h, m = str.to_s.split(":").map(&:to_i)
