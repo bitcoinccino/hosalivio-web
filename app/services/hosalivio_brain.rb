@@ -24,6 +24,7 @@ class HosalivioBrain
   # OpenAI fallback config
   OPENAI_URL   = "https://api.openai.com/v1/chat/completions"
   OPENAI_MODEL = ENV.fetch("HOSALIVIO_BRAIN_OPENAI_MODEL", ENV.fetch("HOSALIVIO_LUCIA_OPENAI_MODEL", "gpt-4o"))
+  CHAT_READ_TIMEOUT = Integer(ENV.fetch("HOSALIVIO_CHAT_READ_TIMEOUT", "12"))
 
   INTENTS = %w[
     pain_crisis dyspnea decline caregiver_distress transitioning
@@ -83,11 +84,13 @@ class HosalivioBrain
       PROVIDER_CHAIN.each do |provider|
         next unless provider_enabled?(provider)
         begin
+          started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           raw      = (provider == :claude) ? request_answer_claude(payload) : request_answer_openai(payload)
+          elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
+          Rails.logger.info("[HosalivioBrain.answer_clinician_question:#{provider}] elapsed_ms=#{elapsed_ms}")
           parsed   = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
-          answer   = parsed["answer"].to_s.strip
+          answer   = sanitize_answer_text(parsed["answer"])
           next if answer.empty?
-          answer = answer.gsub(/[–—]/, ", ")
 
           # Optional structured notify directive — set when the brain
           # determines the user accepted an offer to contact a specific
@@ -115,6 +118,31 @@ class HosalivioBrain
         end
       end
       nil
+    end
+
+    def sanitize_answer_text(raw)
+      answer = raw.to_s.strip.gsub(/[–—]/, ", ")
+      return "" if answer.blank?
+
+      meta_patterns = [
+        /\byou'?re right\b/i,
+        /\bi take that seriously\b/i,
+        /\b(previous|prior|last)\s+(reply|response|answer)\b/i,
+        /\bcut off\b/i,
+        /\b(apologize|apology|sorry)\b/i,
+        /\bconfusion was (entirely )?on my end\b/i,
+        /\bi incorrectly\b/i,
+        /\bi made (an|a) (error|mistake)\b/i
+      ]
+      return "" if meta_patterns.any? { |pattern| answer.match?(pattern) }
+
+      advice_patterns = [
+        /\b(ensure|make sure)\s+[^.]{0,80}\bmedications?\s+(are\s+)?(being\s+)?utilized\b/i,
+        /\butili[sz](e|ing|ed)\s+[^.]{0,80}\bmedications?\b/i
+      ]
+      return "" if advice_patterns.any? { |pattern| answer.match?(pattern) }
+
+      answer
     end
 
     # Reads the polished narrative + the partially-populated eval
@@ -171,6 +199,39 @@ class HosalivioBrain
         end
       end
       nil
+    end
+
+    def tag_speaker_turns(raw_text, patient_name:, clinician_label:, family_names: [])
+      text = raw_text.to_s.strip
+      return nil if text.empty?
+      return { "tagged" => text, "source" => "existing:tags" } if text.scan(/\[[^\]\n]+:\]/).size >= 2
+
+      payload = {
+        transcript:      text,
+        patient_name:    patient_name.to_s,
+        clinician_label: clinician_label.to_s.presence || "RN",
+        family_names:    Array(family_names).map(&:to_s).reject(&:blank?)
+      }.to_json
+
+      PROVIDER_CHAIN.each do |provider|
+        next unless provider_enabled?(provider)
+        begin
+          raw    = (provider == :claude) ? request_speaker_tags_claude(payload) : request_speaker_tags_openai(payload)
+          parsed = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
+          tagged = parsed["tagged_transcript"].to_s.strip
+          next if tagged.empty?
+          next unless tagged.match?(/\[[^\]\n]+:\]/)
+          tagged = tagged.gsub(/[–—]/, ", ")
+          return {
+            "tagged" => tagged,
+            "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
+          }
+        rescue => e
+          Rails.logger.warn("[HosalivioBrain.tag_speaker_turns:#{provider}] #{e.class}: #{e.message}")
+        end
+      end
+
+      { "tagged" => "[Patient:] #{text}", "source" => "fallback:single_patient_turn" }
     end
 
     def calculate_pps(narrative:)
@@ -823,6 +884,12 @@ class HosalivioBrain
     Hard rules:
       - For PATIENT-SPECIFIC questions: use ONLY facts present in
         PATIENT_CONTEXT. Never speculate, never invent, never extrapolate.
+      - For VISITS and visit status: rely ONLY on each visit's explicit
+        `status` field (scheduled / in_progress / completed). Never call a
+        visit "completed" because it has a clinician name or a start time.
+        If the visits list is empty or absent, say there are no visits on
+        record yet. Do not invent visit history. Stay consistent: do not
+        assert a completion status in one reply and deny it in the next.
       - For GENERAL HOSPICE EDUCATION questions ("what is hospice?", "what
         does PPS mean?", "what should I expect at end of life?", "how
         does the Medicare hospice benefit work?"): explain in plain,
@@ -831,6 +898,9 @@ class HosalivioBrain
       - Never give clinical advice. Never recommend medication changes,
         dose changes, or new orders. Redirect to the right human (RN, MD,
         DON, hospice nurse on call).
+      - Do not tell a clinician to "ensure medications are utilized" or
+        similar. You may say to review documented symptoms, check MAR/logs,
+        assess comfort, and follow the existing plan/orders.
       - Never include the patient's full SSN, address, DOB, or other
         private identifiers in your reply, even if you have them.
       - If you don't know something, say so plainly and offer to route
@@ -838,12 +908,23 @@ class HosalivioBrain
         me to ping the RN?"
       - Stay in character as HosAlivio. Warm, calm, professional. No
         em-dashes (use commas, periods, parentheses).
+      - Do not start with meta-validation such as "You're right",
+        "I take that seriously", "I apologize", or references to prior
+        answers. Start with the useful answer.
       - Keep replies short. 1-3 sentences for simple lookups; up to 5
         for trend summaries or education. No headers, no bullet markdown
         unless explicitly asked for a list.
 
     Role-aware emphasis (REQUESTER_ROLE field):
-      rn / md / don         : full clinical detail OK
+      rn / md / don         : full clinical detail OK. If the RN asks
+                              "what can I do here?", give concrete
+                              nursing workflow steps grounded in the
+                              chart: complete/resolve open documentation
+                              blockers, assess current symptoms, document
+                              findings, update the care team/MD/DON if
+                              symptoms are uncontrolled or orders need
+                              review. Do not sound like you are ordering
+                              medication use.
       admissions / admin    : focus on operational status (visits, eval
                               certification, NOE deadlines), avoid clinical
                               recommendation framing
@@ -895,8 +976,15 @@ class HosalivioBrain
 
       2) Negation / clarification of a HosAlivio offer
          If the user is correcting or declining HosAlivio's last
-         message, acknowledge calmly and pivot to what they actually
-         need. Do not pretend the prior turn didn't happen.
+         message, do not apologize, do not discuss your previous
+         answer, and do not explain your mistake. Answer the actual
+         patient/chart question directly from PATIENT_CONTEXT. If the
+         correction is not a chart question, ask one short clarifying
+         question.
+
+      Never produce meta-commentary like "my previous reply", "I
+      incorrectly", "I apologize", or "the confusion was on my end".
+      Clinicians need the patient answer, not a postmortem.
 
     NOTIFY DIRECTIVE (optional, second top-level key):
       When the user accepts an offer to contact a specific clinician
@@ -942,10 +1030,15 @@ class HosalivioBrain
     Fields you may fill (only when the narrative supports them):
 
       general_comments:
+        narrative_summary             (brief clean summary, only if blank)
         chief_complaint              (one sentence)
         history_of_present_illness   (1-3 sentences)
+        family_caregiver_status      (brief phrase, only if discussed)
+        immediate_safety_risks       (array of strings, e.g., falls, oxygen risk, hemoptysis)
 
       diagnosis:
+        primary_terminal_diagnosis   (object with description and icd10 only if explicitly present in narrative or partial JSON; never invent an ICD-10)
+        lcd_criteria_met             (array of specific LCD-supporting criteria explicitly supported)
         related_conditions           (array of strings, conditions related to the terminal dx)
         unrelated_conditions         (array of strings, conditions NOT related)
 
@@ -954,6 +1047,9 @@ class HosalivioBrain
         supporting_documentation     (1-3 sentences citing narrative phrases that support LCD criteria)
 
       functional_decline:
+        pps                          (object with score, source "calculated", justification, only when narrative clearly supports a PPS estimate)
+        mobility                     (brief phrase)
+        adl_dependencies             (object with bathing/dressing/feeding/toileting/transferring/walking as Assist, Dependent, Independent)
         fall_history                 (one sentence)
         recent_functional_changes    (1-2 sentences)
 
@@ -975,6 +1071,8 @@ class HosalivioBrain
         infections                   (yes / no / specific finding)
 
       general:
+        advance_directives           (DNR, DNR / DNI, Full code, etc., only if stated)
+        dme_needs                    (array of DME items requested or needed)
         equipment:
           oxygen                     (in use / not in use / specific finding)
           hospital_bed               (in use / not in use)
@@ -1046,6 +1144,30 @@ class HosalivioBrain
     text verbatim in the "polished" field.
   SYS
 
+  SPEAKER_TAG_SYSTEM_PROMPT = <<~SYS.freeze
+    You are tagging a hospice admission interview transcript for review.
+    The transcript may be a flat browser transcription with no speaker
+    labels. Your job is to add bracketed speaker labels only.
+
+    Use these labels:
+      - Patient name when the patient is speaking.
+      - Family member name when a listed family member is speaking.
+      - Clinician label when the clinician/RN is asking questions,
+        explaining care, or acknowledging answers.
+
+    Rules:
+      - Preserve every word from the transcript in the same order.
+      - Do not add clinical facts, corrections, summaries, timestamps,
+        or punctuation beyond light sentence breaks if needed.
+      - Do not remove repeated words or dictation artifacts.
+      - If unsure, choose the most likely speaker from context.
+      - Start a new line whenever the speaker changes.
+      - Output ONLY JSON with key "tagged_transcript".
+
+    Example output:
+      { "tagged_transcript": "[RN:] How have you been feeling?\\n[Maria Alvarez:] I have pain in my back." }
+  SYS
+
   PPS_SYSTEM_PROMPT = <<~SYS.freeze
     You are an expert hospice RN scoring the Palliative Performance Scale (PPS).
     Evaluate ONLY the narrative evidence against the five PPS domains:
@@ -1082,7 +1204,7 @@ class HosalivioBrain
       system:     [{ type: "text", text: ANSWER_SYSTEM_PROMPT }],
       messages:   [{ role: "user", content: payload_json }]
     }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: CHAT_READ_TIMEOUT) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
@@ -1101,7 +1223,7 @@ class HosalivioBrain
         { role: "user",   content: payload_json }
       ]
     }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: CHAT_READ_TIMEOUT) { |h| h.request(req) }
     raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
     JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
   end
@@ -1174,6 +1296,42 @@ class HosalivioBrain
       ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
+
+  def self.request_speaker_tags_claude(payload_json)
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = {
+      model:      CLAUDE_MODEL,
+      max_tokens: 2500,
+      system:     [{ type: "text", text: SPEAKER_TAG_SYSTEM_PROMPT }],
+      messages:   [{ role: "user", content: payload_json }]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
+    raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  def self.request_speaker_tags_openai(payload_json)
+    uri = URI(OPENAI_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req.body = {
+      model:           OPENAI_MODEL,
+      max_tokens:      2500,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SPEAKER_TAG_SYSTEM_PROMPT },
+        { role: "user",   content: payload_json }
+      ]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
     raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
     JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
   end

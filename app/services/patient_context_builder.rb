@@ -131,11 +131,21 @@ class PatientContextBuilder
 
   def visit_summary(v)
     return nil if v.nil?
+    # Explicit, unambiguous status derived from the timestamps so HosAlivio
+    # never has to infer "completed" from the presence of a clinician name or
+    # a started_at. completed = has ended_at; in_progress = started, not ended;
+    # scheduled = neither.
+    status = if v.ended_at.present?      then "completed"
+             elsif v.started_at.present? then "in_progress"
+             else                             "scheduled"
+             end
     {
       id:           v.id,
       type:         v.visit_type,
       discipline:   v.discipline,
+      status:       status,
       clinician:    v.user&.full_name,
+      scheduled_at: v.scheduled_at&.iso8601,
       started_at:   v.started_at&.iso8601,
       ended_at:     v.ended_at&.iso8601,
       narrative:    @scope == :aide ? nil : truncate_text(v.narrative, 600),
