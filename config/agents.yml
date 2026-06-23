@@ -1,4 +1,4 @@
-# Agent capability matrix. Single source of truth for the 10
+# Agent capability matrix. Single source of truth for the 11
 # HosAlivio agents: persona name, internal role key, the skills they
 # may exercise, and the explicit cannot_do guardrails. Read by
 # AgentRegistry; enforced by AgentGuard.
@@ -182,3 +182,20 @@ agents:
       - accept_tips_or_personal_favors
     prompt_file: agents/flore_system_prompt.txt
     triage_priority: 90
+
+  - name: Marlene
+    role: lpn
+    description: "Licensed Practical Nurse"
+    skills:
+      - administer_and_log_medications_per_existing_orders
+      - perform_treatments_and_wound_care_under_rn_supervision
+      - collect_vitals_and_clinical_observations
+      - document_visit_notes_and_changes_in_condition
+      - reinforce_teaching_and_handoff_to_rn_or_md
+    cannot_do:
+      - author_or_change_medication_orders
+      - dispatch_pharmacy_deliveries
+      - perform_the_initial_assessment_or_plan_of_care
+      - speak_for_the_md_or_rn
+    prompt_file: agents/marlene_system_prompt.txt
+    triage_priority: 15
