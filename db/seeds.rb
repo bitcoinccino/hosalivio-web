@@ -39,19 +39,22 @@ puts "   #{agency.name} (#{agency.slug})"
 
 ActsAsTenant.with_tenant(agency) do
   puts "== Seeding users (one per role) =="
+  # AI agent personas are named by ROLE TITLE (not personal names) so they read
+  # clearly as the per-role agent — and don't get mistaken for real clinicians
+  # once humans are added. "System Admin" and "HosAlivio" stay as system personas.
   USERS = {
     "admin"         => { email: "admin@hosalivio.com",      name: "System Admin" },
-    "rn"            => { email: "rn@hosalivio.com",         name: "Pascal Benoit" },
-    "md"            => { email: "md@hosalivio.com",         name: "Dr. Esther Nguyen" },
-    "don"           => { email: "don@hosalivio.com",        name: "Diaphnie Casimir" },
+    "rn"            => { email: "rn@hosalivio.com",         name: "Admitting RN" },
+    "md"            => { email: "md@hosalivio.com",         name: "Medical Director" },
+    "don"           => { email: "don@hosalivio.com",        name: "Director of Nursing" },
     "admissions"    => { email: "admissions@hosalivio.com", name: "HosAlivio" },
-    "dme"           => { email: "dme@hosalivio.com",        name: "Marcus Brown" },
-    "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Simone Wallace" },
-    "insurance"     => { email: "insurance@hosalivio.com",  name: "Kendra Foster" },
-    "billing"       => { email: "billing@hosalivio.com",    name: "Wolfwide Smith" },
-    "chaplain"      => { email: "chaplain@hosalivio.com",   name: "Geoginio Rousseau" },
-    "social_worker" => { email: "sw@hosalivio.com",         name: "Nickla Paul" },
-    "aide"          => { email: "aide@hosalivio.com",       name: "Flore Dupont" }
+    "dme"           => { email: "dme@hosalivio.com",        name: "DME Coordinator" },
+    "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Pharmacy" },
+    "insurance"     => { email: "insurance@hosalivio.com",  name: "Insurance" },
+    "billing"       => { email: "billing@hosalivio.com",    name: "Billing" },
+    "chaplain"      => { email: "chaplain@hosalivio.com",   name: "Chaplain" },
+    "social_worker" => { email: "sw@hosalivio.com",         name: "Social Worker" },
+    "aide"          => { email: "aide@hosalivio.com",       name: "Home Health Aide" }
   }
 
   USERS.each do |role_name, info|
