@@ -6,7 +6,7 @@
   }
   form_data[:turbo_frame] = "_top" if local_assigns[:modal]
 %>
-<%= form_with(model: @visit, local: true, html: { class: "space-y-4", multipart: true, data: form_data }) do |f| %>
+<%= form_with(model: @visit, local: true, html: { id: "visit-edit-form", class: "space-y-4", multipart: true, data: form_data }) do |f| %>
   <%# When the visit is in :recording state (Pascal already tapped
       Start), Pascal doesn't need to look at patient/clinician/scheduled
       times again, those are already locked in. Collapse all the
@@ -397,19 +397,9 @@
         MD). Server reads params[:submit_action] in #update.
         Discard draft is a separate DELETE link — out of the form
         so it doesn't accidentally submit save+discard. %>
+    <%# Discard + Save draft moved to the three-dot menu on the patient header
+        (edit.html.erb). The green Complete-visit CTA stays here as the primary. %>
     <div class="pt-3 border-t border-[#EFECE6] flex flex-col gap-3">
-      <div class="flex items-center justify-between gap-3">
-        <%= link_to visit_path(@visit, from: "edit"),
-              data: { turbo_method: :delete,
-                      turbo_confirm: "Discard this draft? The audio + transcript will be deleted permanently." },
-              class: "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[#C1403A] hover:bg-[#FFF3EC] text-[12px] font-medium" do %>
-          <i class="ri-delete-bin-line"></i> Discard
-        <% end %>
-        <button type="submit" name="submit_action" value="draft"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] text-[12px] font-medium cursor-pointer">
-          <i class="ri-save-line"></i> Save draft
-        </button>
-      </div>
       <button type="submit" name="submit_action" value="finish"
               data-turbo-confirm="Finish this visit for <%= @visit.patient&.full_name %>? This saves your edits, stamps end time, and lands you on the chart for review."
               class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-semibold shadow-sm">
