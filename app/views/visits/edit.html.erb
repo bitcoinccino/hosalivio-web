@@ -127,7 +127,7 @@
         <%# Visit actions — three-dot menu at the far right of the header.
             Holds the secondary actions (Save draft submits the form below via
             the form= attribute; Discard deletes the draft). %>
-        <% unless @visit.completed_visit? %>
+        <% if linked_eval || !@visit.completed_visit? %>
           <div class="absolute top-3 right-3 z-20" data-controller="menu">
             <button type="button" data-action="menu#toggle"
                     class="w-8 h-8 rounded-full hover:bg-[#FBF9F5] flex items-center justify-center text-[#6B665F]"
@@ -136,19 +136,30 @@
             </button>
             <div data-menu-target="panel"
                  class="hidden absolute right-0 mt-1 w-44 rounded-xl bg-white border border-[#EFECE6] shadow-lg py-1 text-[13px] text-left">
-              <% if @visit.currently_in_progress? %>
-                <button type="submit" form="visit-edit-form" name="submit_action" value="draft"
-                        data-action="menu#close"
-                        class="w-full text-left px-4 py-2 hover:bg-[#FBF9F5] inline-flex items-center gap-2 text-[#1D1C1A]">
-                  <i class="ri-save-line text-[#6B665F]"></i> Save draft
-                </button>
+              <%# The visit page only mirrors the eval (read-only); "Open eval"
+                  goes to the eval's own page to edit / certify / file. %>
+              <% if linked_eval %>
+                <%= link_to pre_admit_eval_path(linked_eval),
+                      data: { action: "menu#close" },
+                      class: "w-full px-4 py-2 hover:bg-[#FBF9F5] inline-flex items-center gap-2 text-[#1D1C1A]" do %>
+                  <i class="ri-file-list-3-line text-[#6B665F]"></i> Open eval
+                <% end %>
               <% end %>
-              <%= link_to visit_path(@visit, from: "edit"),
-                    data: { turbo_method: :delete,
-                            turbo_confirm: "Discard this draft? The audio + transcript will be deleted permanently.",
-                            action: "menu#close" },
-                    class: "w-full px-4 py-2 hover:bg-[#FFF3EC] text-[#C1403A] inline-flex items-center gap-2" do %>
-                <i class="ri-delete-bin-line"></i> Discard
+              <% unless @visit.completed_visit? %>
+                <% if @visit.currently_in_progress? %>
+                  <button type="submit" form="visit-edit-form" name="submit_action" value="draft"
+                          data-action="menu#close"
+                          class="w-full text-left px-4 py-2 hover:bg-[#FBF9F5] inline-flex items-center gap-2 text-[#1D1C1A]">
+                    <i class="ri-save-line text-[#6B665F]"></i> Save draft
+                  </button>
+                <% end %>
+                <%= link_to visit_path(@visit, from: "edit"),
+                      data: { turbo_method: :delete,
+                              turbo_confirm: "Discard this draft? The audio + transcript will be deleted permanently.",
+                              action: "menu#close" },
+                      class: "w-full px-4 py-2 hover:bg-[#FFF3EC] text-[#C1403A] inline-flex items-center gap-2" do %>
+                  <i class="ri-delete-bin-line"></i> Discard
+                <% end %>
               <% end %>
             </div>
           </div>
