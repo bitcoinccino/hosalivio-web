@@ -105,6 +105,16 @@ class VisitsController < ApplicationController
         attrs = attrs.except(:narrative)
       end
 
+      # Recording / draft review (in_progress): the billing-identity fields are
+      # locked for everyone (even schedulers). Changing patient / clinician /
+      # role / scheduled start mid-encounter risks misfiled PHI or a broken EVV
+      # time marker. End time + location stay editable. visit_type isn't frozen
+      # here so the record wizard's type picker (its own PATCH) still works; the
+      # draft form's visit_type field is disabled in the UI.
+      if @visit.currently_in_progress?
+        attrs = attrs.except(:patient_id, :user_id, :discipline, :scheduled_at)
+      end
+
       # Visit metadata (assignment + schedule + type + location) is
       # owned by admissions/admin/DON. Performing clinicians can
       # update narrative + vitals but not the assignment. Strip

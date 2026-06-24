@@ -33,6 +33,21 @@
   <% calendar_return_path = calendar_path(date: (@visit.scheduled_at || Time.current).to_date.iso8601) %>
 
   <% metadata_block = capture do %>
+    <%
+      # During recording / draft review (in_progress) the billing-identity
+      # fields are locked: patient, clinician, visit role, scheduled start, and
+      # visit type. Changing them mid-encounter risks linking PHI to the wrong
+      # chart, breaking the EVV time marker, or rejecting on EMR sync. Only the
+      # end time and the location stay editable (clinical judgment / EVV moves).
+      lock_id  = in_progress
+      lock_cls = " disabled:bg-[#EFECE6] disabled:text-[#8A8379] disabled:cursor-not-allowed disabled:border-[#EFECE6]"
+    %>
+    <% if lock_id %>
+      <div class="mb-3 px-3 py-2 rounded-lg bg-[#FFF9F4] border border-[#F1D9C9] text-[11px] text-[#9A5A3A] flex items-start gap-1.5">
+        <i class="ri-lock-2-line mt-0.5"></i>
+        <span>Patient, clinician, role, start time, and visit type are locked during the visit. You can still adjust the <strong>end time</strong> and <strong>location</strong>.</span>
+      </div>
+    <% end %>
     <div class="<%= scheduling_new_visit ? 'rounded-2xl border border-[#D97757] bg-[#FFF9F4] p-4' : '' %>">
       <div class="flex items-center justify-between gap-3 mb-1">
         <%= f.label :patient_id, "Patient", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium" %>
@@ -45,8 +60,9 @@
             { include_blank: "Select patient..." },
             required: scheduling_new_visit,
             autofocus: scheduling_new_visit,
+            disabled: lock_id,
             data: { visit_form_target: "patient", action: "change->visit-form#patientChanged" },
-            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+            class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]#{lock_cls}" %>
       <% if scheduling_new_visit %>
         <p class="mt-1 text-[11px] text-[#6B665F]">Select who this visit is for. The calendar already filled in the clinician and time.</p>
         <p class="hidden mt-1 text-[11px] text-[#C1403A]" data-visit-form-target="patientError"></p>
@@ -63,14 +79,16 @@
                 ["#{u.full_name} (#{role})#{branch_tag}", u.id]
               },
               {},
-              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+              disabled: lock_id,
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]#{lock_cls}" %>
       </div>
       <div>
         <%= f.label :discipline, "Visit role", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
         <%= f.select :discipline,
               Visit.disciplines.keys.map { |d| [d.upcase, d] },
               {},
-              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+              disabled: lock_id,
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]#{lock_cls}" %>
       </div>
     </div>
 
@@ -79,7 +97,8 @@
         <%= f.label :scheduled_at, "Scheduled start", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
         <%= f.datetime_local_field :scheduled_at,
               value: @visit.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
-              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+              disabled: lock_id,
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]#{lock_cls}" %>
       </div>
       <div>
         <%= f.label :ended_at, "Ends around (optional)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
@@ -99,7 +118,8 @@
         <%= f.select :visit_type,
               visit_type_order.map { |vt| [Visit::VISIT_TYPE_LABELS[vt] || vt.titleize, vt] },
               {},
-              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+              disabled: lock_id,
+              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]#{lock_cls}" %>
       </div>
       <div>
         <%
