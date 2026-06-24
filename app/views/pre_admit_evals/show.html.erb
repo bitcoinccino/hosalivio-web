@@ -102,6 +102,38 @@
         <span class="inline-block text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider"
               style="background: <%= pill_bg %>; color: <%= pill_fg %>;" title="Eval status"><%= @eval.status.to_s.tr("_", " ") %></span>
 
+        <%# VITAS EMR sync chip — surfaces once the eval is certified (sync
+            fires on MD certification) or any transmission has been attempted. %>
+        <%
+          show_sync_chip = @eval.status_certified? || @eval.status_noe_filed? || !@eval.sync_not_synced?
+          sync_chip = {
+            "not_synced" => { label: "EMR: not sent", icon: "ri-cloud-off-line",     bg: "#EFECE6", border: "#D9D5CD", fg: "#6B665F" },
+            "processing" => { label: "Syncing…",  icon: "ri-loader-4-line",      bg: "#FFF7EC", border: "#E6B566", fg: "#9A6B1F" },
+            "synced"     => { label: "VITAS synced",   icon: "ri-cloud-line",         bg: "#E6F0EE", border: "#2F6F4E", fg: "#2F6F4E" },
+            "failed"     => { label: "Sync failed",    icon: "ri-error-warning-line", bg: "#FFF3EC", border: "#C1403A", fg: "#C1403A" }
+          }[@eval.sync_status.to_s]
+          last_sync = show_sync_chip ? @eval.emr_sync_logs.order(:created_at).last : nil
+          sync_title =
+            if @eval.sync_synced?
+              enc = last_sync&.external_encounter_id.presence
+              "Sent to VITAS#{enc ? " · encounter #{enc}" : ''}#{last_sync&.synchronized_at ? " · #{last_sync.synchronized_at.strftime('%-m/%-d %-l:%M %p')}" : ''}"
+            elsif @eval.sync_failed?
+              "Last VITAS transmission failed#{last_sync ? " (#{last_sync.retry_count} attempt#{'s' unless last_sync.retry_count == 1})" : ''} — retries automatically"
+            elsif @eval.sync_processing?
+              "Transmitting to VITAS…"
+            else
+              "Not yet sent to VITAS (sends automatically on MD certification)"
+            end
+        %>
+        <% if show_sync_chip && sync_chip %>
+          <span class="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider no-print"
+                style="background: <%= sync_chip[:bg] %>; color: <%= sync_chip[:fg] %>; border: 1px solid <%= sync_chip[:border] %>;"
+                title="<%= sync_title %>">
+            <i class="<%= sync_chip[:icon] %><%= ' animate-spin' if @eval.sync_processing? %>"></i>
+            <%= sync_chip[:label] %>
+          </span>
+        <% end %>
+
         <%# Overflow actions menu: Print · Route to MD · View conversation. %>
         <div class="relative" data-controller="menu dialog">
         <button type="button" data-action="menu#toggle" aria-label="Actions"
