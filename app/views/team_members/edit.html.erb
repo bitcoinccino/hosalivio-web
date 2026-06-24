@@ -1,0 +1,48 @@
+<% content_for :title, "Edit #{@member.full_name} · HosAlivio" %>
+<%
+  input_cls = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
+  label_cls = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-2xl mx-auto">
+    <a href="<%= team_members_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to team
+    </a>
+    <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm">
+      <h1 class="font-serif text-xl text-[#1D1C1A] mb-1">Edit team member</h1>
+      <div class="text-[12px] text-[#6B665F] mb-5">
+        <%= @member.role_names.map { |r| r.tr("_", " ") }.to_sentence.presence || "no role" %> ·
+        <span class="font-mono"><%= @member.email %></span>
+      </div>
+
+      <%= form_with(model: @member, url: team_member_path(@member), method: :patch, local: true, html: { class: "space-y-4" }) do |f| %>
+        <% if flash[:alert].present? %>
+          <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
+            <i class="ri-error-warning-line mr-1"></i><%= flash[:alert] %>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.label :full_name, "Full name (or role title)", class: label_cls %>
+          <%= f.text_field :full_name, required: true, class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :friendly_name, "Friendly name (optional)", class: label_cls %>
+          <%= f.text_field :friendly_name, placeholder: "e.g. Pascal Benoit", class: input_cls %>
+          <div class="text-[11px] text-[#6B665F] mt-1">Secondary label shown next to the title — handy for AI role personas.</div>
+        </div>
+        <div>
+          <%= f.label :branch_id, "Branch", class: label_cls %>
+          <%= f.collection_select :branch_id, @branches, :id, :name, { include_blank: "—" }, class: input_cls %>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <%= link_to "Cancel", team_members_path,
+                class: "text-[13px] px-4 py-2 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:bg-[#F1EEE8] transition" %>
+          <%= f.submit "Save changes",
+                class: "inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

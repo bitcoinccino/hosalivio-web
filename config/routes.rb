@@ -132,7 +132,7 @@ Rails.application.routes.draw do
   resource  :agency_features, only: [:edit, :update], controller: "agency_features"
   resource  :agency_profile,  only: [:edit, :update], controller: "agency_profile"
   resources :branches, only: [:index, :new, :create, :edit, :update, :destroy]
-  resources :team_members, only: [:index, :new, :create, :destroy] do
+  resources :team_members, only: [:index, :new, :create, :edit, :update, :destroy] do
     member { post :reactivate }
   end
 

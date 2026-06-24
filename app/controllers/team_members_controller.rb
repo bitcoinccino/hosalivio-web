@@ -1,7 +1,7 @@
 class TeamMembersController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_team_manager!
-  before_action :set_member, only: [:destroy, :reactivate]
+  before_action :set_member, only: [:edit, :update, :destroy, :reactivate]
 
   CLINICAL_ROLES = %w[rn lpn md don sw social_worker chaplain aide admissions insurance billing dme pharmacy].freeze
   DEFAULT_PASSWORD = "hello123".freeze
@@ -59,6 +59,20 @@ class TeamMembersController < ApplicationController
     end
   end
 
+  def edit
+    @branches = Branch.where(agency: current_user.agency, active: true).order(:name)
+  end
+
+  def update
+    if @member.update(member_params)
+      redirect_to team_members_path, status: :see_other, notice: "Updated #{@member.full_name}."
+    else
+      @branches = Branch.where(agency: current_user.agency, active: true).order(:name)
+      flash.now[:alert] = @member.errors.full_messages.to_sentence
+      render :edit, status: :unprocessable_entity
+    end
+  end
+
   def destroy
     if @member == current_user
       redirect_to team_members_path, status: :see_other, alert: "You can't deactivate yourself." and return
@@ -88,7 +102,7 @@ class TeamMembersController < ApplicationController
 
   def member_params
     params.require(:user).permit(
-      :full_name, :email, :timezone, :branch_id,
+      :full_name, :friendly_name, :email, :timezone, :branch_id,
       :phone_number, :npi, :license_number, :license_expires_on,
       :employment_type, :max_caseload, :on_call,
       :service_zips

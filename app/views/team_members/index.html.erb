@@ -115,6 +115,9 @@
                   <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
                       <span class="text-[13px] text-[#1D1C1A]"><%= m.full_name %></span>
+                      <% if m.friendly_name.present? %>
+                        <span class="text-[12px] text-[#6B665F]">· <%= m.friendly_name %></span>
+                      <% end %>
                       <% if m.on_call %>
                         <span class="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#2B4A7A] text-white">
                           <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> on-call
@@ -155,6 +158,9 @@
                     <% end %>
                   </td>
                   <td class="px-4 py-3 text-right">
+                    <div class="inline-flex items-center gap-2 justify-end">
+                    <%= link_to "Edit", edit_team_member_path(m),
+                          class: "text-[11px] px-3 py-1 rounded-full border border-[#D9D5CD] text-[#2B4A7A] hover:bg-[#F0F4FA]" %>
                     <% if m == current_user %>
                       <span class="text-[10px] text-[#6B665F]">(you)</span>
                     <% elsif m.active %>
@@ -169,6 +175,7 @@
                         Reactivate
                       <% end %>
                     <% end %>
+                    </div>
                   </td>
                 </tr>
               <% end %>
