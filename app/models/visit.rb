@@ -101,7 +101,12 @@ class Visit < ApplicationRecord
   belongs_to :patient
   belongs_to :user  # clinician who visited
   belongs_to :created_by_user, class_name: "User", optional: true # whoever scheduled it (admin, admissions, RN one-tap, AI agent)
-  has_one    :pre_admit_eval, dependent: :nullify
+  has_one    :pre_admit_eval
+  # has_one's dependent: :nullify only unlinks ONE row. A rare duplicate draft
+  # eval for the same visit left a straggler that blocked deletion with a FK
+  # violation, so unlink ALL linked evals defensively before destroy. Drafts
+  # stay reclaimable by the patient's next admission visit (visit_id -> NULL).
+  before_destroy { PreAdmitEval.where(visit_id: id).update_all(visit_id: nil) }
 
   # Polymorphic audit rows from Signatures::Apply. For non-admission
   # visits we stamp a `rn_visit_signoff` row when the RN signs the
