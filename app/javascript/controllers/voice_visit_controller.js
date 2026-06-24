@@ -556,6 +556,15 @@ export default class extends Controller {
     fd.append("visit[audio_note]", file, file.name)
     fd.append("_method",           "patch")
 
+    // Per-turn audio timing (Deepgram only — Web Speech has none) so the
+    // transcript sidebar can seek the recording to a specific speaker turn.
+    if (this._asr && typeof this._asr.segments === "function") {
+      const segs = this._asr.segments()
+      if (Array.isArray(segs) && segs.length > 0) {
+        fd.append("visit[transcript_segments]", JSON.stringify(segs))
+      }
+    }
+
     fetch(this.updateUrlValue, {
       method:  "POST",
       headers: {

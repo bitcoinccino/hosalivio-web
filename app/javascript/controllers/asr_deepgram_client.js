@@ -24,6 +24,10 @@ export default class AsrDeepgramClient {
     this._open        = false
     this._finalText   = ""
     this._lastSpeaker = null
+    // Timed segments aligned 1:1 with the [Speaker:] turns we emit into
+    // _finalText, so the saved transcript and the timing array stay in the
+    // same order for per-turn audio seek. Shape: { speaker, start, end }.
+    this._segments    = []
     // Speaker label mapping is built lazily as new speaker indices
     // appear. Each new index claims the next slot in the roster
     // (typically [RN, Patient, Family member 1, ...]). Past the end
@@ -117,6 +121,7 @@ export default class AsrDeepgramClient {
 
     if (isFinal) {
       this._finalText += (this._finalText.length > 0 ? "\n" : "") + tagged
+      this._collectSegments(words)
       this.onTranscript({ kind: "final", text: this._finalText, latest: tagged, speechFinal })
     } else {
       this.onTranscript({ kind: "interim", text: this._finalText, latest: tagged, speechFinal: false })
@@ -132,7 +137,29 @@ export default class AsrDeepgramClient {
     return label
   }
 
+  // Group a final result's words into timed { speaker, start, end } segments —
+  // one per consecutive run of the same speaker, matching the [Speaker:] turn
+  // breaks _handleMessage writes into _finalText.
+  _collectSegments(words) {
+    let cur = null
+    for (const w of words) {
+      if (typeof w.start !== "number") continue
+      const sp = (typeof w.speaker === "number") ? w.speaker : 0
+      if (!cur || sp !== cur.sp) {
+        if (cur) this._segments.push({ speaker: cur.label, start: cur.start, end: cur.end })
+        cur = { sp, label: this._labelFor(sp), start: w.start, end: w.end }
+      } else {
+        cur.end = w.end
+      }
+    }
+    if (cur) this._segments.push({ speaker: cur.label, start: cur.start, end: cur.end })
+  }
+
   finalText() {
     return this._finalText
+  }
+
+  segments() {
+    return this._segments
   }
 }

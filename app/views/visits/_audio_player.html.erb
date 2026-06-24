@@ -3,7 +3,7 @@
     audio-speed Stimulus controller. Locals: src (required), audio_class. %>
 <div data-controller="audio-speed" class="flex items-center gap-2 flex-wrap w-full">
   <%= audio_tag src, controls: true,
-        data: { audio_speed_target: "audio" },
+        data: { audio_speed_target: "audio", visit_audio: "" },
         class: local_assigns.fetch(:audio_class, "flex-1 min-w-[220px] h-9") %>
   <div class="flex items-center gap-1 no-print" role="group" aria-label="Playback speed">
     <% [0.75, 1, 1.5, 2].each do |r| %>

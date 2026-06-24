@@ -772,7 +772,7 @@ class VisitsController < ApplicationController
       :service_location, :facility_name,
       :interviewee, :interviewee_label,
       :narrative, :pain_score, :billable, :visit_code,
-      :audio_note,
+      :audio_note, :transcript_segments,
       vitals: [:bp, :temp, :pulse, :resp, :o2]
     )
   end

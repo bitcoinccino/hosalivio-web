@@ -88,6 +88,7 @@ export default class extends Controller {
       const cached = this.transcriptTarget.dataset.transcriptText
       this._originalText = (cached != null ? cached : this.transcriptTarget.textContent) || ""
       this._roster = this._parseRoster()
+      this._segments = this._parseSegments()
       this._turns = this._parseTurns(this._originalText)
       this._render()
       this._applyVisibility()
@@ -246,6 +247,46 @@ export default class extends Controller {
     }
   }
 
+  // Per-turn audio timing from Deepgram: [{ speaker, start, end }], in the same
+  // order as the [Speaker:] turns. Empty when the recording had no diarized
+  // timing (Web Speech, imported/seeded, or pre-feature visits).
+  _parseSegments() {
+    try {
+      const raw = this.transcriptTarget.dataset.segments
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed.filter(s => s && typeof s.start === "number") : []
+    } catch (_e) {
+      return []
+    }
+  }
+
+  // Seek the bedside audio to a turn's start and play until its end. Finds the
+  // shared <audio> by its data marker so the transcript stays decoupled from
+  // the player partial.
+  _playSegment(start, end) {
+    const audio = document.querySelector("[data-visit-audio]")
+    if (!audio) return
+    if (this._segStopper) audio.removeEventListener("timeupdate", this._segStopper)
+    try { audio.currentTime = start } catch (_e) { /* not yet seekable */ }
+    if (typeof end === "number") {
+      this._segStopper = () => {
+        if (audio.currentTime >= end) {
+          audio.pause()
+          audio.removeEventListener("timeupdate", this._segStopper)
+          this._segStopper = null
+        }
+      }
+      audio.addEventListener("timeupdate", this._segStopper)
+    }
+    audio.play().catch(() => {})
+  }
+
+  _fmtTime(s) {
+    const m = Math.floor(s / 60)
+    const sec = Math.floor(s % 60)
+    return `${m}:${String(sec).padStart(2, "0")}`
+  }
+
   // Resolve a [Speaker:] tag to a roster entry (name/title/photo/color).
   _identityFor(name) {
     const normalized = String(name || "").toLowerCase().trim()
@@ -276,7 +317,12 @@ export default class extends Controller {
       return c
     }
 
+    let segIdx = 0
     for (const turn of this._turns) {
+      // Segments align with named [Speaker:] turns in order; a leading
+      // untagged block (rare) has no timing and doesn't advance the index.
+      const seg = turn.name ? this._segments[segIdx] : null
+      if (turn.name) segIdx++
       const tint     = ROLE_TINTS[turn.role] || ROLE_TINTS.other
       const identity = this._identityFor(turn.name)
       const color    = (identity && identity.color) || colorFor(turn.name, turn.role)
@@ -327,6 +373,24 @@ export default class extends Controller {
           titleEl.className = "text-[8px] uppercase tracking-widest text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-1.5 py-0.5"
           titleEl.style.fontStyle = "normal"
           header.appendChild(titleEl)
+        }
+
+        // Per-turn audio: a ▶ that seeks the bedside recording to this turn.
+        if (seg && typeof seg.start === "number") {
+          container.dataset.start = String(seg.start)
+          if (typeof seg.end === "number") container.dataset.end = String(seg.end)
+          const play = document.createElement("button")
+          play.type = "button"
+          play.title = `Play from ${this._fmtTime(seg.start)}`
+          play.setAttribute("aria-label", "Play this turn from the recording")
+          play.className = "ml-auto flex-shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center text-[#6B665F] border border-[#D9D5CD] hover:text-white hover:bg-[#1D1C1A] transition no-print"
+          play.innerHTML = '<i class="ri-play-fill" style="font-size:12px"></i>'
+          play.addEventListener("click", (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            this._playSegment(seg.start, typeof seg.end === "number" ? seg.end : null)
+          })
+          header.appendChild(play)
         }
 
         container.appendChild(header)

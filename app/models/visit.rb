@@ -97,6 +97,19 @@ class Visit < ApplicationRecord
     INTERVIEWEE_LABELS[interviewee.to_s] || interviewee.presence
   end
 
+  # Per-turn audio timing from Deepgram: [{ "speaker"=>, "start"=>, "end"=> }].
+  # The recorder posts it as a JSON string in the multipart finalize PATCH, so
+  # coerce strings into an array before the jsonb column stores them.
+  def transcript_segments=(val)
+    val = (JSON.parse(val) rescue []) if val.is_a?(String)
+    super(val.is_a?(Array) ? val : [])
+  end
+
+  # True once we have at least one timed segment with a numeric start.
+  def transcript_segments?
+    Array(transcript_segments).any? { |s| s.is_a?(Hash) && s["start"].is_a?(Numeric) }
+  end
+
   belongs_to :agency
   belongs_to :patient
   belongs_to :user  # clinician who visited

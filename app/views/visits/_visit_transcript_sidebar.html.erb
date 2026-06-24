@@ -82,6 +82,7 @@
       <div data-narrative-link-target="transcript"
            data-transcript-text="<%= text %>"
            data-roster="<%= visit_speaker_roster(visit).to_json %>"
+           data-segments="<%= visit.transcript_segments.to_json %>"
            class="font-serif italic text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap"><%= text %></div>
     <% else %>
       <div class="text-[12px] text-[#6B665F] italic text-center py-6">
