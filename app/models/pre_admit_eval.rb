@@ -16,6 +16,15 @@ class PreAdmitEval < ApplicationRecord
     revoked:   4
   }, prefix: true, validate: true
 
+  # Outbound EMR transmission lifecycle (mirrors the latest EmrSyncLog).
+  #   not_synced → processing → synced | failed
+  enum :sync_status, {
+    not_synced: 0,
+    processing: 1,
+    synced:     2,
+    failed:     3
+  }, prefix: :sync, validate: true
+
   belongs_to :agency
   belongs_to :patient
   belongs_to :visit,        optional: true
@@ -31,6 +40,9 @@ class PreAdmitEval < ApplicationRecord
   # rows surface as a banner on the visit edit page; closed rows
   # stay around for the audit trail.
   has_many :revision_requests, class_name: "EvalRevisionRequest", dependent: :destroy
+
+  # Outbound EMR push receipts (VITAS portal, etc.)
+  has_many :emr_sync_logs, dependent: :destroy
 
   validates :raw_json, presence: true
   validates :evaluator_name, presence: true, if: -> { status_final? || status_certified? || status_noe_filed? }
@@ -121,6 +133,53 @@ class PreAdmitEval < ApplicationRecord
   def headline
     dx = primary_icd10_description.presence || primary_icd10.presence || "diagnosis pending"
     "Pre-admit: #{patient.full_name} · #{dx}"
+  end
+
+  # ── External EMR push (VITAS) ───────────────────────────────────
+
+  # Builds the outbound payload for the external EMR gateway. Shaped loosely
+  # on a FHIR Encounter; the full clinical detail rides in raw_json (the
+  # structured eval we already produce). Pure read — no side effects.
+  def compile_vitas_payload
+    {
+      resource_type:      "Encounter",
+      provider_eval_id:   id,
+      tenant_provider_id: agency_id,
+      generated_at:       Time.current.iso8601,
+      patient: {
+        mrn:  patient&.mrn,
+        name: patient&.full_name,
+        dob:  patient&.try(:dob)&.iso8601
+      },
+      encounter: {
+        visit_id:          visit_id,
+        visit_type:        visit&.visit_type,
+        date_of_service:   (evaluated_at || created_at)&.iso8601,
+        clinician_name:    evaluator_name,
+        clinician_role:    evaluator_role,
+        clinician_license: evaluator_license
+      },
+      eligibility: {
+        primary_diagnosis: {
+          icd10:       primary_icd10,
+          description: primary_icd10_description
+        },
+        lcd_criteria_supported: lcd_criteria_supported,
+        certified_at:           certified_at&.iso8601,
+        certified_by:           certified_by&.full_name
+      },
+      clinical_detail: raw_json,
+      status:          status
+    }
+  end
+
+  # Fire-and-forget push to the external EMR. No-ops unless the VITAS gateway
+  # is configured (env), so it's safe to call from the certify flow today and
+  # starts transmitting the moment credentials are set.
+  def enqueue_emr_sync
+    return false unless VitasEmrSyncJob.configured?
+    VitasEmrSyncJob.perform_later(id)
+    true
   end
 
   private

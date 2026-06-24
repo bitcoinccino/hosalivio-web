@@ -196,6 +196,10 @@ class PreAdmitEvalsController < ApplicationController
     # Telegram / SMS / email ping if those channels are enabled.
     notify_admission_rn_of_certification(@eval.reload)
 
+    # Push the now-certified eval to the external EMR (VITAS portal).
+    # Dormant until the gateway is configured; safe no-op otherwise.
+    @eval.enqueue_emr_sync
+
     flash[:notice] = "Certification signed. Routed to Insurance for NOE filing."
     redirect_to pre_admit_eval_path(@eval)
   end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_030000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -199,6 +199,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_020000) do
     t.index ["agency_id", "patient_id", "status"], name: "index_dme_orders_on_agency_id_and_patient_id_and_status"
     t.index ["agency_id"], name: "index_dme_orders_on_agency_id"
     t.index ["patient_id"], name: "index_dme_orders_on_patient_id"
+  end
+
+  create_table "emr_sync_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.datetime "created_at", null: false
+    t.string "external_encounter_id"
+    t.jsonb "payload_sent"
+    t.uuid "pre_admit_eval_id", null: false
+    t.jsonb "response_received"
+    t.integer "retry_count", default: 0, null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "synchronized_at"
+    t.string "target_system", default: "VITAS_PORTAL", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id"], name: "index_emr_sync_logs_on_agency_id"
+    t.index ["pre_admit_eval_id", "target_system"], name: "idx_one_sync_log_per_eval_target", unique: true
+    t.index ["pre_admit_eval_id"], name: "index_emr_sync_logs_on_pre_admit_eval_id"
   end
 
   create_table "eval_revision_requests", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -468,6 +485,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_020000) do
     t.string "primary_icd10_description"
     t.jsonb "raw_json", default: {}, null: false
     t.integer "status", default: 0, null: false
+    t.integer "sync_status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.uuid "visit_id"
     t.index ["agency_id"], name: "index_pre_admit_evals_on_agency_id"
@@ -624,6 +642,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_020000) do
   add_foreign_key "consent_forms", "patients"
   add_foreign_key "dme_orders", "agencies"
   add_foreign_key "dme_orders", "patients"
+  add_foreign_key "emr_sync_logs", "agencies"
+  add_foreign_key "emr_sync_logs", "pre_admit_evals"
   add_foreign_key "eval_revision_requests", "pre_admit_evals"
   add_foreign_key "inquiries", "agencies"
   add_foreign_key "inquiries", "patients", column: "converted_patient_id"
