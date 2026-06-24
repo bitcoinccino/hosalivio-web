@@ -145,8 +145,13 @@ class VisitsController < ApplicationController
           return
         end
 
+        # Stay on the visit workspace after a Save (changes / draft / vitals)
+        # so the clinician sees their saved edit in context instead of being
+        # bounced to the calendar. Cancel is the deliberate "leave" path
+        # (it goes to the calendar); create still lands on the calendar since
+        # scheduling a new visit naturally returns there.
         respond_to do |format|
-          format.html { redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date), status: :see_other, notice: "Visit updated." }
+          format.html { redirect_to edit_visit_path(@visit), status: :see_other, notice: "Visit updated." }
           format.json { head :ok }
         end
       else
