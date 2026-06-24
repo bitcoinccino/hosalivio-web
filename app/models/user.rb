@@ -173,6 +173,12 @@ class User < ApplicationRecord
   def has_role?(name) = roles.exists?(name: name.to_s)
   def role_names      = roles.pluck(:name)
 
+  # Role title (full_name) with the optional friendly name appended, e.g.
+  # "Admitting RN · Pascal Benoit". Falls back to just the title.
+  def display_name
+    friendly_name.present? ? "#{full_name} · #{friendly_name}" : full_name
+  end
+
   # --- Compliance helpers -------------------------------------------------
   def license_expired? = license_expires_on && license_expires_on < Date.current
   def license_expiring_soon?(within: 60)

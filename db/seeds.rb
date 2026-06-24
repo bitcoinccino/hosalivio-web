@@ -42,24 +42,28 @@ ActsAsTenant.with_tenant(agency) do
   # AI agent personas are named by ROLE TITLE (not personal names) so they read
   # clearly as the per-role agent — and don't get mistaken for real clinicians
   # once humans are added. "System Admin" and "HosAlivio" stay as system personas.
+  # `name` is the primary ROLE TITLE (full_name); `friendly` is the optional
+  # personal name shown as a secondary label. System personas (admin,
+  # admissions) have no friendly name.
   USERS = {
     "admin"         => { email: "admin@hosalivio.com",      name: "System Admin" },
-    "rn"            => { email: "rn@hosalivio.com",         name: "Admitting RN" },
-    "md"            => { email: "md@hosalivio.com",         name: "Medical Director" },
-    "don"           => { email: "don@hosalivio.com",        name: "Director of Nursing" },
+    "rn"            => { email: "rn@hosalivio.com",         name: "Admitting RN",        friendly: "Pascal Benoit" },
+    "md"            => { email: "md@hosalivio.com",         name: "Medical Director",    friendly: "Dr. Esther Nguyen" },
+    "don"           => { email: "don@hosalivio.com",        name: "Director of Nursing", friendly: "Diaphnie Casimir" },
     "admissions"    => { email: "admissions@hosalivio.com", name: "HosAlivio" },
-    "dme"           => { email: "dme@hosalivio.com",        name: "DME Coordinator" },
-    "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Pharmacy" },
-    "insurance"     => { email: "insurance@hosalivio.com",  name: "Insurance" },
-    "billing"       => { email: "billing@hosalivio.com",    name: "Billing" },
-    "chaplain"      => { email: "chaplain@hosalivio.com",   name: "Chaplain" },
-    "social_worker" => { email: "sw@hosalivio.com",         name: "Social Worker" },
-    "aide"          => { email: "aide@hosalivio.com",       name: "Home Health Aide" }
+    "dme"           => { email: "dme@hosalivio.com",        name: "DME Coordinator",     friendly: "Marcus Brown" },
+    "pharmacy"      => { email: "pharmacy@hosalivio.com",   name: "Pharmacy",            friendly: "Simone Wallace" },
+    "insurance"     => { email: "insurance@hosalivio.com",  name: "Insurance",           friendly: "Kendra Foster" },
+    "billing"       => { email: "billing@hosalivio.com",    name: "Billing",             friendly: "Wolfwide Smith" },
+    "chaplain"      => { email: "chaplain@hosalivio.com",   name: "Chaplain",            friendly: "Geoginio Rousseau" },
+    "social_worker" => { email: "sw@hosalivio.com",         name: "Social Worker",       friendly: "Nickla Paul" },
+    "aide"          => { email: "aide@hosalivio.com",       name: "Home Health Aide",    friendly: "Flore Dupont" }
   }
 
   USERS.each do |role_name, info|
     u = User.find_or_initialize_by(email: info[:email])
-    u.full_name = info[:name]
+    u.full_name     = info[:name]
+    u.friendly_name = info[:friendly]
     u.agency    = agency
     u.password  = "hello123"
     u.save!
