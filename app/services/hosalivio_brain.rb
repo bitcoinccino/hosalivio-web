@@ -201,6 +201,27 @@ class HosalivioBrain
       nil
     end
 
+    # Short care-team handoff summary (1-3 lines) from a polished visit note.
+    # Returns { "summary" => String, "source" => "provider:model" } or nil.
+    # Same Claude -> OpenAI -> nil fallback chain as polish_narrative.
+    def summarize_for_team(narrative:)
+      text = narrative.to_s.strip
+      return nil if text.empty?
+      PROVIDER_CHAIN.each do |provider|
+        next unless provider_enabled?(provider)
+        begin
+          raw     = (provider == :claude) ? request_summary_claude(text) : request_summary_openai(text)
+          parsed  = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
+          summary = parsed["summary"].to_s.strip.gsub(/[–—]/, ", ")
+          next if summary.empty?
+          return { "summary" => summary, "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}" }
+        rescue => e
+          Rails.logger.warn("[HosalivioBrain.summarize_for_team:#{provider}] #{e.class}: #{e.message}")
+        end
+      end
+      nil
+    end
+
     def tag_speaker_turns(raw_text, patient_name:, clinician_label:, family_names: [])
       text = raw_text.to_s.strip
       return nil if text.empty?
@@ -1102,6 +1123,20 @@ class HosalivioBrain
       { "deltas": { "<section>": { "<field>": <value>, ... }, ... } }
   SYS
 
+  TEAM_SUMMARY_SYSTEM_PROMPT = <<~SYS.freeze
+    You are HosAlivio. Read a hospice RN's visit note and write a SHORT
+    care-team handoff summary: at most 3 short lines, plain clinical English.
+    Cover, in this order, only what the note actually supports:
+      1. Status, how the patient is right now.
+      2. Key findings, the most important symptoms or changes.
+      3. What's next, follow-ups, orders needed, or who to loop in.
+    Ground every statement in the note. Do not invent vitals, doses, diagnoses,
+    or plans. No greetings, no restating the whole note, no em-dashes (use
+    commas and periods). If the note is too thin to summarize, return one line
+    stating what is documented.
+    Output ONLY JSON: { "summary": "<the 1-3 line summary>" }
+  SYS
+
   POLISH_SYSTEM_PROMPT = <<~SYS.freeze
     You are a clinical scribe polishing an RN's voice-dictated visit
     narrative for the medical record. Your job is FORMAT, not content.
@@ -1296,6 +1331,42 @@ class HosalivioBrain
       ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
+    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
+
+  def self.request_summary_claude(text)
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = {
+      model:      CLAUDE_MODEL,
+      max_tokens: 300,
+      system:     [{ type: "text", text: TEAM_SUMMARY_SYSTEM_PROMPT }],
+      messages:   [{ role: "user", content: "Visit note:\n#{text}" }]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
+    raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  def self.request_summary_openai(text)
+    uri = URI(OPENAI_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req.body = {
+      model:           OPENAI_MODEL,
+      max_tokens:      300,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: TEAM_SUMMARY_SYSTEM_PROMPT },
+        { role: "user",   content: "Visit note:\n#{text}" }
+      ]
+    }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
     raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
     JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
   end

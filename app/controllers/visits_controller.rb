@@ -1,7 +1,7 @@
 class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
-  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note]
+  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -193,6 +193,14 @@ class VisitsController < ApplicationController
           happened_at: Time.current,
           change_set:  { source: polish["source"], chars_in: raw.length, chars_out: polish["polished"].length }
         )
+      end
+    end
+
+    # Care-team handoff summary (1-3 lines) from the polished note, shown on
+    # the Team tab. Best-effort; a miss here never blocks finishing the visit.
+    if @visit.team_summary.blank? && @visit.narrative.to_s.strip.present?
+      if (sum = HosalivioBrain.summarize_for_team(narrative: @visit.narrative))
+        @visit.update!(team_summary: sum["summary"])
       end
     end
 
@@ -571,6 +579,22 @@ class VisitsController < ApplicationController
       end
     end
     redirect_to dashboard_path
+  end
+
+  # POST /visits/:id/regenerate_summary — (re)generate the care-team handoff
+  # summary from the current narrative. Used by the "Regenerate" button on the
+  # Team tab after the RN edits the note.
+  def regenerate_summary
+    if @visit.narrative.to_s.strip.blank?
+      redirect_to(edit_visit_path(@visit), status: :see_other, alert: "Nothing to summarize yet.") and return
+    end
+    sum = HosalivioBrain.summarize_for_team(narrative: @visit.narrative)
+    if sum
+      @visit.update!(team_summary: sum["summary"])
+      redirect_to edit_visit_path(@visit, tab: "team"), status: :see_other, notice: "Care-team summary updated."
+    else
+      redirect_to edit_visit_path(@visit, tab: "team"), status: :see_other, alert: "Couldn't generate a summary just now. Try again."
+    end
   end
 
   private

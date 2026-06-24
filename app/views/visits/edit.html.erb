@@ -610,6 +610,26 @@
           </div>
 
           <div data-note-tabs-target="pane" data-note-tabs-pane="team" data-narrative-link-target="source" class="hidden">
+            <%# AI care-team handoff summary (1-3 lines): status, key findings,
+                what's next. Generated on finish; regenerate after editing. %>
+            <div class="rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] p-4 mb-4">
+              <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <div class="text-[10px] uppercase tracking-[0.2em] text-[#6B665F] font-bold inline-flex items-center gap-1.5">
+                  <i class="ri-sparkling-2-line text-[#D97757]"></i> Care-team summary
+                </div>
+                <%= button_to regenerate_summary_visit_path(@visit),
+                      method: :post,
+                      class: "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border border-[#EFECE6] text-[#6B665F] hover:text-[#1D1C1A] hover:bg-white transition" do %>
+                  <i class="ri-refresh-line"></i> <%= @visit.team_summary.present? ? "Regenerate" : "Generate" %>
+                <% end %>
+              </div>
+              <% if @visit.team_summary.present? %>
+                <p class="text-[13px] text-[#1D1C1A] leading-relaxed whitespace-pre-line"><%= @visit.team_summary %></p>
+              <% else %>
+                <p class="text-[12px] text-[#6B665F] italic">No summary yet, it's generated when you finish the visit, or tap Generate.</p>
+              <% end %>
+            </div>
+
             <% if has_team_narrative %>
               <%
                 team_locked     = @visit.chart_locked? ? true : false

@@ -91,6 +91,7 @@ Rails.application.routes.draw do
       post :discard
       post :route_to_md
       post :sign_note
+      post :regenerate_summary
     end
   end
 
