@@ -17,9 +17,15 @@ require "uri"
 class VitasEmrSyncJob < ApplicationJob
   queue_as :default
 
+  MAX_ATTEMPTS = 3
+
   # Network blips back off and retry; a non-2xx / unacknowledged response
-  # raises SyncFailed, which rides the same curve.
-  retry_on StandardError, wait: :polynomially_longer, attempts: 3
+  # raises SyncFailed, which rides the same curve. Once the attempts are
+  # exhausted, push the failure at admin / DON so it can't sit unnoticed on
+  # the eval page (see #notify_persistent_failure).
+  retry_on StandardError, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
+    job.notify_persistent_failure(error)
+  end
 
   class SyncFailed < StandardError; end
 
@@ -68,6 +74,43 @@ class VitasEmrSyncJob < ApplicationJob
               "VITAS EMR sync failed: HTTP #{response.code} — #{response.body.to_s.truncate(300)}"
       end
     end
+  end
+
+  # Runs once ActiveJob exhausts its retries. The eval + log are already
+  # marked "failed" in #perform; here we notify the people who can actually
+  # fix it — admin / DON — through the standard Notification → OutboundPing
+  # pipeline (Telegram / SMS / email), so a persistent EMR failure surfaces
+  # proactively instead of waiting for someone to open the eval.
+  #
+  # Public because the retry_on exhaustion block calls it as
+  # `job.notify_persistent_failure(error)`.
+  def notify_persistent_failure(error)
+    eval_rec = PreAdmitEval.unscoped.find_by(id: arguments.first)
+    return unless eval_rec
+
+    ActsAsTenant.with_tenant(eval_rec.agency) do
+      eval_rec.update!(sync_status: :failed) unless eval_rec.sync_failed?
+
+      recipients = User.joins(:roles).where(roles: { name: %w[admin don] }).distinct
+      recipients.find_each do |user|
+        # One open alert per eval — don't re-ping admin/DON on every manual
+        # retry. A fresh failure after they've cleared the last one re-notifies.
+        next if Notification.where(user: user, kind: "emr_sync_failed",
+                                   linked: eval_rec, read_at: nil).exists?
+        Notification.create!(
+          agency: eval_rec.agency,
+          user:   user,
+          kind:   "emr_sync_failed",
+          title:  "VITAS sync failed for #{eval_rec.patient&.full_name}",
+          body:   "The certified pre-admit eval couldn't reach VITAS after " \
+                  "#{MAX_ATTEMPTS} attempts. Open the eval to retry, or check the " \
+                  "gateway credentials. (#{error.class}: #{error.message.to_s.truncate(140)})",
+          linked: eval_rec
+        )
+      end
+    end
+  rescue => e
+    Rails.logger.error("[VitasEmrSyncJob] failure-notify error: #{e.class}: #{e.message}")
   end
 
   private
