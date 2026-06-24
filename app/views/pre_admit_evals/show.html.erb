@@ -292,13 +292,21 @@
     <%# Certification blockers — always visible while editable, with a
         cleared/total progress and one-tap resolution for the two
         attestations. Green "ready" state when nothing is left. %>
-    <% if @eval.status_draft? %>
+    <% if @eval.status_draft? || (@eval.status_final? && blockers.any?) %>
       <% if blockers.any? %>
         <div class="mb-4 rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4">
           <div class="flex items-center justify-between gap-2 mb-3">
             <div class="text-[11px] uppercase tracking-widest text-[#C1403A] font-bold">Certification blockers</div>
             <span class="text-[10px] uppercase tracking-widest text-[#C1403A] font-bold bg-white border border-[#D97757] rounded-full px-2 py-0.5"><%= cleared %> of 4 cleared · <%= blockers.size %> left</span>
           </div>
+          <% if @eval.status_final? %>
+            <%# Routed-but-not-certifiable: the RN routed with open blockers, so
+                surface why the MD can't certify yet (this section is otherwise
+                draft-only). %>
+            <div class="text-[12px] text-[#1D1C1A] mb-3 -mt-1">
+              Routed to the MD, but it <strong>can't be certified</strong> until these clear. Resolve them here and it's ready to sign.
+            </div>
+          <% end %>
           <ul class="space-y-2">
             <% blockers.each do |b| %>
               <li class="flex items-center justify-between gap-3 text-[13px] text-[#1D1C1A]">
