@@ -85,7 +85,14 @@
           <div class="text-xs text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
         </div>
       </div>
-      <div id="cable-status" class="font-mono text-xs text-[#6B665F]">connecting…</div>
+      <div class="flex items-center gap-3">
+        <% if (current_user.role_names & %w[admin don admissions]).any? %>
+          <%= link_to new_patient_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
+            <i class="ri-user-add-line"></i> New patient
+          <% end %>
+        <% end %>
+        <div id="cable-status" class="font-mono text-xs text-[#6B665F]">connecting…</div>
+      </div>
     </header>
 
     <div class="flex-1 flex flex-col overflow-hidden">
