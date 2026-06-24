@@ -57,10 +57,12 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
-  # Run background jobs in-process for development. Removes the need for a
-  # separate `bin/jobs` worker terminal and means HosalivioTriageJob fires
-  # immediately when a family message lands. SolidQueue is used in production.
-  config.active_job.queue_adapter = :inline
+  # Run background jobs on an in-process async thread pool in development.
+  # Removes the need for a separate `bin/jobs` worker terminal, and unlike
+  # :inline it does NOT block the web request — so HosalivioTriageJob and the
+  # clinician-message response job fire right after a message posts instead of
+  # holding up the response. SolidQueue is used in production.
+  config.active_job.queue_adapter = :async
 
   # Highlight code that triggered redirect in logs.
   config.action_dispatch.verbose_redirect_logs = true
