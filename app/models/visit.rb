@@ -90,6 +90,13 @@ class Visit < ApplicationRecord
     service_location_home?
   end
 
+  # Who the RN interviewed during the visit (captured in the record wizard).
+  INTERVIEWEE_LABELS = { "patient" => "the patient", "family" => "the family",
+                         "both" => "patient and family" }.freeze
+  def interviewee_display
+    INTERVIEWEE_LABELS[interviewee.to_s] || interviewee.presence
+  end
+
   belongs_to :agency
   belongs_to :patient
   belongs_to :user  # clinician who visited

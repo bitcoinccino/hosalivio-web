@@ -33,7 +33,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["timer", "status", "canvas", "transcript",
                     "recordButton", "recordIcon", "pauseButton", "stopButton",
-                    "consentPanel", "typePickerPanel", "stage",
+                    "consentPanel", "typePickerPanel", "interviewPanel", "stage",
                     "langButton", "langFlag", "langLabel", "langMenu", "syncLangCheckbox",
                     "speakerPills", "soloButton",
                     "asrBadge", "asrDot", "asrMode",
@@ -92,7 +92,7 @@ export default class extends Controller {
       this.typePickerPanelTarget.classList.remove("hidden")
       this.typePickerPanelTarget.classList.add("flex")
     } else {
-      this._revealStage()
+      this._showInterview()
     }
   }
 
@@ -119,9 +119,46 @@ export default class extends Controller {
       body: fd
     }).then(() => {
       if (this.hasTypePickerPanelTarget) this.typePickerPanelTarget.classList.add("hidden")
-      this._revealStage()
+      this._showInterview()
     }).catch((err) => {
       console.error("[voice-visit] type PATCH failed:", err)
+      btn.disabled = false
+    })
+  }
+
+  // Interviewee step — who the RN is speaking with (patient / family / both).
+  // Shown after consent (and type), before the mic. If the panel isn't
+  // rendered for some reason, fall straight through to the recording stage.
+  _showInterview() {
+    if (this.hasInterviewPanelTarget) {
+      this.interviewPanelTarget.classList.remove("hidden")
+      this.interviewPanelTarget.classList.add("flex")
+    } else {
+      this._revealStage()
+    }
+  }
+
+  // RN taps Patient / Family / Both. PATCH it onto the visit eagerly (so the
+  // chart records the source even if they bail before Stop), then start recording.
+  pickInterviewee(event) {
+    const btn = event.currentTarget
+    const who = btn?.dataset?.interviewee
+    if (!who) return
+    btn.disabled = true
+
+    const fd = new FormData()
+    fd.append("visit[interviewee]", who)
+    fd.append("_method", "patch")
+
+    fetch(this.updateUrlValue, {
+      method:  "POST",
+      headers: { "Accept": "text/html", "X-CSRF-Token": this.csrfValue },
+      body: fd
+    }).then(() => {
+      if (this.hasInterviewPanelTarget) this.interviewPanelTarget.classList.add("hidden")
+      this._revealStage()
+    }).catch((err) => {
+      console.error("[voice-visit] interviewee PATCH failed:", err)
       btn.disabled = false
     })
   }

@@ -144,6 +144,42 @@
     </div>
   </div>
 
+  <%# Interviewee picker — who is the RN interviewing: the patient, the
+      family, or both. Shown after consent (and the type picker, if any),
+      before the mic. Stored on the visit so the chart records the source. %>
+  <div data-voice-visit-target="interviewPanel"
+       class="hidden flex-1 flex-col items-center justify-center px-6">
+    <div class="max-w-md w-full text-center">
+      <div class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+        <i class="ri-group-line text-[#D97757] text-[28px]"></i>
+      </div>
+      <h2 class="font-serif text-[24px] leading-tight">Who are you interviewing?</h2>
+      <p class="text-[13px] text-white/60 mt-2">We label the transcript and chart with the source.</p>
+
+      <div class="mt-6 space-y-3 text-left">
+        <% [
+          { who: "patient", label: "The patient",        sub: "#{patient_first} is the primary source",                 icon: "ri-user-3-line" },
+          { who: "family",  label: "The family",         sub: "A family member or caregiver is speaking for the patient", icon: "ri-parent-line" },
+          { who: "both",    label: "Patient and family", sub: "Both are present and contributing",                       icon: "ri-group-line" }
+        ].each do |opt| %>
+          <button type="button"
+                  data-action="click->voice-visit#pickInterviewee"
+                  data-interviewee="<%= opt[:who] %>"
+                  class="w-full flex items-start gap-3 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#D97757]/60 transition text-left">
+            <span class="w-9 h-9 rounded-full bg-[#D97757]/20 text-[#D97757] flex items-center justify-center flex-shrink-0">
+              <i class="<%= opt[:icon] %> text-[18px]"></i>
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="text-[14px] font-medium text-white"><%= opt[:label] %></span>
+              <span class="block text-[11px] text-white/60 mt-0.5"><%= opt[:sub] %></span>
+            </span>
+            <i class="ri-arrow-right-line text-white/40 flex-shrink-0 mt-2.5"></i>
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
   <%# Main stage: timer + canvas waveform + mic + transcript.
       Hidden until the RN acknowledges consent (see panel above).
       Tightened gaps and shorter canvas so the whole stack fits one
