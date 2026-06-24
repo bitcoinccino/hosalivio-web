@@ -373,10 +373,34 @@
             end
           initial_tab = linked_eval ? "medicaid" : (has_team_narrative ? "team" : "json")
         %>
-        <div data-controller="note-tabs" data-note-tabs-initial="<%= initial_tab %>" class="mt-6">
+        <% export_filename = "visit-#{@visit.patient&.mrn}-#{(@visit.scheduled_at || @visit.created_at)&.to_date}" %>
+        <div data-controller="note-tabs note-export"
+             data-note-tabs-initial="<%= initial_tab %>"
+             data-note-export-text-value="<%= @visit.narrative %>"
+             data-note-export-json-value="<%= json_payload %>"
+             data-note-export-filename-value="<%= export_filename %>"
+             class="mt-6">
           <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <div class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
-              <i class="ri-file-text-line"></i> Note
+            <div class="flex items-center gap-2.5">
+              <div class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+                <i class="ri-file-text-line"></i> Note
+              </div>
+              <%# Export ("sync") — copy the note text, download .txt / .json. %>
+              <div class="inline-flex items-center gap-1 text-[#6B665F]">
+                <button type="button" data-action="note-export#copyText" title="Copy the note text"
+                        class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full hover:bg-[#FBF9F5] hover:text-[#1D1C1A] border border-transparent hover:border-[#EFECE6] transition">
+                  <i class="ri-file-copy-line"></i> Copy
+                </button>
+                <button type="button" data-action="note-export#downloadTxt" title="Download the note as a text file"
+                        class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full hover:bg-[#FBF9F5] hover:text-[#1D1C1A] border border-transparent hover:border-[#EFECE6] transition">
+                  <i class="ri-download-line"></i> .txt
+                </button>
+                <button type="button" data-action="note-export#downloadJson" title="Download the structured eval as JSON">
+                  <span class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full hover:bg-[#FBF9F5] hover:text-[#1D1C1A] border border-transparent hover:border-[#EFECE6] transition">
+                    <i class="ri-braces-line"></i> .json
+                  </span>
+                </button>
+              </div>
             </div>
             <div class="inline-flex p-1 bg-[#FBF9F5] rounded-full border border-[#EFECE6] gap-1 flex-wrap">
               <button type="button"
