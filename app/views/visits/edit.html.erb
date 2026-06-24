@@ -183,6 +183,12 @@
                 <i class="ri-hashtag text-[#D9D5CD]"></i><%= patient.mrn %>
               </span>
             <% end %>
+            <%# Interviewee — who the RN spoke with this visit (from the record wizard). %>
+            <% if @visit.interviewee.present? %>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#FBF9F5] border border-[#EFECE6] text-[#1D1C1A]">
+                <i class="ri-group-line text-[#D97757]"></i> Interviewed <%= @visit.interviewee_display %>
+              </span>
+            <% end %>
           </div>
         </div>
 
