@@ -2,40 +2,45 @@
 
 <div class="min-h-screen bg-[#FBF9F5] px-6 py-12 flex items-center justify-center">
   <div class="w-full max-w-md">
-    <%= link_to welcome_path, class: "inline-flex items-center gap-2 text-[#6B665F] hover:text-[#1D1C1A] text-[12px] mb-6" do %>
-      <i class="ri-arrow-left-line"></i> Back to HosAlivio
-    <% end %>
 
-    <div class="bg-white rounded-3xl border border-[#EFECE6] p-8 shadow-sm">
-      <div class="w-12 h-12 rounded-full bg-[#FFF3EC] flex items-center justify-center mb-5">
+    <%# ── HosAlivio brand, centered ─────────────────────────── %>
+    <div class="flex flex-col items-center text-center mb-6">
+      <div class="w-12 h-12 rounded-2xl bg-[#D97757] grid place-items-center shadow-sm mb-2.5">
+        <i class="ri-heart-pulse-line text-white text-[22px]"></i>
+      </div>
+      <div class="text-[12px] uppercase tracking-[0.25em] text-[#1D1C1A] font-bold">HosAlivio</div>
+    </div>
+
+    <%# ── Email form, centered beneath ──────────────────────── %>
+    <div class="bg-white rounded-3xl border border-[#EFECE6] p-8 shadow-sm text-center">
+      <div class="w-12 h-12 rounded-full bg-[#FFF3EC] grid place-items-center mx-auto mb-5">
         <i class="ri-mail-lock-line text-[#D97757] text-[22px]"></i>
       </div>
 
-      <h1 class="font-serif text-[28px] text-[#1D1C1A] leading-tight font-bold">Sign in with a code</h1>
+      <h1 class="font-serif text-[26px] text-[#1D1C1A] leading-tight font-bold">Sign in with a code</h1>
       <p class="text-[13px] text-[#6B665F] mt-3 leading-relaxed">
         Enter your email and we'll send a 6-digit code.
         <span class="block mt-1 text-[11px] text-[#B9B4AB]">No password needed.</span>
       </p>
 
-      <% if flash[:alert] %>
-        <div class="mt-4 text-[12px] text-[#C1403A] bg-[#FFF3EC] border border-[#D97757] rounded-lg px-3 py-2">
-          <%= flash[:alert] %>
-        </div>
-      <% end %>
-
-      <%= form_with url: passwordless_path, method: :post, local: true, html: { class: "space-y-4 mt-5" } do %>
+      <%= form_with url: passwordless_path, method: :post, local: true, html: { class: "space-y-4 mt-6" } do %>
         <div>
-          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Email</label>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1.5">Email</label>
           <input type="email" name="email" value="<%= params[:email] %>" required autofocus
                  placeholder="you@hospice.com"
-                 class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+                 class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] text-center">
         </div>
 
         <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
           <i class="ri-mail-send-line"></i> Email me a code
         </button>
       <% end %>
+    </div>
 
+    <div class="text-center mt-5">
+      <%= link_to welcome_path, class: "inline-flex items-center gap-1.5 text-[12px] text-[#6B665F] hover:text-[#1D1C1A]" do %>
+        <i class="ri-arrow-left-line"></i> Back to HosAlivio
+      <% end %>
     </div>
   </div>
 </div>

@@ -30,11 +30,11 @@ class AgencyProfileController < ApplicationController
     # button doesn't need its own controller action.
     if params[:remove_logo].to_s == "1" && @agency.logo.attached?
       @agency.logo.purge_later
-      redirect_to(edit_agency_profile_path, notice: "Agency logo removed.") and return
+      redirect_to(edit_agency_profile_path, status: :see_other, notice: "Agency logo removed.") and return
     end
 
     if @agency.update(profile_params)
-      redirect_to edit_agency_profile_path, notice: "Agency profile saved."
+      redirect_to edit_agency_profile_path, status: :see_other, notice: "Agency profile saved."
     else
       flash.now[:alert] = @agency.errors.full_messages.to_sentence
       render :edit, status: :unprocessable_entity

@@ -1,0 +1,19 @@
+<%# Collapsible eval card. Layout partial — wrap content in a block.
+    Locals: title (req), icon, badge (safe html), open (default true),
+    accent (left rule). Marked data-collapsible so the page-level
+    Expand all / Collapse all control can drive it; print CSS forces
+    every collapsible open in the PDF. %>
+<details class="rounded-2xl bg-white border border-[#EFECE6] group<%= ' border-l-4 border-l-[#2B4A7A]' if local_assigns[:accent] %>"
+         data-collapsible <%= "open" if local_assigns.fetch(:open, true) %>
+         <%= raw("data-controller=#{local_assigns[:controller].inspect}") if local_assigns[:controller] %>>
+  <summary class="cursor-pointer list-none flex items-center justify-between gap-2 p-5 [&::-webkit-details-marker]:hidden">
+    <span class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold flex items-center gap-2">
+      <% if local_assigns[:icon] %><i class="<%= icon %>"></i><% end %><%= title %>
+    </span>
+    <span class="flex items-center gap-2 flex-shrink-0">
+      <%= local_assigns[:badge] %>
+      <i class="ri-arrow-down-s-line text-[#6B665F] group-open:rotate-180 transition-transform"></i>
+    </span>
+  </summary>
+  <div class="px-5 pb-5"><%= yield %></div>
+</details>

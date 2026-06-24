@@ -26,6 +26,8 @@ class ClinicianDispatcher
     [/\b(chaplain|spiritual)\b/i,                              :chaplain_request],
     [/\b(social\s*work(er)?|psychosocial)\b/i,                 :sw_request],
     [/\b(dme|equipment|hospital\s*bed|wheelchair|walker|oxygen|commode)\b/i, :dme_order],
+    [/\b(verify|check|confirm|review)\b.{0,40}\b(insurance|coverage|benefits?|medicare|medicaid|eligibility)\b/i, :verify_insurance],
+    [/\b(insurance|coverage|benefits?|medicare|medicaid|eligibility)\b.{0,40}\b(verify|check|confirm|review)\b/i, :verify_insurance],
     [/\b(noe|notice\s*of\s*election|insurance\s*file)\b/i,     :noe_file]
   ].freeze
 
@@ -50,10 +52,17 @@ class ClinicianDispatcher
     INTENT_MAP.any? { |pattern, _| body.to_s.match?(pattern) }
   end
 
+  def self.intent_for(body)
+    INTENT_MAP.each do |pattern, intent|
+      return intent.to_s if body.to_s.match?(pattern)
+    end
+    nil
+  end
+
   Result = Struct.new(:dispatched, :intent, :reason, :note_id, keyword_init: true)
 
-  # Brain-driven entry point. Takes a HosalivioBrain.classify_clinician_message
-  # result and dispatches the matching agent action.
+  # Dispatches a locally classified action. Slow answer generation happens
+  # inside the job, after the clinician's own note has already posted.
   def self.execute(note:, requester:, action:, ack: nil)
     return Result.new(dispatched: false, reason: "no_action") if action.blank? || action == "no_action"
     d = new(note, requester)
@@ -313,9 +322,17 @@ class ClinicianDispatcher
         }
       )
     else
-      post_ack("I couldn't answer that just now. Want me to ping the RN?")
+      post_ack(fallback_answer_for(role))
     end
     Result.new(dispatched: true, intent: "answer_question")
+  end
+
+  def fallback_answer_for(role)
+    if role.to_s == "rn"
+      "I couldn't read the chart context cleanly just now. Review the patient status panel, complete any open documentation blockers, assess current symptoms, and escalate to the MD or DON if comfort or eligibility questions need review."
+    else
+      "I couldn't read the chart context cleanly just now. Want me to flag this to the assigned RN?"
+    end
   end
 
   # Last 8 clinician-visible messages from this patient's thread,
@@ -341,8 +358,9 @@ class ClinicianDispatcher
 
   # Mirrors HosalivioTriager#execute_notify but for the clinician
   # side: when an RN/MD/etc says "yes ping admissions", the brain
-  # emits notify={role:..., reason:...} and we post the urgent
-  # @-mention note that fires the OutboundPing pipeline.
+  # emits notify={role:..., reason:...}. We post an internal chart note
+  # and create a Notification so the target sees it in-app and through
+  # their configured outbound channels.
   def execute_notify_directive(notify)
     role   = notify["role"].to_s
     reason = notify["reason"].to_s.strip
@@ -353,14 +371,22 @@ class ClinicianDispatcher
     first  = target.full_name.to_s.split(/\s+/, 2).first || "team"
     reason = scrub_clinician_name_from_reason(reason, target)
     body   = "@#{first} #{reason.presence || "follow-up requested"}"
-    Note.create!(
+    note = Note.create!(
       agency:         @agency,
       patient:        @patient,
       author_role:    "admissions",
       body:           body,
-      urgency:        "urgent",
+      urgency:        "normal",
       source:         "system",
       clinician_only: true
+    )
+    Notification.create!(
+      agency: @agency,
+      user:   target,
+      kind:   "mentioned",
+      title:  "HosAlivio flagged a patient for your review",
+      body:   "#{@patient.full_name}: #{reason.presence || "Follow-up requested."}",
+      linked: note
     )
   rescue => e
     Rails.logger.warn("[ClinicianDispatcher#execute_notify_directive] #{e.class}: #{e.message}")

@@ -28,11 +28,9 @@ module Api
           Current.agent_id         = (@user.role_names.first || "rn")
           Current.agent_session_id = "clin-#{SecureRandom.hex(3)}"
 
-          # HosAlivio reads every clinician message and decides
-          # audience (team vs family) + action (which agent to fire).
-          # Build the note first (unsaved) so the brain has the same
-          # context the chart sees, then save with the brain-decided
-          # clinician_only so Cable broadcasts to the right audience.
+          # Keep the post path fast: classify common chat intents locally,
+          # save/broadcast the human note immediately, then let HosAlivio
+          # answer or dispatch from a background job.
           note = patient.notes.build(
             agency:         patient.agency,
             author_user:    @user,
@@ -43,38 +41,15 @@ module Api
             clinician_only: true   # safe default; brain may flip below
           )
 
-          decision = HosalivioBrain.classify_clinician_message(note: note, requester: @user)
-
-          # Belt-and-suspenders: if the body looks like a question (ends
-          # with "?" or starts with a clear interrogative) OR is a short
-          # reply ("yes", "ok please") that comes after a recent
-          # HosAlivio offer in the thread, force answer_question so the
-          # brain gets thread context and can resolve continuation
-          # intent. The LLM occasionally misses phrasings the prompt's
-          # examples don't cover, especially short replies in isolation.
-          if decision[:action].to_s == "no_action" &&
-             (looks_like_question?(body) || short_continuation_reply?(body, patient))
-            decision = decision.merge(action: "answer_question")
-          end
-
+          decision = fast_decision_for(body, patient)
           note.clinician_only = (decision[:audience] == "team")
-          # If the brain rewrote the body (e.g. 'let Carlos know that …'
-          # → 'I just left, she is resting comfortably'), use the cleaned
-          # version so Carlos sees a direct DM-style note from Pascal,
-          # not Pascal's instruction-to-HosAlivio prefix.
-          note.body = decision[:body_rewrite] if decision[:body_rewrite].present?
           note.audio.attach(audio) if audio.present?
           note.save!
 
           notify_mentioned_users(note, body, patient) if note.clinician_only
 
           if decision[:action].present? && decision[:action] != "no_action"
-            ClinicianDispatcher.execute(
-              note:      note,
-              requester: @user,
-              action:    decision[:action],
-              ack:       decision[:ack]
-            )
+            ClinicianMessageResponseJob.perform_later(note.id, @user.id, decision[:action], decision[:ack])
           end
 
           render json: { status: "ok", id: note.id, clinician_only: note.clinician_only,
@@ -99,10 +74,37 @@ module Api
         %w[normal urgent crisis].include?(v) ? v : "normal"
       end
 
+      def fast_decision_for(body, patient)
+        action = ClinicianDispatcher.intent_for(body)
+        action ||= continuation_action_for(body, patient)
+        action ||= "answer_question" if looks_like_question?(body) ||
+                                        status_context_request?(body) ||
+                                        short_continuation_reply?(body, patient)
+        action ||= "classify"
+
+        {
+          audience: ClinicianDispatcher.classify_audience(body).to_s,
+          action: action,
+          ack: nil,
+          source: "fast:heuristic"
+        }
+      end
+
       INTERROGATIVES = %w[who what when where why how is has does can should will which are who's what's].freeze
       AFFIRMATIVES   = %w[yes yeah yep yup ok okay sure please correct right confirm].freeze
       NEGATIVES      = %w[no nope thanks thank].freeze
       CONTEXT_REPLY_MAX_WORDS = 6
+      # An accepted offer ("yes") only routes to the insurance team when the
+      # offer was *specifically* about insurance/coverage. Requires a
+      # verify/check verb within 40 chars of an insurance noun (either order),
+      # mirroring ClinicianDispatcher::INTENT_MAP. A bare "verify" — as in
+      # "to verify completion status … ping her" — must NOT trigger insurance;
+      # those affirmations fall through to answer_question so the brain can
+      # ping the person actually offered (e.g. the DON).
+      INSURANCE_OFFER_RE = Regexp.union(
+        /\b(verify|check|confirm|review|file)\b.{0,40}\b(insurance|insured|coverage|medicare|medicaid|eligibility|noe)\b/i,
+        /\b(insurance|insured|coverage|medicare|medicaid|eligibility|noe)\b.{0,40}\b(verify|check|confirm|review|file)\b/i
+      )
 
       def looks_like_question?(body)
         s = body.to_s.strip
@@ -110,6 +112,41 @@ module Api
         return true if s.end_with?("?")
         first = s.split(/\s+/, 2).first.to_s.downcase.gsub(/[[:punct:]]+$/, "")
         INTERROGATIVES.include?(first)
+      end
+
+      def status_context_request?(body)
+        s = body.to_s.downcase
+        return false if s.blank?
+        return true if s.match?(/\b(patient|pt|resident|case|chart)\b/) &&
+                       s.match?(/\b(status|condition|declin|dying|actively dying|transitioning|death|life|critical|urgent|emergency)\b/)
+        return true if s.match?(/\b(status|condition)\b/) &&
+                       s.match?(/\b(matter of|life or death|death or life|no confusion|confusion)\b/)
+        false
+      end
+
+      def continuation_action_for(body, patient)
+        return nil unless affirmative_reply?(body)
+        last_offer = recent_hosalivio_offer(patient)
+        return nil unless last_offer
+        return "verify_insurance" if last_offer.body.to_s.match?(INSURANCE_OFFER_RE)
+
+        nil
+      end
+
+      def affirmative_reply?(body)
+        words = body.to_s.strip.split(/\s+/)
+        return false if words.empty? || words.length > CONTEXT_REPLY_MAX_WORDS
+        first = words.first.to_s.downcase.gsub(/[[:punct:]]+$/, "")
+        AFFIRMATIVES.include?(first)
+      end
+
+      def recent_hosalivio_offer(patient)
+        return nil if patient.nil?
+        patient.notes
+               .where(author_role: "admissions", source: "system")
+               .where("created_at > ?", 30.minutes.ago)
+               .order(created_at: :desc)
+               .detect { |note| note.body.to_s.match?(/\b(want me to|should i|would you like me to|ping|notify|connect|flag|route)\b/i) }
       end
 
       # True when the body is a short reply that's most likely a

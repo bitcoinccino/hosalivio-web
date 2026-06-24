@@ -32,7 +32,7 @@ class AgencyFeaturesController < ApplicationController
     features["allow_telegram_replies"] = tg_enabled
     @agency.update!(features: features)
 
-    redirect_to edit_agency_features_path
+    redirect_to edit_agency_features_path, status: :see_other
   end
 
   private

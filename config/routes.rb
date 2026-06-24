@@ -60,14 +60,22 @@ Rails.application.routes.draw do
 
   # Internal dashboards (auth required — gated in DashboardsController)
   get "dashboard", to: "dashboards#show", as: :dashboard
-  get "patients/:id",      to: "patient_chats#show", as: :patient
-  get "patients/:id/chat", to: "patient_chats#show", as: :patient_chat  # alias
 
-  # Family-user invitations for a specific patient
-  resources :patients, only: [] do
+  # Patient registration (admin/DON/admissions) + per-patient nested resources.
+  # Defined before the patients/:id show route so /patients/new isn't
+  # swallowed by the :id segment.
+  resources :patients, only: [:new, :create] do
+    resource  :photo, only: [:create, :destroy], controller: "patient_photos"
     resources :family, only: [:new, :create, :destroy], controller: "patient_families"
     resources :consents, only: [:index, :new, :create, :show], controller: "consent_forms"
   end
+
+  # JSON reference lookups for the admissions form (diagnosis autocomplete +
+  # ZIP -> city/state/county with suggested branch). Global reference data.
+  get "lookups/icd10",   to: "lookups#icd10", as: :icd10_lookup
+  get "lookups/zip/:zip", to: "lookups#zip",  as: :zip_lookup, constraints: { zip: /\d{5}/ }
+  get "patients/:id",      to: "patient_chats#show", as: :patient
+  get "patients/:id/chat", to: "patient_chats#show", as: :patient_chat  # alias
 
   # Calendar + visit CRUD (clinician-facing scheduling)
   get "calendar", to: "calendars#show", as: :calendar
@@ -109,6 +117,7 @@ Rails.application.routes.draw do
       post :certify
       post :finalize
       post :quick_set
+      post :save_dme
       post :request_changes
     end
   end

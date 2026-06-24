@@ -27,6 +27,7 @@ class PatientFamiliesController < ApplicationController
         family_access: true,
         full_name:     params.dig(:user, :full_name),
         email:         params.dig(:user, :email).to_s.downcase.strip,
+        phone_number:  params.dig(:user, :phone_number).to_s.strip,
         relationship:  relationship,
         timezone:      params.dig(:user, :timezone).presence || "America/New_York",
         password:      temp_password,
@@ -43,7 +44,7 @@ class PatientFamiliesController < ApplicationController
           Rails.logger.warn("[PatientFamilies] mailer failed for #{@family_user.email}: #{e.class} #{e.message}")
         end
         flash[:notice] = "Invited #{@family_user.full_name} (#{relationship} of #{@patient.first_name}). Temporary password: #{temp_password}"
-        redirect_to patient_path(@patient)
+        redirect_to patient_path(@patient), status: :see_other
       else
         flash.now[:alert] = @family_user.errors.full_messages.to_sentence
         render :new, status: :unprocessable_entity

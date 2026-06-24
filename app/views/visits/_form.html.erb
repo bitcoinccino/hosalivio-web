@@ -1,16 +1,18 @@
-<%= form_with(model: @visit, local: true, html: { class: "space-y-4", multipart: true }) do |f| %>
-  <% if flash[:alert].present? %>
-    <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
-      <i class="ri-error-warning-line mr-1"></i><%= flash[:alert] %>
-    </div>
-  <% end %>
-
+<%
+  form_data = {
+    controller: "visit-form",
+    visit_form_scheduling_value: @visit.new_record?,
+    action: "submit->visit-form#validate"
+  }
+  form_data[:turbo_frame] = "_top" if local_assigns[:modal]
+%>
+<%= form_with(model: @visit, local: true, html: { class: "space-y-4", multipart: true, data: form_data }) do |f| %>
   <%# When the visit is in :recording state (Pascal already tapped
       Start), Pascal doesn't need to look at patient/clinician/scheduled
       times again, those are already locked in. Collapse all the
       scheduling metadata into a small expandable so the narrative +
       dictate + record block can rise to the top of the page. %>
-  <% in_progress = @visit.persisted? && @visit.started_at.present? && @visit.ended_at.nil? %>
+  <% in_progress = @visit.persisted? && @visit.currently_in_progress? %>
   <%# Completed = visit is finished. The narrative + audio + visit
       metadata (patient, clinician, scheduled times, type, location)
       are all part of the medical record and must not be edited
@@ -18,7 +20,8 @@
       editable because they're often corrected after the fact (RN
       misreads a glucose strip, fixes pulse from 88 to 98) without
       requiring a chart amendment. %>
-  <% completed = @visit.persisted? && @visit.ended_at.present? %>
+  <% completed = @visit.persisted? && @visit.completed_visit? %>
+  <% scheduling_new_visit = @visit.new_record? %>
   <%# Visit metadata (patient, clinician, scheduled time, type,
       location) is set by the role that scheduled the visit
       (admissions, admin, DON). Performing clinicians (RN, MD, SW,
@@ -26,14 +29,28 @@
       assignment from the bedside is a workflow violation; they
       ping admissions if anything's wrong. %>
   <% can_edit_metadata = (current_user.role_names & %w[admin don admissions ceo]).any? %>
+  <% role_label = @visit.discipline.to_s.presence&.upcase || "VISIT" %>
+  <% calendar_return_path = calendar_path(date: (@visit.scheduled_at || Time.current).to_date.iso8601) %>
 
   <% metadata_block = capture do %>
-    <div>
-      <%= f.label :patient_id, "Patient", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+    <div class="<%= scheduling_new_visit ? 'rounded-2xl border border-[#D97757] bg-[#FFF9F4] p-4' : '' %>">
+      <div class="flex items-center justify-between gap-3 mb-1">
+        <%= f.label :patient_id, "Patient", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium" %>
+        <% if scheduling_new_visit %>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D97757] text-white uppercase tracking-wider">Required</span>
+        <% end %>
+      </div>
       <%= f.select :patient_id,
             @patients.map { |p| ["#{p.mrn} · #{p.full_name}", p.id] },
             { include_blank: "Select patient..." },
+            required: scheduling_new_visit,
+            autofocus: scheduling_new_visit,
+            data: { visit_form_target: "patient", action: "change->visit-form#patientChanged" },
             class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      <% if scheduling_new_visit %>
+        <p class="mt-1 text-[11px] text-[#6B665F]">Select who this visit is for. The calendar already filled in the clinician and time.</p>
+        <p class="hidden mt-1 text-[11px] text-[#C1403A]" data-visit-form-target="patientError"></p>
+      <% end %>
     </div>
 
     <div class="grid grid-cols-2 gap-3 mt-3">
@@ -49,7 +66,7 @@
               class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
       </div>
       <div>
-        <%= f.label :discipline, class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.label :discipline, "Visit role", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
         <%= f.select :discipline,
               Visit.disciplines.keys.map { |d| [d.upcase, d] },
               {},
@@ -65,7 +82,7 @@
               class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
       </div>
       <div>
-        <%= f.label :ended_at, "Expected end (optional)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.label :ended_at, "Ends around (optional)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
         <%= f.datetime_local_field :ended_at,
               value: @visit.ended_at&.strftime("%Y-%m-%dT%H:%M"),
               class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
@@ -96,19 +113,22 @@
             "other" => "Other (Q5009)"
           }
         %>
-        <%= f.label :service_location, "Place of service", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+        <%= f.label :service_location, "Visit location", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
         <%= f.select :service_location,
               Visit.service_locations.keys.map { |k| [location_labels[k] || k, k] },
               {},
+              data: { visit_form_target: "serviceLocation", action: "change->visit-form#syncFacility" },
               class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
       </div>
     </div>
 
-    <div class="mt-3">
-      <%= f.label :facility_name, "Facility name (only if not at home)", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+    <div class="mt-3" data-visit-form-target="facilityGroup">
+      <%= f.label :facility_name, "Facility / room", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
       <%= f.text_field :facility_name,
             placeholder: "e.g. Memorial Regional Hospital, room 412",
+            data: { visit_form_target: "facilityName" },
             class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      <p class="mt-1 text-[11px] text-[#6B665F]">Used only when the visit is not at the patient's home.</p>
     </div>
   <% end %>
 
@@ -209,25 +229,26 @@
       happens at /visits/:id/record — the dedicated recording page.
       The Dictate button + bedside MediaRecorder block were removed;
       the RN edits the saved chart entry here, doesn't re-record. %>
-  <div data-controller="vitals-extractor"
-       data-vitals-extractor-auto-extract-value="<%= local_assigns[:just_recorded] ? 'true' : 'false' %>"
-       class="space-y-3">
-    <% if completed %>
-      <%# Narrative display lives in the Team tab above; the form
-          only carries the value through so vitals corrections submit
-          without blanking the locked narrative. The hidden mirror
-          lets the vitals extractor still scan it. %>
-      <%= f.hidden_field :narrative %>
-      <div class="hidden" data-vitals-extractor-target="narrative"><%= @visit.narrative %></div>
-    <% else %>
-      <div>
-        <%= f.label :narrative, "Narrative", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
-        <%= f.text_area :narrative, rows: 6,
-              data: { vitals_extractor_target: "narrative" },
-              placeholder: "Edit the recorded narrative here. To capture new audio, use Record on the patient chart instead.",
-              class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-serif leading-relaxed" %>
-      </div>
-    <% end %>
+  <% unless scheduling_new_visit %>
+    <div data-controller="vitals-extractor"
+         data-vitals-extractor-auto-extract-value="<%= local_assigns[:just_recorded] ? 'true' : 'false' %>"
+         class="space-y-3">
+      <% if completed %>
+        <%# Narrative display lives in the Team tab above; the form
+            only carries the value through so vitals corrections submit
+            without blanking the locked narrative. The hidden mirror
+            lets the vitals extractor still scan it. %>
+        <%= f.hidden_field :narrative %>
+        <div class="hidden" data-vitals-extractor-target="narrative"><%= @visit.narrative %></div>
+      <% else %>
+        <div>
+          <%= f.label :narrative, "Narrative", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
+          <%= f.text_area :narrative, rows: 6,
+                data: { vitals_extractor_target: "narrative" },
+                placeholder: "Edit the recorded narrative here. To capture new audio, use Record on the patient chart instead.",
+                class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-serif leading-relaxed" %>
+        </div>
+      <% end %>
 
     <%# Bedside audio playback lives in the footer audio bar on the
         edit page; no inline player here to avoid duplication. %>
@@ -238,7 +259,7 @@
         through this form (admission gets them from the eval; FU
         visits aren't vitals-driven). The pain_score field rides
         with vitals so it's hidden too on non-routine visits. %>
-    <% if @visit.visit_category == :routine %>
+      <% if @visit.visit_category == :routine %>
       <%# Collapsible vitals — captured but not always front-and-
           center, so default to closed. Auto-opens when a freshly-
           recorded visit lands here (?just_recorded=1) so the RN
@@ -319,8 +340,9 @@
         </div>
         </div>
       </details>
-    <% end %>
-  </div>
+      <% end %>
+    </div>
+  <% end %>
 
   <% if collapse_metadata %>
     <%# Quiet, collapsible Visit details panel.
@@ -381,26 +403,23 @@
               data: { turbo_method: :delete,
                       turbo_confirm: "Discard this draft? The audio + transcript will be deleted permanently." },
               class: "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[#C1403A] hover:bg-[#FFF3EC] text-[12px] font-medium" do %>
-          <i class="ri-delete-bin-line"></i> Discard draft
+          <i class="ri-delete-bin-line"></i> Discard
         <% end %>
         <button type="submit" name="submit_action" value="draft"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] text-[12px] font-medium cursor-pointer">
-          <i class="ri-save-line"></i> Save draft (stay)
+          <i class="ri-save-line"></i> Save draft
         </button>
       </div>
       <button type="submit" name="submit_action" value="finish"
               data-turbo-confirm="Finish this visit for <%= @visit.patient&.full_name %>? This saves your edits, stamps end time, and lands you on the chart for review."
               class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-semibold shadow-sm">
-        <i class="ri-check-double-line text-lg"></i> Finish visit (review chart)
+        <i class="ri-check-double-line text-lg"></i> Complete visit
       </button>
       <div class="text-[11px] text-[#6B665F] text-center">
         <% if @visit.visit_type_admission? %>
-          Finish saves your edits, stamps end time, polishes the
-          narrative, and runs the eval extractor. You'll review the
-          chart on the next page and tap <strong>Route to MD</strong>
-          when ready.
+          Saves your edits, stamps the end time, updates the eval, then returns here for RN review before MD routing.
         <% else %>
-          Finish saves your edits and stamps end time. Returns to My Day.
+          Saves your edits and stamps the end time.
         <% end %>
       </div>
     </div>
@@ -411,8 +430,8 @@
         Overlap + 30-min windshield buffer enforced by the database.
       </span>
       <div class="flex items-center gap-2">
-        <%= link_to "Cancel", calendar_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
-        <%= f.submit (@visit.persisted? ? "Save changes" : "Schedule visit"),
+        <%= link_to "Cancel", calendar_return_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+        <%= f.submit (@visit.persisted? ? "Save changes" : "Add to #{role_label} calendar"),
               class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
       </div>
     </div>

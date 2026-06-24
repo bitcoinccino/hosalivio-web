@@ -3,6 +3,21 @@ class Patient < ApplicationRecord
   has_paper_trail
   include AgentAuditable
 
+  # --- Patient photo (optional headshot, shown on the chart header and on the
+  # visit conversation view so each spoken turn carries a real face). ----------
+  PHOTO_MIMES     = %w[image/jpeg image/png image/webp image/gif].freeze
+  PHOTO_MAX_BYTES = 5.megabytes
+  has_one_attached :photo
+  validate :photo_shape_and_size
+
+  def has_photo? = photo.attached?
+
+  def photo_shape_and_size
+    return unless photo.attached?
+    errors.add(:photo, "must be a JPEG, PNG, WebP, or GIF") unless PHOTO_MIMES.include?(photo.content_type)
+    errors.add(:photo, "must be under 5 MB") if photo.byte_size > PHOTO_MAX_BYTES
+  end
+
   # Languages we ship live transcription for via Web Speech API.
   # Stored as 2-letter ISO codes on Patient#preferred_language; the
   # client maps to BCP-47 (en→en-US, es→es-ES, etc.) when configuring
@@ -31,6 +46,9 @@ class Patient < ApplicationRecord
   encrypts :secondary_diagnoses
   encrypts :caregiver_name
   encrypts :caregiver_phone
+  encrypts :preferred_name
+  encrypts :pronouns
+  encrypts :religion
 
   # --- Enums ---------------------------------------------------------------
   enum :benefit_period, { bp1_90: 0, bp2_90: 1, bp3_60n: 2 }, validate: { allow_nil: true }

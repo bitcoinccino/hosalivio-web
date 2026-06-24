@@ -8,6 +8,7 @@
   raw  = visit.narrative_raw.to_s
   poly = visit.narrative.to_s
   text = raw.presence || poly.presence
+  has_speaker_tags = text.to_s.scan(/\[[^\]\n]+:\]/).size >= 2
 %>
 <aside class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden lg:sticky lg:top-20 lg:self-start w-full">
   <div class="px-4 py-3 border-b border-[#EFECE6]">
@@ -24,6 +25,12 @@
       <% end %>
     </div>
     <% if text.present? %>
+      <% unless has_speaker_tags %>
+        <div class="mt-2 rounded-xl bg-[#FFF3EC] border border-[#D97757]/50 px-3 py-2 text-[11px] text-[#1D1C1A] leading-snug">
+          <i class="ri-information-line text-[#D97757]"></i>
+          Speaker separation was not captured for this recording. If live auto-detection is unavailable, tap <strong>Correct speaker</strong> during recording before each speaker changes.
+        </div>
+      <% end %>
       <div class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#D97757] text-[10px] font-bold uppercase tracking-widest">
         <i class="ri-magic-line"></i>
         <span>Highlight a phrase in the note to jump here</span>
@@ -47,7 +54,8 @@
       </div>
       <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="inline-flex p-0.5 bg-white rounded-full border border-[#EFECE6] gap-0.5 text-[10px] uppercase tracking-widest font-bold">
-          <% [["all","All"], ["patient","Patient"], ["clinician","Clinician"], ["keywords","Keywords"]].each_with_index do |(key, label), i| %>
+          <% filters = has_speaker_tags ? [["all","All"], ["patient","Patient"], ["clinician","Clinician"], ["keywords","Keywords"]] : [["all","Transcript"], ["keywords","Keywords"]] %>
+          <% filters.each_with_index do |(key, label), i| %>
             <button type="button"
                     data-narrative-link-target="filter"
                     data-action="click->narrative-link#setFilter"
@@ -72,6 +80,7 @@
           unstyled bracketed transcript. %>
       <div data-narrative-link-target="transcript"
            data-transcript-text="<%= text %>"
+           data-roster="<%= visit_speaker_roster(visit).to_json %>"
            class="font-serif italic text-[12px] text-[#3A3936] leading-relaxed whitespace-pre-wrap"><%= text %></div>
     <% else %>
       <div class="text-[12px] text-[#6B665F] italic text-center py-6">

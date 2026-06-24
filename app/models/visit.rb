@@ -52,6 +52,23 @@ class Visit < ApplicationRecord
   def needs_pre_eval?  = visit_category == :initial
   def visit_type_label = VISIT_TYPE_LABELS[visit_type.to_s] || visit_type.to_s.tr("_", " ").titleize
 
+  ACTIVE_VISIT_WINDOW = 8.hours
+
+  def currently_in_progress?
+    started_at.present? &&
+      ended_at.blank? &&
+      started_at <= Time.current &&
+      started_at >= ACTIVE_VISIT_WINDOW.ago
+  end
+
+  def completed_visit?
+    started_at.present? && ended_at.present? && ended_at <= Time.current
+  end
+
+  def stale_in_progress?
+    started_at.present? && ended_at.blank? && started_at < ACTIVE_VISIT_WINDOW.ago
+  end
+
   # HCPCS place-of-service codes for hospice (Q-codes). Drives billing AND the
   # Contact & Location block on the visit detail view.
   enum :service_location, {

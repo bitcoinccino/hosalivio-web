@@ -3,7 +3,7 @@ class TeamMembersController < ApplicationController
   before_action :authorize_team_manager!
   before_action :set_member, only: [:destroy, :reactivate]
 
-  CLINICAL_ROLES = %w[rn md don sw social_worker chaplain aide admissions insurance billing dme pharmacy].freeze
+  CLINICAL_ROLES = %w[rn lpn md don sw social_worker chaplain aide admissions insurance billing dme pharmacy].freeze
   DEFAULT_PASSWORD = "hello123".freeze
 
   def index
@@ -32,7 +32,7 @@ class TeamMembersController < ApplicationController
   def create
     role_name = params.dig(:user, :role_name).to_s
     unless CLINICAL_ROLES.include?(role_name)
-      redirect_to new_team_member_path, alert: "Pick a valid role." and return
+      redirect_to new_team_member_path, status: :see_other, alert: "Pick a valid role." and return
     end
 
     ActsAsTenant.with_tenant(current_user.agency) do
@@ -48,6 +48,7 @@ class TeamMembersController < ApplicationController
         role = Role.find_or_create_by!(name: role_name)
         @member.user_roles.create!(role: role)
         redirect_to team_members_path,
+                    status: :see_other,
                     notice: "Added #{@member.full_name} (#{role_name}). Temporary password: #{DEFAULT_PASSWORD}"
       else
         @role_name = role_name
@@ -60,15 +61,15 @@ class TeamMembersController < ApplicationController
 
   def destroy
     if @member == current_user
-      redirect_to team_members_path, alert: "You can't deactivate yourself." and return
+      redirect_to team_members_path, status: :see_other, alert: "You can't deactivate yourself." and return
     end
     @member.update!(active: false)
-    redirect_to team_members_path, notice: "#{@member.full_name} deactivated."
+    redirect_to team_members_path, status: :see_other, notice: "#{@member.full_name} deactivated."
   end
 
   def reactivate
     @member.update!(active: true)
-    redirect_to team_members_path, notice: "#{@member.full_name} reactivated."
+    redirect_to team_members_path, status: :see_other, notice: "#{@member.full_name} reactivated."
   end
 
   private

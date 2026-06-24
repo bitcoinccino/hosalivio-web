@@ -6,30 +6,90 @@
   }
   d_key = @visit.discipline.to_s == "social_worker" ? "sw" : @visit.discipline.to_s
   color = discipline_color[d_key] || "#6B665F"
+  modal_request = request.headers["Turbo-Frame"].to_s == "visit-modal" || params[:modal].present?
+  patient = @visit.patient
+  clinician = @visit.user
+  scheduler = @visit.created_by_user
+  scheduler_label =
+    if @visit.agent_authored?
+      "HosAlivio"
+    elsif scheduler&.role_names&.include?("admin")
+      "Admin"
+    elsif scheduler
+      scheduler.full_name
+    else
+      "Staff"
+    end
+  status_label =
+    if @visit.completed_visit?
+      "Completed"
+    elsif @visit.currently_in_progress?
+      "In progress"
+    elsif @visit.stale_in_progress?
+      "Needs review"
+    else
+      "Scheduled"
+    end
 %>
-<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
-  <div class="max-w-xl mx-auto">
+
+<% visit_card = capture do %>
+  <% unless modal_request %>
     <a href="<%= calendar_path(date: @visit.scheduled_at&.to_date) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to calendar
     </a>
-    <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm overflow-hidden">
+  <% end %>
+  <div class="<%= modal_request ? '' : 'rounded-2xl bg-white border border-[#EFECE6] shadow-sm overflow-hidden' %>">
       <div class="h-2" style="background: <%= color %>;"></div>
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <div class="text-[11px] uppercase tracking-[0.18em] font-bold" style="color: <%= color %>;">
-              <%= @visit.discipline.upcase %> · <%= @visit.visit_type.to_s.tr("_", " ") %>
+      <div class="p-5 md:p-6">
+        <div class="flex flex-col gap-4">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2 mb-2">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
+                      style="background: <%= color %>;">
+                  <i class="ri-stethoscope-line"></i>
+                  <%= @visit.discipline.to_s.upcase %>
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[10px] font-bold uppercase tracking-wider text-[#3A3936]">
+                  <%= @visit.visit_type.to_s.tr("_", " ") %>
+                </span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-[#E6F0EE] border border-[#C8DDD6] text-[10px] font-bold uppercase tracking-wider text-[#2F6F4E]">
+                  <%= status_label %>
+                </span>
+              </div>
+              <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= patient&.full_name || "Patient not set" %></h1>
+              <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[#6B665F]">
+                <% if patient&.mrn.present? %>
+                  <span class="inline-flex items-center gap-1 font-mono">
+                    <i class="ri-hashtag"></i> <%= patient.mrn %>
+                  </span>
+                <% end %>
+                <% if clinician %>
+                  <span class="inline-flex items-center gap-1">
+                    <i class="ri-user-heart-line"></i> <%= clinician.full_name %>
+                  </span>
+                <% end %>
+              </div>
             </div>
-            <h1 class="font-serif text-xl text-[#1D1C1A] mt-1"><%= @visit.patient&.full_name %></h1>
-            <div class="text-[12px] text-[#6B665F] font-mono">
-              MRN <%= @visit.patient&.mrn %> · <%= @visit.user&.full_name %>
+            <div class="text-right flex-shrink-0">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Time</div>
+              <div class="text-sm font-mono text-[#1D1C1A]"><%= @visit.scheduled_at&.strftime("%a %b %-d") || "—" %></div>
+              <div class="text-sm font-mono text-[#1D1C1A]"><%= @visit.scheduled_at&.strftime("%-l:%M %p") || "—" %></div>
             </div>
           </div>
-          <div class="text-right">
-            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Scheduled</div>
-            <div class="text-sm font-mono text-[#1D1C1A]"><%= @visit.scheduled_at&.strftime("%a %b %-d · %-l:%M %p") || "—" %></div>
-            <div class="mt-1 text-[11px] text-[#6B665F]">
-              <%= @visit.agent_authored ? "🤖 AI-scheduled" : "👤 Human-scheduled" %>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Assigned to</div>
+              <div class="mt-1 text-[13px] text-[#1D1C1A] truncate"><%= clinician&.full_name || "Unassigned" %></div>
+            </div>
+            <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Scheduled by</div>
+              <div class="mt-1 text-[13px] text-[#1D1C1A]"><%= scheduler_label %></div>
+            </div>
+            <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Ends around</div>
+              <div class="mt-1 text-[13px] font-mono text-[#1D1C1A]"><%= @visit.ended_at&.strftime("%-l:%M %p") || "Not set" %></div>
             </div>
           </div>
         </div>
@@ -57,48 +117,66 @@
           loc_key = @visit.service_location.to_s
           loc_label = loc_key.tr("_", " ")
         %>
-        <div class="mb-4 pb-4 border-b border-[#EFECE6]">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Contact & Location</div>
-            <div class="text-[9px] text-[#C1403A] font-mono uppercase tracking-wider">PHI · audit logged</div>
+        <div class="my-5 rounded-2xl border border-[#EFECE6] bg-white shadow-sm overflow-hidden">
+          <div class="px-4 py-3 border-b border-[#EFECE6] bg-[#FBF9F5] flex items-center justify-between gap-3">
+            <div class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-[#6B665F] font-bold">
+              <i class="ri-map-pin-2-line text-[#D97757]"></i> Contact & location
+            </div>
+            <div class="text-[9px] text-[#C1403A] uppercase tracking-wider">Private patient info · access recorded</div>
           </div>
 
-          <div class="inline-flex items-center gap-1.5 mb-2 px-2 py-0.5 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[10px] font-mono text-[#3A3936]">
-            <i class="ri-map-pin-line text-[#D97757]"></i>
-            <%= loc_label %>
-            <span class="text-[#6B665F]">· <%= location_q[loc_key] %></span>
-          </div>
+          <div class="p-4">
+            <div class="inline-flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[10px] font-mono text-[#3A3936]">
+              <i class="ri-home-heart-line text-[#D97757]"></i>
+              <%= loc_label.titleize %>
+              <span class="text-[#6B665F]">· <%= location_q[loc_key] %></span>
+            </div>
 
-          <% if @visit.uses_patient_home_address? %>
-            <% if @visit.patient&.address_line1.present? %>
-              <div class="text-[13px] text-[#1D1C1A] leading-snug">
-                <%= @visit.patient.address_line1 %><% if @visit.patient.address_line2.present? %>, <%= @visit.patient.address_line2 %><% end %><br>
-                <%= [@visit.patient.city, @visit.patient.state].compact_blank.join(", ") %> <%= @visit.patient.zip %>
+            <% if @visit.uses_patient_home_address? %>
+              <% if patient&.address_line1.present? %>
+                <div class="text-[14px] text-[#1D1C1A] leading-snug">
+                  <%= patient.address_line1 %><% if patient.address_line2.present? %>, <%= patient.address_line2 %><% end %><br>
+                  <%= [patient.city, patient.state].compact_blank.join(", ") %> <%= patient.zip %>
+                </div>
+              <% else %>
+                <div class="text-[13px] text-[#6B665F]">No home address recorded.</div>
+              <% end %>
+            <% else %>
+              <div class="text-[14px] text-[#1D1C1A] leading-snug">
+                <%= @visit.facility_name.presence || "Facility name not recorded" %>
+              </div>
+              <div class="text-[11px] text-[#6B665F] mt-1">
+                Patient home on file: <%= [patient&.city, patient&.state].compact_blank.join(", ").presence || "—" %>
               </div>
             <% end %>
-          <% else %>
-            <div class="text-[13px] text-[#1D1C1A] leading-snug">
-              <%= @visit.facility_name.presence || "Facility name not recorded" %>
-            </div>
-            <div class="text-[10px] text-[#6B665F] mt-0.5">
-              Patient home on file: <%= [@visit.patient&.city, @visit.patient&.state].compact_blank.join(", ").presence || "—" %>
-            </div>
-          <% end %>
 
-          <% if @visit.patient&.phone.present? %>
-            <div class="text-[12px] text-[#3A3936] font-mono mt-2">
-              <i class="ri-phone-line text-[#6B665F]"></i>
-              <a href="tel:<%= @visit.patient.phone %>" class="hover:underline"><%= @visit.patient.phone %></a>
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div class="rounded-xl bg-[#FBF9F5] border border-[#EFECE6] p-3">
+                <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Patient phone</div>
+                <% if patient&.phone.present? %>
+                  <a href="tel:<%= patient.phone %>" class="mt-1 inline-flex items-center gap-1 text-[13px] font-mono text-[#1D1C1A] hover:underline">
+                    <i class="ri-phone-line text-[#D97757]"></i> <%= patient.phone %>
+                  </a>
+                <% else %>
+                  <div class="mt-1 text-[13px] text-[#6B665F]">Not recorded</div>
+                <% end %>
+              </div>
+              <div class="rounded-xl bg-[#FBF9F5] border border-[#EFECE6] p-3">
+                <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Caregiver</div>
+                <% if patient&.caregiver_name.present? %>
+                  <div class="mt-1 text-[13px] text-[#1D1C1A]"><%= patient.caregiver_name %></div>
+                  <% if patient.caregiver_phone.present? %>
+                    <a href="tel:<%= patient.caregiver_phone %>" class="text-[12px] font-mono text-[#6B665F] hover:underline"><%= patient.caregiver_phone %></a>
+                  <% end %>
+                <% else %>
+                  <div class="mt-1 text-[13px] text-[#6B665F]">Not recorded</div>
+                <% end %>
+              </div>
             </div>
-          <% end %>
-          <% if @visit.patient&.caregiver_name.present? %>
-            <div class="text-[11px] text-[#6B665F] mt-1">
-              Caregiver: <%= @visit.patient.caregiver_name %><% if @visit.patient.caregiver_phone.present? %> · <%= @visit.patient.caregiver_phone %><% end %>
-            </div>
-          <% end %>
+          </div>
         </div>
 
-        <% if @visit.narrative.present? %>
+        <% if !modal_request && @visit.narrative.present? %>
           <%
             placeholder_narrative = @visit.narrative.to_s.start_with?("Narrative pending")
           %>
@@ -126,7 +204,14 @@
           </div>
         <% end %>
 
-        <% if @visit.audio_note.attached? %>
+        <% unless modal_request %>
+          <% conversation_turns = visit_transcript_turns(@visit) %>
+          <% if conversation_turns.any? %>
+            <%= render "visits/visit_conversation", turns: conversation_turns %>
+          <% end %>
+        <% end %>
+
+        <% if !modal_request && @visit.audio_note.attached? %>
           <div class="mb-4">
             <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1 flex items-center gap-1">
               <i class="ri-mic-line"></i> Bedside audio
@@ -135,7 +220,7 @@
           </div>
         <% end %>
 
-        <% if @visit.pain_score.present? || @visit.vitals.present? %>
+        <% if !modal_request && (@visit.pain_score.present? || @visit.vitals.present?) %>
           <div class="grid grid-cols-5 gap-2 pb-4 mb-4 border-b border-[#EFECE6] text-center">
             <% [["Pain", @visit.pain_score ? "#{@visit.pain_score}/10" : nil],
                 ["Temp", @visit.vitals["temp"]], ["BP", @visit.vitals["bp"]],
@@ -148,21 +233,62 @@
           </div>
         <% end %>
 
-        <div class="pt-4 flex items-center justify-between gap-2">
-          <%= link_to "Patient chart", patient_path(@visit.patient), class: "text-[12px] text-[#D97757] hover:underline" %>
-          <div class="flex items-center gap-2">
-            <%= link_to edit_visit_path(@visit),
-                  class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
-              <i class="ri-edit-2-line"></i> Edit / reschedule
-            <% end %>
-            <%= button_to visit_path(@visit), method: :delete,
-                  data: { turbo_confirm: "Remove this visit from the schedule?" },
-                  class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full bg-[#C1403A] text-white hover:bg-[#a5342f]" do %>
-              <i class="ri-delete-bin-line"></i> Cancel visit
+        <div class="pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <%= link_to patient_path(patient),
+                data: { turbo_frame: "_top" },
+                class: "inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-medium" do %>
+            <i class="ri-folder-chart-line"></i> Chart
+          <% end %>
+          <div class="flex flex-wrap items-center gap-2">
+            <% if @visit.completed_visit? %>
+              <%= link_to edit_visit_path(@visit),
+                    data: { turbo_frame: "_top" },
+                    class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5]",
+                    title: "Completed visits are locked except vitals corrections and late-entry workflows." do %>
+                <i class="ri-lock-2-line"></i> Corrections
+              <% end %>
+            <% else %>
+              <%= link_to edit_visit_path(@visit),
+                    data: { turbo_frame: "_top" },
+                    class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+                <i class="ri-edit-2-line"></i> Edit / reschedule
+              <% end %>
+              <%= button_to visit_path(@visit), method: :delete,
+                    data: { turbo_confirm: "Remove this scheduled visit? It will no longer appear on the calendar." },
+                    form: { data: { turbo_frame: "_top" } },
+                    class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full bg-[#C1403A] text-white hover:bg-[#a5342f]" do %>
+                <i class="ri-delete-bin-line"></i> Remove
+              <% end %>
             <% end %>
           </div>
         </div>
       </div>
+  </div>
+<% end %>
+
+<% if modal_request %>
+  <%= turbo_frame_tag "visit-modal" do %>
+    <div class="fixed inset-0 z-50 bg-[#1D1C1A]/45 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-4 py-6 md:py-10"
+         data-controller="modal"
+         data-action="click->modal#closeFromBackdrop">
+      <div class="w-full max-w-xl rounded-2xl bg-white border border-[#EFECE6] shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-[#EFECE6] bg-[#FBF9F5]">
+          <div class="text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Visit details</div>
+          <button type="button"
+                  data-action="click->modal#close"
+                  class="w-8 h-8 rounded-full inline-flex items-center justify-center text-[#6B665F] hover:text-[#1D1C1A] hover:bg-white"
+                  aria-label="Close visit details modal">
+            <i class="ri-close-line text-lg"></i>
+          </button>
+        </div>
+        <%= visit_card %>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+    <div class="max-w-xl mx-auto">
+      <%= visit_card %>
     </div>
   </div>
-</div>
+<% end %>

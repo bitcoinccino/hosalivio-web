@@ -7,11 +7,10 @@ class PreAdmitEvalsController < ApplicationController
     # Read-only view for clinicians; routes to edit for drafts/final
   end
 
+  # Retired: editing now happens via per-card modals on the show page.
+  # Kept as a redirect so any lingering /edit links land somewhere sane.
   def edit
-    unless @eval.status_draft? || @eval.status_final?
-      redirect_to pre_admit_eval_path(@eval),
-                  alert: "Can't edit — this eval has been certified or NOE-filed."
-    end
+    redirect_to pre_admit_eval_path(@eval)
   end
 
   def update
@@ -57,19 +56,16 @@ class PreAdmitEvalsController < ApplicationController
     if status_change == :final
       blockers = blockers_for(raw)
       if blockers.any?
-        flash.now[:alert] = "Can't finalize yet: #{blockers.first}"
-        @eval.status = :draft
-        render :edit, status: :unprocessable_entity
+        redirect_to pre_admit_eval_path(@eval), alert: "Can't finalize yet: #{blockers.first}"
         return
       end
     end
 
     if @eval.save
-      flash[:notice] = status_change == :final ? "Eval finalized. Routed to MD for certification." : "Draft saved."
+      flash[:notice] = status_change == :final ? "Eval finalized. Routed to MD for certification." : "Saved."
       redirect_to pre_admit_eval_path(@eval)
     else
-      flash.now[:alert] = @eval.errors.full_messages.to_sentence
-      render :edit, status: :unprocessable_entity
+      redirect_to pre_admit_eval_path(@eval), alert: @eval.errors.full_messages.to_sentence
     end
   end
 
@@ -118,6 +114,27 @@ class PreAdmitEvalsController < ApplicationController
 
     @eval.update!(raw_json: raw)
     flash[:notice] = "#{key.humanize} marked complete."
+    redirect_to pre_admit_eval_path(@eval)
+  end
+
+  # Saves the RN's accepted DME / equipment selections (AI-suggested or
+  # manual) plus free-text notes into the `general` block. Posted from the
+  # actionable DME section on the show page so the RN can confirm equipment
+  # without opening the full edit form.
+  def save_dme
+    unless @eval.status_draft? || @eval.status_final?
+      redirect_to(pre_admit_eval_path(@eval), alert: "This eval is locked.") and return
+    end
+
+    raw = existing_raw_json.deep_dup
+    raw["pre_admit_eval"] ||= {}
+    raw["pre_admit_eval"]["general"] ||= {}
+    raw["pre_admit_eval"]["general"]["dme_needs"] =
+      Array(params[:dme_needs]).map { |s| s.to_s.strip }.reject(&:blank?).uniq
+    raw["pre_admit_eval"]["general"]["dme_notes"] = params[:dme_notes].to_s.strip.presence
+
+    @eval.update!(raw_json: raw)
+    flash[:notice] = "Equipment needs saved."
     redirect_to pre_admit_eval_path(@eval)
   end
 
@@ -300,8 +317,15 @@ class PreAdmitEvalsController < ApplicationController
         v = pae[sec][k]
         if v.is_a?(String)
           pae[sec][k] = v.split(/[,\n]/).map(&:strip).reject(&:empty?)
+        elsif v.is_a?(Array)
+          pae[sec][k] = v.flat_map { |item| item.to_s.split(/[,\n]/) }.map(&:strip).reject(&:empty?)
         end
       end
+    end
+
+    if pae["diagnosis"].is_a?(Hash) && pae["diagnosis"]["lcd_criteria_met"].is_a?(String)
+      pae["diagnosis"]["lcd_criteria_met"] =
+        pae["diagnosis"]["lcd_criteria_met"].split(/[,\n]/).map(&:strip).reject(&:empty?)
     end
 
     # Cert-gate booleans

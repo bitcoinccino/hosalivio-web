@@ -56,6 +56,31 @@ class AgentGuard
       check: ->(d) { d[:action] == "write_med_order" || d[:action] == "write_pharm_delivery" }
     },
 
+    # LPNs administer and log meds per EXISTING orders, but never author or
+    # change an order themselves — that stays with the MD.
+    {
+      role: "lpn",
+      key:  "author_or_change_medication_orders",
+      check: ->(d) { d[:action] == "write_med_order" }
+    },
+
+    # Dispatching pharmacy deliveries is the pharmacy coordinator's job; an LPN
+    # administers what's already on hand, it doesn't order new stock.
+    {
+      role: "lpn",
+      key:  "dispatch_pharmacy_deliveries",
+      check: ->(d) { d[:action] == "write_pharm_delivery" }
+    },
+
+    # Billing handles money, never care or coverage. Block any clinical write
+    # (orders, visits, deliveries) — those belong to MD/RN/pharmacy/DME, and
+    # coverage eligibility belongs to insurance (Kendra).
+    {
+      role: "billing",
+      key:  "make_clinical_or_coverage_eligibility_decisions",
+      check: ->(d) { %w[write_med_order write_visit write_pharm_delivery write_dme_order].include?(d[:action]) }
+    },
+
     # Insurance must not file an NOE without a certified eval.
     {
       role: "insurance",

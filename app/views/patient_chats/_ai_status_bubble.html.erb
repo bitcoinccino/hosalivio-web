@@ -1,0 +1,96 @@
+<%
+  internal = local_assigns.fetch(:internal, false)
+  body = note.body.to_s.strip
+  attention_items = ai_reply_attention_items(body)
+  next_step = ai_reply_next_step(body)
+  fact_chips = ai_reply_fact_chips(body)
+  current_visit = @current_visit || @recent_visits&.find(&:currently_in_progress?)
+%>
+
+<div class="max-w-2xl <%= internal ? 'ml-auto' : '' %>">
+  <div class="rounded-3xl bg-white border border-[#EFECE6] shadow-sm overflow-hidden">
+    <div class="px-4 py-3 bg-[#FBF9F5] border-b border-[#EFECE6] flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-9 h-9 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+          <i class="ri-heart-pulse-line text-[18px]"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-[13px] font-medium text-[#1D1C1A]">HosAlivio</div>
+          <div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F]">Status answer</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <% if internal %>
+          <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-2 py-0.5">
+            <i class="ri-team-line text-[10px]"></i> Internal
+          </span>
+        <% end %>
+        <span class="text-[10px] text-[#6B665F] font-mono"><%= in_patient_zone(note.created_at, @patient) %></span>
+      </div>
+    </div>
+
+    <div class="px-4 py-3 space-y-3">
+      <% if attention_items.any? %>
+        <section>
+          <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-[#C1403A] font-bold mb-1.5">
+            <i class="ri-error-warning-line"></i> Needs attention
+          </div>
+          <ul class="space-y-1.5">
+            <% attention_items.each do |item| %>
+              <li class="flex items-start gap-2 text-[13px] text-[#1D1C1A]">
+                <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#D97757] flex-shrink-0"></span>
+                <span class="leading-snug"><%= item.sub(/\.\z/, "") %></span>
+              </li>
+            <% end %>
+          </ul>
+        </section>
+      <% end %>
+
+      <% if next_step.present? %>
+        <section class="rounded-2xl bg-[#E6F0EE] border border-[#C8DDD6] px-3 py-2">
+          <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-[#2F6F4E] font-bold">
+            <i class="ri-arrow-right-circle-line"></i> Next step
+          </div>
+          <p class="mt-1 text-[13px] text-[#1D1C1A] leading-snug"><%= next_step %></p>
+        </section>
+      <% end %>
+
+      <% if fact_chips.any? %>
+        <div class="flex flex-wrap gap-1.5">
+          <% fact_chips.each do |chip| %>
+            <span class="inline-flex items-center px-2 py-1 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[10px] text-[#3A3936] font-mono">
+              <%= chip %>
+            </span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <div class="flex flex-wrap gap-2 pt-1">
+        <%= link_to patient_path(@patient),
+              class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white",
+              data: { turbo_frame: "_top" } do %>
+          <i class="ri-folder-chart-line"></i> Chart
+        <% end %>
+        <% if @pre_admit_eval %>
+          <%= link_to "Open eval", pre_admit_eval_path(@pre_admit_eval),
+                class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5]",
+                data: { turbo_frame: "_top" } %>
+        <% end %>
+        <% if current_visit %>
+          <%= link_to "Open visit", edit_visit_path(current_visit),
+                class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5]",
+                data: { turbo_frame: "_top" } %>
+        <% end %>
+      </div>
+
+      <details class="group rounded-2xl border border-[#EFECE6] bg-[#FBF9F5]">
+        <summary class="cursor-pointer list-none flex items-center justify-between px-3 py-2 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] [&::-webkit-details-marker]:hidden">
+          <span class="inline-flex items-center gap-1.5"><i class="ri-file-text-line"></i> Full answer</span>
+          <i class="ri-arrow-down-s-line group-open:rotate-180 transition-transform"></i>
+        </summary>
+        <div class="px-3 pb-3 text-[13px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(body) %></div>
+      </details>
+    </div>
+  </div>
+  <%= render "feedback_widget", note: note %>
+</div>

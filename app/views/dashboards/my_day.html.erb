@@ -122,7 +122,7 @@
           <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
             <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
               <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
-                <i class="ri-team-line"></i> My caseload (<%= @caseload.count %><% if current_user.max_caseload.to_i > 0 %>/<%= current_user.max_caseload %><% end %>)
+                <i class="ri-team-line"></i> My patients (<%= @caseload.count %><% if current_user.max_caseload.to_i > 0 %>/<%= current_user.max_caseload %><% end %>)
               </h3>
             </div>
             <% if @caseload.empty? %>
@@ -133,6 +133,13 @@
                   <%
                     last_visit = p.visits.where("started_at IS NOT NULL").order(started_at: :desc).first
                     last_seen  = last_visit&.started_at&.strftime("%b %-d")
+                    days_since_seen = last_visit&.started_at ? ((Time.current - last_visit.started_at) / 1.day).floor : nil
+                    patient_crisis = @open_crises.any? { |note| note.patient_id == p.id }
+                    med_overdue = @overdue_meds.any? { |row| row[:order].patient_id == p.id }
+                    handoff_waiting = @pending_handoffs.any? { |ev|
+                      ev.subject == p || (ev.subject.respond_to?(:patient_id) && ev.subject.patient_id == p.id)
+                    }
+                    recert_days = p.cert_period_end ? (p.cert_period_end - Date.current).to_i : nil
                   %>
                   <li>
                     <%= link_to patient_path(p), class: "flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
@@ -149,6 +156,23 @@
                         <div class="text-[11px] text-[#6B665F] truncate">
                           <span class="font-mono"><%= p.mrn %></span>
                           <% if p.primary_diagnosis.present? %> · <%= p.primary_diagnosis.to_s[0, 50] %><% end %>
+                        </div>
+                        <div class="mt-1.5 flex flex-wrap gap-1.5">
+                          <% if patient_crisis %>
+                            <span class="rounded-full bg-[#C1403A] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">Crisis</span>
+                          <% end %>
+                          <% if med_overdue %>
+                            <span class="rounded-full border border-[#F3D7C8] bg-[#FFF3EC] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#C1403A]">Med overdue</span>
+                          <% end %>
+                          <% if handoff_waiting %>
+                            <span class="rounded-full border border-[#F3D7C8] bg-[#FFF7F2] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#8A4B2F]">Team request</span>
+                          <% end %>
+                          <% if recert_days && recert_days <= 14 %>
+                            <span class="rounded-full border border-[#C8DDD6] bg-[#E6F0EE] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#2F6F4E]">Recert <%= recert_days %>d</span>
+                          <% end %>
+                          <% if days_since_seen && days_since_seen >= 5 %>
+                            <span class="rounded-full border border-[#EFECE6] bg-[#FBF9F5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B665F]">Not seen <%= days_since_seen %>d</span>
+                          <% end %>
                         </div>
                       </div>
                       <div class="text-right flex-shrink-0">

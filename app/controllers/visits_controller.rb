@@ -24,6 +24,7 @@ class VisitsController < ApplicationController
       @visit = Visit.new(visit_params.merge(agency: current_user.agency, agent_authored: false, created_by_user_id: current_user.id))
       if @visit.save
         redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
+                    status: :see_other,
                     notice: "Visit scheduled for #{@visit.scheduled_at&.strftime('%a %b %-d, %-l:%M %p')}."
       else
         @clinicians = agency_clinicians
@@ -71,9 +72,9 @@ class VisitsController < ApplicationController
               raw_json:     { "pre_admit_eval" => {} }
             )
           end
-        if @visit.narrative.to_s.strip.present? && !eval_rec.status_certified?
+        if narrative_for_eval(@visit).present? && !eval_rec.status_certified?
           result = PreAdmitNarrativeExtractor.call(
-            narrative:     @visit.narrative,
+            narrative:     narrative_for_eval(@visit),
             existing_json: eval_rec.raw_json,
             visit:         @visit,
             patient:       @visit.patient
@@ -82,6 +83,8 @@ class VisitsController < ApplicationController
         end
         @visit.reload
       end
+
+      prepare_recorded_admission_visit if params[:just_recorded].to_s == "1"
     end
     render :edit, layout: false if request.headers["Turbo-Frame"] || params[:modal]
   end
@@ -96,7 +99,7 @@ class VisitsController < ApplicationController
       end
 
       # Lock tiers:
-      #   ended_at present → assignment + scheduling fields freeze
+      #   completed visit → assignment + scheduling fields freeze
       #     (audio capture is also done by then).
       #   linked eval certified by MD → narrative joins the lock;
       #     it's now a signed medical record and corrections need a
@@ -104,7 +107,7 @@ class VisitsController < ApplicationController
       #     correcting the polished narrative inline so post-visit
       #     review doesn't require filing an amendment for typos.
       attrs = visit_params
-      if @visit.ended_at.present?
+      if @visit.completed_visit?
         attrs = attrs.except(:audio_note,
                              :patient_id, :user_id, :discipline,
                              :scheduled_at, :ended_at,
@@ -119,25 +122,33 @@ class VisitsController < ApplicationController
       # update narrative + vitals but not the assignment. Strip
       # those fields if a non-scheduler PATCH tries to change them.
       scheduler_roles = %w[admin don admissions ceo]
+      recording_type_picker =
+        params[:recording_type_picker].to_s == "1" &&
+        @visit.user_id == current_user.id &&
+        !@visit.completed_visit?
+      picked_visit_type = attrs[:visit_type] if recording_type_picker
       unless (current_user.role_names & scheduler_roles).any?
         attrs = attrs.except(:patient_id, :user_id, :discipline,
                              :scheduled_at, :ended_at,
                              :visit_type, :service_location, :facility_name)
+        attrs[:visit_type] = picked_visit_type if picked_visit_type.present?
       end
 
       if @visit.update(attrs.merge(agent_authored: false))
+        prepare_recorded_admission_visit if params[:just_recorded].to_s == "1"
+
         # Two submit buttons on the in-progress edit form share this
         # update action. submit_action=finish chains into the finish
         # flow (stamp ended_at, polish, extractor, route to MD) so
         # the RN's pending narrative + vitals edits ride along
         # instead of being dropped by a separate Finish click.
-        if params[:submit_action].to_s == "finish" && @visit.started_at && @visit.ended_at.nil?
+        if params[:submit_action].to_s == "finish" && @visit.currently_in_progress?
           finish_after_update
           return
         end
 
         respond_to do |format|
-          format.html { redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date), notice: "Visit updated." }
+          format.html { redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date), status: :see_other, notice: "Visit updated." }
           format.json { head :ok }
         end
       else
@@ -187,7 +198,7 @@ class VisitsController < ApplicationController
 
     if @visit.visit_type_admission? && (eval_rec = @visit.pre_admit_eval)
       result = PreAdmitNarrativeExtractor.call(
-        narrative:     @visit.narrative.to_s,
+        narrative:     narrative_for_eval(@visit),
         existing_json: eval_rec.raw_json,
         visit:         @visit,
         patient:       @visit.patient
@@ -201,7 +212,7 @@ class VisitsController < ApplicationController
       flash[:notice] = "Visit completed. Review the chart, then tap Route to MD when ready."
     end
 
-    redirect_to edit_visit_path(@visit)
+    redirect_to edit_visit_path(@visit), status: :see_other
   end
 
   # POST /visits/:id/route_to_md — explicit step the RN takes after
@@ -212,19 +223,19 @@ class VisitsController < ApplicationController
   def route_to_md
     ActsAsTenant.with_tenant(current_user.agency) do
       unless @visit.visit_type_admission?
-        redirect_to(edit_visit_path(@visit), alert: "Only admission visits route to MD for certification.") and return
+        redirect_to(edit_visit_path(@visit), status: :see_other, alert: "Only admission visits route to MD for certification.") and return
       end
       unless (eval_rec = @visit.pre_admit_eval)
-        redirect_to(edit_visit_path(@visit), alert: "No linked pre-admit eval to route.") and return
+        redirect_to(edit_visit_path(@visit), status: :see_other, alert: "No linked pre-admit eval to route.") and return
       end
       already = Notification.exists?(kind: "pre_admit_review_ready", linked: eval_rec)
       if already
-        redirect_to(edit_visit_path(@visit), notice: "Already routed to MD.") and return
+        redirect_to(edit_visit_path(@visit), status: :see_other, notice: "Already routed to MD.") and return
       end
 
       ok, err = Signatures::Gate.call(user: current_user, params: params)
       unless ok
-        redirect_to(edit_visit_path(@visit), alert: err) and return
+        redirect_to(edit_visit_path(@visit), status: :see_other, alert: err) and return
       end
 
       Signatures::Apply.call(
@@ -247,7 +258,7 @@ class VisitsController < ApplicationController
 
       notify_md_for_certification(eval_rec)
       flash[:notice] = "Signed and routed to MD for certification."
-      redirect_to edit_visit_path(@visit)
+      redirect_to edit_visit_path(@visit), status: :see_other
     end
   end
 
@@ -258,16 +269,16 @@ class VisitsController < ApplicationController
   # narrative-strip both lock the medical record.
   def sign_note
     ActsAsTenant.with_tenant(current_user.agency) do
-      unless @visit.ended_at.present?
-        redirect_to(edit_visit_path(@visit), alert: "Finish the visit before signing.") and return
+      unless @visit.completed_visit?
+        redirect_to(edit_visit_path(@visit), status: :see_other, alert: "Finish the visit before signing.") and return
       end
       if @visit.signed_off_by_rn?
-        redirect_to(edit_visit_path(@visit), notice: "Already signed.") and return
+        redirect_to(edit_visit_path(@visit), status: :see_other, notice: "Already signed.") and return
       end
 
       ok, err = Signatures::Gate.call(user: current_user, params: params)
       unless ok
-        redirect_to(edit_visit_path(@visit), alert: err) and return
+        redirect_to(edit_visit_path(@visit), status: :see_other, alert: err) and return
       end
 
       Signatures::Apply.call(
@@ -280,7 +291,7 @@ class VisitsController < ApplicationController
       )
 
       flash[:notice] = "Visit note signed."
-      redirect_to edit_visit_path(@visit)
+      redirect_to edit_visit_path(@visit), status: :see_other
     end
   end
 
@@ -294,21 +305,22 @@ class VisitsController < ApplicationController
     # Once a visit is completed (ended_at set) it's part of the medical
     # record — destroy is refused; corrections go through a late-entry
     # note instead.
-    if @visit.ended_at.present?
-      redirect_to(edit_visit_path(@visit), alert: "Completed visits can't be deleted. File a late-entry correction instead.") and return
+    if @visit.completed_visit?
+      redirect_to(edit_visit_path(@visit), status: :see_other, alert: "Completed visits can't be deleted. File a late-entry correction instead.") and return
     end
 
     is_scheduler = (current_user.role_names & %w[admin don admissions ceo]).any?
     is_assigned  = @visit.user_id == current_user.id
     unless is_scheduler || is_assigned
-      redirect_to(dashboard_path, alert: "Only the assigned clinician or admissions can discard a visit.") and return
+      redirect_to(dashboard_path, status: :see_other, alert: "Only the assigned clinician or admissions can discard a visit.") and return
     end
 
     @visit.destroy
     if params[:from] == "edit"
-      redirect_to dashboard_path, notice: "Draft visit discarded."
+      redirect_to dashboard_path, status: :see_other, notice: "Draft visit discarded."
     else
       redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
+                  status: :see_other,
                   notice: "Visit removed from the schedule."
     end
   end
@@ -393,12 +405,17 @@ class VisitsController < ApplicationController
   # and the server bounces the user to the edit page with vitals
   # auto-extracted.
   def record
+    if @visit.completed_visit? || @visit.chart_locked?
+      redirect_to edit_visit_path(@visit), status: :see_other
+      return
+    end
+
     # Auto-stamp started_at if the visit hasn't begun yet (catches the
     # case where the RN clicked Start Visit on a card that wasn't yet
     # in :recording state).
     if @visit.started_at.nil?
       ActsAsTenant.with_tenant(current_user.agency) do
-        @visit.update!(started_at: Time.current)
+        @visit.update!(started_at: Time.current, ended_at: nil)
       end
     end
 
@@ -448,7 +465,7 @@ class VisitsController < ApplicationController
   def begin
     ActsAsTenant.with_tenant(current_user.agency) do
       if @visit.started_at.nil?
-        @visit.update!(started_at: Time.current)
+        @visit.update!(started_at: Time.current, ended_at: nil)
         flash[:notice] = "Visit in progress. Clock started at #{Time.current.strftime('%-l:%M %p')}."
       end
 
@@ -485,7 +502,7 @@ class VisitsController < ApplicationController
       end
 
       result = PreAdmitNarrativeExtractor.call(
-        narrative:     @visit.narrative.to_s,
+        narrative:     narrative_for_eval(@visit),
         existing_json: eval_rec.raw_json,
         visit:         @visit,
         patient:       @visit.patient
@@ -507,7 +524,7 @@ class VisitsController < ApplicationController
   # the agency's MDs for certification review.
   def finish
     ActsAsTenant.with_tenant(current_user.agency) do
-      if @visit.started_at && @visit.ended_at.nil?
+      if @visit.currently_in_progress?
         @visit.update!(ended_at: Time.current)
         flash[:notice] = "Visit completed. Thank you."
 
@@ -541,7 +558,7 @@ class VisitsController < ApplicationController
 
         if @visit.visit_type_admission? && (eval_rec = @visit.pre_admit_eval)
           result = PreAdmitNarrativeExtractor.call(
-            narrative:     @visit.narrative.to_s,
+            narrative:     narrative_for_eval(@visit),
             existing_json: eval_rec.raw_json,
             visit:         @visit,
             patient:       @visit.patient
@@ -608,6 +625,99 @@ class VisitsController < ApplicationController
     Rails.logger.warn("[VisitsController#finish] notify_md_for_certification failed: #{e.message}")
   end
 
+  def prepare_recorded_admission_visit
+    return unless @visit.visit_type_admission?
+    return if @visit.narrative.to_s.strip.blank?
+
+    preserve_and_polish_recorded_narrative
+    eval_rec = ensure_pre_admit_eval_for(@visit)
+    sync_visit_narrative_to_eval(eval_rec)
+  rescue => e
+    Rails.logger.warn("[VisitsController#prepare_recorded_admission_visit] #{e.class}: #{e.message}")
+  end
+
+  def preserve_and_polish_recorded_narrative
+    raw = @visit.narrative.to_s
+    return if raw.blank?
+    if @visit.narrative_raw.blank?
+      raw = tag_recorded_transcript(raw)
+      @visit.update!(narrative_raw: raw)
+    elsif !@visit.narrative_raw.to_s.match?(/\[[^\]\n]+:\]/) && @visit.narrative_raw.to_s == raw
+      raw = tag_recorded_transcript(raw)
+      @visit.update!(narrative_raw: raw)
+    elsif @visit.narrative_raw.to_s != raw
+      return
+    end
+
+    polish = HosalivioBrain.polish_narrative(raw)
+    return unless polish&.dig("polished").present?
+
+    @visit.update!(narrative: polish["polished"])
+    AgentEvent.create!(
+      agency:      @visit.agency,
+      agent_id:    "hosalivio_brain",
+      action:      "polish_narrative",
+      subject:     @visit,
+      happened_at: Time.current,
+      change_set:  { source: polish["source"], chars_in: raw.length, chars_out: polish["polished"].length }
+    )
+  end
+
+  def tag_recorded_transcript(raw)
+    return raw if raw.to_s.match?(/\[[^\]\n]+:\]/)
+
+    family_names = User.where(patient_id: @visit.patient_id, family_access: true, active: true).pluck(:full_name)
+    clinician_role = (@visit.user&.role_names&.first || "rn").to_s.upcase
+    tagged = HosalivioBrain.tag_speaker_turns(
+      raw,
+      patient_name:    @visit.patient.full_name,
+      clinician_label: clinician_role,
+      family_names:    family_names
+    )
+    tagged&.dig("tagged").presence || raw
+  end
+
+  def ensure_pre_admit_eval_for(visit)
+    return visit.pre_admit_eval if visit.pre_admit_eval
+
+    unclaimed = PreAdmitEval.where(patient_id: visit.patient_id, visit_id: nil, status: :draft).order(:created_at).last
+    if unclaimed
+      unclaimed.update!(visit: visit)
+      return unclaimed
+    end
+
+    PreAdmitEval.create!(
+      agency:            visit.agency,
+      patient:           visit.patient,
+      visit:             visit,
+      evaluator:         visit.user,
+      evaluator_name:    visit.user&.full_name,
+      evaluator_license: visit.user&.license_number,
+      evaluator_role:    (visit.user&.role_names&.first || "rn"),
+      status:            :draft,
+      evaluated_at:      visit.started_at || Time.current,
+      raw_json:          { "pre_admit_eval" => {} }
+    )
+  end
+
+  def sync_visit_narrative_to_eval(eval_rec)
+    result = PreAdmitNarrativeExtractor.call(
+      narrative:     narrative_for_eval(@visit),
+      existing_json: eval_rec.raw_json,
+      visit:         @visit,
+      patient:       @visit.patient
+    )
+    eval_rec.update!(raw_json: result.json)
+  end
+
+  def narrative_for_eval(visit)
+    [visit.narrative, visit.narrative_raw]
+      .map { |text| text.to_s.strip }
+      .reject(&:blank?)
+      .uniq
+      .join("\n\nRaw transcript:\n")
+  end
+
   def set_visit
     ActsAsTenant.with_tenant(current_user.agency) do
       @visit = Visit.find(params[:id])
@@ -631,7 +741,7 @@ class VisitsController < ApplicationController
   def visit_params
     params.require(:visit).permit(
       :patient_id, :user_id, :discipline, :visit_type,
-      :scheduled_at, :started_at, :ended_at,
+      :scheduled_at, :ended_at,
       :service_location, :facility_name,
       :narrative, :pain_score, :billable, :visit_code,
       :audio_note,
@@ -670,3 +780,4 @@ class VisitsController < ApplicationController
     scope.any? ? scope : User.where(id: current_user.id).includes(:branch)
   end
 end
+
