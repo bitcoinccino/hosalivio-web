@@ -139,7 +139,7 @@
               <%# The visit page only mirrors the eval (read-only); "Open eval"
                   goes to the eval's own page to edit / certify / file. %>
               <% if linked_eval %>
-                <%= link_to pre_admit_eval_path(linked_eval),
+                <%= link_to pre_admit_eval_path(linked_eval, from: "visit"),
                       data: { action: "menu#close" },
                       class: "w-full px-4 py-2 hover:bg-[#FBF9F5] inline-flex items-center gap-2 text-[#1D1C1A]" do %>
                   <i class="ri-file-list-3-line text-[#6B665F]"></i> Open eval
