@@ -90,9 +90,10 @@
 <div class="min-h-screen bg-[#FBF9F5] py-8 px-4 md:px-10 pae-show-root">
   <div class="max-w-3xl mx-auto pae-show-card">
     <div class="flex items-center justify-between mb-4 no-print">
-      <%# Smart back: return to the visit workspace when we arrived from it
-          (the ⋯ → Open eval passes from=visit), otherwise to the patient page. %>
-      <% if params[:from] == "visit" && @eval.visit %>
+      <%# Smart back: an eval's home is its visit, so return there whenever one
+          is linked (reliable across refresh / direct URLs — no param needed).
+          Standalone evals with no visit fall back to the patient page. %>
+      <% if @eval.visit %>
         <a href="<%= edit_visit_path(@eval.visit) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A]">
           <i class="ri-arrow-left-line"></i> Back to visit
         </a>
