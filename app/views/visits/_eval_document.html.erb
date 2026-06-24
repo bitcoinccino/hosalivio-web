@@ -189,6 +189,11 @@
       return nil if sig&.signature_blob_id.blank?
       ActiveStorage::Blob.find_by(id: sig.signature_blob_id)
     }
+    # "Due" = this party should have signed by the eval's current stage, so a
+    # missing audit row is a data gap (e.g. a seeded/imported eval), not a
+    # normal pending state — say so instead of "(pending)".
+    rn_signed_due = eval_rec.status_final? || eval_rec.status_certified? || eval_rec.status_noe_filed?
+    md_signed_due = eval_rec.status_certified? || eval_rec.status_noe_filed?
   %>
   <div class="<%= section_h %>">Signatures:</div>
 
@@ -202,8 +207,21 @@
       <div class="<%= field_val %>"><%= rn_sig.signed_name %></div>
       <div class="text-[11px] text-[#6B665F]"><%= rn_sig.short_audit_line %></div>
     <% else %>
-      RN: <span class="<%= field_val %>">_______________________________</span>
-      Date: <span class="<%= field_val %>">__________</span>
+      <%# On screen this is a STATUS (you don't sign here — the RN signs via
+          "Route to MD"). The wet-signature underscores are print-only. %>
+      <div class="no-print text-[12px]">
+        <span class="text-[#6B665F]">RN sign-off —</span>
+        <% if rn_signed_due %>
+          <span class="text-[#C1403A] font-medium">signature record unavailable</span>
+        <% else %>
+          <span class="text-[#1D1C1A] font-medium">pending</span>
+          <span class="text-[#6B665F]">· applied when the RN routes to MD</span>
+        <% end %>
+      </div>
+      <div class="print-only" style="display:none;">
+        RN: <span class="<%= field_val %>">_______________________________</span>
+        Date: <span class="<%= field_val %>">__________</span>
+      </div>
     <% end %>
   </div>
 
@@ -219,9 +237,19 @@
       <div class="<%= field_val %>"><%= md_sig.signed_name %>, MD <span class="text-[11px] text-[#6B665F]">(electronically signed)</span></div>
       <div class="text-[11px] text-[#6B665F]"><%= md_sig.short_audit_line %></div>
     <% else %>
-      MD: <span class="<%= field_val %>">_______________________________</span>
-      Date: <span class="<%= field_val %>">__________</span>
-      <span class="text-[11px] text-[#6B665F] italic ml-2">(pending certification)</span>
+      <div class="no-print text-[12px]">
+        <span class="text-[#6B665F]">MD certification —</span>
+        <% if md_signed_due %>
+          <span class="text-[#C1403A] font-medium">certified · signature record unavailable</span>
+        <% else %>
+          <span class="text-[#1D1C1A] font-medium">pending</span>
+        <% end %>
+      </div>
+      <div class="print-only" style="display:none;">
+        MD: <span class="<%= field_val %>">_______________________________</span>
+        Date: <span class="<%= field_val %>">__________</span>
+        <span class="text-[11px] text-[#6B665F] italic ml-2">(pending certification)</span>
+      </div>
     <% end %>
   </div>
 
