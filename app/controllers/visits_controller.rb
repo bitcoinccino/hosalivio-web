@@ -56,23 +56,11 @@ class VisitsController < ApplicationController
       #       so previous certified evals on the same patient don't
       #       block this visit's eval from being generated.
       if @visit.visit_type_admission? && @visit.pre_admit_eval.nil?
-        unclaimed = PreAdmitEval.where(patient_id: @visit.patient_id, visit_id: nil, status: :draft).order(:created_at).last
-        eval_rec  =
-          if unclaimed
-            unclaimed.update!(visit: @visit)
-            unclaimed
-          else
-            PreAdmitEval.create!(
-              agency:       @visit.agency,
-              patient:      @visit.patient,
-              visit:        @visit,
-              evaluator:    @visit.user,
-              status:       :draft,
-              evaluated_at: @visit.started_at || Time.current,
-              raw_json:     { "pre_admit_eval" => {} }
-            )
-          end
-        if narrative_for_eval(@visit).present? && !eval_rec.status_certified?
+        # Idempotent claim-or-create, shared with the recording-finish path and
+        # guarded by a partial unique index so concurrent edits can't create a
+        # second eval for this visit.
+        eval_rec = ensure_pre_admit_eval_for(@visit)
+        if eval_rec && narrative_for_eval(@visit).present? && !eval_rec.status_certified?
           result = PreAdmitNarrativeExtractor.call(
             narrative:     narrative_for_eval(@visit),
             existing_json: eval_rec.raw_json,
@@ -722,6 +710,11 @@ class VisitsController < ApplicationController
       evaluated_at:      visit.started_at || Time.current,
       raw_json:          { "pre_admit_eval" => {} }
     )
+  rescue ActiveRecord::RecordNotUnique
+    # A concurrent edit (double-click, Turbo prefetch + load) already linked an
+    # eval to this visit; the partial unique index on visit_id rejected the
+    # duplicate. Return the winner instead of erroring.
+    visit.reload.pre_admit_eval
   end
 
   def sync_visit_narrative_to_eval(eval_rec)

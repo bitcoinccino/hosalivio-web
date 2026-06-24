@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -477,6 +477,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_010000) do
     t.index ["patient_id"], name: "index_pre_admit_evals_on_patient_id"
     t.index ["raw_json"], name: "index_pre_admit_evals_on_raw_json", using: :gin
     t.index ["status"], name: "index_pre_admit_evals_on_status"
+    t.index ["visit_id"], name: "idx_one_pre_admit_eval_per_visit", unique: true, where: "(visit_id IS NOT NULL)"
     t.index ["visit_id"], name: "index_pre_admit_evals_on_visit_id"
   end
 
