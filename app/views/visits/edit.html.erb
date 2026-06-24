@@ -377,6 +377,36 @@
                 </div>
               </div>
 
+              <%# Certification-readiness checklist — surface the MD's certify
+                  blockers to the RN *before* they route, so they fix them here
+                  instead of bouncing back from the MD. Routing is still allowed
+                  with open blockers (the MD can weigh in), but the sign confirm
+                  warns below. %>
+              <% cert_blockers = linked_eval.certification_blockers %>
+              <% if cert_blockers.any? %>
+                <div class="rounded-2xl border border-[#C1403A] bg-[#FFF3EC] p-4">
+                  <div class="text-[11px] uppercase tracking-widest text-[#C1403A] font-bold inline-flex items-center gap-1.5">
+                    <i class="ri-error-warning-line"></i> Not certification-ready · <%= cert_blockers.size %> to fix
+                  </div>
+                  <div class="text-[12px] text-[#1D1C1A] mt-1">
+                    The MD can't certify until these clear. Fix them in the <strong>Medicaid tab</strong> below, then route.
+                  </div>
+                  <ul class="mt-2 space-y-1">
+                    <% cert_blockers.each do |b| %>
+                      <li class="flex items-start gap-2 text-[13px] text-[#1D1C1A]">
+                        <i class="ri-close-circle-line text-[#C1403A] mt-0.5 flex-shrink-0"></i>
+                        <span><%= b %></span>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% else %>
+                <div class="rounded-2xl border border-[#2F6F4E] bg-[#E6F0EE] p-3 flex items-center gap-2">
+                  <i class="ri-checkbox-circle-line text-[#2F6F4E]"></i>
+                  <span class="text-[12px] text-[#1D1C1A]"><strong class="text-[#2F6F4E]">Certification-ready</strong> — all required items are in place.</span>
+                </div>
+              <% end %>
+
               <%# Re-pull narrative into the eval — for when the RN edits the
                   narrative after Finish (which auto-synced once). Additive
                   only: the extractor fills blanks and never overwrites entries
@@ -402,7 +432,9 @@
                     submit_label:  "Route to MD for certification",
                     headline:      "Sign · route to MD",
                     intent_text:   "I certify that I have reviewed this pre-admit evaluation and authorize routing it to the on-call MD for certification.",
-                    confirm:       "Apply your signature and route this eval to the on-call MD?",
+                    confirm:       cert_blockers.any? ?
+                                     "#{cert_blockers.size} item#{'s' if cert_blockers.size != 1} aren't certification-ready yet — the MD will likely request changes. Route anyway?" :
+                                     "Apply your signature and route this eval to the on-call MD?",
                     tone:          :route %>
             </div>
           <% end %>
