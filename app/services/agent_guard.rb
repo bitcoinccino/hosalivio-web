@@ -72,6 +72,15 @@ class AgentGuard
       check: ->(d) { d[:action] == "write_pharm_delivery" }
     },
 
+    # Billing handles money, never care or coverage. Block any clinical write
+    # (orders, visits, deliveries) — those belong to MD/RN/pharmacy/DME, and
+    # coverage eligibility belongs to insurance (Kendra).
+    {
+      role: "billing",
+      key:  "make_clinical_or_coverage_eligibility_decisions",
+      check: ->(d) { %w[write_med_order write_visit write_pharm_delivery write_dme_order].include?(d[:action]) }
+    },
+
     # Insurance must not file an NOE without a certified eval.
     {
       role: "insurance",

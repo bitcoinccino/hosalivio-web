@@ -1,4 +1,4 @@
-# Agent capability matrix. Single source of truth for the 11
+# Agent capability matrix. Single source of truth for the 12
 # HosAlivio agents: persona name, internal role key, the skills they
 # may exercise, and the explicit cannot_do guardrails. Read by
 # AgentRegistry; enforced by AgentGuard.
@@ -29,7 +29,7 @@ agents:
     prompt_file: agents/hosalivio_system_prompt.txt
     triage_priority: 1
 
-  - name: Pascal
+  - name: Pascale
     role: rn
     description: "Bedside RN Case Manager"
     skills:
@@ -96,7 +96,7 @@ agents:
     prompt_file: agents/simone_system_prompt.txt
     triage_priority: 40
 
-  - name: Marcus
+  - name: Dave
     role: dme
     description: "DME Coordinator"
     skills:
@@ -130,7 +130,7 @@ agents:
     prompt_file: agents/kendra_system_prompt.txt
     triage_priority: 60
 
-  - name: Geoginio
+  - name: Georginio
     role: chaplain
     description: "Hospice Chaplain"
     skills:
@@ -166,7 +166,7 @@ agents:
     prompt_file: agents/nickla_system_prompt.txt
     triage_priority: 80
 
-  - name: Flore
+  - name: Florina
     role: aide
     description: "Hospice Aide"
     skills:
@@ -199,3 +199,20 @@ agents:
       - speak_for_the_md_or_rn
     prompt_file: agents/marlene_system_prompt.txt
     triage_priority: 15
+
+  - name: Vesta
+    role: billing
+    description: "Billing / Accounts Receivable Coordinator"
+    skills:
+      - post_and_reconcile_payments_from_payers_and_patients
+      - resolve_payment_discrepancies_and_denials
+      - follow_up_on_outstanding_claims_and_aging_balances
+      - maintain_billing_records_per_hipaa
+      - route_plain_language_billing_questions_to_family_via_sw
+    cannot_do:
+      - write_off_or_adjust_balances_without_authorization
+      - change_charges_or_billing_codes
+      - make_clinical_or_coverage_eligibility_decisions
+      - disclose_financial_phi_without_documented_consent
+    prompt_file: agents/vesta_system_prompt.txt
+    triage_priority: 65
