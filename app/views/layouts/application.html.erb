@@ -32,6 +32,35 @@
         data-viewer-first-name="<%= viewer_mention_name %>"
         data-viewer-user-id="<%= current_user&.id %>"
         data-hosalivio-bot-src="<%= asset_path('hosalivio_assistant.png') %>">
+    <%# Global flash / toast messages — auto-wired to flash_controller.js (dismiss). %>
+    <% if flash.any? %>
+      <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-[min(92vw,360px)]">
+        <% flash.each do |type, message| %>
+          <% next if message.blank? %>
+          <%
+            tone = case type.to_s
+                   when "notice", "success" then "border-[#2F6F4E] bg-[#EAF2EE] text-[#235c3e]"
+                   when "alert", "error"     then "border-[#C1403A] bg-[#FFF3EC] text-[#9A2F2A]"
+                   else                            "border-[#EFECE6] bg-white text-[#1D1C1A]"
+                   end
+            icon = case type.to_s
+                   when "notice", "success" then "ri-checkbox-circle-line"
+                   when "alert", "error"     then "ri-error-warning-line"
+                   else                            "ri-information-line"
+                   end
+          %>
+          <div data-controller="flash"
+               class="flex items-start gap-2 rounded-xl border <%= tone %> px-3 py-2.5 shadow-sm text-[13px]">
+            <i class="<%= icon %> mt-0.5"></i>
+            <span class="flex-1"><%= message %></span>
+            <button type="button" data-action="flash#dismiss" class="opacity-60 hover:opacity-100" aria-label="Dismiss">
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
     <%= yield %>
   </body>
 </html>
