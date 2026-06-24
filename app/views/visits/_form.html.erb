@@ -439,10 +439,11 @@
         <i class="ri-shield-check-line"></i>
         Overlap + 30-min windshield buffer enforced by the database.
       </span>
-      <div class="flex items-center gap-2">
-        <%= link_to "Cancel", calendar_return_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+      <div class="flex items-center gap-3">
+        <%= link_to "Cancel", calendar_return_path,
+              class: "text-[13px] px-4 py-2 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:bg-[#F1EEE8] hover:text-[#1D1C1A] transition" %>
         <%= f.submit (@visit.persisted? ? "Save changes" : "Add to #{role_label} calendar"),
-              class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+              class: "inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
       </div>
     </div>
   <% end %>
