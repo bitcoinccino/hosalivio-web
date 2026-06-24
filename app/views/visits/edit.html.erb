@@ -377,6 +377,25 @@
                 </div>
               </div>
 
+              <%# Re-pull narrative into the eval — for when the RN edits the
+                  narrative after Finish (which auto-synced once). Additive
+                  only: the extractor fills blanks and never overwrites entries
+                  the clinician already made. Draft eval only; gone once routed
+                  / finalized. NOT the VITAS sync — this is local note → eval. %>
+              <% if linked_eval.status_draft? %>
+                <div class="rounded-2xl border border-[#D9D5CD] bg-white p-3 flex items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-[12px] text-[#1D1C1A] font-medium">Edited the narrative after finishing?</div>
+                    <div class="text-[11px] text-[#6B665F] mt-0.5">Pull new details into the eval — fills blanks only, won't overwrite your entries.</div>
+                  </div>
+                  <%= button_to sync_to_eval_visit_path(@visit), method: :post,
+                        form: { class: "flex-shrink-0", data: { turbo_confirm: "Re-run extraction and pull any new narrative details into the eval for #{@visit.patient&.full_name}? Entries you already made are preserved." } },
+                        class: "inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-white border border-[#2B4A7A] text-[#2B4A7A] text-[12px] font-semibold hover:bg-[#F0F4FA] whitespace-nowrap no-print" do %>
+                    <i class="ri-refresh-line"></i> Pull note updates into eval
+                  <% end %>
+                </div>
+              <% end %>
+
               <%= render "shared/signature_panel",
                     submit_path:   route_to_md_visit_path(@visit),
                     submit_method: :post,
