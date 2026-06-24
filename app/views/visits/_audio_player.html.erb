@@ -1,0 +1,17 @@
+<%# Audio player + playback-speed control. The native <audio> player has no
+    visible speed selector, so the pills drive playbackRate via the
+    audio-speed Stimulus controller. Locals: src (required), audio_class. %>
+<div data-controller="audio-speed" class="flex items-center gap-2 flex-wrap w-full">
+  <%= audio_tag src, controls: true,
+        data: { audio_speed_target: "audio" },
+        class: local_assigns.fetch(:audio_class, "flex-1 min-w-[220px] h-9") %>
+  <div class="flex items-center gap-1 no-print" role="group" aria-label="Playback speed">
+    <% [0.75, 1, 1.5, 2].each do |r| %>
+      <button type="button" data-action="audio-speed#setRate" data-rate="<%= r %>"
+              data-audio-speed-target="button"
+              class="text-[11px] leading-none px-2 py-1 rounded-full border border-[#D9D5CD] hover:border-[#1D1C1A] transition <%= r == 1 ? 'bg-[#1D1C1A] text-white' : 'text-[#6B665F]' %>">
+        <%= (r % 1).zero? ? "#{r.to_i}×" : "#{r}×" %>
+      </button>
+    <% end %>
+  </div>
+</div>

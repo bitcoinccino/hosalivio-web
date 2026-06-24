@@ -216,7 +216,7 @@
             <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-1 flex items-center gap-1">
               <i class="ri-mic-line"></i> Bedside audio
             </div>
-            <%= audio_tag url_for(@visit.audio_note), controls: true, class: "w-full h-9" %>
+            <%= render "visits/audio_player", src: url_for(@visit.audio_note), audio_class: "flex-1 min-w-[220px] h-9" %>
           </div>
         <% end %>
 

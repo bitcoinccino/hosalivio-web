@@ -41,8 +41,38 @@ module VisitsHelper
     family    = family_members_for(visit)
 
     split_speaker_segments(text).filter_map do |seg|
-      build_turn(seg[:name], seg[:body], visit.discipline.to_s, patient, clinician, family)
+      build_turn(seg[:name], tidy_transcript_text(seg[:body]), visit.discipline.to_s, patient, clinician, family)
     end
+  end
+
+  # Light, deterministic format-on-display for raw transcript turns. Real
+  # Deepgram output is already punctuated (smart_format + punctuate are on),
+  # but this keeps capitalization + sentence terminals consistent and tidies
+  # web-speech / seeded text that arrives lowercase and unpunctuated. It only
+  # normalizes existing structure — it never invents commas mid-sentence.
+  def tidy_transcript_text(body)
+    s = body.to_s.strip.gsub(/\s+/, " ")
+    return s if s.empty?
+    s = s.gsub(/\bi\b/, "I") # standalone "i" + contractions (i'm, i'll)
+    # Capitalize the first letter and the first letter after . ? !
+    s = s.gsub(/(\A|[.?!]\s+)([a-z])/) { "#{Regexp.last_match(1)}#{Regexp.last_match(2).upcase}" }
+    s << "." unless s.match?(/[.?!]["')\]]?\z/) # ensure terminal punctuation
+    s
+  end
+
+  # Like tidy_transcript_text but for a full raw transcript string with
+  # [Speaker:] tags — tidies each turn's body while preserving the tags
+  # verbatim, since the narrative-link JS parses on them and speaker matching
+  # depends on the exact label. One turn per line for the SSR fallback.
+  def tidy_transcript_raw(text)
+    str = text.to_s
+    return str if str.blank?
+    return tidy_transcript_text(str) unless str.match?(/\[[^\]\n]+:\]/)
+
+    split_speaker_segments(str).map { |seg|
+      body = tidy_transcript_text(seg[:body])
+      seg[:name].present? ? "[#{seg[:name]}:] #{body}" : body
+    }.join("\n")
   end
 
   # A directory the narrative-link Stimulus controller uses to render each

@@ -15,6 +15,6 @@
     </div>
   </div>
   <% if has_audio %>
-    <%= audio_tag url_for(visit.audio_note), controls: true, class: "flex-1 min-w-[280px] h-9" %>
+    <%= render "visits/audio_player", src: url_for(visit.audio_note), audio_class: "flex-1 min-w-[240px] h-9" %>
   <% end %>
 </section>

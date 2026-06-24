@@ -7,7 +7,8 @@
 <%
   raw  = visit.narrative_raw.to_s
   poly = visit.narrative.to_s
-  text = raw.presence || poly.presence
+  src_text = raw.presence || poly.presence
+  text = src_text ? tidy_transcript_raw(src_text) : nil  # format-on-display: tidy bodies, keep [Speaker:] tags
   has_speaker_tags = text.to_s.scan(/\[[^\]\n]+:\]/).size >= 2
 %>
 <aside class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden lg:sticky lg:top-20 lg:self-start w-full">
