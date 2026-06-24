@@ -158,6 +158,24 @@ class PreAdmitEvalsController < ApplicationController
   # MD certification. Delegates the transition + downstream NOE
   # handoff to AgentTriager#certify_pre_admit_eval, which enforces
   # can_certify? and emits the Insurance handoff event.
+  # POST /pre_admit_evals/:id/retry_sync — manually (re)queue the outbound
+  # VITAS transmission. Used when a sync failed, or when gateway credentials
+  # land after an eval was already certified (the auto-fire on certification
+  # no-opped because the gateway was dormant).
+  def retry_sync
+    unless (current_user.role_names & %w[admin don md ceo]).any?
+      redirect_to(pre_admit_eval_path(@eval), alert: "Only admin / DON / MD can trigger an EMR sync.") and return
+    end
+
+    if @eval.enqueue_emr_sync
+      @eval.update!(sync_status: :processing)
+      redirect_to pre_admit_eval_path(@eval), notice: "VITAS sync queued — the chip will update when the gateway responds."
+    else
+      redirect_to pre_admit_eval_path(@eval),
+                  alert: "VITAS gateway isn't configured yet (set VITAS_GATEWAY_URL and VITAS_API_BEARER_TOKEN). Nothing was sent."
+    end
+  end
+
   def certify
     unless current_user.role_names.include?("md")
       redirect_to(pre_admit_eval_path(@eval), alert: "Only the MD can sign certification.") and return

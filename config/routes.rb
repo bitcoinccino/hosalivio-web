@@ -120,6 +120,7 @@ Rails.application.routes.draw do
       post :quick_set
       post :save_dme
       post :request_changes
+      post :retry_sync
     end
   end
   # Clinician thumbs-up / thumbs-down on AI-authored notes

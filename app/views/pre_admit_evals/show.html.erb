@@ -159,6 +159,20 @@
               </div>
             <% end %>
           <% end %>
+          <%# Manual VITAS (re)sync — for a failed transmission, or to fire a
+              certified eval that hasn't synced yet (e.g. gateway came online
+              after certification). Gated to admin / DON / MD. %>
+          <% can_retry_sync = (current_user.role_names & %w[admin don md ceo]).any? &&
+                              (@eval.sync_failed? ||
+                               ((@eval.status_certified? || @eval.status_noe_filed?) && @eval.sync_not_synced?)) %>
+          <% if can_retry_sync %>
+            <%= button_to retry_sync_pre_admit_eval_path(@eval), method: :post,
+                  form: { class: "block" },
+                  data: { action: "menu#close" },
+                  class: "w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#2B4A7A] font-medium hover:bg-[#F0F4FA]" do %>
+              <i class="ri-refresh-line"></i> <%= @eval.sync_failed? ? "Retry VITAS sync" : "Sync to VITAS now" %>
+            <% end %>
+          <% end %>
           <% if turns.any? %>
             <button type="button" data-action="menu#close dialog#open"
                     class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
