@@ -400,13 +400,47 @@
                     <i class="ri-error-warning-line"></i> Not certification-ready · <%= cert_blockers.size %> to fix
                   </div>
                   <div class="text-[12px] text-[#1D1C1A] mt-1">
-                    The MD can't certify until these clear. Fix them in the <strong>Medicaid tab</strong> below, then route.
+                    The MD can't certify until these clear. The two attestations are one-tap here; diagnosis details are in the <strong>Medicaid tab</strong> below.
                   </div>
-                  <ul class="mt-2 space-y-1">
-                    <% cert_blockers.each do |b| %>
+                  <ul class="mt-2 space-y-1.5">
+                    <%# The two attestation blockers are one-tap right here so the RN
+                        doesn't have to open the eval just to confirm consent / rights.
+                        return_to=visit keeps them on this page. ICD-10 / LCD need
+                        clinical entry, so those stay as "fix in the Medicaid tab" rows. %>
+                    <% unless linked_eval.election_signed? %>
+                      <li class="flex items-center justify-between gap-2">
+                        <span class="flex items-center gap-2 text-[13px] text-[#1D1C1A]">
+                          <i class="ri-close-circle-line text-[#C1403A] flex-shrink-0"></i> Election of benefits not signed
+                        </span>
+                        <%= button_to quick_set_pre_admit_eval_path(linked_eval, key: "election_of_benefits_signed", return_to: "visit"),
+                              method: :post, form: { class: "flex-shrink-0" },
+                              class: "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-[#2F6F4E] text-[#2F6F4E] text-[11px] font-semibold hover:bg-[#E6F0EE] whitespace-nowrap" do %>
+                          <i class="ri-check-line"></i> Mark signed
+                        <% end %>
+                      </li>
+                    <% end %>
+                    <% unless linked_eval.patient_rights_reviewed? %>
+                      <li class="flex items-center justify-between gap-2">
+                        <span class="flex items-center gap-2 text-[13px] text-[#1D1C1A]">
+                          <i class="ri-close-circle-line text-[#C1403A] flex-shrink-0"></i> Patient rights not reviewed
+                        </span>
+                        <%= button_to quick_set_pre_admit_eval_path(linked_eval, key: "patient_rights_reviewed", return_to: "visit"),
+                              method: :post, form: { class: "flex-shrink-0" },
+                              class: "inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-[#2F6F4E] text-[#2F6F4E] text-[11px] font-semibold hover:bg-[#E6F0EE] whitespace-nowrap" do %>
+                          <i class="ri-check-line"></i> Mark reviewed
+                        <% end %>
+                      </li>
+                    <% end %>
+                    <% if linked_eval.primary_icd10.blank? %>
                       <li class="flex items-start gap-2 text-[13px] text-[#1D1C1A]">
                         <i class="ri-close-circle-line text-[#C1403A] mt-0.5 flex-shrink-0"></i>
-                        <span><%= b %></span>
+                        <span>Primary diagnosis ICD-10 missing <span class="text-[#6B665F]">· add it in the Medicaid tab</span></span>
+                      </li>
+                    <% end %>
+                    <% unless linked_eval.lcd_criteria_supported %>
+                      <li class="flex items-start gap-2 text-[13px] text-[#1D1C1A]">
+                        <i class="ri-close-circle-line text-[#C1403A] mt-0.5 flex-shrink-0"></i>
+                        <span>LCD criteria not supported <span class="text-[#6B665F]">· add it in the Medicaid tab</span></span>
                       </li>
                     <% end %>
                   </ul>

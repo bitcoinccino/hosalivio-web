@@ -114,8 +114,21 @@ class PreAdmitEvalsController < ApplicationController
 
     @eval.update!(raw_json: raw)
     flash[:notice] = "#{key.humanize} marked complete."
-    redirect_to pre_admit_eval_path(@eval)
+    redirect_to quick_set_return_path
   end
+
+  # The attestation buttons live in two places: the eval show page and the
+  # RN's certification checklist on the visit edit page. `return_to=visit`
+  # keeps the RN on the visit page (where they're reviewing + routing)
+  # instead of bouncing them to the standalone eval.
+  def quick_set_return_path
+    if params[:return_to].to_s == "visit" && @eval.visit
+      edit_visit_path(@eval.visit)
+    else
+      pre_admit_eval_path(@eval)
+    end
+  end
+  private :quick_set_return_path
 
   # Saves the RN's accepted DME / equipment selections (AI-suggested or
   # manual) plus free-text notes into the `general` block. Posted from the
