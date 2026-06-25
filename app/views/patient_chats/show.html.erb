@@ -313,6 +313,17 @@
             <% last_date = note_local_date %>
           <% end %>
           <%= render "message_bubble", note: note %>
+          <%# Threaded replies, nested + rule-lined under their parent. The
+              container id lets the chat JS append live replies here later. %>
+          <% thread_replies = @replies_by_parent[note.id] || [] %>
+          <% if thread_replies.any? %>
+            <div class="ml-7 md:ml-12 mt-1 mb-1 pl-3 border-l-2 border-[#EFECE6] space-y-2"
+                 data-thread-replies-for="<%= note.id %>">
+              <% thread_replies.each do |reply| %>
+                <%= render "message_bubble", note: reply, thread_reply: true %>
+              <% end %>
+            </div>
+          <% end %>
         <% end %>
       <% end %>
     </div>

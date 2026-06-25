@@ -7,7 +7,14 @@ class PatientChatsController < ApplicationController
     ActsAsTenant.with_tenant(@agency) do
       base_notes = @patient.notes
       base_notes = base_notes.family_visible if current_user.family_access?
-      @notes     = base_notes.order(created_at: :desc).limit(50).to_a.reverse
+      # Feed shows root (top-level) notes; thread replies are grouped under
+      # their parent. Replies inherit their parent's visibility, so the
+      # family_visible filter on both keeps a family viewer from ever seeing a
+      # team-only reply.
+      @notes = base_notes.roots.order(created_at: :desc).limit(50).to_a.reverse
+      reply_scope = @patient.notes.where(parent_note_id: @notes.map(&:id))
+      reply_scope = reply_scope.family_visible if current_user.family_access?
+      @replies_by_parent = reply_scope.order(:created_at).group_by(&:parent_note_id)
       @idg_roster = build_idg_roster(@patient)
 
       # Right-rail clinical context

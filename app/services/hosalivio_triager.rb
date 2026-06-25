@@ -153,10 +153,14 @@ class HosalivioTriager
     # 3 — HANDOFF EVENTS (one per target role; these surface on Mission Stage)
     roles.each { |role| emit_handoff(role, decision[:intent], decision[:urgency]) }
 
-    # 4 — FAMILY-FACING REPLY (broadcasts to the chat UI via Note callback)
+    # 4 — FAMILY-FACING REPLY (broadcasts to the chat UI via Note callback).
+    #     Threaded under the family's message so the question + HosAlivio's
+    #     answer read as one conversation. parent is family-visible, so the
+    #     reply inherits family visibility.
     Note.create!(
       agency:      @agency,
       patient:     @patient,
+      parent_note: @note,
       author_role: "admissions",
       body:        decision[:reply],
       urgency:     "normal",     # reply itself is calm; urgency captured internally
@@ -191,6 +195,7 @@ class HosalivioTriager
     Note.create!(
       agency:      @agency,
       patient:     @patient,
+      parent_note: @note,        # thread the answer under the question
       author_role: "admissions",
       body:        reply_text,
       urgency:     "normal",

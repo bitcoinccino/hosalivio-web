@@ -12,6 +12,23 @@ class Note < ApplicationRecord
   belongs_to :agency
   belongs_to :patient
   belongs_to :author_user, class_name: "User", optional: true
+
+  # Threading: a reply points at the root note it answers. Threads are one
+  # level deep — a reply can't itself be replied to (enforced below). Replies
+  # inherit their parent's patient/agency/visibility so a team-only thread
+  # stays team-only and a family thread stays family-visible.
+  belongs_to :parent_note, class_name: "Note", optional: true
+  has_many   :replies, class_name: "Note", foreign_key: :parent_note_id,
+                       inverse_of: :parent_note, dependent: :nullify
+
+  before_validation :inherit_thread_attributes, on: :create, if: :parent_note_id?
+  validate :thread_is_one_level_deep
+  validate :reply_matches_parent_patient
+
+  scope :roots, -> { where(parent_note_id: nil) }
+
+  def reply?       = parent_note_id.present?
+  def thread_root? = parent_note_id.blank?
   # The clinician who scored this note's quality (thumbs up/down on
   # AI replies). Distinct from author_user — feedback can come from a
   # different clinician than the one who wrote (or in the AI case, the
@@ -166,6 +183,32 @@ class Note < ApplicationRecord
 
   private
 
+  # A reply inherits the thread's patient/agency and — critically — its
+  # visibility, so replying never moves a note across the family/clinician
+  # boundary. Set before validation so the inheritance is what gets saved.
+  def inherit_thread_attributes
+    root = parent_note
+    return unless root
+    self.patient_id     = root.patient_id
+    self.agency_id      = root.agency_id
+    self.clinician_only = root.clinician_only
+  end
+
+  # One level deep: the parent must itself be a root. Prevents reply-to-reply
+  # chains the threaded UI isn't built to render.
+  def thread_is_one_level_deep
+    return if parent_note_id.blank?
+    return unless parent_note&.parent_note_id.present?
+    errors.add(:parent_note_id, "can't reply to a reply (threads are one level deep)")
+  end
+
+  def reply_matches_parent_patient
+    return if parent_note_id.blank? || parent_note.nil?
+    if parent_note.patient_id != patient_id
+      errors.add(:parent_note_id, "must belong to the same patient")
+    end
+  end
+
   def enqueue_outbound_pings_for_mentions
     return unless clinician_only
     return unless %w[urgent crisis].include?(urgency.to_s)
@@ -182,6 +225,7 @@ class Note < ApplicationRecord
       {
         kind:              "note",
         note_id:           id,
+        parent_note_id:    parent_note_id,    # nil = top-level; else nests under that note
         author_role:       author_role,
         author_user_id:    author_user_id,
         author_name:       display_author_name,

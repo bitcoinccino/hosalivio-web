@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_050000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -338,6 +338,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_050000) do
     t.text "feedback_notes"
     t.jsonb "feedback_reasons", default: [], null: false
     t.integer "feedback_score"
+    t.uuid "parent_note_id"
     t.uuid "patient_id", null: false
     t.datetime "read_at"
     t.integer "source", default: 0, null: false
@@ -350,6 +351,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_050000) do
     t.index ["clinician_only"], name: "index_notes_on_clinician_only"
     t.index ["feedback_by_id"], name: "index_notes_on_feedback_by_id"
     t.index ["feedback_score"], name: "index_notes_on_feedback_score", where: "(feedback_score IS NOT NULL)"
+    t.index ["parent_note_id", "created_at"], name: "index_notes_on_parent_note_id_and_created_at"
+    t.index ["parent_note_id"], name: "index_notes_on_parent_note_id"
     t.index ["patient_id"], name: "index_notes_on_patient_id"
   end
 
@@ -658,6 +661,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_050000) do
   add_foreign_key "medication_orders", "patients"
   add_foreign_key "medication_orders", "users", column: "prescribed_by_id"
   add_foreign_key "notes", "agencies"
+  add_foreign_key "notes", "notes", column: "parent_note_id", on_delete: :nullify
   add_foreign_key "notes", "patients"
   add_foreign_key "notes", "users", column: "author_user_id"
   add_foreign_key "notes", "users", column: "feedback_by_id"
