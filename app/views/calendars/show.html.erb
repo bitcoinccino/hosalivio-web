@@ -90,10 +90,14 @@
               role = (user.role_names & %w[rn md don sw chaplain aide social_worker]).first || "rn"
               role_color = discipline_color[role == "social_worker" ? "sw" : role] || "#6B665F"
             %>
-            <div class="w-7 h-7 rounded-full text-white text-[11px] font-medium flex items-center justify-center flex-shrink-0"
-                 style="background: <%= role_color %>;">
-              <%= user.full_name.to_s.split.map(&:first).first(2).join.upcase %>
-            </div>
+            <% if user.has_avatar? %>
+              <%= image_tag url_for(user.avatar), class: "w-7 h-7 rounded-full object-cover flex-shrink-0 border border-[#EFECE6]" %>
+            <% else %>
+              <div class="w-7 h-7 rounded-full text-white text-[11px] font-medium flex items-center justify-center flex-shrink-0"
+                   style="background: <%= role_color %>;">
+                <%= user.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+              </div>
+            <% end %>
             <div class="min-w-0">
               <div class="text-[13px] text-[#1D1C1A] truncate"><%= user.full_name %></div>
               <div class="text-[10px] text-[#6B665F] uppercase tracking-wider"><%= role == "social_worker" ? "sw" : role %></div>

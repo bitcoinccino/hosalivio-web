@@ -57,7 +57,16 @@
                   <%= status_label %>
                 </span>
               </div>
-              <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= patient&.full_name || "Patient not set" %></h1>
+              <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight flex items-center gap-2.5">
+                <span class="w-10 h-10 rounded-full border border-[#EFECE6] bg-white overflow-hidden flex-shrink-0 inline-flex items-center justify-center">
+                  <% if patient&.has_photo? %>
+                    <%= image_tag url_for(patient.photo), class: "w-full h-full object-cover" %>
+                  <% else %>
+                    <span class="text-[13px] font-bold text-[#6B665F]"><%= "#{patient&.first_name.to_s[0]}#{patient&.last_name.to_s[0]}".upcase.presence || "PT" %></span>
+                  <% end %>
+                </span>
+                <span class="truncate"><%= patient&.full_name || "Patient not set" %></span>
+              </h1>
               <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[#6B665F]">
                 <% if patient&.mrn.present? %>
                   <span class="inline-flex items-center gap-1 font-mono">
@@ -220,9 +229,24 @@
               <div class="rounded-xl bg-[#FBF9F5] border border-[#EFECE6] p-3">
                 <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Caregiver</div>
                 <% if patient&.caregiver_name.present? %>
-                  <div class="mt-1 text-[13px] text-[#1D1C1A]"><%= patient.caregiver_name %></div>
+                  <% cg_user = patient.family_users.detect(&:has_avatar?) %>
+                  <div class="mt-1 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white overflow-hidden flex-shrink-0 inline-flex items-center justify-center">
+                      <% if cg_user&.has_avatar? %>
+                        <%= image_tag url_for(cg_user.avatar), class: "w-full h-full object-cover" %>
+                      <% else %>
+                        <span class="text-[11px] font-bold text-[#6B665F]"><%= patient.caregiver_name.to_s.split.map { |w| w[0] }.first(2).join.upcase.presence || "CG" %></span>
+                      <% end %>
+                    </span>
+                    <div class="min-w-0">
+                      <div class="text-[13px] text-[#1D1C1A] truncate"><%= patient.caregiver_name %></div>
+                      <% if patient.caregiver_relationship.present? %>
+                        <div class="text-[10px] uppercase tracking-wider text-[#6B665F]"><%= patient.caregiver_relationship %></div>
+                      <% end %>
+                    </div>
+                  </div>
                   <% if patient.caregiver_phone.present? %>
-                    <a href="tel:<%= patient.caregiver_phone %>" class="text-[12px] font-mono text-[#6B665F] hover:underline"><%= patient.caregiver_phone %></a>
+                    <a href="tel:<%= patient.caregiver_phone %>" class="mt-1 inline-block text-[12px] font-mono text-[#6B665F] hover:underline"><%= patient.caregiver_phone %></a>
                   <% end %>
                 <% else %>
                   <div class="mt-1 text-[13px] text-[#6B665F]">Not recorded</div>
