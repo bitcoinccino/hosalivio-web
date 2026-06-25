@@ -41,6 +41,17 @@
   <div class="<%= modal_request ? '' : 'rounded-2xl bg-white border border-[#EFECE6] shadow-sm overflow-hidden' %>">
       <div class="h-2" style="background: <%= color %>;"></div>
       <div class="p-5 md:p-6">
+        <%# Critical safety flag first — a DNR is the single most important
+            thing the RN must register before walking in. %>
+        <% if patient&.dnr? || patient&.dnr_dni? %>
+          <div class="mb-4 rounded-2xl bg-[#C1403A] text-white px-4 py-3 flex items-center gap-3 shadow-sm">
+            <i class="ri-alarm-warning-fill text-3xl flex-shrink-0"></i>
+            <div>
+              <div class="text-[16px] font-extrabold uppercase tracking-wider leading-none"><%= patient.code_status.to_s.tr("_", "/").upcase %></div>
+              <div class="text-[11px] opacity-90 mt-1">Do not resuscitate — confirm code status before any intervention.</div>
+            </div>
+          </div>
+        <% end %>
         <div class="flex flex-col gap-4">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
@@ -112,16 +123,18 @@
           can_start     = !@visit.completed_visit? && (is_assigned || is_mgr)
         %>
 
-        <%# Start the visit straight from the card. %>
+        <%# One dominant action: begin the visit (starts the timer + opens the
+            recording workspace). Chart is the secondary "review prior notes". %>
         <% if can_start %>
-          <div class="mt-4 flex flex-wrap items-center gap-2">
+          <div class="mt-4 flex flex-col sm:flex-row items-stretch gap-2">
             <%= link_to record_visit_path(@visit), data: { turbo_frame: "_top" },
-                  class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[13px] font-semibold" do %>
-              <i class="ri-mic-line"></i> Start visit (record)
+                  class: "flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[15px] font-semibold shadow-sm" do %>
+              <i class="ri-play-circle-fill text-lg"></i> Begin patient visit
             <% end %>
             <%= link_to edit_visit_path(@visit), data: { turbo_frame: "_top" },
-                  class: "inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] text-[13px] hover:bg-[#FBF9F5]" do %>
-              <i class="ri-folder-chart-line"></i> Open workspace
+                  title: "Open the chart workspace to review prior notes",
+                  class: "inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-full border border-[#D9D5CD] text-[#1D1C1A] text-[13px] hover:bg-[#FBF9F5]" do %>
+              <i class="ri-folder-chart-line"></i> Chart
             <% end %>
           </div>
         <% end %>
@@ -215,6 +228,17 @@
               </div>
             <% end %>
 
+            <%# Tap-to-navigate — pushes the address to the device's maps app. %>
+            <% nav_query = @visit.uses_patient_home_address? ?
+                 [patient&.address_line1, patient&.address_line2, patient&.city, patient&.state, patient&.zip].compact_blank.join(", ") :
+                 [@visit.facility_name, patient&.city, patient&.state].compact_blank.join(", ") %>
+            <% if nav_query.present? %>
+              <a href="https://www.google.com/maps/search/?api=1&query=<%= CGI.escape(nav_query) %>" target="_blank" rel="noopener"
+                 class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#223d66] text-white text-[12px] font-medium">
+                <i class="ri-navigation-fill"></i> Navigate
+              </a>
+            <% end %>
+
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div class="rounded-xl bg-[#FBF9F5] border border-[#EFECE6] p-3">
                 <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Patient phone</div>
@@ -239,10 +263,9 @@
                       <% end %>
                     </span>
                     <div class="min-w-0">
-                      <div class="text-[13px] text-[#1D1C1A] truncate"><%= patient.caregiver_name %></div>
-                      <% if patient.caregiver_relationship.present? %>
-                        <div class="text-[10px] uppercase tracking-wider text-[#6B665F]"><%= patient.caregiver_relationship %></div>
-                      <% end %>
+                      <div class="text-[13px] text-[#1D1C1A] truncate">
+                        <%= patient.caregiver_name %><% if patient.caregiver_relationship.present? %> <span class="text-[#6B665F]">(<%= patient.caregiver_relationship %>)</span><% end %>
+                      </div>
                     </div>
                   </div>
                   <% if patient.caregiver_phone.present? %>
