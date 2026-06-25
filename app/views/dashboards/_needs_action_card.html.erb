@@ -1,0 +1,41 @@
+<%# Live "Needs action now" card. The id matches DashboardData.broadcast_needs_action's
+    target so after_commit hooks (Note/MedicationLog/AgentEvent/Visit) replace it
+    over the RN's Turbo Stream — no page refresh. Locals: data (DashboardData),
+    viewer_user_id. %>
+<%= turbo_frame_tag "dashboard-needs-action-#{viewer_user_id}" do %>
+  <%
+    crises   = data.open_crises
+    overdue  = data.overdue_meds
+    handoffs = data.pending_handoffs
+    review   = data.charts_needing_review
+    jump_to  = crises.first&.patient || data.caseload.first
+  %>
+  <div class="p-5">
+    <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Needs action now</div>
+    <div class="grid grid-cols-2 gap-2">
+      <% if jump_to %>
+        <%= link_to patient_path(jump_to), class: "rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3 hover:bg-white" do %>
+          <div class="text-[20px] font-serif text-[#C1403A]"><%= crises.size %></div>
+          <div class="text-[11px] text-[#6B665F]">Crisis messages</div>
+        <% end %>
+      <% else %>
+        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+          <div class="text-[20px] font-serif text-[#C1403A]"><%= crises.size %></div>
+          <div class="text-[11px] text-[#6B665F]">Crisis messages</div>
+        </div>
+      <% end %>
+      <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+        <div class="text-[20px] font-serif text-[#C1403A]"><%= overdue.size %></div>
+        <div class="text-[11px] text-[#6B665F]">Meds overdue</div>
+      </div>
+      <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+        <div class="text-[20px] font-serif text-[#8A4B2F]"><%= handoffs.size %></div>
+        <div class="text-[11px] text-[#6B665F]">Team requests</div>
+      </div>
+      <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
+        <div class="text-[20px] font-serif text-[#2F6F4E]"><%= review.size %></div>
+        <div class="text-[11px] text-[#6B665F]">Notes to review</div>
+      </div>
+    </div>
+  </div>
+<% end %>

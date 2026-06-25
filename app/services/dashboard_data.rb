@@ -8,6 +8,21 @@ class DashboardData
     new(user)
   end
 
+  # Re-render an RN's live "Needs action now" card over their Turbo Stream.
+  # Called from after_commit hooks (Note/MedicationLog/AgentEvent/Visit) so the
+  # crisis / overdue / team-request / review counts update without a refresh.
+  def self.broadcast_needs_action(rn)
+    return unless rn
+    Turbo::StreamsChannel.broadcast_replace_to(
+      "dashboard:user:#{rn.id}",
+      target:  "dashboard-needs-action-#{rn.id}",
+      partial: "dashboards/needs_action_card",
+      locals:  { data: self.for(rn), viewer_user_id: rn.id }
+    )
+  rescue => e
+    Rails.logger.warn("[DashboardData.broadcast_needs_action] #{e.class}: #{e.message}")
+  end
+
   attr_reader :user, :agency
 
   def initialize(user)
@@ -47,5 +62,17 @@ class DashboardData
       { order: o, schedule: sched } if sched[:status] == :overdue
     end.compact
     overdue.sort_by { |r| r[:schedule][:minutes].to_i }.first(5)
+  end
+
+  def open_crises
+    case_ids = caseload.pluck(:id)
+    return Note.none if case_ids.empty?
+    Note.unscoped.where(patient_id: case_ids, author_role: "family",
+                        urgency: :crisis, read_at: nil)
+        .order(created_at: :desc).limit(5).includes(:patient)
+  end
+
+  def charts_needing_review
+    todays_visits.select { |v| v.completed_visit? && !v.chart_locked? && v.narrative.to_s.strip.present? }
   end
 end

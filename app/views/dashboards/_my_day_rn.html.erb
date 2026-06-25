@@ -100,34 +100,9 @@
       <% end %>
     </div>
 
-    <div class="p-5">
-      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Needs action now</div>
-      <div class="grid grid-cols-2 gap-2">
-        <% if @open_crises.first&.patient || @caseload.first %>
-          <%= link_to patient_path(@open_crises.first&.patient || @caseload.first), class: "rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3 hover:bg-white" do %>
-            <div class="text-[20px] font-serif text-[#C1403A]"><%= @open_crises.size %></div>
-            <div class="text-[11px] text-[#6B665F]">Crisis messages</div>
-          <% end %>
-        <% else %>
-          <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-          <div class="text-[20px] font-serif text-[#C1403A]"><%= @open_crises.size %></div>
-          <div class="text-[11px] text-[#6B665F]">Crisis messages</div>
-          </div>
-        <% end %>
-        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-          <div class="text-[20px] font-serif text-[#C1403A]"><%= @overdue_meds.size %></div>
-          <div class="text-[11px] text-[#6B665F]">Meds overdue</div>
-        </div>
-        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-          <div class="text-[20px] font-serif text-[#8A4B2F]"><%= @pending_handoffs.size %></div>
-          <div class="text-[11px] text-[#6B665F]">Team requests</div>
-        </div>
-        <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-          <div class="text-[20px] font-serif text-[#2F6F4E]"><%= charts_needing_review.size %></div>
-          <div class="text-[11px] text-[#6B665F]">Notes to review</div>
-        </div>
-      </div>
-    </div>
+    <%# Live card — replaced over the RN's Turbo Stream by
+        DashboardData.broadcast_needs_action when any input changes. %>
+    <%= render "dashboards/needs_action_card", data: DashboardData.for(current_user), viewer_user_id: current_user.id %>
 
     <div class="p-5">
       <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Patients needing review</div>

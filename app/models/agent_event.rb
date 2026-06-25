@@ -51,6 +51,7 @@ class AgentEvent < ApplicationRecord
         partial: "dashboards/handoffs_card",
         locals:  { pending_handoffs: data.pending_handoffs, viewer_user_id: target.id }
       )
+      DashboardData.broadcast_needs_action(target)
     end
   rescue => e
     Rails.logger.warn("[AgentEvent#broadcast_dashboard_handoff] #{e.class}: #{e.message}")

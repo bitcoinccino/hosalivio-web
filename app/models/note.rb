@@ -72,6 +72,18 @@ class Note < ApplicationRecord
   # pathway; we don't want to ping for routine charts.
   after_create_commit :enqueue_outbound_pings_for_mentions
 
+  # A family crisis note (and marking one read) changes the RN's live
+  # "Needs action now" crisis count — push it over their Turbo Stream.
+  after_create_commit :broadcast_rn_needs_action
+  after_update_commit :broadcast_rn_needs_action, if: -> { saved_change_to_read_at? }
+
+  def broadcast_rn_needs_action
+    return unless author_role.to_s == "family" && urgency.to_s == "crisis"
+    DashboardData.broadcast_needs_action(patient&.assigned_rn)
+  rescue => e
+    Rails.logger.warn("[Note#broadcast_rn_needs_action] #{e.class}: #{e.message}")
+  end
+
   def mark_read!(user = nil)
     update!(read_at: Time.current) if read_at.nil?
   end

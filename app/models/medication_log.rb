@@ -32,6 +32,7 @@ class MedicationLog < ApplicationRecord
       partial: "dashboards/overdue_meds_card",
       locals:  { overdue_meds: data.overdue_meds, viewer_user_id: rn.id }
     )
+    DashboardData.broadcast_needs_action(rn)
   rescue => e
     Rails.logger.warn("[MedicationLog#broadcast_dashboard_overdue_change] #{e.class}: #{e.message}")
   end

@@ -165,6 +165,7 @@ class Visit < ApplicationRecord
       partial: "dashboards/todays_visits_card",
       locals:  { todays_visits: data.todays_visits, viewer_user_id: user.id }
     )
+    DashboardData.broadcast_needs_action(user)
   rescue => e
     Rails.logger.warn("[Visit#broadcast_dashboard_visit_change] #{e.class}: #{e.message}")
   end
