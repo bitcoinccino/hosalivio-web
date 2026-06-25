@@ -77,7 +77,7 @@
   </header>
 
 
-  <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
+  <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6 pb-36 md:pb-6">
     <%# Desktop: the dense week grid. Hidden on phones — they get the
         vertical agenda below instead (a 7-column grid can't be usable
         on a narrow screen). %>
@@ -273,22 +273,26 @@
     </div>
   </main>
 
-  <%# Mobile week navigation — moved out of the cramped top bar to a
-      thumb-friendly sticky footer (desktop keeps the arrows up top). %>
-  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-[#EFECE6] flex items-stretch">
-    <a href="<%= calendar_path(date: (@week_start - 7.days).iso8601) %>"
-       class="flex-1 flex flex-col items-center justify-center py-2.5 text-[10px] uppercase tracking-wider text-[#6B665F] active:bg-[#FBF9F5]">
-      <i class="ri-arrow-left-s-line text-lg"></i> Prev
-    </a>
-    <a href="<%= calendar_path %>"
-       class="flex-1 flex flex-col items-center justify-center py-2.5 text-[10px] uppercase tracking-wider font-bold text-[#D97757] active:bg-[#FBF9F5] border-x border-[#EFECE6]">
-      <i class="ri-focus-3-line text-lg"></i> Today
-    </a>
-    <a href="<%= calendar_path(date: (@week_start + 7.days).iso8601) %>"
-       class="flex-1 flex flex-col items-center justify-center py-2.5 text-[10px] uppercase tracking-wider text-[#6B665F] active:bg-[#FBF9F5]">
-      <i class="ri-arrow-right-s-line text-lg"></i> Next
-    </a>
-  </nav>
+  <%# Mobile footer: week navigation (moved out of the cramped top bar)
+      stacked above the global tab bar. Desktop keeps week arrows up top
+      and uses the left rail, so the whole stack is md:hidden. %>
+  <div class="md:hidden fixed bottom-0 inset-x-0 z-30">
+    <nav class="bg-white/95 backdrop-blur border-t border-[#EFECE6] flex items-stretch">
+      <a href="<%= calendar_path(date: (@week_start - 7.days).iso8601) %>"
+         class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] uppercase tracking-wider text-[#6B665F] active:bg-[#FBF9F5]">
+        <i class="ri-arrow-left-s-line text-lg"></i> Prev
+      </a>
+      <a href="<%= calendar_path %>"
+         class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] uppercase tracking-wider font-bold text-[#D97757] active:bg-[#FBF9F5] border-x border-[#EFECE6]">
+        <i class="ri-focus-3-line text-lg"></i> This week
+      </a>
+      <a href="<%= calendar_path(date: (@week_start + 7.days).iso8601) %>"
+         class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] uppercase tracking-wider text-[#6B665F] active:bg-[#FBF9F5]">
+        <i class="ri-arrow-right-s-line text-lg"></i> Next
+      </a>
+    </nav>
+    <%= render "shared/mobile_tab_bar", active: :calendar %>
+  </div>
 
   <%# Visit cards open in here (Turbo Frame modal). %>
   <%= turbo_frame_tag "visit-modal" %>
