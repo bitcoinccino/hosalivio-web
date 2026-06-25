@@ -2,6 +2,7 @@ class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
   before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary]
+  before_action :authorize_visit_scheduler!, only: [:new, :create]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -763,6 +764,17 @@ class VisitsController < ApplicationController
   def beacon_request?
     accept = request.headers["Accept"].to_s
     accept.empty? || accept.include?("*/*") && !accept.include?("text/html")
+  end
+
+  # Scheduling a visit (assigning a patient + clinician + date via the new/create
+  # form) is an admin / admissions / DON action. Performing clinicians start
+  # their OWN visit through #start_now (self-assigned) and record the visits
+  # already on their list — they never use the scheduler form.
+  SCHEDULER_ROLES = %w[admin don admissions ceo].freeze
+  def authorize_visit_scheduler!
+    return if (current_user.role_names & SCHEDULER_ROLES).any?
+    redirect_to dashboard_path, status: :see_other,
+                alert: "Only admin, DON, or admissions can schedule visits."
   end
 
   def redirect_family_users

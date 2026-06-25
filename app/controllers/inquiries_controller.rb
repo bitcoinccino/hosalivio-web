@@ -2,6 +2,10 @@ class InquiriesController < ApplicationController
   # Public `create` for the landing page. Auth-required for everything else.
   skip_before_action :verify_authenticity_token, only: :create    # JSON POST from public page
   before_action :authenticate_user!, except: :create
+  # The inquiries inbox (view / claim / contact / dismiss / convert-to-patient)
+  # is an admissions/admin intake task, not clinical work. Only the public
+  # landing-page submission (:create) is open.
+  before_action :authorize_inquiry_manager!, except: :create
 
   before_action :set_inquiry, only: [:claim, :mark_contacted, :dismiss, :convert, :convert_to_patient]
 
@@ -131,6 +135,13 @@ class InquiriesController < ApplicationController
 
   # ── helpers ─────────────────────────────────────────────────────────
   private
+
+  INQUIRY_MANAGER_ROLES = %w[admin don admissions ceo].freeze
+  def authorize_inquiry_manager!
+    return if (current_user.role_names & INQUIRY_MANAGER_ROLES).any?
+    redirect_to dashboard_path, status: :see_other,
+                alert: "Only admin, DON, or admissions can manage inquiries."
+  end
 
   def set_inquiry
     ActsAsTenant.with_tenant(current_user&.agency) do
