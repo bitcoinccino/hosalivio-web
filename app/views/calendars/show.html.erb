@@ -5,6 +5,10 @@
     "rn" => "#2F6F4E", "md" => "#2B4A7A", "sw" => "#7A4A8C",
     "chaplain" => "#8C6A2F", "aide" => "#AD7340", "don" => "#8B5A2B"
   }
+  # Scheduling is a manager action. Performing clinicians (RN/MD) view their
+  # own schedule read-only — so the "+ Add" / click-to-book affordances and
+  # the empty-cell copy both branch on this.
+  can_schedule = (current_user.role_names & %w[admin don admissions ceo]).any?
 %>
 
 <div class="min-h-screen" data-controller="calendar">
@@ -36,7 +40,7 @@
         </a>
         <%# Scheduling is an admin/admissions action — performing clinicians
             (RN/MD/etc.) see their own schedule but don't book visits here. %>
-        <% if (current_user.role_names & %w[admin don admissions ceo]).any? %>
+        <% if can_schedule %>
           <a href="<%= new_visit_path %>"
              class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium">
             <i class="ri-add-line"></i> New visit
@@ -107,11 +111,17 @@
           <!-- Day cells -->
           <% @days.each do |day| %>
             <% cell_visits = @cells[[user.id, day]] %>
-            <div class="border-l border-[#EFECE6] min-h-[96px] p-1.5 cursor-pointer hover:bg-[#FBF9F5] transition relative"
-                 data-action="click->calendar#newVisitForCell"
-                 data-user-id="<%= user.id %>"
-                 data-scheduled-at="<%= day.beginning_of_day.change(hour: 9).iso8601 %>"
-                 data-discipline="<%= user.role_names.first %>">
+            <div class="border-l border-[#EFECE6] min-h-[96px] p-1.5 transition relative <%= 'cursor-pointer hover:bg-[#FBF9F5]' if can_schedule %> <%= 'bg-[#FBF9F5]/40' if day == Date.current %>"
+                 <% if can_schedule %>
+                   data-action="click->calendar#newVisitForCell"
+                   data-user-id="<%= user.id %>"
+                   data-scheduled-at="<%= day.beginning_of_day.change(hour: 9).iso8601 %>"
+                   data-discipline="<%= user.role_names.first %>"
+                 <% end %>>
+              <% if cell_visits.size > 1 %>
+                <div class="text-[9px] font-bold uppercase tracking-wider text-[#6B665F] px-1 pb-1"><%= cell_visits.size %> visits</div>
+              <% end %>
+              <div class="<%= 'max-h-[200px] overflow-y-auto pr-0.5' if cell_visits.size > 2 %>">
               <% cell_visits.each do |v| %>
                 <%
                   d_key = v.discipline.to_s == "social_worker" ? "sw" : v.discipline.to_s
@@ -146,10 +156,19 @@
                   <% end %>
                 </a>
               <% end %>
+              </div>
               <% if cell_visits.empty? %>
-                <div class="text-[10px] text-[#D9D5CD] hover:text-[#6B665F] opacity-0 hover:opacity-100 transition text-center pt-2">
-                  + Add
-                </div>
+                <% if can_schedule %>
+                  <%# Manager: hover an empty cell to book a visit on that day. %>
+                  <div class="text-[10px] text-[#D9D5CD] hover:text-[#6B665F] opacity-0 hover:opacity-100 transition text-center pt-2">
+                    + Add
+                  </div>
+                <% else %>
+                  <%# Performing clinician: read-only, so make a clear day plain. %>
+                  <div class="text-[10px] text-[#C9C5BD] text-center pt-3 select-none">
+                    <i class="ri-checkbox-blank-circle-line"></i><br>No visits
+                  </div>
+                <% end %>
               <% end %>
             </div>
           <% end %>
