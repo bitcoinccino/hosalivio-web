@@ -438,6 +438,9 @@ class ClinicianDispatcher
     Note.create!(
       agency:         @agency,
       patient:        @patient,
+      # When @HosAlivio was invoked inside a thread, thread the answer under
+      # that conversation's root (nil otherwise → normal top-level ack).
+      parent_note:    reply_anchor,
       author_role:    "admissions",
       # [HOSALIVIO_ACK] prefix triggers the bot-avatar pill renderer
       # in the chat partial + Cable JS. Strip the prefix when displayed.
@@ -448,6 +451,13 @@ class ClinicianDispatcher
     )
   rescue ActiveRecord::RecordInvalid
     nil
+  end
+
+  # The root of @note's thread, or nil when @note isn't itself a reply.
+  # Replies are one level deep, so a reply's parent IS the root.
+  def reply_anchor
+    return nil unless @note.parent_note_id
+    @note.parent_note
   end
 
   # Visible "the system stopped this from happening" note. Body is

@@ -518,6 +518,7 @@ export default class extends Controller {
         ${urgencyPill}
       </div>
       <p class="font-serif text-[15px] text-[#3A3936] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"></p>
+      ${n.audio_url ? `<audio src="${n.audio_url}" controls class="w-full h-9 mt-2"></audio>` : ""}
       <div class="flex items-center justify-between mt-2 gap-2">
         <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-white border border-[#B9B4AB] rounded-full px-2 py-0.5"
               title="Hidden from the family — only the IDG sees this.">
@@ -922,8 +923,15 @@ export default class extends Controller {
     const wrap = document.createElement("div")
     if (n.note_id) wrap.setAttribute("data-note-id", n.note_id)
     wrap.appendChild(bubble)
-    if (n.note_id) wrap.appendChild(this._buildThreadBlock(n.note_id))
+    // Only conversational notes get a Reply affordance — mirrors the server.
+    if (n.note_id && this._conversational(n)) wrap.appendChild(this._buildThreadBlock(n.note_id))
     this.feedTarget.appendChild(wrap)
+  }
+
+  _conversational(n) {
+    if (n.action_payload) return false
+    const NON_CONV = ["action", "guardrail", "hosalivio_ack", "triage", "rationale"]
+    return !(n.audit_kind && NON_CONV.includes(n.audit_kind))
   }
 
   _threadContainerFor(parentId) {
@@ -971,7 +979,8 @@ export default class extends Controller {
     if (chevron) chevron.classList.toggle("rotate-180", hidden)
   }
 
-  // Reveal (or focus) an inline reply composer under a note.
+  // Reveal (or focus) an inline reply composer under a note. Supports a typed
+  // reply or a voice reply (mic → record → Send posts multipart audio).
   openReply(e) {
     const noteId = e.currentTarget.dataset.noteId
     const wrap = this.feedTarget.querySelector(`[data-note-id="${CSS.escape(String(noteId))}"]`)
@@ -983,6 +992,10 @@ export default class extends Controller {
     composer.setAttribute("data-reply-composer-for", noteId)
     composer.className = "ml-7 md:ml-12 mt-1 flex items-center gap-2"
     composer.innerHTML = `
+      <button type="button" data-reply-mic title="Record a voice reply"
+              class="flex-shrink-0 w-8 h-8 rounded-full border border-[#D9D5CD] bg-white text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center">
+        <i class="ri-mic-line"></i>
+      </button>
       <input type="text" placeholder="Reply…" maxlength="2000"
              class="flex-1 min-w-0 rounded-full border border-[#D9D5CD] bg-white px-3 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-[#D97757]" />
       <button type="submit" class="inline-flex items-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-3 py-1.5 text-[12px] font-medium">
@@ -993,26 +1006,77 @@ export default class extends Controller {
     wrap.appendChild(composer)
     const input = composer.querySelector("input")
     input.focus()
-    composer.addEventListener("submit", (ev) => { ev.preventDefault(); this._submitReply(noteId, input, composer) })
-    composer.querySelector("[data-reply-cancel]").addEventListener("click", () => composer.remove())
+    composer.addEventListener("submit", (ev) => { ev.preventDefault(); this._submitReply(noteId, composer) })
+    composer.querySelector("[data-reply-cancel]").addEventListener("click", () => { this._stopReplyRecording(composer); composer.remove() })
+    composer.querySelector("[data-reply-mic]").addEventListener("click", () => this._toggleReplyRecording(composer))
   }
 
-  // POST the reply with parent_note_id. The saved note Cable-echoes back and
-  // _placeBubble nests it, same as a normal message renders via its echo.
-  async _submitReply(noteId, input, composer) {
-    const text = input.value.trim()
-    if (!text) return
+  // Toggle voice recording for a reply composer. Self-contained (its own
+  // MediaRecorder + stream) so it never collides with the main composer mic.
+  async _toggleReplyRecording(composer) {
+    const mic = composer.querySelector("[data-reply-mic]")
+    if (composer._recorder && composer._recorder.state === "recording") {
+      composer._recorder.stop()
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const rec    = new MediaRecorder(stream)
+      const chunks = []
+      rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data) }
+      rec.onstop = () => {
+        composer._audioBlob = new Blob(chunks, { type: rec.mimeType || "audio/webm" })
+        stream.getTracks().forEach((t) => t.stop())
+        mic.classList.remove("bg-[#C1403A]", "text-white", "animate-pulse")
+        mic.classList.add("bg-white", "text-[#6B665F]")
+        mic.querySelector("i").className = "ri-check-line"
+        mic.title = "Voice reply ready — tap Send"
+      }
+      composer._recorder = rec
+      rec.start()
+      mic.classList.remove("bg-white", "text-[#6B665F]")
+      mic.classList.add("bg-[#C1403A]", "text-white", "animate-pulse")
+      mic.querySelector("i").className = "ri-stop-fill"
+      mic.title = "Stop recording"
+    } catch (err) {
+      console.error("reply mic error:", err)
+    }
+  }
+
+  _stopReplyRecording(composer) {
+    if (composer._recorder && composer._recorder.state === "recording") composer._recorder.stop()
+  }
+
+  // POST the reply with parent_note_id (multipart when a voice clip is
+  // attached). The saved note Cable-echoes back and _placeBubble nests it,
+  // same as a normal message renders via its echo.
+  async _submitReply(noteId, composer) {
+    const input = composer.querySelector("input")
+    const text  = input.value.trim()
+    const blob  = composer._audioBlob
+    if (!text && !blob) return
     const isFamily = document.body.dataset.viewerFamily === "true"
     const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
     const csrfMeta = document.querySelector("meta[name='csrf-token']")
     const csrf     = csrfMeta ? csrfMeta.content : ""
     composer.remove()
     try {
-      const resp = await fetch(url, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": csrf },
-        body:    JSON.stringify({ patient_id: this.patientIdValue, text, parent_note_id: noteId, source: "text" })
-      })
+      let resp
+      if (blob) {
+        const fd = new FormData()
+        fd.append("patient_id",     this.patientIdValue)
+        fd.append("text",           text)
+        fd.append("parent_note_id", noteId)
+        fd.append("source",         "voice")
+        fd.append("audio",          blob, "reply.webm")
+        resp = await fetch(url, { method: "POST", headers: { "Accept": "application/json", "X-CSRF-Token": csrf }, body: fd })
+      } else {
+        resp = await fetch(url, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": csrf },
+          body:    JSON.stringify({ patient_id: this.patientIdValue, text, parent_note_id: noteId, source: "text" })
+        })
+      }
       if (!resp.ok) console.error("reply failed:", resp.status, await resp.text())
     } catch (err) {
       console.error("reply error:", err)

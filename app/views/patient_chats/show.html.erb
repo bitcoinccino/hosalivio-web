@@ -319,25 +319,31 @@
           <% thread_replies = @replies_by_parent[note.id] || [] %>
           <div data-note-id="<%= note.id %>">
             <%= render "message_bubble", note: note %>
-            <div class="ml-7 md:ml-12 mt-1">
-              <button type="button" data-action="click->patient-chat#toggleThread"
-                      data-thread-header-for="<%= note.id %>"
-                      class="inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium <%= 'hidden' unless thread_replies.any? %>">
-                <i class="ri-corner-down-right-line"></i>
-                <span data-thread-label-for="<%= note.id %>"><%= thread_replies.size %> <%= "reply".pluralize(thread_replies.size) %></span>
-                <i class="ri-arrow-up-s-line transition-transform" data-thread-chevron></i>
-              </button>
-              <div data-thread-replies-for="<%= note.id %>"
-                   class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 <%= 'hidden' unless thread_replies.any? %>">
-                <% thread_replies.each do |reply| %>
-                  <%= render "message_bubble", note: reply, thread_reply: true %>
+            <%# Thread block only on conversational notes (or any note that
+                already has replies); system/audit artifacts get no Reply. %>
+            <% if note.conversational? || thread_replies.any? %>
+              <div class="ml-7 md:ml-12 mt-1">
+                <button type="button" data-action="click->patient-chat#toggleThread"
+                        data-thread-header-for="<%= note.id %>"
+                        class="inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium <%= 'hidden' unless thread_replies.any? %>">
+                  <i class="ri-corner-down-right-line"></i>
+                  <span data-thread-label-for="<%= note.id %>"><%= thread_replies.size %> <%= "reply".pluralize(thread_replies.size) %></span>
+                  <i class="ri-arrow-up-s-line transition-transform" data-thread-chevron></i>
+                </button>
+                <div data-thread-replies-for="<%= note.id %>"
+                     class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 <%= 'hidden' unless thread_replies.any? %>">
+                  <% thread_replies.each do |reply| %>
+                    <%= render "message_bubble", note: reply, thread_reply: true %>
+                  <% end %>
+                </div>
+                <% if note.conversational? %>
+                  <button type="button" data-action="click->patient-chat#openReply" data-note-id="<%= note.id %>"
+                          class="mt-1 inline-flex items-center gap-1 text-[11px] text-[#D97757] hover:underline font-medium">
+                    <i class="ri-reply-line"></i> Reply
+                  </button>
                 <% end %>
               </div>
-              <button type="button" data-action="click->patient-chat#openReply" data-note-id="<%= note.id %>"
-                      class="mt-1 inline-flex items-center gap-1 text-[11px] text-[#D97757] hover:underline font-medium">
-                <i class="ri-reply-line"></i> Reply
-              </button>
-            </div>
+            <% end %>
           </div>
         <% end %>
       <% end %>

@@ -52,6 +52,13 @@ module Api
             note.save!
             notify_mentioned_users(note, body, patient) if note.clinician_only
             notify_thread_participants(note, parent)
+            # @HosAlivio inside a team thread: let the dispatcher answer/act.
+            # Its reply threads under this conversation's root (post_ack). Gated
+            # to team-only threads so a [HOSALIVIO_ACK] note never lands in a
+            # family-visible thread.
+            if note.clinician_only && ClinicianDispatcher.mentions_hosalivio?(body)
+              ClinicianMessageResponseJob.perform_later(note.id, @user.id, "classify")
+            end
             return render json: { status: "ok", id: note.id, parent_note_id: parent.id,
                                   clinician_only: note.clinician_only }, status: :created
           end

@@ -144,6 +144,15 @@ class Note < ApplicationRecord
     :chart
   end
 
+  # A message a human would reply to (family note, AI's family answer, a
+  # clinician's chat/huddle message) — as opposed to a system/audit artifact
+  # (action banner, guardrail block, HosAlivio ack, triage/rationale log).
+  # Drives whether the chat shows a Reply affordance under the note.
+  NON_CONVERSATIONAL_KINDS = %i[action guardrail hosalivio_ack triage rationale].freeze
+  def conversational?
+    NON_CONVERSATIONAL_KINDS.exclude?(audit_kind)
+  end
+
   # Strip the redundant '<Role> rationale\n\n' header from a rationale
   # note so we don't render the same label twice (once in the audit
   # summary header, once at the top of the body block).
