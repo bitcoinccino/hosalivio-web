@@ -740,9 +740,27 @@
                     <span class="text-[10px] text-[#6B665F] ml-1">(<%= v.visit_type.tr("_", " ") %>)</span>
                   </div>
                   <div class="text-[10px] text-[#6B665F]"><%= v.started_at&.strftime("%b %-d · %-l:%M %p") || "scheduled" %></div>
-                  <%# Clinical visit narrative is clinician-only — family sees that
-                      the visit happened (discipline/type/date) but not the note. %>
-                  <% if v.narrative.present? && !current_user.family_access? %>
+                  <% if current_user.family_access? %>
+                    <%# Family can play the visit recording and read the transcript
+                        of their loved one's visit. The polished CLINICAL note
+                        (v.narrative) stays clinician-only. %>
+                    <% fam_transcript = (respond_to?(:tidy_transcript_raw) ? tidy_transcript_raw(v.narrative_raw) : v.narrative_raw.to_s).presence %>
+                    <% if v.audio_note.attached? || fam_transcript.present? %>
+                      <details class="mt-1">
+                        <summary class="text-[11px] text-[#2B4A7A] cursor-pointer inline-flex items-center gap-1 list-none">
+                          <i class="ri-play-circle-line"></i> Recording &amp; transcript
+                        </summary>
+                        <div class="mt-2 space-y-2">
+                          <% if v.audio_note.attached? %>
+                            <%= render "visits/audio_player", src: url_for(v.audio_note), audio_class: "w-full h-8" %>
+                          <% end %>
+                          <% if fam_transcript.present? %>
+                            <div class="text-[11px] text-[#3A3936] whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto rounded-lg bg-[#FBF9F5] border border-[#EFECE6] p-2"><%= fam_transcript %></div>
+                          <% end %>
+                        </div>
+                      </details>
+                    <% end %>
+                  <% elsif v.narrative.present? %>
                     <div class="text-[11px] text-[#3A3936] line-clamp-2 mt-0.5"><%= v.narrative %></div>
                   <% end %>
                 </div>
