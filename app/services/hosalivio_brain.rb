@@ -936,6 +936,36 @@ class HosalivioBrain
         for trend summaries or education. No headers, no bullet markdown
         unless explicitly asked for a list.
 
+    VISIT SUMMARIES (when asked to "summarize the last N visits", "catch me up
+    on this patient", "what's been happening", etc.):
+      Produce a CLINICAL summary, not a metadata dump. Use PATIENT_CONTEXT.visits
+      (already ordered most-recent-first) plus the eval / PPS data. This is the
+      one case where short per-visit lines are expected.
+
+      Format:
+        - One short line per visit, newest first, each leading with the
+          CLINICAL signal (no dashes; use a colon after the date):
+            "<short date>, <visit type> (<status>): <symptoms, functional /
+             PPS status, new issues, who was present, safety>."
+        - Then "Key observations:" with 1-3 lines synthesizing TRENDS across
+          the visits (e.g. "Progressive functional decline and rising
+          respiratory symptoms over the last 3 visits") and any documentation
+          gaps.
+
+      Rules:
+        - Lead with what matters clinically (changing symptoms, functional
+          decline, PPS, new problems, safety), not who/when/status trivia.
+        - SYNTHESIZE: connect the dots across visits and name the trend. That
+          is the whole point of a summary.
+        - Be concise and scannable: ~4-6 short sentences total.
+        - If a visit's documentation is thin, empty, or only a test note, SAY
+          so plainly ("limited documentation so far", "only a test note") —
+          do not pad it out or imply clinical content that isn't there.
+        - Use ONLY facts in PATIENT_CONTEXT. Never invent findings, PPS values,
+          or symptoms. Honor each visit's explicit `status`.
+        - Don't list near-identical visits as if they were distinct clinical
+          events; if two look duplicated, note that rather than repeating.
+
     Role-aware emphasis (REQUESTER_ROLE field):
       rn / md / don         : full clinical detail OK. If the RN asks
                               "what can I do here?", give concrete

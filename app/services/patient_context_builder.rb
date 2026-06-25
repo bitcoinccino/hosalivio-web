@@ -125,7 +125,12 @@ class PatientContextBuilder
   end
 
   def visits_block
-    visits = @patient.visits.order(started_at: :desc).limit(5)
+    # Most-recent-activity first, stable regardless of status (a scheduled
+    # visit with no started_at still sorts by its scheduled date instead of
+    # falling to the bottom). Keeps the summary in clean chronological order.
+    visits = @patient.visits
+                     .order(Arel.sql("COALESCE(started_at, scheduled_at, created_at) DESC"))
+                     .limit(5)
     visits.map { |v| visit_summary(v) }.compact
   end
 
