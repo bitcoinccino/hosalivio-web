@@ -312,18 +312,33 @@
             </div>
             <% last_date = note_local_date %>
           <% end %>
-          <%= render "message_bubble", note: note %>
-          <%# Threaded replies, nested + rule-lined under their parent. The
-              container id lets the chat JS append live replies here later. %>
+          <%# Root note + its thread. The data-note-id wrapper lets the chat JS
+              locate a parent for live replies; the reply button / count / replies
+              container all live below the bubble so the 8-branch bubble partial
+              stays untouched. %>
           <% thread_replies = @replies_by_parent[note.id] || [] %>
-          <% if thread_replies.any? %>
-            <div class="ml-7 md:ml-12 mt-1 mb-1 pl-3 border-l-2 border-[#EFECE6] space-y-2"
-                 data-thread-replies-for="<%= note.id %>">
-              <% thread_replies.each do |reply| %>
-                <%= render "message_bubble", note: reply, thread_reply: true %>
-              <% end %>
+          <div data-note-id="<%= note.id %>">
+            <%= render "message_bubble", note: note %>
+            <div class="ml-7 md:ml-12 mt-1">
+              <button type="button" data-action="click->patient-chat#toggleThread"
+                      data-thread-header-for="<%= note.id %>"
+                      class="inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium <%= 'hidden' unless thread_replies.any? %>">
+                <i class="ri-corner-down-right-line"></i>
+                <span data-thread-label-for="<%= note.id %>"><%= thread_replies.size %> <%= "reply".pluralize(thread_replies.size) %></span>
+                <i class="ri-arrow-up-s-line transition-transform" data-thread-chevron></i>
+              </button>
+              <div data-thread-replies-for="<%= note.id %>"
+                   class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 <%= 'hidden' unless thread_replies.any? %>">
+                <% thread_replies.each do |reply| %>
+                  <%= render "message_bubble", note: reply, thread_reply: true %>
+                <% end %>
+              </div>
+              <button type="button" data-action="click->patient-chat#openReply" data-note-id="<%= note.id %>"
+                      class="mt-1 inline-flex items-center gap-1 text-[11px] text-[#D97757] hover:underline font-medium">
+                <i class="ri-reply-line"></i> Reply
+              </button>
             </div>
-          <% end %>
+          </div>
         <% end %>
       <% end %>
     </div>

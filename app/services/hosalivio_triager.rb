@@ -160,7 +160,7 @@ class HosalivioTriager
     Note.create!(
       agency:      @agency,
       patient:     @patient,
-      parent_note: @note,
+      parent_note: thread_anchor,
       author_role: "admissions",
       body:        decision[:reply],
       urgency:     "normal",     # reply itself is calm; urgency captured internally
@@ -174,6 +174,14 @@ class HosalivioTriager
   end
 
   private
+
+  # Where to thread HosAlivio's reply: under the conversation's ROOT note.
+  # If the inbound is itself a reply (family followed up inside a thread),
+  # anchor to its parent — replies are one level deep, so we can't nest under
+  # a reply.
+  def thread_anchor
+    @note.thread_root? ? @note : @note.parent_note
+  end
 
   # Family Q&A path. Calls HosalivioBrain.answer_clinician_question with
   # role: "family" (which gates the patient context to lay-friendly,
@@ -195,7 +203,7 @@ class HosalivioTriager
     Note.create!(
       agency:      @agency,
       patient:     @patient,
-      parent_note: @note,        # thread the answer under the question
+      parent_note: thread_anchor,        # thread the answer under the question
       author_role: "admissions",
       body:        reply_text,
       urgency:     "normal",

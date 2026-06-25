@@ -529,7 +529,7 @@ export default class extends Controller {
     bubble.querySelector('[data-role="name"]').textContent = speakerName
     if (speakerSub) bubble.querySelector('[data-role="sub"]').textContent = speakerSub
     bubble.querySelector("p").textContent = n.body
-    this.feedTarget.appendChild(bubble)
+    this._placeBubble(bubble, n)
     requestAnimationFrame(() => { bubble.style.opacity = "1" })
     this._scrollToBottom()
   }
@@ -902,9 +902,121 @@ export default class extends Controller {
     } else {
       bodyEl.remove()
     }
-    this.feedTarget.appendChild(bubble)
+    this._placeBubble(bubble, n)
     requestAnimationFrame(() => { bubble.style.opacity = "1" })
     this._scrollToBottom()
+  }
+
+  // ── Threading: placement, nesting, reply composer ────────────────────
+
+  // A reply nests under its parent's thread container; a root is wrapped so
+  // replies can nest under it later. Parent not in the DOM (e.g. older than
+  // the 50-note window) → fall back to a flat append.
+  _placeBubble(bubble, n) {
+    if (n.parent_note_id) {
+      const container = this._threadContainerFor(n.parent_note_id)
+      if (container) { this._nestReply(container, bubble, n.parent_note_id); return }
+      this.feedTarget.appendChild(bubble)
+      return
+    }
+    const wrap = document.createElement("div")
+    if (n.note_id) wrap.setAttribute("data-note-id", n.note_id)
+    wrap.appendChild(bubble)
+    if (n.note_id) wrap.appendChild(this._buildThreadBlock(n.note_id))
+    this.feedTarget.appendChild(wrap)
+  }
+
+  _threadContainerFor(parentId) {
+    return this.feedTarget.querySelector(`[data-thread-replies-for="${CSS.escape(String(parentId))}"]`)
+  }
+
+  _nestReply(container, bubble, parentId) {
+    container.appendChild(bubble)
+    container.classList.remove("hidden")
+    const header = this.feedTarget.querySelector(`[data-thread-header-for="${CSS.escape(String(parentId))}"]`)
+    if (header) header.classList.remove("hidden")
+    const count = container.children.length
+    const label = this.feedTarget.querySelector(`[data-thread-label-for="${CSS.escape(String(parentId))}"]`)
+    if (label) label.textContent = `${count} ${count === 1 ? "reply" : "replies"}`
+  }
+
+  // Mirrors the server-rendered thread block in show.html.erb so live root
+  // notes get the same reply button + collapsible replies container.
+  _buildThreadBlock(noteId) {
+    const block = document.createElement("div")
+    block.className = "ml-7 md:ml-12 mt-1"
+    block.innerHTML = `
+      <button type="button" data-action="click->patient-chat#toggleThread" data-thread-header-for="${noteId}"
+              class="hidden inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium">
+        <i class="ri-corner-down-right-line"></i>
+        <span data-thread-label-for="${noteId}">0 replies</span>
+        <i class="ri-arrow-up-s-line transition-transform" data-thread-chevron></i>
+      </button>
+      <div data-thread-replies-for="${noteId}" class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 hidden"></div>
+      <button type="button" data-action="click->patient-chat#openReply" data-note-id="${noteId}"
+              class="mt-1 inline-flex items-center gap-1 text-[11px] text-[#D97757] hover:underline font-medium">
+        <i class="ri-reply-line"></i> Reply
+      </button>
+    `
+    return block
+  }
+
+  // Collapse / expand a thread.
+  toggleThread(e) {
+    const noteId = e.currentTarget.dataset.threadHeaderFor
+    const container = this._threadContainerFor(noteId)
+    if (!container) return
+    const hidden = container.classList.toggle("hidden")
+    const chevron = e.currentTarget.querySelector("[data-thread-chevron]")
+    if (chevron) chevron.classList.toggle("rotate-180", hidden)
+  }
+
+  // Reveal (or focus) an inline reply composer under a note.
+  openReply(e) {
+    const noteId = e.currentTarget.dataset.noteId
+    const wrap = this.feedTarget.querySelector(`[data-note-id="${CSS.escape(String(noteId))}"]`)
+    if (!wrap) return
+    const existing = wrap.querySelector(`[data-reply-composer-for="${CSS.escape(String(noteId))}"]`)
+    if (existing) { existing.querySelector("input").focus(); return }
+
+    const composer = document.createElement("form")
+    composer.setAttribute("data-reply-composer-for", noteId)
+    composer.className = "ml-7 md:ml-12 mt-1 flex items-center gap-2"
+    composer.innerHTML = `
+      <input type="text" placeholder="Reply…" maxlength="2000"
+             class="flex-1 min-w-0 rounded-full border border-[#D9D5CD] bg-white px-3 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-[#D97757]" />
+      <button type="submit" class="inline-flex items-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-3 py-1.5 text-[12px] font-medium">
+        <i class="ri-send-plane-2-line"></i> Send
+      </button>
+      <button type="button" data-reply-cancel class="text-[11px] text-[#6B665F] hover:text-[#1D1C1A]">Cancel</button>
+    `
+    wrap.appendChild(composer)
+    const input = composer.querySelector("input")
+    input.focus()
+    composer.addEventListener("submit", (ev) => { ev.preventDefault(); this._submitReply(noteId, input, composer) })
+    composer.querySelector("[data-reply-cancel]").addEventListener("click", () => composer.remove())
+  }
+
+  // POST the reply with parent_note_id. The saved note Cable-echoes back and
+  // _placeBubble nests it, same as a normal message renders via its echo.
+  async _submitReply(noteId, input, composer) {
+    const text = input.value.trim()
+    if (!text) return
+    const isFamily = document.body.dataset.viewerFamily === "true"
+    const url      = isFamily ? "/api/v1/family_messages" : "/api/v1/clinician_messages"
+    const csrfMeta = document.querySelector("meta[name='csrf-token']")
+    const csrf     = csrfMeta ? csrfMeta.content : ""
+    composer.remove()
+    try {
+      const resp = await fetch(url, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": csrf },
+        body:    JSON.stringify({ patient_id: this.patientIdValue, text, parent_note_id: noteId, source: "text" })
+      })
+      if (!resp.ok) console.error("reply failed:", resp.status, await resp.text())
+    } catch (err) {
+      console.error("reply error:", err)
+    }
   }
 
   _roleIcon(role) {

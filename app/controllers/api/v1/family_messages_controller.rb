@@ -46,13 +46,22 @@ module Api
           # Build + attach + save (in that order) so the body-presence
           # validation can see audio.attached? before deciding whether
           # body is required.
+          # Family can only reply within a family-visible thread (roots-only +
+          # family_visible), so a reply can never attach to a team-only note and
+          # accidentally hide the family's own message from them.
+          parent = nil
+          if params[:parent_note_id].present?
+            parent = patient.notes.roots.family_visible.find_by(id: params[:parent_note_id])
+          end
+
           note = patient.notes.build(
             agency:      patient.agency,
             author_user: @family_user,
             author_role: "family",
             body:        body,
             source:      (audio.present? ? "voice" : (params[:source].presence || "text")),
-            urgency:     (params[:urgency].presence || "normal")
+            urgency:     (params[:urgency].presence || "normal"),
+            parent_note: parent
           )
           note.audio.attach(audio) if audio.present?
           note.save!
@@ -63,7 +72,8 @@ module Api
           # Wake HosAlivio — classifies, escalates, and replies in a background job.
           HosalivioTriageJob.perform_later(note.id)
 
-          render json: { status: "ok", id: note.id, urgency: note.urgency }, status: :created
+          render json: { status: "ok", id: note.id, urgency: note.urgency,
+                         parent_note_id: note.parent_note_id }, status: :created
         end
       end
 

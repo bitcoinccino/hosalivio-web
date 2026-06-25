@@ -31,6 +31,8 @@ module Api
           # Keep the post path fast: classify common chat intents locally,
           # save/broadcast the human note immediately, then let HosAlivio
           # answer or dispatch from a background job.
+          parent = reply_parent_for(patient)
+
           note = patient.notes.build(
             agency:         patient.agency,
             author_user:    @user,
@@ -38,8 +40,21 @@ module Api
             body:           body,
             source:         (audio.present? ? :voice : :text),
             urgency:        normalize_urgency(params[:urgency]),
-            clinician_only: true   # safe default; brain may flip below
+            clinician_only: true,  # safe default; brain may flip below
+            parent_note:    parent
           )
+
+          # A threaded reply is a plain human message: it inherits the parent's
+          # visibility (Note model) and does NOT wake the AI dispatcher — threads
+          # stay human-to-human. Notify the thread + any @mentions, then return.
+          if parent
+            note.audio.attach(audio) if audio.present?
+            note.save!
+            notify_mentioned_users(note, body, patient) if note.clinician_only
+            notify_thread_participants(note, parent)
+            return render json: { status: "ok", id: note.id, parent_note_id: parent.id,
+                                  clinician_only: note.clinician_only }, status: :created
+          end
 
           decision = fast_decision_for(body, patient)
           note.clinician_only = (decision[:audience] == "team")
@@ -187,6 +202,31 @@ module Api
             kind:    "mentioned",
             title:   "#{@user.full_name} mentioned you in #{patient.full_name}'s chart",
             linked:  note
+          )
+        end
+      end
+
+      # Resolve a valid reply target: a top-level (root) note for this patient.
+      # roots-only enforces the one-level-deep rule at the door; an unknown id
+      # returns nil so the message just posts as a new top-level note.
+      def reply_parent_for(patient)
+        pid = params[:parent_note_id].presence
+        return nil unless pid
+        patient.notes.roots.find_by(id: pid)
+      end
+
+      # Ping the people already in this thread (root author + prior repliers)
+      # when a new clinician reply lands, minus the replier and family users
+      # (family hear it live in their chat, not via the clinician bell).
+      def notify_thread_participants(reply, parent)
+        ids = ([parent.author_user_id] + parent.replies.pluck(:author_user_id)).compact.uniq
+        ids.delete(@user.id)
+        return if ids.empty?
+        User.where(id: ids, agency: parent.agency, active: true, family_access: false).find_each do |u|
+          Notification.create!(
+            agency: parent.agency, user: u, kind: "thread_reply",
+            title:  "#{@user.full_name} replied in #{parent.patient.full_name}'s chat",
+            linked: reply
           )
         end
       end
