@@ -1,0 +1,49 @@
+<%# One day section in the mobile agenda. Locals: `day` (Date) and
+    `discipline_color` (Hash). Reads @clinicians / @cells from the controller.
+    Used by show.html.erb for both the upcoming days and the collapsed
+    "earlier this week" group. %>
+<% day_visits = @clinicians.flat_map { |u| @cells[[u.id, day]] }.sort_by { |v| v.anchor_start || Time.current } %>
+<% is_today = (day == Date.current) %>
+<section class="rounded-2xl bg-white border <%= is_today ? 'border-[#D97757]' : 'border-[#EFECE6]' %> overflow-hidden">
+  <div class="px-4 py-2.5 border-b border-[#EFECE6] flex items-center justify-between <%= is_today ? 'bg-[#FFF3EC]' : 'bg-[#FBF9F5]' %>">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="text-[14px] font-serif font-bold text-[#1D1C1A]"><%= day.strftime("%A") %></span>
+      <span class="text-[11px] text-[#6B665F] font-mono"><%= day.strftime("%b %-d") %></span>
+      <% if is_today %>
+        <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#D97757] text-white">Today</span>
+      <% end %>
+    </div>
+    <span class="text-[10px] text-[#6B665F] flex-shrink-0"><%= day_visits.size %> <%= day_visits.size == 1 ? "visit" : "visits" %></span>
+  </div>
+  <% if day_visits.empty? %>
+    <div class="px-4 py-4 text-center text-[12px] text-[#C9C5BD]">No visits</div>
+  <% else %>
+    <ul class="divide-y divide-[#EFECE6]">
+      <% day_visits.each do |v| %>
+        <%
+          d_key = v.discipline.to_s == "social_worker" ? "sw" : v.discipline.to_s
+          color = discipline_color[d_key] || "#6B665F"
+        %>
+        <li>
+          <a href="<%= visit_path(v) %>" data-turbo-frame="visit-modal"
+             class="flex items-stretch gap-3 px-4 py-3 active:bg-[#FBF9F5] transition">
+            <span class="w-1 rounded-full flex-shrink-0" style="background: <%= color %>;"></span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[14px] font-medium text-[#1D1C1A] truncate"><%= v.patient&.full_name || "—" %></span>
+                <span class="text-[12px] font-mono text-[#6B665F] flex-shrink-0"><%= v.anchor_start&.strftime("%-l:%M %p") %></span>
+              </div>
+              <div class="text-[11px] text-[#6B665F] truncate mt-0.5">
+                <% if @clinicians.size > 1 %><%= v.user&.full_name %> · <% end %>
+                <%= v.visit_type.to_s.tr("_", " ") %>
+                <% if v.service_location.to_s != "home" %> · <%= v.service_location.to_s.tr("_", " ") %><% end %>
+                <% if v.patient&.mrn.present? %> · <span class="font-mono"><%= v.patient.mrn %></span><% end %>
+              </div>
+            </div>
+            <i class="ri-arrow-right-s-line text-[#C9C5BD] self-center flex-shrink-0"></i>
+          </a>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>
