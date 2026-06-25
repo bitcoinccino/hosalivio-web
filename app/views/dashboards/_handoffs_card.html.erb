@@ -1,6 +1,6 @@
 <%# Card body for the Handoffs Waiting section. Locals:
     `pending_handoffs` (AgentEvent collection) and `viewer_user_id`. %>
-<%= turbo_frame_tag "dashboard-handoffs-#{viewer_user_id}" do %>
+<%= turbo_frame_tag "dashboard-handoffs-#{viewer_user_id}", target: "_top" do %>
   <% sorted_handoffs = pending_handoffs.sort_by { |ev|
        u = ev.change_set.is_a?(Hash) ? ev.change_set["urgency"].to_s : ""
        rank = { "crisis" => 0, "urgent" => 1 }[u] || 2

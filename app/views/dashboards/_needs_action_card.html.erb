@@ -2,7 +2,7 @@
     target so after_commit hooks (Note/MedicationLog/AgentEvent/Visit) replace it
     over the RN's Turbo Stream — no page refresh. Locals: data (DashboardData),
     viewer_user_id. %>
-<%= turbo_frame_tag "dashboard-needs-action-#{viewer_user_id}" do %>
+<%= turbo_frame_tag "dashboard-needs-action-#{viewer_user_id}", target: "_top" do %>
   <%
     crises   = data.open_crises
     overdue  = data.overdue_meds

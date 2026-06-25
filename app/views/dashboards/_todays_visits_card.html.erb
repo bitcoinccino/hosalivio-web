@@ -1,6 +1,8 @@
 <%# Card body for the Today's Visits section. Locals:
     `todays_visits` (Visit collection) and `viewer_user_id`. %>
-<%= turbo_frame_tag "dashboard-todays-visits-#{viewer_user_id}" do %>
+<%# target: "_top" so links/forms inside navigate the full page; broadcast_replace_to still
+    replaces this frame by id (the frame's target only governs in-frame navigation). %>
+<%= turbo_frame_tag "dashboard-todays-visits-#{viewer_user_id}", target: "_top" do %>
   <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
     <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
       <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-calendar-line"></i> Today's visits (<%= todays_visits.size %>)</h3>
@@ -15,7 +17,7 @@
                 class: "inline-flex items-center gap-1 rounded-full border border-[#D9D5CD] px-3 py-1.5 text-[12px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
             <i class="ri-calendar-line"></i> Open calendar
           <% end %>
-          <%= link_to dashboard_path,
+          <%= link_to "#patients-needing-review",
                 class: "inline-flex items-center gap-1 rounded-full bg-[#D97757] px-3 py-1.5 text-[12px] text-white hover:bg-[#c46a4b]" do %>
             <i class="ri-team-line"></i> Review patients
           <% end %>
