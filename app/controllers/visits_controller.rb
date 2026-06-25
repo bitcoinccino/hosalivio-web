@@ -471,7 +471,23 @@ class VisitsController < ApplicationController
       empty = @visit.narrative.to_s.strip.empty? &&
               !@visit.audio_note.attached? &&
               @visit.ended_at.nil?
-      if empty
+
+      # A visit booked by someone else (admin/admissions scheduled it and
+      # assigned this RN) is a real appointment — discarding the recording must
+      # NEVER delete it. Only a visit the RN started ad-hoc (created_by == self)
+      # is safe to remove when empty. Booked appointments revert to "scheduled".
+      booked_appointment = @visit.created_by_user_id.present? &&
+                           @visit.created_by_user_id != current_user.id
+
+      if booked_appointment
+        if empty
+          @visit.update!(started_at: nil, ended_at: nil)
+          cleanup_empty_draft_eval(@visit)
+          flash[:notice] = "Visit returned to your schedule." unless request.format.json? || beacon_request?
+        else
+          flash[:notice] = "Visit kept (had content). You can finish it from My Day." unless beacon_request?
+        end
+      elsif empty
         @visit.destroy!
         flash[:notice] = "Visit discarded." unless request.format.json? || beacon_request?
       else
@@ -745,6 +761,19 @@ class VisitsController < ApplicationController
     # eval to this visit; the partial unique index on visit_id rejected the
     # duplicate. Return the winner instead of erroring.
     visit.reload.pre_admit_eval
+  end
+
+  # When reverting an empty booked visit, drop the blank draft eval that
+  # "Begin" auto-created for an admission so the patient isn't left with a
+  # stray empty eval. Only deletes it when nothing was filled in.
+  def cleanup_empty_draft_eval(visit)
+    eval_rec = visit.pre_admit_eval
+    return unless eval_rec&.status_draft?
+    section = eval_rec.raw_json.is_a?(Hash) ? eval_rec.raw_json["pre_admit_eval"] : nil
+    filled  = section.is_a?(Hash) && section.values.any?(&:present?)
+    eval_rec.destroy! unless filled
+  rescue => e
+    Rails.logger.warn("[VisitsController#cleanup_empty_draft_eval] #{e.class}: #{e.message}")
   end
 
   def sync_visit_narrative_to_eval(eval_rec)
