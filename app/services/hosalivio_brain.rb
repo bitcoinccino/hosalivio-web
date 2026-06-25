@@ -731,7 +731,13 @@ class HosalivioBrain
     admissions_handoff
     billing_question
     answer_question
+    notify_clinician
   ].freeze
+
+  # Roles a notify_clinician relay can target. These resolve to a real
+  # assigned human (or the first active user with that role) in the
+  # dispatcher, who gets an @-mention note + a bell notification.
+  NOTIFY_CLINICIAN_ROLES = %w[rn md don sw social_worker chaplain aide].freeze
 
   def clinician_system_prompt
     <<~SYS
@@ -745,6 +751,8 @@ class HosalivioBrain
         "audience":   one of ["family", "team"],
         "action":     one of #{CLINICIAN_ACTIONS.inspect},
         "body_rewrite": cleaned message body, or null,
+        "notify":     { "role": one of #{NOTIFY_CLINICIAN_ROLES.inspect},
+                        "reason": "the message to relay" } OR null,
         "ack":        short confirmation string OR null,
         "reasoning":  one sentence
       }
@@ -776,6 +784,31 @@ class HosalivioBrain
                                another action ('loop in admissions',
                                'page admissions', 'admissions needs
                                to know').
+        notify_clinician     : the clinician is asking YOU to relay an
+                               update or message to a SPECIFIC teammate on
+                               the care team (the MD, RN, DON, social
+                               worker, chaplain, or aide). Strong signals:
+                               'let the MD know ...', 'notify the RN that
+                               ...', 'tell the social worker ...', 'flag
+                               the DON ...', 'create a note for the MD
+                               about ...', 'ping the chaplain that ...'.
+                               This is NOT a question and NOT a clinical
+                               order; it just carries a message to a
+                               named role. Set the "notify" object:
+                               role = which teammate, reason = the message
+                               to relay (see the notify rules below).
+                               Examples:
+                                 'let the MD know the admission is almost
+                                  completed' -> action notify_clinician,
+                                  notify { role: "md", reason: "Admission
+                                  is almost completed." }
+                                 'tell the social worker the family needs
+                                  a callback' -> action notify_clinician,
+                                  notify { role: "sw", reason: "Family
+                                  needs a callback." }
+                               If the message is a generic 'loop in
+                               admissions' with no concrete content, prefer
+                               admissions_handoff instead.
         billing_question     : a billing or claim issue specifically
         answer_question      : ANY question the clinician is asking
                                HosAlivio about THIS patient. Strong signal:
@@ -827,11 +860,27 @@ class HosalivioBrain
           "ping the team that I am running 15 min late"
             → null (stays a team note, no rewrite needed)
 
+      notify
+        Set ONLY when action is notify_clinician; otherwise null.
+          role   : which teammate to relay to, one of
+                   #{NOTIFY_CLINICIAN_ROLES.inspect}.
+          reason : the message to relay, written as a short first-person
+                   statement in the clinician's voice. This is the actual
+                   text the teammate will read.
+        Rules for reason:
+          - Carry ONLY the clinician's message. Do not add new facts.
+          - Do NOT name the target teammate (no "the MD", no "Dr. Cole").
+            The system adds the @-mention separately, so naming them here
+            makes the note read with the name twice.
+          - Plain English, commas/periods only. NEVER use em-dashes.
+          - Keep the patient's first name only if needed for clarity.
+
       ack
-        Required when action != no_action. Short, calm, names the role you
-        notified. e.g. "Pharmacy notified, refill on the way." or
-        "Chaplain handoff queued for tomorrow."
-        Use null when action is no_action.
+        Required when action != no_action, EXCEPT notify_clinician (the
+        system writes that confirmation itself, so leave ack null there).
+        Short, calm, names the role you notified. e.g. "Pharmacy notified,
+        refill on the way." or "Chaplain handoff queued for tomorrow."
+        Use null when action is no_action or notify_clinician.
 
       reasoning
         One sentence for the audit trail explaining your choices.
@@ -932,9 +981,31 @@ class HosalivioBrain
       - Do not start with meta-validation such as "You're right",
         "I take that seriously", "I apologize", or references to prior
         answers. Start with the useful answer.
-      - Keep replies short. 1-3 sentences for simple lookups; up to 5
-        for trend summaries or education. No headers, no bullet markdown
-        unless explicitly asked for a list.
+      - Match length and shape to the question. A clinician is usually
+        mid-shift and scanning, so favor the shortest form that fully
+        answers:
+          * SIMPLE LOOKUP (one fact: a date, a name, a yes/no, a number):
+            1-2 sentences, plain prose. No bullets, no header.
+          * MULTI-FACT STATUS ("what's the status of X?", "where are we
+            on the admission?", "catch me up", anything whose honest
+            answer is 3+ distinct facts): lead with ONE short summary
+            line, then a tight bulleted list. Each bullet is a fragment,
+            not a sentence, leading with the fact that matters:
+              "Status of Maria Alvarez (VEL-00002):
+               - Active RN admission visit, started today
+               - Pre-admit eval in draft, 3 open blockers:
+                 - Election of benefits not signed
+                 - Patient rights not reviewed
+                 - LCD criteria not supported
+               - POLST missing"
+            Keep it scannable: short bullets, real values from
+            PATIENT_CONTEXT, group related items (e.g. nest blockers
+            under the eval). Skip a bullet entirely rather than padding
+            it with "no data".
+          * EDUCATION / TREND SUMMARY: up to ~5 sentences of prose (or the
+            visit-summary format below when summarizing visits).
+        When in doubt between prose and bullets, ask: would a busy nurse
+        scan this faster as a list? If yes, use the list.
 
     VISIT SUMMARIES (when asked to "summarize the last N visits", "catch me up
     on this patient", "what's been happening", etc.):
@@ -1478,7 +1549,15 @@ class HosalivioBrain
   def sanitize_clinician(parsed, source)
     audience = AUDIENCES.include?(parsed[:audience]) ? parsed[:audience] : "team"
     action   = CLINICIAN_ACTIONS.include?(parsed[:action]) ? parsed[:action] : "no_action"
-    ack      = action == "no_action" ? nil : parsed[:ack].to_s.strip.presence
+    notify   = sanitize_notify_directive(parsed[:notify])
+    # A notify_clinician action is meaningless without a valid relay
+    # target + message. If the brain forgot the directive, fall back to
+    # no_action rather than firing an empty relay.
+    if action == "notify_clinician" && notify.nil?
+      action = "no_action"
+    end
+    notify   = nil unless action == "notify_clinician"
+    ack      = (action == "no_action" || action == "notify_clinician") ? nil : parsed[:ack].to_s.strip.presence
     rewrite  = parsed[:body_rewrite].to_s.strip
     rewrite  = nil if rewrite.empty? || rewrite.casecmp("null").zero?
     # Belt-and-suspenders: scrub em/en-dashes the LLM might slip in
@@ -1488,10 +1567,24 @@ class HosalivioBrain
       audience:     audience,
       action:       action,
       ack:          ack,
+      notify:       notify,
       body_rewrite: rewrite,
       reasoning:    parsed[:reasoning].to_s.strip,
       source:       source
     }
+  end
+
+  # Validates the notify_clinician relay directive. Returns
+  # { "role" => ..., "reason" => ... } (string keys, so it survives
+  # ActiveJob serialization unchanged) or nil when role/reason are
+  # missing or the role isn't a relayable teammate.
+  def sanitize_notify_directive(raw)
+    return nil unless raw.is_a?(Hash)
+    role   = (raw["role"] || raw[:role]).to_s.strip.downcase
+    reason = (raw["reason"] || raw[:reason]).to_s.strip.gsub(/\s*[—–]\s*/, ", ")
+    return nil unless NOTIFY_CLINICIAN_ROLES.include?(role)
+    return nil if reason.empty? || reason.casecmp("null").zero?
+    { "role" => role, "reason" => reason }
   end
 
   # Last-resort regex classifier when no LLM is configured. Matches the
@@ -1510,6 +1603,7 @@ class HosalivioBrain
       audience:     audience,
       action:       action_intent || "no_action",
       ack:          action_intent ? "Routing your request to the right team member." : nil,
+      notify:       nil,
       body_rewrite: nil,
       reasoning:    "Regex fallback (no LLM configured).",
       source:       "fallback:regex"

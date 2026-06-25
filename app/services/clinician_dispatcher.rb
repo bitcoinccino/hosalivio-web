@@ -63,11 +63,17 @@ class ClinicianDispatcher
 
   # Dispatches a locally classified action. Slow answer generation happens
   # inside the job, after the clinician's own note has already posted.
-  def self.execute(note:, requester:, action:, ack: nil)
+  def self.execute(note:, requester:, action:, ack: nil, notify: nil)
     return Result.new(dispatched: false, reason: "no_action") if action.blank? || action == "no_action"
     d = new(note, requester)
     intent = action.to_sym
     case intent
+    when :notify_clinician
+      d.send(:dispatch_clinician_relay, notify)
+    when :confirm_relay
+      d.send(:confirm_pending_relay)
+    when :cancel_relay
+      d.send(:cancel_pending_relay)
     when :pharmacy_comfort_kit, :pharmacy_refill
       d.send(:dispatch_pharmacy, intent, ack: ack)
     when :dme_order
@@ -98,6 +104,34 @@ class ClinicianDispatcher
 
   def self.mentions_hosalivio?(body)
     body.to_s.match?(MENTION_RE)
+  end
+
+  # Short yes/no the clinician types to answer a pending relay preview.
+  RELAY_AFFIRMATIVE_RE = /\A\s*(?:@hosalivio\b[\s,:-]*)?(yes|yep|yeah|yup|ok|okay|sure|send( it)?|do it|please|confirm(ed)?|go ahead)\b[\s.!]*\z/i
+  RELAY_NEGATIVE_RE    = /\A\s*(?:@hosalivio\b[\s,:-]*)?(no|nope|cancel|don'?t|do not|stop|never\s*mind|nvm|hold off|wait)\b[\s.!]*\z/i
+
+  # The most recent HosAlivio message for this patient that is a drafted-
+  # but-unsent relay offer, or nil. If the latest HosAlivio note is
+  # anything else (an ack, an answer), the offer is considered resolved.
+  def self.pending_relay_offer(patient)
+    latest_ai = patient.notes.order(created_at: :desc).limit(15).detect(&:ai_authored?)
+    return nil unless latest_ai&.audit_kind == :hosalivio_offer
+    latest_ai
+  end
+
+  def self.pending_relay_offer?(patient)
+    pending_relay_offer(patient).present?
+  end
+
+  # When a clinician message is a bare yes/no AND a relay preview is
+  # pending for this patient, returns :confirm_relay / :cancel_relay so the
+  # job can dispatch deterministically without an LLM round-trip. Returns
+  # nil otherwise (normal classification continues).
+  def self.relay_confirmation_for(note)
+    body = note.body.to_s
+    return nil unless body.match?(RELAY_AFFIRMATIVE_RE) || body.match?(RELAY_NEGATIVE_RE)
+    return nil unless pending_relay_offer?(note.patient)
+    body.match?(RELAY_AFFIRMATIVE_RE) ? :confirm_relay : :cancel_relay
   end
 
   def initialize(note, requester)
@@ -390,6 +424,139 @@ class ClinicianDispatcher
     )
   rescue => e
     Rails.logger.warn("[ClinicianDispatcher#execute_notify_directive] #{e.class}: #{e.message}")
+  end
+
+  # notify_clinician action: the clinician asked HosAlivio to relay a
+  # concrete message to a named teammate ("let the MD know the admission
+  # is almost completed"). We DON'T send right away. Sending an internal
+  # message is a clinical/operational action, so we draft it, show a
+  # preview naming the resolved teammate, and wait for the clinician to
+  # confirm. The drafted message + resolved target are stored in the
+  # offer note's payload so the confirm step sends exactly what was
+  # previewed — no second LLM pass, no drift.
+  def dispatch_clinician_relay(notify)
+    notify = notify.is_a?(Hash) ? notify : {}
+    role   = (notify["role"] || notify[:role]).to_s.strip.downcase
+    reason = (notify["reason"] || notify[:reason]).to_s.strip
+    if role.empty? || reason.empty?
+      post_ack("I caught that you want to flag a teammate, but not who or what. Try \"let the MD know the admission is almost done.\"")
+      return Result.new(dispatched: false, reason: "notify_clinician_incomplete", intent: "notify_clinician")
+    end
+
+    label  = relay_role_label(role)
+    target = resolve_clinician_for_role(role)
+    unless target
+      post_ack("I don't see an assigned #{label} on this patient yet, so I couldn't pass that along. Want me to route it another way?")
+      return Result.new(dispatched: false, reason: "no_clinician_for_role:#{role}", intent: "notify_clinician")
+    end
+
+    # The exact text that will be sent (mention added at send time, so we
+    # strip the target's name here to avoid naming them twice).
+    message = scrub_clinician_name_from_reason(reason, target).presence || reason
+    post_relay_offer(role: role, target: target, label: label, message: message)
+    Result.new(dispatched: true, intent: "notify_clinician_offer")
+  rescue => e
+    Rails.logger.warn("[ClinicianDispatcher#dispatch_clinician_relay] #{e.class}: #{e.message}")
+    post_ack("I hit a snag drafting that. Mind trying again, or tag the teammate directly?")
+    Result.new(dispatched: false, reason: "relay_error", intent: "notify_clinician")
+  end
+
+  # The clinician answered a pending relay offer with "yes". Decode the
+  # latest unsent offer for this patient and deliver it verbatim.
+  def confirm_pending_relay
+    offer   = self.class.pending_relay_offer(@patient)
+    payload = offer&.offer_payload
+    unless payload
+      post_ack("I don't have a drafted message waiting, so there's nothing to send. Tell me what to pass along and to whom.")
+      return Result.new(dispatched: false, reason: "no_pending_offer", intent: "confirm_relay")
+    end
+    role    = payload["role"].to_s
+    message = payload["message"].to_s
+    target  = User.where(agency_id: @agency.id).find_by(id: payload["target_user_id"]) ||
+              resolve_clinician_for_role(role)
+    unless target && message.present?
+      post_ack("That draft expired or the teammate is no longer reachable. Want me to draft it again?")
+      return Result.new(dispatched: false, reason: "offer_unresolvable", intent: "confirm_relay")
+    end
+    deliver_relay(role: role, target: target, message: message)
+    post_ack("Sent to #{target.full_name} (#{relay_role_label(role)}). It's in their queue now.")
+    Result.new(dispatched: true, intent: "confirm_relay")
+  end
+
+  # The clinician declined a pending relay offer ("no" / "cancel").
+  def cancel_pending_relay
+    offer   = self.class.pending_relay_offer(@patient)
+    payload = offer&.offer_payload
+    if payload && (target = User.where(agency_id: @agency.id).find_by(id: payload["target_user_id"]))
+      post_ack("Okay, I won't send that to #{target.full_name}. Nothing went out.")
+    else
+      post_ack("Okay, I won't send that. Nothing went out.")
+    end
+    Result.new(dispatched: true, intent: "cancel_relay")
+  end
+
+  # Posts the drafted-but-unsent relay preview. The marker line stores the
+  # payload (base64 JSON) so confirm_pending_relay can deliver it exactly.
+  def post_relay_offer(role:, target:, label:, message:)
+    payload = { "role" => role, "target_user_id" => target.id, "message" => message }
+    # No "reply yes/cancel" line — the chat renders Send/Cancel buttons.
+    # Typing yes/cancel still works as a keyboard fallback.
+    preview = "Here's what I'll send #{target.full_name} (#{label}):\n\n\"#{message}\""
+    Note.create!(
+      agency:         @agency,
+      patient:        @patient,
+      parent_note:    reply_anchor,
+      author_role:    "admissions",
+      body:           "#{Note::HOSALIVIO_OFFER_PREFIX}#{Base64.strict_encode64(payload.to_json)}\n#{preview}",
+      urgency:        "normal",
+      source:         "system",
+      clinician_only: true
+    )
+  rescue ActiveRecord::RecordInvalid
+    nil
+  end
+
+  # Actually delivers a confirmed relay: the @-mention note in the chart +
+  # a bell notification + an audit event. Shared by the confirm path.
+  def deliver_relay(role:, target:, message:)
+    Current.agency           ||= @agency
+    Current.agent_id         ||= "admissions"
+    Current.agent_session_id ||= "hosalivio-dispatch-#{SecureRandom.hex(4)}"
+    first = target.full_name.to_s.split(/\s+/, 2).first.presence || "team"
+    note  = Note.create!(
+      agency:         @agency,
+      patient:        @patient,
+      author_role:    "admissions",
+      body:           "@#{first} #{message}",
+      urgency:        "normal",
+      source:         "system",
+      clinician_only: true
+    )
+    Notification.create!(
+      agency: @agency,
+      user:   target,
+      kind:   "mentioned",
+      title:  "Message from #{@requester&.full_name.presence || 'the care team'}",
+      body:   "#{@patient.full_name}: #{message}",
+      linked: note
+    )
+    AgentEvent.create!(
+      agency:           @agency,
+      agent_id:         "admissions",
+      agent_session_id: Current.agent_session_id,
+      action:           "notify_clinician",
+      subject:          @patient,
+      change_set:       { target_role: role, target_user_id: target.id,
+                          message: message, requested_by: @requester&.full_name },
+      happened_at:      Time.current
+    )
+    note
+  end
+
+  # Human-readable label for a relay target role (handles the sw alias).
+  def relay_role_label(role)
+    key = role == "sw" ? "social_worker" : role
+    HosalivioTriager::ROLE_LABELS[key] || key.titleize
   end
 
   # Mirror of HosalivioTriager#scrub_clinician_name. Strips the

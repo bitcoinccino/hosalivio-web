@@ -32,6 +32,9 @@ Rails.application.routes.draw do
       # Family UI inbound — requires authenticated family session (see controller)
       post "family_messages",   to: "family_messages#create"
       post "clinician_messages", to: "clinician_messages#create"
+      # Silent confirm/cancel of a pending HosAlivio relay preview (Send/Cancel
+      # buttons). Acts on the drafted offer directly — no "yes" chat bubble.
+      post "clinician_messages/confirm_relay", to: "clinician_messages#confirm_relay"
 
       # Whisper transcription for voice dictation (family chat, visit narratives).
       # Dormant until OPENAI_API_KEY is set; falls back to browser Web Speech.

@@ -134,21 +134,46 @@ class Note < ApplicationRecord
   RATIONALE_BODY_RE = /\A[A-Z][\w ]+ rationale\n\n/.freeze
   GUARDRAIL_PREFIX  = "[GUARDRAIL_BLOCKED]"
   HOSALIVIO_ACK_PREFIX = "[HOSALIVIO_ACK]"
+  # A pending relay HosAlivio drafted but has not sent yet. The first line
+  # is "[HOSALIVIO_OFFER]<base64 json payload>"; everything after the first
+  # newline is the human-readable preview. The payload carries the resolved
+  # target + the exact drafted message so the confirm step sends precisely
+  # what was previewed (no LLM re-interpretation). See #offer_payload.
+  HOSALIVIO_OFFER_PREFIX = "[HOSALIVIO_OFFER]"
   def audit_kind
     return :action     if action_banner?
     txt = body.to_s
     return :guardrail  if txt.start_with?(GUARDRAIL_PREFIX)
+    return :hosalivio_offer if txt.start_with?(HOSALIVIO_OFFER_PREFIX)
     return :hosalivio_ack if txt.start_with?(HOSALIVIO_ACK_PREFIX)
     return :triage     if txt.lines.any? { |l| l.start_with?("Notified:") }
     return :rationale  if txt.match?(RATIONALE_BODY_RE)
     :chart
   end
 
+  # Decoded payload of a pending relay offer, or nil when this note isn't
+  # one / the payload is unreadable. Shape:
+  #   { "role" => "md", "target_user_id" => "...", "message" => "..." }
+  def offer_payload
+    return nil unless body.to_s.start_with?(HOSALIVIO_OFFER_PREFIX)
+    encoded = body.to_s.lines.first.to_s.delete_prefix(HOSALIVIO_OFFER_PREFIX).strip
+    JSON.parse(Base64.strict_decode64(encoded))
+  rescue ArgumentError, JSON::ParserError
+    nil
+  end
+
+  # Human-readable preview for a relay offer (everything after the marker
+  # line). Falls back to the whole body if there's no second line.
+  def offer_display_text
+    return body.to_s unless body.to_s.start_with?(HOSALIVIO_OFFER_PREFIX)
+    body.to_s.split("\n", 2)[1].to_s
+  end
+
   # A message a human would reply to (family note, AI's family answer, a
   # clinician's chat/huddle message) — as opposed to a system/audit artifact
-  # (action banner, guardrail block, HosAlivio ack, triage/rationale log).
+  # (action banner, guardrail block, HosAlivio ack/offer, triage/rationale log).
   # Drives whether the chat shows a Reply affordance under the note.
-  NON_CONVERSATIONAL_KINDS = %i[action guardrail hosalivio_ack triage rationale].freeze
+  NON_CONVERSATIONAL_KINDS = %i[action guardrail hosalivio_ack hosalivio_offer triage rationale].freeze
   def conversational?
     NON_CONVERSATIONAL_KINDS.exclude?(audit_kind)
   end
