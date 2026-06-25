@@ -34,10 +34,14 @@
            class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A] flex items-center justify-center">
           <i class="ri-arrow-right-s-line"></i>
         </a>
-        <a href="<%= new_visit_path %>"
-           class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium">
-          <i class="ri-add-line"></i> New visit
-        </a>
+        <%# Scheduling is an admin/admissions action — performing clinicians
+            (RN/MD/etc.) see their own schedule but don't book visits here. %>
+        <% if (current_user.role_names & %w[admin don admissions ceo]).any? %>
+          <a href="<%= new_visit_path %>"
+             class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium">
+            <i class="ri-add-line"></i> New visit
+          </a>
+        <% end %>
         <span class="w-px h-6 bg-[#EFECE6] mx-1"></span>
         <%= render "shared/user_menu" %>
       </div>
