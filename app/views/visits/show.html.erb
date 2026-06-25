@@ -254,9 +254,9 @@
               <div class="rounded-xl bg-[#FBF9F5] border border-[#EFECE6] p-3">
                 <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Patient phone</div>
                 <% if patient&.phone.present? %>
-                  <a href="tel:<%= patient.phone %>"
-                     class="mt-1.5 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[13px] font-mono">
-                    <i class="ri-phone-fill"></i> <%= patient.phone %>
+                  <a href="tel:<%= patient.phone %>" aria-label="Call patient at <%= patient.phone %>"
+                     class="mt-1.5 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[13px] font-medium">
+                    <i class="ri-phone-fill"></i> Call
                   </a>
                 <% else %>
                   <div class="mt-1 text-[13px] text-[#6B665F]">Not recorded</div>
@@ -281,9 +281,9 @@
                     </div>
                   </div>
                   <% if patient.caregiver_phone.present? %>
-                    <a href="tel:<%= patient.caregiver_phone %>"
-                       class="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full border border-[#2F6F4E] text-[#2F6F4E] text-[12px] font-mono hover:bg-[#E6F0EE]">
-                      <i class="ri-phone-fill"></i> <%= patient.caregiver_phone %>
+                    <a href="tel:<%= patient.caregiver_phone %>" aria-label="Call caregiver at <%= patient.caregiver_phone %>"
+                       class="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full border border-[#2F6F4E] text-[#2F6F4E] text-[12px] font-medium hover:bg-[#E6F0EE]">
+                      <i class="ri-phone-fill"></i> Call
                     </a>
                   <% end %>
                 <% else %>
