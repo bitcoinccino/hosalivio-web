@@ -12,7 +12,11 @@ class CalendarsController < ApplicationController
     @days       = (0..6).map { |i| @week_start + i.days }
 
     ActsAsTenant.with_tenant(@agency) do
-      @clinicians = agency_clinicians(@agency)
+      # Managers (admin / admissions / DON) see the whole team grid for
+      # scheduling oversight; a performing clinician (RN, MD, etc.) sees only
+      # their own column — their schedule, not the whole team's.
+      manager     = (current_user.role_names & %w[admin don admissions ceo]).any?
+      @clinicians = manager ? agency_clinicians(@agency) : [current_user]
       @visits     = Visit
         .where(user_id: @clinicians.map(&:id))
         .where("COALESCE(scheduled_at, started_at) BETWEEN ? AND ?",
