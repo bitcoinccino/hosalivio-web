@@ -8,6 +8,7 @@
 class ConsentFormsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_patient, only: [:index, :new, :create]
+  before_action :authorize_consent_witness!, only: [:new, :create]
 
   def index
     ActsAsTenant.with_tenant(current_user.agency) do
@@ -76,6 +77,21 @@ class ConsentFormsController < ApplicationController
   end
 
   private
+
+  # Witnessing a consent (and the DNR -> code_status flip) is a clinical act
+  # for THIS patient: only the patient's assigned clinicians, a clinician who
+  # has a visit with them (the admitting RN witnessing during the visit), or an
+  # agency manager may do it. Blocks unassigned clinicians and family users.
+  CONSENT_MANAGER_ROLES = %w[admin don admissions ceo].freeze
+  def authorize_consent_witness!
+    return if (current_user.role_names & CONSENT_MANAGER_ROLES).any?
+    assigned_ids = [@patient.assigned_rn_id, @patient.assigned_md_id,
+                    @patient.assigned_sw_id, @patient.assigned_chaplain_id].compact
+    return if assigned_ids.include?(current_user.id)
+    return if @patient.visits.where(user_id: current_user.id).exists?
+    redirect_to dashboard_path, status: :see_other,
+                alert: "Only the patient's assigned clinician or an admin can witness consents."
+  end
 
   def set_patient
     ActsAsTenant.with_tenant(current_user.agency) do
