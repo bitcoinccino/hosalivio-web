@@ -14,63 +14,70 @@
 <div class="min-h-screen" data-controller="calendar">
   <!-- Top bar -->
   <header class="sticky top-0 z-20 bg-[#FBF9F5]/90 backdrop-blur border-b border-[#EFECE6]">
-    <div class="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1">
-          <i class="ri-arrow-left-line"></i> Dashboard
+    <%
+      # A week can straddle two months (or years) — spell that out so the
+      # RN always knows which month/year she's looking at.
+      month_label =
+        if @week_start.month == @week_end.month
+          @week_start.strftime("%B %Y")
+        elsif @week_start.year == @week_end.year
+          "#{@week_start.strftime('%B')} – #{@week_end.strftime('%B %Y')}"
+        else
+          "#{@week_start.strftime('%b %Y')} – #{@week_end.strftime('%b %Y')}"
+        end
+      week_range =
+        if @week_start.month == @week_end.month
+          "#{@week_start.strftime('%b %-d')}–#{@week_end.strftime('%-d')}, #{@week_end.year}"
+        else
+          "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
+        end
+    %>
+    <div class="max-w-[1400px] mx-auto px-4 md:px-6 min-h-14 py-2 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1 flex-shrink-0">
+          <i class="ri-arrow-left-line"></i><span class="hidden sm:inline"> Dashboard</span>
         </a>
-        <%
-          # A week can straddle two months (or years) — spell that out so the
-          # RN always knows which month/year she's looking at.
-          month_label =
-            if @week_start.month == @week_end.month
-              @week_start.strftime("%B %Y")
-            elsif @week_start.year == @week_end.year
-              "#{@week_start.strftime('%B')} – #{@week_end.strftime('%B %Y')}"
-            else
-              "#{@week_start.strftime('%b %Y')} – #{@week_end.strftime('%b %Y')}"
-            end
-          week_range =
-            if @week_start.month == @week_end.month
-              "#{@week_start.strftime('%b %-d')}–#{@week_end.strftime('%-d')}, #{@week_end.year}"
-            else
-              "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
-            end
-        %>
-        <h1 class="font-serif text-[20px] text-[#1D1C1A]"><%= month_label %></h1>
-        <span class="text-[11px] text-[#6B665F] font-mono">
-          <%= @agency&.name %> · <%= week_range %>
-        </span>
+        <div class="min-w-0">
+          <h1 class="font-serif text-[17px] md:text-[20px] text-[#1D1C1A] leading-tight truncate"><%= month_label %></h1>
+          <span class="text-[10px] md:text-[11px] text-[#6B665F] font-mono block truncate">
+            <%= @agency&.name %> · <%= week_range %>
+          </span>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <a href="<%= calendar_path(date: (@week_start - 7.days).iso8601) %>"
-           class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A] flex items-center justify-center">
-          <i class="ri-arrow-left-s-line"></i>
-        </a>
-        <a href="<%= calendar_path %>"
-           class="text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A]">
-          Today
-        </a>
-        <a href="<%= calendar_path(date: (@week_start + 7.days).iso8601) %>"
-           class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A] flex items-center justify-center">
-          <i class="ri-arrow-right-s-line"></i>
-        </a>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <%# Week nav lives in the top bar on desktop; on mobile it moves to the
+            sticky bottom bar so this row isn't cramped. %>
+        <div class="hidden md:flex items-center gap-2">
+          <a href="<%= calendar_path(date: (@week_start - 7.days).iso8601) %>"
+             class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A] flex items-center justify-center">
+            <i class="ri-arrow-left-s-line"></i>
+          </a>
+          <a href="<%= calendar_path %>"
+             class="text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A]">
+            Today
+          </a>
+          <a href="<%= calendar_path(date: (@week_start + 7.days).iso8601) %>"
+             class="w-8 h-8 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#1D1C1A] flex items-center justify-center">
+            <i class="ri-arrow-right-s-line"></i>
+          </a>
+        </div>
         <%# Scheduling is an admin/admissions action — performing clinicians
-            (RN/MD/etc.) see their own schedule but don't book visits here. %>
+            (RN/MD/etc.) see their own schedule but don't book visits here.
+            Desktop-only: booking is a back-office task, not a phone one. %>
         <% if can_schedule %>
           <a href="<%= new_visit_path %>"
-             class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium">
+             class="hidden md:inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium">
             <i class="ri-add-line"></i> New visit
           </a>
         <% end %>
-        <span class="w-px h-6 bg-[#EFECE6] mx-1"></span>
+        <span class="hidden md:block w-px h-6 bg-[#EFECE6] mx-1"></span>
         <%= render "shared/user_menu" %>
       </div>
     </div>
   </header>
 
 
-  <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
+  <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
     <%# Desktop: the dense week grid. Hidden on phones — they get the
         vertical agenda below instead (a 7-column grid can't be usable
         on a narrow screen). %>
@@ -265,6 +272,23 @@
       <% end %>
     </div>
   </main>
+
+  <%# Mobile week navigation — moved out of the cramped top bar to a
+      thumb-friendly sticky footer (desktop keeps the arrows up top). %>
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-[#EFECE6] flex items-stretch">
+    <a href="<%= calendar_path(date: (@week_start - 7.days).iso8601) %>"
+       class="flex-1 flex flex-col items-center justify-center py-2.5 text-[10px] uppercase tracking-wider text-[#6B665F] active:bg-[#FBF9F5]">
+      <i class="ri-arrow-left-s-line text-lg"></i> Prev
+    </a>
+    <a href="<%= calendar_path %>"
+       class="flex-1 flex flex-col items-center justify-center py-2.5 text-[10px] uppercase tracking-wider font-bold text-[#D97757] active:bg-[#FBF9F5] border-x border-[#EFECE6]">
+      <i class="ri-focus-3-line text-lg"></i> Today
+    </a>
+    <a href="<%= calendar_path(date: (@week_start + 7.days).iso8601) %>"
+       class="flex-1 flex flex-col items-center justify-center py-2.5 text-[10px] uppercase tracking-wider text-[#6B665F] active:bg-[#FBF9F5]">
+      <i class="ri-arrow-right-s-line text-lg"></i> Next
+    </a>
+  </nav>
 
   <%# Visit cards open in here (Turbo Frame modal). %>
   <%= turbo_frame_tag "visit-modal" %>
