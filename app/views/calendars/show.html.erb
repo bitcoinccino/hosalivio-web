@@ -120,8 +120,7 @@
                 <a href="<%= visit_path(v) %>"
                    data-turbo-frame="visit-modal"
                    class="block mb-1 px-2 py-1 rounded-lg text-[11px] leading-tight text-white shadow-sm hover:shadow hover:brightness-110 transition"
-                   style="background: <%= color %>;"
-                   data-action="click->calendar#stopPropagation">
+                   style="background: <%= color %>;">
                   <div class="flex items-center justify-between gap-1">
                     <span class="font-mono"><%= v.anchor_start&.strftime("%-l:%M%P") %></span>
                     <span class="opacity-80" title="<%= v.agent_authored ? 'Scheduled by AI agent' : 'Scheduled by a human' %>">

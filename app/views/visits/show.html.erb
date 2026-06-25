@@ -139,8 +139,8 @@
                   class: "flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[15px] font-semibold shadow-sm" do %>
               <i class="ri-play-circle-fill text-lg"></i> Begin patient visit
             <% end %>
-            <%= link_to edit_visit_path(@visit), data: { turbo_frame: "_top" },
-                  title: "Open the chart workspace to review prior notes",
+            <%= link_to patient_path(patient), data: { turbo_frame: "_top" },
+                  title: "Review the patient's chart and prior notes",
                   class: "inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-full border border-[#D9D5CD] text-[#1D1C1A] text-[13px] hover:bg-[#FBF9F5]" do %>
               <i class="ri-folder-chart-line"></i> Chart
             <% end %>
@@ -203,13 +203,16 @@
           loc_key = @visit.service_location.to_s
           loc_label = loc_key.tr("_", " ")
         %>
-        <div class="my-5 rounded-2xl border border-[#EFECE6] bg-white shadow-sm overflow-hidden">
-          <div class="px-4 py-3 border-b border-[#EFECE6] bg-[#FBF9F5] flex items-center justify-between gap-3">
+        <details open class="my-5 rounded-2xl border border-[#EFECE6] bg-white shadow-sm overflow-hidden group">
+          <summary class="px-4 py-3 border-b border-[#EFECE6] bg-[#FBF9F5] flex items-center justify-between gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
             <div class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-[#6B665F] font-bold">
               <i class="ri-map-pin-2-line text-[#D97757]"></i> Contact & location
             </div>
-            <div class="text-[9px] text-[#C1403A] uppercase tracking-wider">Private patient info · access recorded</div>
-          </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[9px] text-[#C1403A] uppercase tracking-wider">Private · logged</span>
+              <i class="ri-arrow-down-s-line text-[#6B665F] group-open:rotate-180 transition"></i>
+            </div>
+          </summary>
 
           <div class="p-4">
             <div class="inline-flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[10px] font-mono text-[#3A3936]">
@@ -289,7 +292,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </details>
 
         <% if !modal_request && @visit.narrative.present? %>
           <%
@@ -348,12 +351,7 @@
           </div>
         <% end %>
 
-        <div class="pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <%= link_to patient_path(patient),
-                data: { turbo_frame: "_top" },
-                class: "inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-medium" do %>
-            <i class="ri-folder-chart-line"></i> Chart
-          <% end %>
+        <div class="pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
           <div class="flex flex-wrap items-center gap-2">
             <% if @visit.completed_visit? %>
               <%= link_to edit_visit_path(@visit),
