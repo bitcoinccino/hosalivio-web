@@ -114,8 +114,14 @@
                 <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Scheduled by</div>
                 <div class="mt-1 text-[13px] text-[#1D1C1A]"><%= scheduler_label %></div>
               </div>
+              <% if @visit.started_at %>
+                <div class="rounded-xl border border-[#EFECE6] bg-white p-3">
+                  <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Started</div>
+                  <div class="mt-1 text-[13px] font-mono text-[#1D1C1A]"><%= @visit.started_at.strftime("%-l:%M %p") %></div>
+                </div>
+              <% end %>
               <div class="rounded-xl border border-[#EFECE6] bg-white p-3">
-                <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Ends around</div>
+                <div class="text-[9px] uppercase tracking-widest text-[#6B665F]"><%= @visit.ended_at ? "Ended" : "Ends around" %></div>
                 <div class="mt-1 text-[13px] font-mono text-[#1D1C1A]"><%= @visit.ended_at&.strftime("%-l:%M %p") || "Not set" %></div>
               </div>
             </div>
@@ -177,19 +183,6 @@
             <% else %>
               <div class="text-[12px] text-[#6B665F]">No clinical status on file yet.</div>
             <% end %>
-          </div>
-        <% end %>
-
-        <% if @visit.started_at || @visit.ended_at %>
-          <div class="grid grid-cols-2 gap-3 pb-4 mb-4 border-b border-[#EFECE6] text-[12px]">
-            <div>
-              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Started</div>
-              <div class="font-mono text-[#1D1C1A]"><%= @visit.started_at&.strftime("%-l:%M %p") || "—" %></div>
-            </div>
-            <div>
-              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Ended</div>
-              <div class="font-mono text-[#1D1C1A]"><%= @visit.ended_at&.strftime("%-l:%M %p") || "—" %></div>
-            </div>
           </div>
         <% end %>
 
