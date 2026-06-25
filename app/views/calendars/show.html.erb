@@ -114,6 +114,7 @@
                   color = discipline_color[d_key] || "#6B665F"
                 %>
                 <a href="<%= visit_path(v) %>"
+                   data-turbo-frame="visit-modal"
                    class="block mb-1 px-2 py-1 rounded-lg text-[11px] leading-tight text-white shadow-sm hover:shadow hover:brightness-110 transition"
                    style="background: <%= color %>;"
                    data-action="click->calendar#stopPropagation">
@@ -167,4 +168,7 @@
       </div>
     <% end %>
   </main>
+
+  <%# Visit cards open in here (Turbo Frame modal). %>
+  <%= turbo_frame_tag "visit-modal" %>
 </div>

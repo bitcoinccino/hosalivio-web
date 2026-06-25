@@ -94,6 +94,62 @@
           </div>
         </div>
 
+        <%
+          # Clinical detail (medical snapshot + start) is for the assigned
+          # clinician + managers + the reviewing MD only.
+          is_assigned   = @visit.user_id == current_user.id
+          is_mgr        = (current_user.role_names & %w[admin don admissions ceo]).any?
+          can_see_clin  = is_assigned || is_mgr || current_user.role_names.include?("md")
+          can_start     = !@visit.completed_visit? && (is_assigned || is_mgr)
+        %>
+
+        <%# Start the visit straight from the card. %>
+        <% if can_start %>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <%= link_to record_visit_path(@visit), data: { turbo_frame: "_top" },
+                  class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[13px] font-semibold" do %>
+              <i class="ri-mic-line"></i> Start visit (record)
+            <% end %>
+            <%= link_to edit_visit_path(@visit), data: { turbo_frame: "_top" },
+                  class: "inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] text-[13px] hover:bg-[#FBF9F5]" do %>
+              <i class="ri-folder-chart-line"></i> Open workspace
+            <% end %>
+          </div>
+        <% end %>
+
+        <%# Pre-visit medical snapshot — what the RN needs before walking in. %>
+        <% if can_see_clin && patient %>
+          <%
+            cs        = patient.code_status
+            dx        = patient.primary_diagnosis.presence
+            allergies = Array(patient.try(:allergies)).reject(&:blank?)
+            med_count = patient.medication_orders.where(status: :active).count
+          %>
+          <div class="mt-4 rounded-2xl border border-[#EFECE6] bg-[#FBF9F5] p-4">
+            <div class="text-[11px] uppercase tracking-[0.16em] text-[#6B665F] font-bold mb-2 inline-flex items-center gap-1.5">
+              <i class="ri-heart-pulse-line text-[#C1403A]"></i> Medical status
+            </div>
+            <% if cs.present? || dx || allergies.any? || med_count > 0 %>
+              <div class="flex flex-wrap gap-1.5 text-[11px]">
+                <% if cs.present? %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full <%= (patient.dnr? || patient.dnr_dni?) ? 'bg-[#C1403A] text-white' : 'bg-white border border-[#EFECE6] text-[#3A3936]' %> font-bold uppercase tracking-wider"><%= cs.to_s.tr("_", "/").upcase %></span>
+                <% end %>
+                <% if dx %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F0F4FA] border border-[#C8D6E8] text-[#2B4A7A]"><i class="ri-stethoscope-line"></i><%= dx %></span>
+                <% end %>
+                <% if allergies.any? %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A]"><i class="ri-alert-line"></i> Allergies: <%= allergies.join(", ") %></span>
+                <% end %>
+                <% if med_count > 0 %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-[#EFECE6] text-[#3A3936]"><i class="ri-capsule-line"></i> <%= med_count %> active med<%= 's' unless med_count == 1 %></span>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-[12px] text-[#6B665F]">No clinical status on file yet.</div>
+            <% end %>
+          </div>
+        <% end %>
+
         <% if @visit.started_at || @visit.ended_at %>
           <div class="grid grid-cols-2 gap-3 pb-4 mb-4 border-b border-[#EFECE6] text-[12px]">
             <div>
