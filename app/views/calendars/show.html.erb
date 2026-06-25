@@ -69,18 +69,12 @@
     </div>
   </header>
 
-  <!-- Mobile-only nudge: the week grid is dense; My Day is faster for daily flow -->
-  <div class="md:hidden bg-[#FFF3EC] border-b border-[#EFECE6] px-4 py-3">
-    <div class="text-[12px] text-[#1D1C1A]">
-      <i class="ri-information-line text-[#D97757]"></i>
-      The week grid is built for desktops. On a phone, swipe left/right to see other days, or
-      <a href="/dashboard" class="text-[#D97757] font-medium hover:underline">open My Day</a>
-      for your visits at a glance.
-    </div>
-  </div>
 
   <main class="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
-    <div class="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+    <%# Desktop: the dense week grid. Hidden on phones — they get the
+        vertical agenda below instead (a 7-column grid can't be usable
+        on a narrow screen). %>
+    <div class="hidden md:block overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
     <% if @clinicians.empty? %>
       <div class="text-center py-20 text-[#6B665F]">
         <div class="w-12 h-12 rounded-full bg-[#EFECE6] flex items-center justify-center mx-auto mb-3">
@@ -206,6 +200,70 @@
         <span class="ml-auto">🤖 AI-scheduled &nbsp;·&nbsp; 👤 Human-scheduled</span>
       </div>
     <% end %>
+
+    <%# ── Mobile agenda (below md) ─────────────────────────────────
+        A vertical, tappable day-by-day list — readable on a phone with
+        no horizontal scroll. One section per day; visits across all
+        visible clinicians, sorted by time. Tapping a visit opens the
+        same visit-modal Turbo Frame the grid uses. %>
+    <div class="md:hidden space-y-4">
+      <% if @clinicians.empty? %>
+        <div class="text-center py-16 text-[#6B665F]">
+          <div class="w-12 h-12 rounded-full bg-[#EFECE6] flex items-center justify-center mx-auto mb-3">
+            <i class="ri-calendar-line text-xl"></i>
+          </div>
+          <div class="font-serif text-lg text-[#1D1C1A]">No clinicians assigned yet.</div>
+        </div>
+      <% else %>
+        <% @days.each do |day| %>
+          <% day_visits = @clinicians.flat_map { |u| @cells[[u.id, day]] }.sort_by { |v| v.anchor_start || Time.current } %>
+          <% is_today = (day == Date.current) %>
+          <section class="rounded-2xl bg-white border <%= is_today ? 'border-[#D97757]' : 'border-[#EFECE6]' %> overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-[#EFECE6] flex items-center justify-between <%= is_today ? 'bg-[#FFF3EC]' : 'bg-[#FBF9F5]' %>">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-[14px] font-serif font-bold text-[#1D1C1A]"><%= day.strftime("%A") %></span>
+                <span class="text-[11px] text-[#6B665F] font-mono"><%= day.strftime("%b %-d") %></span>
+                <% if is_today %>
+                  <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#D97757] text-white">Today</span>
+                <% end %>
+              </div>
+              <span class="text-[10px] text-[#6B665F] flex-shrink-0"><%= day_visits.size %> <%= day_visits.size == 1 ? "visit" : "visits" %></span>
+            </div>
+            <% if day_visits.empty? %>
+              <div class="px-4 py-4 text-center text-[12px] text-[#C9C5BD]">No visits</div>
+            <% else %>
+              <ul class="divide-y divide-[#EFECE6]">
+                <% day_visits.each do |v| %>
+                  <%
+                    d_key = v.discipline.to_s == "social_worker" ? "sw" : v.discipline.to_s
+                    color = discipline_color[d_key] || "#6B665F"
+                  %>
+                  <li>
+                    <a href="<%= visit_path(v) %>" data-turbo-frame="visit-modal"
+                       class="flex items-stretch gap-3 px-4 py-3 active:bg-[#FBF9F5] transition">
+                      <span class="w-1 rounded-full flex-shrink-0" style="background: <%= color %>;"></span>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="text-[14px] font-medium text-[#1D1C1A] truncate"><%= v.patient&.full_name || "—" %></span>
+                          <span class="text-[12px] font-mono text-[#6B665F] flex-shrink-0"><%= v.anchor_start&.strftime("%-l:%M %p") %></span>
+                        </div>
+                        <div class="text-[11px] text-[#6B665F] truncate mt-0.5">
+                          <% if @clinicians.size > 1 %><%= v.user&.full_name %> · <% end %>
+                          <%= v.visit_type.to_s.tr("_", " ") %>
+                          <% if v.service_location.to_s != "home" %> · <%= v.service_location.to_s.tr("_", " ") %><% end %>
+                          <% if v.patient&.mrn.present? %> · <span class="font-mono"><%= v.patient.mrn %></span><% end %>
+                        </div>
+                      </div>
+                      <i class="ri-arrow-right-s-line text-[#C9C5BD] self-center flex-shrink-0"></i>
+                    </a>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </section>
+        <% end %>
+      <% end %>
+    </div>
   </main>
 
   <%# Visit cards open in here (Turbo Frame modal). %>
