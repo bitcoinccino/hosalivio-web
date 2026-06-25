@@ -3,6 +3,7 @@ class VisitsController < ApplicationController
   before_action :redirect_family_users
   before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary]
   before_action :authorize_visit_scheduler!, only: [:new, :create]
+  before_action :authorize_visit_writer!,    only: [:update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -773,6 +774,20 @@ class VisitsController < ApplicationController
     return true if visit.user_id == current_user.id
     return true if visit.created_by_user_id == current_user.id
     (current_user.role_names & VISIT_ACCESS_ROLES).any?
+  end
+
+  # Mutating a visit (record / begin / finish / route-to-MD / sign / discard /
+  # save edits / regenerate summary) is the assigned clinician's job; managers
+  # may act for oversight. The reviewing MD can READ a visit for clinical
+  # context (visit_accessible?) but must NOT write to it or sign the RN's
+  # route-to-MD handoff — note md is absent from VISIT_WRITER_ROLES.
+  VISIT_WRITER_ROLES = %w[admin don admissions ceo].freeze
+  def authorize_visit_writer!
+    return if @visit.user_id == current_user.id
+    return if @visit.created_by_user_id == current_user.id
+    return if (current_user.role_names & VISIT_WRITER_ROLES).any?
+    redirect_to dashboard_path, status: :see_other,
+                alert: "That visit belongs to the assigned clinician."
   end
 
   # navigator.sendBeacon doesn't set an Accept header that smells like

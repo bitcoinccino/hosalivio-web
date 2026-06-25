@@ -740,7 +740,9 @@
                     <span class="text-[10px] text-[#6B665F] ml-1">(<%= v.visit_type.tr("_", " ") %>)</span>
                   </div>
                   <div class="text-[10px] text-[#6B665F]"><%= v.started_at&.strftime("%b %-d · %-l:%M %p") || "scheduled" %></div>
-                  <% if v.narrative.present? %>
+                  <%# Clinical visit narrative is clinician-only — family sees that
+                      the visit happened (discipline/type/date) but not the note. %>
+                  <% if v.narrative.present? && !current_user.family_access? %>
                     <div class="text-[11px] text-[#3A3936] line-clamp-2 mt-0.5"><%= v.narrative %></div>
                   <% end %>
                 </div>
