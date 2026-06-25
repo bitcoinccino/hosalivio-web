@@ -156,6 +156,12 @@
       <h2 class="font-serif text-[24px] leading-tight">Who are you interviewing?</h2>
       <p class="text-[13px] text-white/60 mt-2">We label the transcript and chart with the source.</p>
 
+      <%
+        pt            = @visit.patient
+        pt_initials   = pt.full_name.to_s.split.map(&:first).first(2).join.upcase
+        fam           = @interview_family
+        photo_classes = "w-9 h-9 rounded-full object-cover flex-shrink-0 border border-white/20"
+      %>
       <div class="mt-6 space-y-3 text-left">
         <% [
           { who: "patient", label: "The patient",        sub: "#{patient_first} is the primary source",                 icon: "ri-user-3-line" },
@@ -166,9 +172,33 @@
                   data-action="click->voice-visit#pickInterviewee"
                   data-interviewee="<%= opt[:who] %>"
                   class="w-full flex items-start gap-3 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#D97757]/60 transition text-left">
-            <span class="w-9 h-9 rounded-full bg-[#D97757]/20 text-[#D97757] flex items-center justify-center flex-shrink-0">
-              <i class="<%= opt[:icon] %> text-[18px]"></i>
-            </span>
+            <%# Put a real face on each option: the patient's photo, a family
+                member's avatar, or both overlapped. Fall back to initials /
+                a role icon when no image is on file. %>
+            <% if opt[:who] == "patient" && pt.has_photo? %>
+              <%= image_tag url_for(pt.photo), class: photo_classes, alt: pt.full_name %>
+            <% elsif opt[:who] == "family" && fam&.has_avatar? %>
+              <%= image_tag url_for(fam.avatar), class: photo_classes, alt: fam.full_name %>
+            <% elsif opt[:who] == "both" && (pt.has_photo? || fam&.has_avatar?) %>
+              <span class="flex-shrink-0 flex items-center w-12 h-9">
+                <% if pt.has_photo? %>
+                  <%= image_tag url_for(pt.photo), class: "w-9 h-9 rounded-full object-cover border-2 border-[#1D1C1A] relative z-10", alt: pt.full_name %>
+                <% else %>
+                  <span class="w-9 h-9 rounded-full bg-[#D97757]/20 text-[#D97757] text-[11px] font-bold flex items-center justify-center border-2 border-[#1D1C1A] relative z-10"><%= pt_initials %></span>
+                <% end %>
+                <% if fam&.has_avatar? %>
+                  <%= image_tag url_for(fam.avatar), class: "w-9 h-9 rounded-full object-cover border-2 border-[#1D1C1A] -ml-4", alt: fam.full_name %>
+                <% else %>
+                  <span class="w-9 h-9 rounded-full bg-white/10 text-[#D97757] flex items-center justify-center border-2 border-[#1D1C1A] -ml-4"><i class="ri-parent-line text-[16px]"></i></span>
+                <% end %>
+              </span>
+            <% elsif opt[:who] == "patient" %>
+              <span class="w-9 h-9 rounded-full bg-[#D97757]/20 text-[#D97757] text-[12px] font-bold flex items-center justify-center flex-shrink-0"><%= pt_initials %></span>
+            <% else %>
+              <span class="w-9 h-9 rounded-full bg-[#D97757]/20 text-[#D97757] flex items-center justify-center flex-shrink-0">
+                <i class="<%= opt[:icon] %> text-[18px]"></i>
+              </span>
+            <% end %>
             <span class="min-w-0 flex-1">
               <span class="text-[14px] font-medium text-white"><%= opt[:label] %></span>
               <span class="block text-[11px] text-white/60 mt-0.5"><%= opt[:sub] %></span>

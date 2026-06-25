@@ -452,6 +452,12 @@ class VisitsController < ApplicationController
       else
         "admission"
       end
+
+    # A family member with a photo, to put a face on the "The family" /
+    # "Patient and family" options in the interviewee picker. Prefer active.
+    @interview_family = User.where(patient_id: @visit.patient_id, family_access: true)
+                            .order(active: :desc, updated_at: :desc)
+                            .detect(&:has_avatar?)
   end
 
   # POST /visits/:id/discard
