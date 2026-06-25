@@ -98,20 +98,28 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Assigned to</div>
-              <div class="mt-1 text-[13px] text-[#1D1C1A] truncate"><%= clinician&.full_name || "Unassigned" %></div>
+          <%# Operational metadata is secondary for the visiting nurse —
+              tucked into a collapsed dropdown. %>
+          <details class="group rounded-xl border border-[#EFECE6] bg-[#FBF9F5]">
+            <summary class="cursor-pointer list-none px-3 py-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-[#6B665F] font-bold [&::-webkit-details-marker]:hidden">
+              <span>Visit details</span>
+              <i class="ri-arrow-down-s-line group-open:rotate-180 transition"></i>
+            </summary>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 pt-0">
+              <div class="rounded-xl border border-[#EFECE6] bg-white p-3">
+                <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Assigned to</div>
+                <div class="mt-1 text-[13px] text-[#1D1C1A] truncate"><%= clinician&.full_name || "Unassigned" %></div>
+              </div>
+              <div class="rounded-xl border border-[#EFECE6] bg-white p-3">
+                <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Scheduled by</div>
+                <div class="mt-1 text-[13px] text-[#1D1C1A]"><%= scheduler_label %></div>
+              </div>
+              <div class="rounded-xl border border-[#EFECE6] bg-white p-3">
+                <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Ends around</div>
+                <div class="mt-1 text-[13px] font-mono text-[#1D1C1A]"><%= @visit.ended_at&.strftime("%-l:%M %p") || "Not set" %></div>
+              </div>
             </div>
-            <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Scheduled by</div>
-              <div class="mt-1 text-[13px] text-[#1D1C1A]"><%= scheduler_label %></div>
-            </div>
-            <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
-              <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Ends around</div>
-              <div class="mt-1 text-[13px] font-mono text-[#1D1C1A]"><%= @visit.ended_at&.strftime("%-l:%M %p") || "Not set" %></div>
-            </div>
-          </div>
+          </details>
         </div>
 
         <%
@@ -243,8 +251,9 @@
               <div class="rounded-xl bg-[#FBF9F5] border border-[#EFECE6] p-3">
                 <div class="text-[9px] uppercase tracking-widest text-[#6B665F]">Patient phone</div>
                 <% if patient&.phone.present? %>
-                  <a href="tel:<%= patient.phone %>" class="mt-1 inline-flex items-center gap-1 text-[13px] font-mono text-[#1D1C1A] hover:underline">
-                    <i class="ri-phone-line text-[#D97757]"></i> <%= patient.phone %>
+                  <a href="tel:<%= patient.phone %>"
+                     class="mt-1.5 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[13px] font-mono">
+                    <i class="ri-phone-fill"></i> <%= patient.phone %>
                   </a>
                 <% else %>
                   <div class="mt-1 text-[13px] text-[#6B665F]">Not recorded</div>
@@ -269,7 +278,10 @@
                     </div>
                   </div>
                   <% if patient.caregiver_phone.present? %>
-                    <a href="tel:<%= patient.caregiver_phone %>" class="mt-1 inline-block text-[12px] font-mono text-[#6B665F] hover:underline"><%= patient.caregiver_phone %></a>
+                    <a href="tel:<%= patient.caregiver_phone %>"
+                       class="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full border border-[#2F6F4E] text-[#2F6F4E] text-[12px] font-mono hover:bg-[#E6F0EE]">
+                      <i class="ri-phone-fill"></i> <%= patient.caregiver_phone %>
+                    </a>
                   <% end %>
                 <% else %>
                   <div class="mt-1 text-[13px] text-[#6B665F]">Not recorded</div>
