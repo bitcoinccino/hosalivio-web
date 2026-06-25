@@ -949,8 +949,10 @@ class HosalivioBrain
              PPS status, new issues, who was present, safety>."
         - Then "Key observations:" with 1-3 lines synthesizing TRENDS across
           the visits (e.g. "Progressive functional decline and rising
-          respiratory symptoms over the last 3 visits") and any documentation
-          gaps.
+          respiratory symptoms over the last 3 visits"). When documentation is
+          incomplete, flag it ONCE here, quantified and tight, e.g.
+          "Note: 2 of the last 3 visits have minimal or test documentation" —
+          rather than restating the gap on every visit line.
 
       Rules:
         - Lead with what matters clinically (changing symptoms, functional
