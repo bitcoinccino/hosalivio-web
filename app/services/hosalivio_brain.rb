@@ -734,10 +734,13 @@ class HosalivioBrain
     notify_clinician
   ].freeze
 
-  # Roles a notify_clinician relay can target. These resolve to a real
-  # assigned human (or the first active user with that role) in the
-  # dispatcher, who gets an @-mention note + a bell notification.
-  NOTIFY_CLINICIAN_ROLES = %w[rn md don sw social_worker chaplain aide].freeze
+  # Roles a notify_clinician relay can target. Scoped to the two clinician
+  # teammates in the MVP four-persona boundary (Admission RN + MD); Admin
+  # isn't a relay target and Family is reached through the family chat, not
+  # an @-mention. Each resolves to a real assigned human (or the first
+  # active user with that role), who gets an @-mention note + bell
+  # notification.
+  NOTIFY_CLINICIAN_ROLES = %w[rn md].freeze
 
   def clinician_system_prompt
     <<~SYS
@@ -786,29 +789,29 @@ class HosalivioBrain
                                to know').
         notify_clinician     : the clinician is asking YOU to relay an
                                update or message to a SPECIFIC teammate on
-                               the care team (the MD, RN, DON, social
-                               worker, chaplain, or aide). Strong signals:
+                               the care team. Only two relay targets exist:
+                               the MD and the RN. Strong signals:
                                'let the MD know ...', 'notify the RN that
-                               ...', 'tell the social worker ...', 'flag
-                               the DON ...', 'create a note for the MD
-                               about ...', 'ping the chaplain that ...'.
-                               This is NOT a question and NOT a clinical
-                               order; it just carries a message to a
-                               named role. Set the "notify" object:
-                               role = which teammate, reason = the message
-                               to relay (see the notify rules below).
+                               ...', 'create a note for the MD about ...',
+                               'flag the nurse that ...'. This is NOT a
+                               question and NOT a clinical order; it just
+                               carries a message to a named role. Set the
+                               "notify" object: role = "md" or "rn",
+                               reason = the message to relay (see the
+                               notify rules below).
                                Examples:
                                  'let the MD know the admission is almost
                                   completed' -> action notify_clinician,
                                   notify { role: "md", reason: "Admission
                                   is almost completed." }
-                                 'tell the social worker the family needs
-                                  a callback' -> action notify_clinician,
-                                  notify { role: "sw", reason: "Family
+                                 'tell the RN the family needs a callback'
+                                  -> action notify_clinician,
+                                  notify { role: "rn", reason: "Family
                                   needs a callback." }
-                               If the message is a generic 'loop in
-                               admissions' with no concrete content, prefer
-                               admissions_handoff instead.
+                               If the relay target is anyone other than the
+                               MD or RN, do NOT use notify_clinician. For a
+                               generic 'loop in admissions' with no concrete
+                               content, prefer admissions_handoff instead.
         billing_question     : a billing or claim issue specifically
         answer_question      : ANY question the clinician is asking
                                HosAlivio about THIS patient. Strong signal:
