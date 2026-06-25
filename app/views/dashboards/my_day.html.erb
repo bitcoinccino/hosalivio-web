@@ -119,12 +119,17 @@
           <%# Caseload card — kept inline (no partial yet) since it
               doesn't have a live broadcast hook. Same visual shape
               as the other cards. %>
-          <section id="my-patients" class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden scroll-mt-20">
+          <section id="my-patients" data-controller="card-collapse" class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden scroll-mt-20">
             <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
               <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
                 <i class="ri-team-line"></i> My patients (<%= @caseload.count %><% if current_user.max_caseload.to_i > 0 %>/<%= current_user.max_caseload %><% end %>)
               </h3>
+              <button type="button" data-action="card-collapse#toggle" aria-label="Collapse card"
+                      class="md:hidden w-6 h-6 -mr-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center flex-shrink-0">
+                <i data-card-collapse-target="chevron" class="ri-arrow-down-s-line text-[18px] transition-transform"></i>
+              </button>
             </div>
+            <div data-card-collapse-target="body" class="md:block">
             <% if @caseload.empty? %>
               <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No assigned patients.</div>
             <% else %>
@@ -184,6 +189,7 @@
                 <% end %>
               </ul>
             <% end %>
+            </div>
           </section>
         </div>
 

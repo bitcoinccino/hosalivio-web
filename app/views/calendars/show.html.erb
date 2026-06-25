@@ -19,10 +19,27 @@
         <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1">
           <i class="ri-arrow-left-line"></i> Dashboard
         </a>
-        <h1 class="font-serif text-[20px] text-[#1D1C1A]">Calendar</h1>
+        <%
+          # A week can straddle two months (or years) — spell that out so the
+          # RN always knows which month/year she's looking at.
+          month_label =
+            if @week_start.month == @week_end.month
+              @week_start.strftime("%B %Y")
+            elsif @week_start.year == @week_end.year
+              "#{@week_start.strftime('%B')} – #{@week_end.strftime('%B %Y')}"
+            else
+              "#{@week_start.strftime('%b %Y')} – #{@week_end.strftime('%b %Y')}"
+            end
+          week_range =
+            if @week_start.month == @week_end.month
+              "#{@week_start.strftime('%b %-d')}–#{@week_end.strftime('%-d')}, #{@week_end.year}"
+            else
+              "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
+            end
+        %>
+        <h1 class="font-serif text-[20px] text-[#1D1C1A]"><%= month_label %></h1>
         <span class="text-[11px] text-[#6B665F] font-mono">
-          <%= @agency&.name %> ·
-          week of <%= @week_start.strftime("%b %-d") %>
+          <%= @agency&.name %> · <%= week_range %>
         </span>
       </div>
       <div class="flex items-center gap-2">

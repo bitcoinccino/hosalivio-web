@@ -3,11 +3,18 @@
 <%# target: "_top" so links/forms inside navigate the full page; broadcast_replace_to still
     replaces this frame by id (the frame's target only governs in-frame navigation). %>
 <%= turbo_frame_tag "dashboard-todays-visits-#{viewer_user_id}", target: "_top" do %>
-  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+  <section data-controller="card-collapse" class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
     <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
       <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-calendar-line"></i> Today's visits (<%= todays_visits.size %>)</h3>
-      <%= link_to "Week calendar", calendar_path, class: "text-[11px] text-[#D97757] hover:underline" %>
+      <div class="flex items-center gap-3">
+        <%= link_to "Week calendar", calendar_path, class: "text-[11px] text-[#D97757] hover:underline" %>
+        <button type="button" data-action="card-collapse#toggle" aria-label="Collapse card"
+                class="md:hidden w-6 h-6 -mr-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center flex-shrink-0">
+          <i data-card-collapse-target="chevron" class="ri-arrow-down-s-line text-[18px] transition-transform"></i>
+        </button>
+      </div>
     </div>
+    <div data-card-collapse-target="body" class="md:block">
     <% if todays_visits.empty? %>
       <div class="px-5 py-10 text-center">
         <div class="text-[13px] text-[#1D1C1A] font-medium">No visits scheduled today.</div>
@@ -99,5 +106,6 @@
         <% end %>
       </ul>
     <% end %>
+    </div>
   </section>
 <% end %>

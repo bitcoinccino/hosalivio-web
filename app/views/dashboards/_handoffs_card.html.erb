@@ -6,10 +6,15 @@
        rank = { "crisis" => 0, "urgent" => 1 }[u] || 2
        [rank, -(ev.happened_at&.to_i || 0)]
      } %>
-  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
-    <div class="px-5 py-3 border-b border-[#EFECE6]">
+  <section data-controller="card-collapse" class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between gap-2">
       <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-send-plane-2-line"></i> Handoffs waiting for you (<%= sorted_handoffs.size %>)</h3>
+      <button type="button" data-action="card-collapse#toggle" aria-label="Collapse card"
+              class="md:hidden w-6 h-6 -mr-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center flex-shrink-0">
+        <i data-card-collapse-target="chevron" class="ri-arrow-down-s-line text-[18px] transition-transform"></i>
+      </button>
     </div>
+    <div data-card-collapse-target="body" class="md:block">
     <% if sorted_handoffs.empty? %>
       <div class="px-5 py-6 text-center text-[12px] text-[#6B665F]">Nothing pending.</div>
     <% else %>
@@ -109,5 +114,6 @@
         <% end %>
       </ul>
     <% end %>
+    </div>
   </section>
 <% end %>

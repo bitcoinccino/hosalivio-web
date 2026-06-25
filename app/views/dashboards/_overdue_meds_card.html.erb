@@ -3,12 +3,17 @@
     `viewer_user_id` for stable turbo-frame nesting. Wrapped in a
     turbo-frame so live broadcasts can replace just this body. %>
 <%= turbo_frame_tag "dashboard-overdue-meds-#{viewer_user_id}", target: "_top" do %>
-  <section class="rounded-2xl bg-white border-2 <%= overdue_meds.any? ? 'border-[#C1403A]' : 'border-[#EFECE6]' %> overflow-hidden">
+  <section data-controller="card-collapse" class="rounded-2xl bg-white border-2 <%= overdue_meds.any? ? 'border-[#C1403A]' : 'border-[#EFECE6]' %> overflow-hidden">
     <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
       <h3 class="text-[11px] uppercase tracking-widest font-bold flex items-center gap-2 <%= overdue_meds.any? ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
         <i class="ri-capsule-line"></i> Overdue comfort meds (<%= overdue_meds.size %>)
       </h3>
+      <button type="button" data-action="card-collapse#toggle" aria-label="Collapse card"
+              class="md:hidden w-6 h-6 -mr-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center flex-shrink-0">
+        <i data-card-collapse-target="chevron" class="ri-arrow-down-s-line text-[18px] transition-transform"></i>
+      </button>
     </div>
+    <div data-card-collapse-target="body" class="md:block">
     <% if overdue_meds.empty? %>
       <div class="px-5 py-6 text-center text-[12px] text-[#6B665F]">All meds on time.</div>
     <% else %>
@@ -47,5 +52,6 @@
         <% end %>
       </ul>
     <% end %>
+    </div>
   </section>
 <% end %>
