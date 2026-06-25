@@ -119,7 +119,7 @@
           <%# Caseload card — kept inline (no partial yet) since it
               doesn't have a live broadcast hook. Same visual shape
               as the other cards. %>
-          <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+          <section id="my-patients" class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden scroll-mt-20">
             <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
               <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
                 <i class="ri-team-line"></i> My patients (<%= @caseload.count %><% if current_user.max_caseload.to_i > 0 %>/<%= current_user.max_caseload %><% end %>)

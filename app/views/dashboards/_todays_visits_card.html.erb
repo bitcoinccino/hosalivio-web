@@ -11,15 +11,20 @@
     <% if todays_visits.empty? %>
       <div class="px-5 py-10 text-center">
         <div class="text-[13px] text-[#1D1C1A] font-medium">No visits scheduled today.</div>
-        <div class="mt-1 text-[12px] text-[#6B665F]">Use the time to review flagged patients or start an unscheduled visit from a patient chart.</div>
+        <div class="mt-1 text-[12px] text-[#6B665F]">Use the time to review your patients or start an unscheduled visit from a patient chart.</div>
         <div class="mt-4 flex items-center justify-center gap-2">
           <%= link_to calendar_path,
                 class: "inline-flex items-center gap-1 rounded-full border border-[#D9D5CD] px-3 py-1.5 text-[12px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
             <i class="ri-calendar-line"></i> Open calendar
           <% end %>
-          <%= link_to "#patients-needing-review",
-                class: "inline-flex items-center gap-1 rounded-full bg-[#D97757] px-3 py-1.5 text-[12px] text-white hover:bg-[#c46a4b]" do %>
-            <i class="ri-team-line"></i> Review patients
+          <%# Jump to the My patients list — always populated when she has a
+              caseload. Hidden when she has none so the button is never a
+              dead end. (Anchors to the #my-patients section on this page.) %>
+          <% if @caseload.present? %>
+            <%= link_to "#my-patients",
+                  class: "inline-flex items-center gap-1 rounded-full bg-[#D97757] px-3 py-1.5 text-[12px] text-white hover:bg-[#c46a4b]" do %>
+              <i class="ri-team-line"></i> Review my patients (<%= @caseload.count %>)
+            <% end %>
           <% end %>
         </div>
       </div>
