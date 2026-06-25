@@ -326,9 +326,13 @@ class VisitsController < ApplicationController
     end
 
     is_scheduler = (current_user.role_names & %w[admin don admissions ceo]).any?
-    is_assigned  = @visit.user_id == current_user.id
-    unless is_scheduler || is_assigned
-      redirect_to(dashboard_path, status: :see_other, alert: "Only the assigned clinician or admissions can discard a visit.") and return
+    # The assigned clinician may discard their own in-progress DRAFT (a recording
+    # they started and don't want to keep), but a not-yet-started SCHEDULED slot
+    # is admin's schedule — only a scheduler removes it from the calendar.
+    assigned_can_discard = @visit.user_id == current_user.id && @visit.started_at.present?
+    unless is_scheduler || assigned_can_discard
+      redirect_to(dashboard_path, status: :see_other,
+                  alert: "Only admissions can remove a scheduled visit.") and return
     end
 
     @visit.destroy

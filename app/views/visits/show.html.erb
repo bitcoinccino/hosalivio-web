@@ -247,7 +247,10 @@
                     title: "Completed visits are locked except vitals corrections and late-entry workflows." do %>
                 <i class="ri-lock-2-line"></i> Corrections
               <% end %>
-            <% else %>
+            <% elsif (current_user.role_names & %w[admin don admissions ceo]).any? %>
+              <%# Reschedule + remove are scheduling actions — admin/admissions
+                  only. The assigned RN records the visit (start_now) and
+                  discards their own draft from the recording workspace. %>
               <%= link_to edit_visit_path(@visit),
                     data: { turbo_frame: "_top" },
                     class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
