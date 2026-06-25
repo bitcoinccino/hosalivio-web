@@ -208,7 +208,10 @@ class VisitsController < ApplicationController
       end
     end
 
-    if @visit.visit_type_admission? && (eval_rec = @visit.pre_admit_eval)
+    # Guarantee the eval exists for an admission visit before we extract into
+    # it — otherwise an RN who finished without going through #begin would have
+    # no linked eval and "Route to MD" would fail.
+    if @visit.visit_type_admission? && (eval_rec = ensure_pre_admit_eval_for(@visit))
       result = PreAdmitNarrativeExtractor.call(
         narrative:     narrative_for_eval(@visit),
         existing_json: eval_rec.raw_json,
@@ -568,7 +571,7 @@ class VisitsController < ApplicationController
           end
         end
 
-        if @visit.visit_type_admission? && (eval_rec = @visit.pre_admit_eval)
+        if @visit.visit_type_admission? && (eval_rec = ensure_pre_admit_eval_for(@visit))
           result = PreAdmitNarrativeExtractor.call(
             narrative:     narrative_for_eval(@visit),
             existing_json: eval_rec.raw_json,
@@ -755,6 +758,21 @@ class VisitsController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @visit = Visit.find(params[:id])
     end
+    return if visit_accessible?(@visit)
+    redirect_to dashboard_path, status: :see_other,
+                alert: "That visit isn't assigned to you."
+  end
+
+  # A visit is the assigned clinician's workspace. Only that clinician, whoever
+  # scheduled it, agency managers (admin/DON/admissions/ceo), and the reviewing
+  # MD may open / record / edit / route it — so an unassigned clinician (e.g.
+  # another RN) can't touch an admission that isn't theirs and corrupt its
+  # audit trail or sign-off.
+  VISIT_ACCESS_ROLES = %w[admin don admissions ceo md].freeze
+  def visit_accessible?(visit)
+    return true if visit.user_id == current_user.id
+    return true if visit.created_by_user_id == current_user.id
+    (current_user.role_names & VISIT_ACCESS_ROLES).any?
   end
 
   # navigator.sendBeacon doesn't set an Accept header that smells like
