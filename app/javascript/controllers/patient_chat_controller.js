@@ -535,6 +535,76 @@ export default class extends Controller {
     this._scrollToBottom()
   }
 
+  _appendHosalivioOffer(n) {
+    const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
+    // Body is "[HOSALIVIO_OFFER]<base64 payload>\n<preview>"; show only the preview.
+    const raw = String(n.body || "")
+    const text = raw.startsWith("[HOSALIVIO_OFFER]") ? raw.replace(/^[^\n]*\n/, "") : raw
+
+    const wrap = document.createElement("div")
+    wrap.className = "max-w-2xl flex items-start gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-dashed border-[#D9B8A6] opacity-0 transition-opacity duration-300"
+    wrap.title = "HosAlivio drafted this message. It has not been sent yet."
+    wrap.setAttribute("data-relay-offer", "")
+    wrap.innerHTML = `
+      <div class="w-7 h-7 rounded-full bg-[#D97757] flex items-center justify-center text-white flex-shrink-0">
+        <i class="ri-mail-send-line text-[14px]"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio · draft, not sent</div>
+        <div data-role="offer" class="text-[13px] text-[#1D1C1A] mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere]"></div>
+        <div class="mt-2 flex items-center gap-2" data-relay-actions>
+          <button type="button" data-action="click->patient-chat#confirmRelay" data-decision="yes"
+                  class="inline-flex items-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-3 py-1 text-[12px] font-medium">
+            <i class="ri-send-plane-fill text-[12px]"></i> Send
+          </button>
+          <button type="button" data-action="click->patient-chat#confirmRelay" data-decision="cancel"
+                  class="inline-flex items-center gap-1 rounded-full bg-white border border-[#E4E0D8] hover:bg-[#F2EEE7] text-[#6B665F] px-3 py-1 text-[12px] font-medium">
+            Cancel
+          </button>
+        </div>
+      </div>
+      <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0 mt-0.5">${time}</div>
+    `
+    wrap.querySelector('[data-role="offer"]').textContent = text
+    this.feedTarget.appendChild(wrap)
+    requestAnimationFrame(() => { wrap.style.opacity = "1" })
+    this._scrollToBottom()
+  }
+
+  // Click handler for the Send/Cancel buttons on a relay preview. Hits the
+  // silent confirm endpoint (NOT the chat-message path) so confirming
+  // doesn't drop a "yes" bubble into the thread. The backend acts on the
+  // patient's pending offer directly and broadcasts the "Sent"/"won't send"
+  // ack via Cable. Buttons disable on click to prevent a double-send.
+  async confirmRelay(event) {
+    const btn      = event.currentTarget
+    const decision = btn.dataset.decision === "cancel" ? "cancel" : "yes"
+    const pill     = btn.closest("[data-relay-offer]")
+    if (pill) {
+      pill.querySelectorAll("button[data-decision]").forEach((b) => {
+        b.disabled = true
+        b.classList.add("opacity-50", "pointer-events-none")
+      })
+      const actions = pill.querySelector("[data-relay-actions]")
+      if (actions) actions.innerHTML =
+        `<span class="text-[11px] text-[#9A938A] italic">${decision === "yes" ? "Sending…" : "Cancelling…"}</span>`
+    }
+
+    const csrfMeta = document.querySelector("meta[name='csrf-token']")
+    const csrf     = csrfMeta ? csrfMeta.content : ""
+    if (decision === "yes") this._scheduleTyping(800)
+    try {
+      const resp = await fetch("/api/v1/clinician_messages/confirm_relay", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": csrf },
+        body:    JSON.stringify({ patient_id: this.patientIdValue, decision })
+      })
+      if (!resp.ok) { console.error("relay confirm failed:", resp.status, await resp.text()); this._clearTyping() }
+    } catch (e) {
+      console.error("relay confirm error:", e); this._clearTyping()
+    }
+  }
+
   _appendHosalivioAck(n) {
     const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
     const text = String(n.body || "").replace(/^\[HOSALIVIO_ACK\]\s*/, "")
@@ -785,13 +855,15 @@ export default class extends Controller {
       // Clear the "HosAlivio is thinking" dots when any system /
       // HosAlivio message lands. Without this, the typing indicator
       // would stick around forever after a Q&A reply or dispatch ack.
-      if (n.audit_kind === "hosalivio_ack" || n.audit_kind === "guardrail" || n.action_payload) {
+      if (n.audit_kind === "hosalivio_ack" || n.audit_kind === "hosalivio_offer" || n.audit_kind === "guardrail" || n.action_payload) {
         this._clearTyping()
       }
       if (n.audit_kind === "guardrail") {
         this._appendGuardrailBlock(n)
       } else if (n.action_payload) {
         this._appendActionBanner(n)
+      } else if (n.audit_kind === "hosalivio_offer") {
+        this._appendHosalivioOffer(n)
       } else if (n.audit_kind === "hosalivio_ack") {
         this._appendHosalivioAck(n)
       } else if (n.author_user_id) {

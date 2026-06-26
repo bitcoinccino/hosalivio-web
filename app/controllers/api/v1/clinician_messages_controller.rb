@@ -56,7 +56,11 @@ module Api
             # Its reply threads under this conversation's root (post_ack). Gated
             # to team-only threads so a [HOSALIVIO_ACK] note never lands in a
             # family-visible thread.
-            if note.clinician_only && ClinicianDispatcher.mentions_hosalivio?(body)
+            # @HosAlivio mention wakes the dispatcher. A bare "yes"/"cancel"
+            # in the thread also wakes it when a relay preview is awaiting
+            # confirmation, so the clinician doesn't have to re-tag the bot.
+            if note.clinician_only && (ClinicianDispatcher.mentions_hosalivio?(body) ||
+                                       ClinicianDispatcher.relay_confirmation_for(note))
               ClinicianMessageResponseJob.perform_later(note.id, @user.id, "classify")
             end
             return render json: { status: "ok", id: note.id, parent_note_id: parent.id,
@@ -78,6 +82,28 @@ module Api
                          audience: decision[:audience], action: decision[:action],
                          source: decision[:source] }, status: :created
         end
+      end
+
+      # Send/Cancel buttons on a relay preview hit this instead of posting a
+      # "yes" chat message — so confirming is silent (no extra bubble). We
+      # act on the patient's pending offer directly via the dispatch job.
+      def confirm_relay
+        patient = Patient.unscoped.find(params[:patient_id])
+        return render_err(:forbidden, "wrong_agency") unless patient.agency_id == @user.agency_id
+
+        decision = params[:decision].to_s == "cancel" ? "cancel_relay" : "confirm_relay"
+
+        ActsAsTenant.with_tenant(patient.agency) do
+          offer = ClinicianDispatcher.pending_relay_offer(patient)
+          return render json: { status: "no_pending_offer" }, status: :ok unless offer
+
+          # Drive the job off the offer note itself: the dispatcher reads the
+          # patient/agency from it and resolves the drafted message from the
+          # offer payload — no clinician reply note is created.
+          ClinicianMessageResponseJob.perform_later(offer.id, @user.id, decision)
+        end
+
+        render json: { status: "ok", decision: decision }, status: :created
       end
 
       private
