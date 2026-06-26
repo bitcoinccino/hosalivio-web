@@ -1,0 +1,15 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "5cefb7f57fa67d34898eecf10096425303a607bb2e2d40296acac5744619e21f",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/pre_admit_evals_controller.rb",
+      "line": 40,
+      "note": "Reviewed/accepted. permit! here only merges leaf values of an EXPLICITLY allow-listed section (the %w[header diagnosis ...] list) into the raw_json jsonb document, not into ActiveRecord attributes. Section names are whitelisted; only open-ended sub-keys of a known section are permitted, then type-coerced by coerce_raw_json_types!. No arbitrary model attributes are exposed."
+    }
+  ],
+  "brakeman_version": "8.0.5"
+}
