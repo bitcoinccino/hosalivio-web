@@ -31,24 +31,6 @@ module ApplicationHelper
     end
   end
 
-  # Formal clinical form: honorific + SURNAME ("Ms. Gonzalez"), the correct
-  # register for the clinician-facing chat. Falls back to the full name when
-  # we can't build it (no last name, or unknown gender). Distinct from
-  # patient_salutation, which keeps the warmer honorific + first name for the
-  # family side.
-  def patient_formal_name(patient)
-    last = patient&.last_name.to_s.strip
-    return patient&.full_name.to_s.strip if last.blank?
-    g = patient.gender.to_s.downcase.strip
-    if g.start_with?("f")
-      "Ms. #{last}"
-    elsif g.start_with?("m")
-      "Mr. #{last}"
-    else
-      patient.full_name.to_s.strip
-    end
-  end
-
   # Privacy-mask an email for display on sign-in confirmation pages.
   # Keeps the first and last character of the local part + the full
   # domain, so 'family@hosalivio.com' reads as 'f****y@hosalivio.com'.

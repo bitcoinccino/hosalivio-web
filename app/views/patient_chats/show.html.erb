@@ -429,17 +429,8 @@
           bar takes its place while audio capture is active. %>
       <div data-patient-chat-target="composer" data-recording="false" class="group/composer">
 
-      <%# Static placeholder hint above the pill. Replaces the
-          absolute-positioned overlay inside the input that we used
-          before; this version doesn't fight the input's natural
-          padding and reads cleanly on both desktop and mobile. %>
-      <div class="text-center text-[12px] text-[#6B665F] mb-2 group-data-[recording=true]/composer:hidden">
-        <% if current_user.family_access? %>
-          How is <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span> doing?
-        <% else %>
-          Note or ask anything about <span class="font-bold text-[#D97757]"><%= patient_formal_name(@patient) %></span>
-        <% end %>
-      </div>
+      <%# The composer prompt now lives in the input's native placeholder
+          (role-aware: family doesn't see the @HosAlivio hint). %>
 
       <%# Single pill that visually holds both the + button and the
           chat form. The form inside has no chrome (no border, no bg);
@@ -472,7 +463,7 @@
 
         <input type="text" name="text" data-patient-chat-target="input"
                autocomplete="off"
-               placeholder=""
+               placeholder="<%= current_user.family_access? ? 'Type a message…' : 'Type a message or ask @HosAlivio…' %>"
                class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
 
         <%# Two voice buttons. Both visible by default, no Send button.
