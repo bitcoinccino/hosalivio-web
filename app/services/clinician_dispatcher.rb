@@ -323,6 +323,13 @@ class ClinicianDispatcher
   # back as a HosAlivio bot bubble. Audit-logged via AgentEvent so we
   # know what was asked, what was answered, and which role asked it.
   def answer_question
+    # "What can you do? / who are you?" is a fixed answer — skip the LLM and
+    # post a short, scannable capability blurb instead of a verbose paragraph.
+    if capability_question?(@note.body)
+      post_ack(capability_blurb)
+      return Result.new(dispatched: true, intent: "capability_answer")
+    end
+
     role = (@requester.role_names & %w[rn md don admissions admin ceo aide sw social_worker chaplain]).first || "rn"
     result = HosalivioBrain.answer_clinician_question(
       question:       @note.body.to_s,
@@ -365,6 +372,34 @@ class ClinicianDispatcher
       post_ack(fallback_answer_for(role))
     end
     Result.new(dispatched: true, intent: "answer_question")
+  end
+
+  # A bare "what can you do / who are you" question (the WHOLE message, so a
+  # clinical question like "what can you do about her pain?" is NOT caught).
+  CAPABILITY_RE = /\A\s*(?:@?hosalivio[\s,]*)?(?:what (?:can|do) you (?:do|help(?: me)?(?: with)?|offer)|how (?:can|do) you help(?: me)?|who are you|what are you|what(?:'s| is) hosalivio|what(?:'s| is) your (?:job|role|purpose)|introduce yourself)\??\s*\z/i
+
+  def capability_question?(body)
+    CAPABILITY_RE.match?(body.to_s)
+  end
+
+  # Short, scannable capability blurb — leadership-friendly, no corporate
+  # paragraph. Ends with an offer naming the patient.
+  def capability_blurb
+    first = @patient&.first_name.to_s.strip
+    whom  = first.present? ? " for #{first}" : ""
+    <<~MSG.strip
+      I'm HosAlivio, your AI care-coordination assistant.
+
+      I mainly help with:
+      - Patient status, visit progress, and open documentation blockers
+      - Summarizing recent visits
+      - Flagging missing items (consents, unsigned docs)
+      - Routing messages to the right team member
+
+      I don't give clinical advice or make care decisions, I'll always point those to you or the clinical team.
+
+      What would you like help with#{whom}?
+    MSG
   end
 
   def fallback_answer_for(role)
