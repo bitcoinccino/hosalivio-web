@@ -1,4 +1,11 @@
 <% content_for :title, "Visit · HosAlivio" %>
+<style>
+  @media print {
+    @page { margin: 0.6in; size: letter; }
+    body { background: white !important; color: black !important; }
+    .no-print, .no-print * { display: none !important; }
+  }
+</style>
 <%
   discipline_color = {
     "rn" => "#2F6F4E", "md" => "#2B4A7A", "sw" => "#7A4A8C",
@@ -34,9 +41,15 @@
 
 <% visit_card = capture do %>
   <% unless modal_request %>
-    <a href="<%= calendar_path(date: @visit.scheduled_at&.to_date) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
-      <i class="ri-arrow-left-line"></i> Back to calendar
-    </a>
+    <div class="flex items-center justify-between gap-3 mb-4 no-print">
+      <a href="<%= calendar_path(date: @visit.scheduled_at&.to_date) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A]">
+        <i class="ri-arrow-left-line"></i> Back to calendar
+      </a>
+      <button type="button" onclick="window.print()"
+              class="inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#6B665F]">
+        <i class="ri-printer-line"></i> Print / Download PDF
+      </button>
+    </div>
   <% end %>
   <div class="<%= modal_request ? '' : 'rounded-2xl bg-white border border-[#EFECE6] shadow-sm overflow-hidden' %>">
       <div class="h-2" style="background: <%= color %>;"></div>
