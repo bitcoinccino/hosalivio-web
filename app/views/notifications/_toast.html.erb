@@ -1,0 +1,38 @@
+<%#
+  Live notification toast, appended to #notification-toasts by
+  Notification#broadcast_realtime. Auto-dismisses via notification_toast_controller.
+  `notification` local is required.
+%>
+<%
+  icon = case notification.kind
+         when "mentioned"            then "ri-at-line"
+         when "thread_reply"         then "ri-reply-line"
+         when "pre_admit_review_ready" then "ri-stethoscope-line"
+         when "role_handoff"         then "ri-share-forward-line"
+         when "visit_assigned"       then "ri-calendar-check-line"
+         when "visit_reminder_24h"   then "ri-time-line"
+         else                             "ri-notification-3-line"
+         end
+  target_url =
+    case notification.linked_type
+    when "Visit" then visit_path(notification.linked_id)
+    when "Note"  then ((pid = notification.linked&.patient_id) ? patient_path(pid) : notifications_path)
+    else notifications_path
+    end
+%>
+<div data-controller="notification-toast"
+     class="flex items-start gap-3 rounded-xl border border-[#D97757] bg-white px-3 py-2.5 shadow-lg text-[13px]
+            opacity-0 translate-y-1 transition-all duration-300">
+  <div class="w-8 h-8 rounded-full bg-[#FFF3EC] text-[#D97757] flex items-center justify-center flex-shrink-0">
+    <i class="<%= icon %>"></i>
+  </div>
+  <%= link_to target_url, data: { action: "notification-toast#open" }, class: "flex-1 min-w-0 block" do %>
+    <div class="text-[#1D1C1A] font-medium leading-snug"><%= notification.title %></div>
+    <% if notification.body.present? %>
+      <div class="text-[12px] text-[#3A3936] mt-0.5 leading-snug line-clamp-2"><%= notification.body %></div>
+    <% end %>
+  <% end %>
+  <button type="button" data-action="notification-toast#dismiss" class="opacity-50 hover:opacity-100 flex-shrink-0" aria-label="Dismiss">
+    <i class="ri-close-line"></i>
+  </button>
+</div>
