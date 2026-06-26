@@ -57,6 +57,12 @@ class PatientChatsController < ApplicationController
         !current_user.family_access? &&
         ((current_user.role_names & PatientFamiliesController::PRIVILEGED_ROLES).any? ||
          [ @patient.assigned_rn_id, @patient.assigned_md_id ].include?(current_user.id))
+
+      # @-mention autocomplete pool (clinicians only). Care team first, then
+      # other active agency clinicians. handle = first name (matches how
+      # notify_mentioned_users resolves @FirstName). @HosAlivio is added
+      # client-side so it's always top.
+      @mentionables = current_user.family_access? ? [] : build_mentionables
     end
   end
 
@@ -86,6 +92,31 @@ class PatientChatsController < ApplicationController
   # The green "present" dot means the clinician is ACTUALLY on call right
   # now (User#on_call == true), not just that they're assigned. A grey dot
   # = assigned but off-duty; slot with no user = role unassigned.
+  MENTION_ROLE_LABELS = {
+    "rn" => "RN", "lpn" => "LPN", "md" => "MD", "don" => "DON",
+    "social_worker" => "SW", "sw" => "SW", "chaplain" => "Chaplain",
+    "aide" => "Aide", "admissions" => "Admissions", "insurance" => "Insurance",
+    "billing" => "Billing", "admin" => "Admin", "pharmacy" => "Pharmacy", "dme" => "DME"
+  }.freeze
+  MENTION_ROLES = MENTION_ROLE_LABELS.keys.freeze
+
+  # The @-mention pool for this patient's chat: the care team first, then
+  # other active clinicians, capped. Each entry: { handle, name, role }.
+  def build_mentionables
+    team = [ @patient.assigned_rn, @patient.assigned_md, @patient.assigned_sw, @patient.assigned_chaplain ].compact
+    others = User.joins(user_roles: :role)
+                 .where(agency: @agency, active: true, family_access: false)
+                 .where(roles: { name: MENTION_ROLES })
+                 .where.not(id: team.map(&:id) + [ current_user.id ])
+                 .distinct.order(:full_name).limit(30).to_a
+    (team + others).uniq.filter_map do |u|
+      first = u.full_name.to_s.split.first
+      next if first.blank?
+      role = (u.role_names & MENTION_ROLES).first
+      { handle: first, name: u.full_name, role: MENTION_ROLE_LABELS[role] || role.to_s.titleize }
+    end
+  end
+
   # Active RNs in this agency — the reassignment dropdown pool.
   def agency_rns
     User.joins(user_roles: :role)
