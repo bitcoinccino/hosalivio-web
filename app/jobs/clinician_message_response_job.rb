@@ -43,10 +43,10 @@ class ClinicianMessageResponseJob < ApplicationJob
   def classify_action(note, requester)
     decision = HosalivioBrain.classify_clinician_message(note: note, requester: requester)
     action = decision[:action].to_s.presence || "no_action"
-    [action, decision[:ack], decision[:notify]]
+    [ action, decision[:ack], decision[:notify] ]
   rescue => e
     Rails.logger.warn("[ClinicianMessageResponseJob#classify_action] #{e.class}: #{e.message}")
-    ["no_action", nil, nil]
+    [ "no_action", nil, nil ]
   end
 
   def broadcast_idle(note)

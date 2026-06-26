@@ -1,7 +1,7 @@
 class BranchesController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_branch_manager!
-  before_action :set_branch, only: [:edit, :update, :destroy]
+  before_action :set_branch, only: [ :edit, :update, :destroy ]
 
   MANAGER_ROLES = %w[admin don admissions].freeze
 

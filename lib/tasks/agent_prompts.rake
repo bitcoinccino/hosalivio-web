@@ -15,8 +15,8 @@ namespace :agents do
                  "#{a['name'].downcase.gsub(/[^a-z0-9]+/, '_')}_system_prompt.txt"
       path = out_dir.join(filename)
 
-      mays  = a["skills"].map { |s| s.tr('_', ' ') }
-      nots  = a["cannot_do"].map { |s| s.tr('_', ' ') }
+      mays  = a["skills"].map { |s| s.tr("_", " ") }
+      nots  = a["cannot_do"].map { |s| s.tr("_", " ") }
 
       content = <<~PROMPT
         You are #{a['name']} - #{a['description']} for HosAlivio Hospice.

@@ -12,7 +12,7 @@ class EventNarrator
     "rn"                 => { name: "Pascal",     title: "RN",           initials: "P", color: "#2F6F4E", icon: "ri-nurse-line" },
     "md"                 => { name: "Dr. Esther", title: "MD",           initials: "E", color: "#2B4A7A", icon: "ri-stethoscope-line" },
     "don"                => { name: "Diaphnie",   title: "DON",          initials: "D", color: "#8B5A2B", icon: "ri-award-line" },
-    "social_worker"      => { name: "Nickla",     title: "Social Worker",initials: "N", color: "#7A4A8C", icon: "ri-team-line" },
+    "social_worker"      => { name: "Nickla",     title: "Social Worker", initials: "N", color: "#7A4A8C", icon: "ri-team-line" },
     "chaplain"           => { name: "Geoginio",   title: "Chaplain",     initials: "G", color: "#8C6A2F", icon: "ri-hand-heart-line" },
     "pharmacy"           => { name: "Simone",     title: "Pharmacy",     initials: "S", color: "#5A2F7A", icon: "ri-capsule-line" },
     "dme"                => { name: "Marcus",     title: "DME",          initials: "M", color: "#3E5D5D", icon: "ri-tools-line" },
@@ -43,7 +43,7 @@ class EventNarrator
       ev = events[i]
       if handoff?(ev)
         # Walk forward (older events) collecting mergeable handoffs
-        targets = [ev.change_set["target_role"]]
+        targets = [ ev.change_set["target_role"] ]
         j = i + 1
         while j < events.length && mergeable_handoff?(ev, events[j])
           targets << events[j].change_set["target_role"]
@@ -109,62 +109,62 @@ class EventNarrator
     # The caller renders: "<persona> <before> <patient_link> <after>"
     # Example: "HosAlivio (Admissions) | assigned | Maria Alvarez | to the RN + MD team"
     def narrate
-      case [event.agent_id, event.action, event.subject_type]
-      in ["admissions", "handoff", "Patient"]
+      case [ event.agent_id, event.action, event.subject_type ]
+      in [ "admissions", "handoff", "Patient" ]
         targets_text = @extra_targets.map { |r| EventNarrator::ROLE_LABEL[r] || r.to_s.humanize }.join(" + ")
         { before: "assigned", after: "to the #{targets_text} team", icon: "ri-send-plane-2-line" }
-      in [_, "handoff", "Patient"]
+      in [ _, "handoff", "Patient" ]
         target = event.change_set.is_a?(Hash) ? event.change_set["target_role"] : nil
         team = EventNarrator::ROLE_LABEL[target] || target.to_s.humanize.presence || "care team"
         { before: "asked the #{team} team to follow up with", after: "", icon: "ri-send-plane-2-line" }
-      in ["admissions", "create", "Note"]
+      in [ "admissions", "create", "Note" ]
         crisis = event.subject&.urgency == "crisis" ? " (crisis triage)" : ""
         { before: "posted a triage update for", after: crisis, icon: "ri-chat-3-line" }
-      in ["front_door_inbound", "create", "Note"]
+      in [ "front_door_inbound", "create", "Note" ]
         urgency = event.subject&.urgency
         after   = urgency == "crisis" ? "'s family — marked CRISIS" : "'s family"
         { before: "logged a new concern from", after: after, icon: "ri-feedback-line" }
-      in [_, "answer_clinician_question", "Patient"]
+      in [ _, "answer_clinician_question", "Patient" ]
         { before: "answered a care-team question about", after: "", icon: "ri-question-answer-line" }
-      in [_, "polish_narrative", "Visit"]
+      in [ _, "polish_narrative", "Visit" ]
         { before: "cleaned up the visit narrative for", after: "", icon: "ri-quill-pen-line" }
-      in [_, "create", "Note"]
+      in [ _, "create", "Note" ]
         { before: "added a care note for", after: "", icon: "ri-sticky-note-line" }
-      in ["feedback", "thumbs_up", "Note"]
+      in [ "feedback", "thumbs_up", "Note" ]
         { before: "marked a note helpful for", after: "", icon: "ri-thumb-up-line" }
-      in ["feedback", "thumbs_down", "Note"]
+      in [ "feedback", "thumbs_down", "Note" ]
         { before: "flagged a note for review on", after: "'s chart", icon: "ri-thumb-down-line" }
-      in ["feedback", "thumbs_clear", "Note"]
+      in [ "feedback", "thumbs_clear", "Note" ]
         { before: "cleared feedback on a note for", after: "", icon: "ri-eraser-line" }
-      in [_, "feedback_thumbs_up", "Note"]
+      in [ _, "feedback_thumbs_up", "Note" ]
         { before: "marked a note helpful for", after: "", icon: "ri-thumb-up-line" }
-      in [_, "feedback_thumbs_down", "Note"]
+      in [ _, "feedback_thumbs_down", "Note" ]
         { before: "flagged a note for review on", after: "'s chart", icon: "ri-thumb-down-line" }
-      in [_, "create", "MedicationOrder"]
+      in [ _, "create", "MedicationOrder" ]
         drug = event.subject&.drug_name
         { before: "authorized a new medication order#{drug ? " (#{drug})" : ''} for", after: "", icon: "ri-capsule-line" }
-      in [_, "update", "MedicationOrder"]
+      in [ _, "update", "MedicationOrder" ]
         { before: "updated a medication order for", after: "", icon: "ri-capsule-line" }
-      in [_, "create", "MedicationLog"]
+      in [ _, "create", "MedicationLog" ]
         { before: "administered a scheduled dose to", after: "", icon: "ri-syringe-line" }
-      in [_, "create", "Visit"]
+      in [ _, "create", "Visit" ]
         kind = event.subject&.visit_type&.tr("_", " ")
         { before: "started a#{kind ? " #{kind}" : ''} bedside visit with", after: "", icon: "ri-nurse-line" }
-      in [_, "create", "PharmacyDelivery"]
+      in [ _, "create", "PharmacyDelivery" ]
         { before: "requested a pharmacy delivery for", after: "", icon: "ri-truck-line" }
-      in [_, "update", "PharmacyDelivery"]
+      in [ _, "update", "PharmacyDelivery" ]
         s = event.subject&.status
         { before: "updated a pharmacy delivery for", after: s ? "— #{s.to_s.tr('_', ' ')}" : "", icon: "ri-truck-line" }
-      in [_, "create", "DmeOrder"]
+      in [ _, "create", "DmeOrder" ]
         eq = event.subject&.equipment_type&.tr("_", " ")
         { before: "ordered#{eq ? " a #{eq}" : ' equipment'} for", after: "", icon: "ri-tools-line" }
-      in [_, "create", "Patient"]
+      in [ _, "create", "Patient" ]
         { before: "admitted", after: "as a new referral", icon: "ri-user-add-line" }
-      in [_, "update", "Patient"]
+      in [ _, "update", "Patient" ]
         { before: "updated", after: "'s chart", icon: "ri-edit-2-line" }
-      in [_, "update", "Note"]
+      in [ _, "update", "Note" ]
         { before: "acknowledged a note on", after: "'s chart", icon: "ri-check-line" }
-      in ["admissions", "inquiry_received", "Inquiry"]
+      in [ "admissions", "inquiry_received", "Inquiry" ]
         cs         = event.change_set || {}
         first_name = cs["first_name"].presence || "Someone"
         zip        = cs["zip_prefix"].presence || "unknown"
@@ -176,7 +176,7 @@ class EventNarrator
           after:  "",
           icon:   "ri-mail-add-line"
         }
-      in ["admissions", "inquiry_converted", "Inquiry"]
+      in [ "admissions", "inquiry_converted", "Inquiry" ]
         cs         = event.change_set || {}
         first_name = cs["first_name"].presence || "the family"
         mrn        = cs["patient_mrn"].presence

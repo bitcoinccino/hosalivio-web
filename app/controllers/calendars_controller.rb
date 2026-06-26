@@ -16,7 +16,7 @@ class CalendarsController < ApplicationController
       # scheduling oversight; a performing clinician (RN, MD, etc.) sees only
       # their own column — their schedule, not the whole team's.
       manager     = (current_user.role_names & %w[admin don admissions ceo]).any?
-      @clinicians = manager ? agency_clinicians(@agency) : [current_user]
+      @clinicians = manager ? agency_clinicians(@agency) : [ current_user ]
       @visits     = Visit
         .where(user_id: @clinicians.map(&:id))
         .where("COALESCE(scheduled_at, started_at) BETWEEN ? AND ?",
@@ -30,7 +30,7 @@ class CalendarsController < ApplicationController
     @cells = Hash.new { |h, k| h[k] = [] }
     @visits.each do |v|
       day = (v.scheduled_at || v.started_at).to_date
-      @cells[[v.user_id, day]] << v
+      @cells[[ v.user_id, day ]] << v
     end
   end
 

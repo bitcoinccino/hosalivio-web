@@ -133,11 +133,11 @@ class AgentBrain
     # does NOT spend tokens. Useful for smoke tests of prompt composition.
     def preview_system_prompt(role:, agency:)
       inst = new(role: role, agency: agency)
-      [inst.send(:soul_md),
+      [ inst.send(:soul_md),
        inst.send(:persona_block),
        inst.send(:documentation_discipline_block),
        inst.send(:overrides_block),
-       inst.send(:instruction_block)].reject { |s| s.to_s.strip.empty? }.join("\n\n---\n\n")
+       inst.send(:instruction_block) ].reject { |s| s.to_s.strip.empty? }.join("\n\n---\n\n")
     end
 
     def provider_enabled?(provider)
@@ -266,7 +266,7 @@ class AgentBrain
     req = Net::HTTP::Post.new(uri)
     req["content-type"]  = "application/json"
     req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    system_text = [soul_md, persona_block, documentation_discipline_block, overrides_block, instruction_block]
+    system_text = [ soul_md, persona_block, documentation_discipline_block, overrides_block, instruction_block ]
                     .reject { |s| s.to_s.strip.empty? }.join("\n\n---\n\n")
     req.body = {
       model: OPENAI_MODEL,
@@ -305,7 +305,7 @@ class AgentBrain
     phone   = persona["phone"]
     <<~STR
       === AGENCY-SCOPED IDENTITY ===
-      You are #{display}, employed at #{@agency.name} (#{[@agency.city, @agency.state].compact.join(", ")}).
+      You are #{display}, employed at #{@agency.name} (#{[ @agency.city, @agency.state ].compact.join(", ")}).
       Voice: #{voice}.
       #{"Credentials: #{creds}." if creds}
       #{"Direct line: #{phone}." if phone}

@@ -23,7 +23,7 @@ class CreateConsentForms < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :consent_forms, [:patient_id, :kind]
+    add_index :consent_forms, [ :patient_id, :kind ]
     add_index :consent_forms, :signed_at
   end
 end

@@ -84,9 +84,9 @@ class WhisperTranscriber
       bytes = uploaded.read
       name  = uploaded.respond_to?(:original_filename) ? uploaded.original_filename : "audio.webm"
       type  = uploaded.respond_to?(:content_type) ? uploaded.content_type : "audio/webm"
-      [bytes, name, type]
+      [ bytes, name, type ]
     else
-      [uploaded.to_s, "audio.webm", "audio/webm"]
+      [ uploaded.to_s, "audio.webm", "audio/webm" ]
     end
   end
 

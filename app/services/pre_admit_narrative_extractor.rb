@@ -80,12 +80,12 @@ class PreAdmitNarrativeExtractor
         # the brain not to return them, but defense-in-depth.
         existing = eval_root[section][key]
         already_present = case existing
-                          when nil       then false
-                          when ""        then false
-                          when Array     then existing.any?
-                          when Hash      then existing.values.compact_blank.any?
-                          else                true
-                          end
+        when nil       then false
+        when ""        then false
+        when Array     then existing.any?
+        when Hash      then existing.values.compact_blank.any?
+        else                true
+        end
         next if already_present
 
         # For nested hashes (e.g., general.equipment), merge per-leaf
@@ -117,7 +117,7 @@ class PreAdmitNarrativeExtractor
       h["visit_type"]      = @visit.visit_type.to_s.tr("_", " ").capitalize if h["visit_type"].to_s.empty?
       if @visit.user
         clinician_role = (@visit.user.role_names & %w[rn md sw chaplain aide don]).first&.upcase
-        h["clinician_name"] = [@visit.user.full_name, clinician_role].compact.join(", ") if h["clinician_name"].to_s.empty?
+        h["clinician_name"] = [ @visit.user.full_name, clinician_role ].compact.join(", ") if h["clinician_name"].to_s.empty?
       end
     end
     touch("header") if h.values.any?(&:present?)
@@ -347,7 +347,7 @@ class PreAdmitNarrativeExtractor
         elsif @lower.match?(/(?:help|assistance|assist)[^.]{0,70}(?:walking|ambulat)/) then "Ambulatory with assist"
         elsif @lower.match?(/ambulat(?:es|ory|ing)\s+with\s+(assist|walker|cane)/) then "Ambulatory with assist"
         elsif @lower.match?(/ambulat(?:es|ory)/) then "Ambulatory"
-      end
+        end
       touch("functional_decline.mobility") if fd["mobility"]
     end
 

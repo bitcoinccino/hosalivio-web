@@ -18,7 +18,7 @@ class CreateNotifications < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :notifications, [:agency_id, :user_id, :read_at], name: "idx_notifications_inbox"
-    add_index :notifications, [:linked_type, :linked_id]
+    add_index :notifications, [ :agency_id, :user_id, :read_at ], name: "idx_notifications_inbox"
+    add_index :notifications, [ :linked_type, :linked_id ]
   end
 end

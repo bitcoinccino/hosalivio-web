@@ -13,14 +13,14 @@ module Signatures
   # reason"] so callers can render the error inline.
   class Gate
     def self.call(user:, params:)
-      return [false, "Confirm the certification statement to sign."] unless flag?(params[:apply_signature]) && flag?(params[:intent_confirmed])
-      return [false, "Register your signature first via your profile."] unless user.signature_registered?
+      return [ false, "Confirm the certification statement to sign." ] unless flag?(params[:apply_signature]) && flag?(params[:intent_confirmed])
+      return [ false, "Register your signature first via your profile." ] unless user.signature_registered?
 
       typed = params[:typed_name].to_s
-      return [false, "Type your full name to confirm."] if typed.strip.empty?
-      return [false, "Typed name doesn't match your account."] unless user.matches_full_name?(typed)
+      return [ false, "Type your full name to confirm." ] if typed.strip.empty?
+      return [ false, "Typed name doesn't match your account." ] unless user.matches_full_name?(typed)
 
-      [true, nil]
+      [ true, nil ]
     end
 
     def self.flag?(v)

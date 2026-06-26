@@ -21,14 +21,14 @@ class ClinicianDispatcher
   # Ordered keyword → intent map. First match wins. Loose matching on
   # purpose: clinicians type quickly and won't quote the menu.
   INTENT_MAP = [
-    [/\b(comfort\s*kit|comfort-kit)\b/i,                       :pharmacy_comfort_kit],
-    [/\b(refill|out\s*of|running\s*low|need\s*more)\b/i,       :pharmacy_refill],
-    [/\b(chaplain|spiritual)\b/i,                              :chaplain_request],
-    [/\b(social\s*work(er)?|psychosocial)\b/i,                 :sw_request],
-    [/\b(dme|equipment|hospital\s*bed|wheelchair|walker|oxygen|commode)\b/i, :dme_order],
-    [/\b(verify|check|confirm|review)\b.{0,40}\b(insurance|coverage|benefits?|medicare|medicaid|eligibility)\b/i, :verify_insurance],
-    [/\b(insurance|coverage|benefits?|medicare|medicaid|eligibility)\b.{0,40}\b(verify|check|confirm|review)\b/i, :verify_insurance],
-    [/\b(noe|notice\s*of\s*election|insurance\s*file)\b/i,     :noe_file]
+    [ /\b(comfort\s*kit|comfort-kit)\b/i,                       :pharmacy_comfort_kit ],
+    [ /\b(refill|out\s*of|running\s*low|need\s*more)\b/i,       :pharmacy_refill ],
+    [ /\b(chaplain|spiritual)\b/i,                              :chaplain_request ],
+    [ /\b(social\s*work(er)?|psychosocial)\b/i,                 :sw_request ],
+    [ /\b(dme|equipment|hospital\s*bed|wheelchair|walker|oxygen|commode)\b/i, :dme_order ],
+    [ /\b(verify|check|confirm|review)\b.{0,40}\b(insurance|coverage|benefits?|medicare|medicaid|eligibility)\b/i, :verify_insurance ],
+    [ /\b(insurance|coverage|benefits?|medicare|medicaid|eligibility)\b.{0,40}\b(verify|check|confirm|review)\b/i, :verify_insurance ],
+    [ /\b(noe|notice\s*of\s*election|insurance\s*file)\b/i,     :noe_file ]
   ].freeze
 
   # Phrases that read like a clinician update for the family member
@@ -571,10 +571,10 @@ class ClinicianDispatcher
     first = full.split(/\s+/, 2).first.to_s
     last  = full.split(/\s+/, 2).last.to_s
     cleaned = reason.dup
-    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+    [ full, "#{first} #{last}", first, last ].uniq.reject(&:blank?).each do |name|
       cleaned = cleaned.gsub(/#{CONNECTOR_RE.source}\s+#{Regexp.escape(name)}\b/i, "")
     end
-    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+    [ full, "#{first} #{last}", first, last ].uniq.reject(&:blank?).each do |name|
       cleaned = cleaned.gsub(/\b#{Regexp.escape(name)}\b/i, "")
     end
     cleaned = cleaned.gsub(/\s+/, " ").strip
@@ -586,11 +586,11 @@ class ClinicianDispatcher
 
   def resolve_clinician_for_role(role)
     by_assignment = case role
-                    when "rn"            then @patient.assigned_rn
-                    when "md"            then @patient.assigned_md
-                    when "sw","social_worker" then @patient.assigned_sw
-                    when "chaplain"      then @patient.assigned_chaplain
-                    end
+    when "rn"            then @patient.assigned_rn
+    when "md"            then @patient.assigned_md
+    when "sw", "social_worker" then @patient.assigned_sw
+    when "chaplain"      then @patient.assigned_chaplain
+    end
     return by_assignment if by_assignment
     base = User.where(agency_id: @agency.id, active: true, family_access: false)
                .joins(user_roles: :role)

@@ -6,14 +6,14 @@
 
 class MedicationSchedule
   FREQ_PATTERNS = [
-    [/\bq(\d+)h\b/i,    ->(m) { m[1].to_i * 60 }],
-    [/\bq(\d+)min\b/i,  ->(m) { m[1].to_i }],
-    [/\bBID\b/i,        ->(_) { 12 * 60 }],
-    [/\bTID\b/i,        ->(_) {  8 * 60 }],
-    [/\bQID\b/i,        ->(_) {  6 * 60 }],
-    [/\bqhs\b/i,        ->(_) { 24 * 60 }],
-    [/\bonce daily\b/i, ->(_) { 24 * 60 }],
-    [/\bdaily\b/i,      ->(_) { 24 * 60 }]
+    [ /\bq(\d+)h\b/i,    ->(m) { m[1].to_i * 60 } ],
+    [ /\bq(\d+)min\b/i,  ->(m) { m[1].to_i } ],
+    [ /\bBID\b/i,        ->(_) { 12 * 60 } ],
+    [ /\bTID\b/i,        ->(_) {  8 * 60 } ],
+    [ /\bQID\b/i,        ->(_) {  6 * 60 } ],
+    [ /\bqhs\b/i,        ->(_) { 24 * 60 } ],
+    [ /\bonce daily\b/i, ->(_) { 24 * 60 } ],
+    [ /\bdaily\b/i,      ->(_) { 24 * 60 } ]
   ].freeze
 
   def self.interval_minutes(freq_str)

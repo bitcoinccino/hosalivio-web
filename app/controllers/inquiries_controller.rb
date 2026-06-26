@@ -7,7 +7,7 @@ class InquiriesController < ApplicationController
   # landing-page submission (:create) is open.
   before_action :authorize_inquiry_manager!, except: :create
 
-  before_action :set_inquiry, only: [:claim, :mark_contacted, :dismiss, :convert, :convert_to_patient]
+  before_action :set_inquiry, only: [ :claim, :mark_contacted, :dismiss, :convert, :convert_to_patient ]
 
   # ── Public submission from landing page ──────────────────────────────
   def create
@@ -36,7 +36,7 @@ class InquiriesController < ApplicationController
   def index
     redirect_to(root_path) and return if current_user.family_access?
     ActsAsTenant.with_tenant(current_user.agency) do
-      @inquiries = Inquiry.where(status: [:new_lead, :claimed, :contacted]).order(created_at: :desc).limit(100)
+      @inquiries = Inquiry.where(status: [ :new_lead, :claimed, :contacted ]).order(created_at: :desc).limit(100)
     end
     respond_to do |f|
       f.html
@@ -163,8 +163,8 @@ class InquiriesController < ApplicationController
   # correct Patient field when we carry it into the chart.
   def split_contact(raw)
     s = raw.to_s.strip
-    return [nil, nil] if s.empty?
-    s.include?("@") ? [nil, s] : [s, nil]
+    return [ nil, nil ] if s.empty?
+    s.include?("@") ? [ nil, s ] : [ s, nil ]
   end
 
   def inquiry_json(i)

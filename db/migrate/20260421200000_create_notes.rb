@@ -18,9 +18,9 @@ class CreateNotes < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :notes, [:agency_id, :patient_id, :created_at],
+    add_index :notes, [ :agency_id, :patient_id, :created_at ],
               name: "idx_notes_on_agency_patient_time"
-    add_index :notes, [:agency_id, :urgency, :read_at],
+    add_index :notes, [ :agency_id, :urgency, :read_at ],
               name: "idx_notes_on_agency_urgency_unread"
   end
 end

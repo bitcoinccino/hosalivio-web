@@ -69,26 +69,26 @@ module OutboundPings
     def self.phi_free_preview_for_notification(n)
       tag = patient_tag_for(n.linked.is_a?(Patient) ? n.linked : (n.linked.respond_to?(:patient) ? n.linked.patient : nil))
       base = case n.kind.to_s
-             when "pre_admit_review_ready"
+      when "pre_admit_review_ready"
                "Pre-admit eval awaiting your certification"
-             when "pre_admit_certified"
+      when "pre_admit_certified"
                "Your pre-admit eval was certified by the MD"
-             when "role_handoff"
+      when "role_handoff"
                intent = n.title.to_s.split(":", 2).first.presence || "Follow-up"
                "#{intent} requested"
-             else
+      else
                "Update awaiting your review"
-             end
+      end
       tag.present? ? "#{base} for #{tag}" : base
     end
 
     def self.phi_free_preview_for_note(note)
       tag = patient_tag_for(note.patient)
       base = case note.urgency.to_s
-             when "crisis" then "Crisis message awaiting your reply"
-             when "urgent" then "Urgent message awaiting your reply"
-             else               "Message awaiting your reply"
-             end
+      when "crisis" then "Crisis message awaiting your reply"
+      when "urgent" then "Urgent message awaiting your reply"
+      else               "Message awaiting your reply"
+      end
       tag.present? ? "#{base} re: #{tag}" : base
     end
 
@@ -105,8 +105,8 @@ module OutboundPings
       return nil if first.empty? && last.empty?
       initial = last.empty? ? "" : "#{last[0]}."
       mrn = patient.mrn.to_s.strip
-      [[first, initial].reject(&:empty?).join(" ").strip,
-       (mrn.empty? ? nil : "(#{mrn})")].compact.reject(&:empty?).join(" ")
+      [ [ first, initial ].reject(&:empty?).join(" ").strip,
+       (mrn.empty? ? nil : "(#{mrn})") ].compact.reject(&:empty?).join(" ")
     end
 
     def self.map_notification_kind(kind)

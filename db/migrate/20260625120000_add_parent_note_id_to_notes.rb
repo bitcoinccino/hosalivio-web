@@ -6,6 +6,6 @@ class AddParentNoteIdToNotes < ActiveRecord::Migration[8.1]
     # doesn't cascade-delete its replies (they just become top-level).
     add_reference :notes, :parent_note, type: :uuid, null: true,
                   foreign_key: { to_table: :notes, on_delete: :nullify }
-    add_index :notes, [:parent_note_id, :created_at]
+    add_index :notes, [ :parent_note_id, :created_at ]
   end
 end

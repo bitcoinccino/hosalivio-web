@@ -9,7 +9,7 @@ class NoteFeedbacksController < ApplicationController
 
   def create
     score = params[:score].to_i
-    return render(json: { error: "invalid_score" }, status: :unprocessable_entity) unless [-1, 0, 1].include?(score)
+    return render(json: { error: "invalid_score" }, status: :unprocessable_entity) unless [ -1, 0, 1 ].include?(score)
 
     reasons = Array(params[:reasons]).map(&:to_s) & Note::FEEDBACK_REASONS
     notes   = params[:notes].to_s.strip[0, 1_000].presence

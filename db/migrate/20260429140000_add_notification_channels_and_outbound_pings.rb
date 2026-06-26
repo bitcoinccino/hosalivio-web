@@ -21,7 +21,7 @@ class AddNotificationChannelsAndOutboundPings < ActiveRecord::Migration[8.1]
     end
 
     add_index :outbound_pings, :link_token,                                unique: true
-    add_index :outbound_pings, [:user_id, :delivered_at]
+    add_index :outbound_pings, [ :user_id, :delivered_at ]
     add_index :outbound_pings, :created_at
     add_index :outbound_pings, :kind
   end

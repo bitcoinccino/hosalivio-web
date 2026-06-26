@@ -128,7 +128,7 @@ class Visit < ApplicationRecord
   rescue => e
     Rails.logger.warn("[Visit#deliver_assignment_email!] #{e.class}: #{e.message}")
   end
-  has_one    :pre_admit_eval
+  has_one :pre_admit_eval
   # has_one's dependent: :nullify only unlinks ONE row. A rare duplicate draft
   # eval for the same visit left a straggler that blocked deletion with a FK
   # violation, so unlink ALL linked evals defensively before destroy. Drafts

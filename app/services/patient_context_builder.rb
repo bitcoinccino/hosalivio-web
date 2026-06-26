@@ -62,22 +62,22 @@ class PatientContextBuilder
     orders.map do |o|
       indication = o.prn ? o.prn_indication.to_s.presence : nil
       indication ||= case o.drug_name.to_s.downcase
-                     when /morphine|oxycodone|fentanyl|methadone|hydromorphone/ then "pain"
-                     when /lorazepam|midazolam|haloperidol/                     then "anxiety / restlessness"
-                     when /ondansetron|haloperidol/                              then "nausea"
-                     when /atropine|glycopyrrolate/                              then "secretions"
-                     when /senna|bisacodyl/                                     then "constipation"
-                     else                                                            "comfort"
-                     end
+      when /morphine|oxycodone|fentanyl|methadone|hydromorphone/ then "pain"
+      when /lorazepam|midazolam|haloperidol/                     then "anxiety / restlessness"
+      when /ondansetron|haloperidol/                              then "nausea"
+      when /atropine|glycopyrrolate/                              then "secretions"
+      when /senna|bisacodyl/                                     then "constipation"
+      else                                                            "comfort"
+      end
       class_label = case o.drug_name.to_s.downcase
-                    when /morphine.+er|methadone|fentanyl/        then "long-acting comfort medication"
-                    when /morphine|oxycodone|hydromorphone/        then "comfort medication"
-                    when /lorazepam|midazolam/                     then "anxiety medication"
-                    when /haloperidol/                              then "calming medication"
-                    when /ondansetron/                              then "anti-nausea medication"
-                    when /senna|bisacodyl|polyethylene/            then "bowel regimen"
-                    else "comfort medication"
-                    end
+      when /morphine.+er|methadone|fentanyl/        then "long-acting comfort medication"
+      when /morphine|oxycodone|hydromorphone/        then "comfort medication"
+      when /lorazepam|midazolam/                     then "anxiety medication"
+      when /haloperidol/                              then "calming medication"
+      when /ondansetron/                              then "anti-nausea medication"
+      when /senna|bisacodyl|polyethylene/            then "bowel regimen"
+      else "comfort medication"
+      end
       {
         category:   class_label,
         for:        indication,
@@ -141,9 +141,9 @@ class PatientContextBuilder
     # a started_at. completed = has ended_at; in_progress = started, not ended;
     # scheduled = neither.
     status = if v.ended_at.present?      then "completed"
-             elsif v.started_at.present? then "in_progress"
-             else                             "scheduled"
-             end
+    elsif v.started_at.present? then "in_progress"
+    else                             "scheduled"
+    end
     {
       id:           v.id,
       type:         v.visit_type,

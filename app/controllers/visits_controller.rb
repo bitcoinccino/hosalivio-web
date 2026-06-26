@@ -1,9 +1,9 @@
 class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
-  before_action :set_visit, only: [:show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary]
-  before_action :authorize_visit_scheduler!, only: [:new, :create]
-  before_action :authorize_visit_writer!,    only: [:update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary]
+  before_action :set_visit, only: [ :show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary ]
+  before_action :authorize_visit_scheduler!, only: [ :new, :create ]
+  before_action :authorize_visit_writer!,    only: [ :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary ]
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -388,11 +388,11 @@ class VisitsController < ApplicationController
       has_prior_admit  = patient.visits.where(visit_type: :admission).where.not(ended_at: nil).exists?
       visit_type = if explicit_type
                      requested
-                   elsif has_prior_admit
+      elsif has_prior_admit
                      "routine"
-                   else
+      else
                      "admission"
-                   end
+      end
 
       visit = Visit.create!(
         agency:             current_user.agency,
@@ -513,7 +513,7 @@ class VisitsController < ApplicationController
       end
 
       if @visit.visit_type_admission? && @visit.pre_admit_eval.nil? &&
-         PreAdmitEval.where(patient_id: @visit.patient_id, status: [:draft, :final]).none?
+         PreAdmitEval.where(patient_id: @visit.patient_id, status: [ :draft, :final ]).none?
         PreAdmitEval.create!(
           agency:            current_user.agency,
           patient:           @visit.patient,
@@ -649,7 +649,7 @@ class VisitsController < ApplicationController
     # someone rather than orphaning. DONs always get an oversight copy.
     md_targets =
       if assigned_md&.active?
-        [assigned_md]
+        [ assigned_md ]
       else
         User.joins(user_roles: :role)
             .where(agency: eval_rec.agency, active: true)
@@ -803,7 +803,7 @@ class VisitsController < ApplicationController
   end
 
   def narrative_for_eval(visit)
-    [visit.narrative, visit.narrative_raw]
+    [ visit.narrative, visit.narrative_raw ]
       .map { |text| text.to_s.strip }
       .reject(&:blank?)
       .uniq
@@ -878,7 +878,7 @@ class VisitsController < ApplicationController
       :interviewee, :interviewee_label,
       :narrative, :pain_score, :billable, :visit_code,
       :audio_note, :transcript_segments,
-      vitals: [:bp, :temp, :pulse, :resp, :o2]
+      vitals: [ :bp, :temp, :pulse, :resp, :o2 ]
     )
   end
 
@@ -913,4 +913,3 @@ class VisitsController < ApplicationController
     scope.any? ? scope : User.where(id: current_user.id).includes(:branch)
   end
 end
-

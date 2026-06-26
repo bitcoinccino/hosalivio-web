@@ -81,7 +81,7 @@ class AgentRegistry
     private
 
     def load_config
-      YAML.safe_load_file(CONFIG_PATH, permitted_classes: [Symbol]).deep_dup
+      YAML.safe_load_file(CONFIG_PATH, permitted_classes: [ Symbol ]).deep_dup
     end
 
     def default_context

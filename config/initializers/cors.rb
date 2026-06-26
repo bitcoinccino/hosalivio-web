@@ -8,7 +8,7 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
 
     resource "/api/*",
              headers: :any,
-             methods: [:get, :post, :patch, :put, :delete, :options, :head],
-             expose: ["X-Request-Id"]
+             methods: [ :get, :post, :patch, :put, :delete, :options, :head ],
+             expose: [ "X-Request-Id" ]
   end
 end

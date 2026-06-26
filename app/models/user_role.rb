@@ -6,5 +6,5 @@ class UserRole < ApplicationRecord
   belongs_to :role
   belongs_to :agency
 
-  validates :user_id, uniqueness: { scope: [:role_id, :agency_id] }
+  validates :user_id, uniqueness: { scope: [ :role_id, :agency_id ] }
 end

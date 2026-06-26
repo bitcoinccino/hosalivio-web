@@ -10,7 +10,7 @@
 #   bin/rake hosalivio:recert_reminders     # invoke from cron daily
 #   RecertReminders.run_today                # programmatic
 class RecertReminders
-  MILESTONE_DAYS = [7, 3, 1, 0].freeze
+  MILESTONE_DAYS = [ 7, 3, 1, 0 ].freeze
 
   def self.run_today(today: Date.current)
     new(today: today).run

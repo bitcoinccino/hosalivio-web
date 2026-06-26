@@ -7,8 +7,8 @@
 # fresh, every time, in front of the witnessing clinician.
 class ConsentFormsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_patient, only: [:index, :new, :create]
-  before_action :authorize_consent_witness!, only: [:new, :create]
+  before_action :set_patient, only: [ :index, :new, :create ]
+  before_action :authorize_consent_witness!, only: [ :new, :create ]
 
   def index
     ActsAsTenant.with_tenant(current_user.agency) do
@@ -85,8 +85,8 @@ class ConsentFormsController < ApplicationController
   CONSENT_MANAGER_ROLES = %w[admin don admissions ceo].freeze
   def authorize_consent_witness!
     return if (current_user.role_names & CONSENT_MANAGER_ROLES).any?
-    assigned_ids = [@patient.assigned_rn_id, @patient.assigned_md_id,
-                    @patient.assigned_sw_id, @patient.assigned_chaplain_id].compact
+    assigned_ids = [ @patient.assigned_rn_id, @patient.assigned_md_id,
+                    @patient.assigned_sw_id, @patient.assigned_chaplain_id ].compact
     return if assigned_ids.include?(current_user.id)
     return if @patient.visits.where(user_id: current_user.id).exists?
     redirect_to dashboard_path, status: :see_other,

@@ -252,7 +252,7 @@ module Api
       # when a new clinician reply lands, minus the replier and family users
       # (family hear it live in their chat, not via the clinician bell).
       def notify_thread_participants(reply, parent)
-        ids = ([parent.author_user_id] + parent.replies.pluck(:author_user_id)).compact.uniq
+        ids = ([ parent.author_user_id ] + parent.replies.pluck(:author_user_id)).compact.uniq
         ids.delete(@user.id)
         return if ids.empty?
         User.where(id: ids, agency: parent.agency, active: true, family_access: false).find_each do |u|

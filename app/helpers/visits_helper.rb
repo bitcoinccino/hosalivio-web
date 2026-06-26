@@ -85,7 +85,7 @@ module VisitsHelper
 
     if patient
       roster << {
-        match:    normalize_match([patient.first_name, patient.full_name, "patient"]),
+        match:    normalize_match([ patient.first_name, patient.full_name, "patient" ]),
         name:     patient.first_name.presence || "Patient",
         title:    "Patient",
         color:    ROLE_COLORS["patient"],
@@ -97,7 +97,7 @@ module VisitsHelper
     if clinician
       disc = visit.discipline.to_s
       roster << {
-        match:    normalize_match([clinician.full_name, clinician.full_name.to_s.split.first, disc] + CLINICIAN_TOKENS),
+        match:    normalize_match([ clinician.full_name, clinician.full_name.to_s.split.first, disc ] + CLINICIAN_TOKENS),
         name:     clinician.full_name.presence || "Clinician",
         title:    DISCIPLINE_TITLES[disc] || disc.tr("_", " ").upcase.presence || "Clinician",
         color:    ROLE_COLORS["clinician"],
@@ -108,7 +108,7 @@ module VisitsHelper
 
     family_members_for(visit).each do |m|
       roster << {
-        match:    normalize_match([m.full_name, m.full_name.to_s.split.first]),
+        match:    normalize_match([ m.full_name, m.full_name.to_s.split.first ]),
         name:     m.full_name,
         title:    "Family",
         color:    ROLE_COLORS["family"],
@@ -117,7 +117,7 @@ module VisitsHelper
       }
     end
 
-    roster << { match: ["family"], name: "Family", title: "Family",
+    roster << { match: [ "family" ], name: "Family", title: "Family",
                 color: ROLE_COLORS["family"], initials: "FM", photoUrl: nil }
     roster
   end
@@ -199,17 +199,17 @@ module VisitsHelper
   # Returns [role_key, family_user_or_nil].
   def classify_speaker(name, patient, clinician, family)
     norm = name.to_s.downcase.strip
-    return ["other", nil] if norm.blank?
+    return [ "other", nil ] if norm.blank?
 
-    return ["patient", nil] if norm == "patient" ||
+    return [ "patient", nil ] if norm == "patient" ||
                                same_name?(norm, patient&.first_name) ||
                                same_name?(norm, patient&.full_name)
 
     member = family.find do |m|
       same_name?(norm, m.full_name) || same_name?(norm, m.full_name.to_s.split.first)
     end
-    return ["family", member] if member
-    return ["family", nil] if norm == "family"
+    return [ "family", member ] if member
+    return [ "family", nil ] if norm == "family"
 
     clinician_speaker =
       CLINICIAN_TOKENS.include?(norm) ||
@@ -217,9 +217,9 @@ module VisitsHelper
       norm.match?(/\b(rn|md|don|lpn|lvn|np|pa|nurse|clinician|doctor|physician)\b/) ||
       same_name?(norm, clinician&.full_name) ||
       same_name?(norm, clinician&.full_name.to_s.split.first)
-    return ["clinician", nil] if clinician_speaker
+    return [ "clinician", nil ] if clinician_speaker
 
-    ["other", nil]
+    [ "other", nil ]
   end
 
   def same_name?(norm, candidate)

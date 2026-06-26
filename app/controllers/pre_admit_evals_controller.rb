@@ -295,7 +295,7 @@ class PreAdmitEvalsController < ApplicationController
   # auto-enqueues an OutboundPing for the user's preferred channels.
   # Idempotent — Notification is keyed on (user, kind, linked_id).
   def notify_admission_rn_of_certification(eval_rec)
-    targets = [eval_rec.evaluator, eval_rec.patient&.assigned_rn].compact.uniq
+    targets = [ eval_rec.evaluator, eval_rec.patient&.assigned_rn ].compact.uniq
     targets.each do |target|
       next if Notification.exists?(user: target, kind: "pre_admit_certified", linked: eval_rec)
       Notification.create!(

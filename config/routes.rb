@@ -13,19 +13,19 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :patients, only: [:index, :show, :create, :update] do
-        resources :visits,              only: [:index, :create]
-        resources :medication_orders,   only: [:index, :create]
-        resources :pharmacy_deliveries, only: [:index, :create]
-        resources :dme_orders,          only: [:index, :create]
-        resources :notes,               only: [:index, :create]
+      resources :patients, only: [ :index, :show, :create, :update ] do
+        resources :visits,              only: [ :index, :create ]
+        resources :medication_orders,   only: [ :index, :create ]
+        resources :pharmacy_deliveries, only: [ :index, :create ]
+        resources :dme_orders,          only: [ :index, :create ]
+        resources :notes,               only: [ :index, :create ]
       end
-      resources :medication_orders, only: [:show, :update] do
-        resources :medication_logs, only: [:index, :create]
+      resources :medication_orders, only: [ :show, :update ] do
+        resources :medication_logs, only: [ :index, :create ]
       end
-      resources :pharmacy_deliveries, only: [:show, :update]
-      resources :dme_orders,          only: [:show, :update]
-      resources :notes, only: [:show] do
+      resources :pharmacy_deliveries, only: [ :show, :update ]
+      resources :dme_orders,          only: [ :show, :update ]
+      resources :notes, only: [ :show ] do
         post :mark_read, on: :member
       end
 
@@ -67,11 +67,11 @@ Rails.application.routes.draw do
   # Patient registration (admin/DON/admissions) + per-patient nested resources.
   # Defined before the patients/:id show route so /patients/new isn't
   # swallowed by the :id segment.
-  resources :patients, only: [:new, :create] do
+  resources :patients, only: [ :new, :create ] do
     member { patch :reassign_rn }   # admin/DON/admissions: change the assigned case-manager RN
-    resource  :photo, only: [:create, :destroy], controller: "patient_photos"
-    resources :family, only: [:new, :create, :destroy], controller: "patient_families"
-    resources :consents, only: [:index, :new, :create, :show], controller: "consent_forms"
+    resource  :photo, only: [ :create, :destroy ], controller: "patient_photos"
+    resources :family, only: [ :new, :create, :destroy ], controller: "patient_families"
+    resources :consents, only: [ :index, :new, :create, :show ], controller: "consent_forms"
   end
 
   # JSON reference lookups for the admissions form (diagnosis autocomplete +
@@ -83,7 +83,7 @@ Rails.application.routes.draw do
 
   # Calendar + visit CRUD (clinician-facing scheduling)
   get "calendar", to: "calendars#show", as: :calendar
-  resources :visits, only: [:new, :create, :show, :edit, :update, :destroy] do
+  resources :visits, only: [ :new, :create, :show, :edit, :update, :destroy ] do
     collection do
       post :start_now
     end
@@ -100,7 +100,7 @@ Rails.application.routes.draw do
   end
 
   # Self-serve profile editing (all signed-in users, including family)
-  resource :profile, only: [:edit, :update], controller: "profiles" do
+  resource :profile, only: [ :edit, :update ], controller: "profiles" do
     delete :avatar, action: :remove_avatar
     get    :signature, action: :edit_signature, as: :signature
     patch  :signature, action: :update_signature
@@ -109,14 +109,14 @@ Rails.application.routes.draw do
   end
 
   # Quick clinician actions from the My Day overdue-meds card
-  resources :medication_logs, only: [:create] do
+  resources :medication_logs, only: [ :create ] do
     collection do
       post :escalate
     end
   end
 
   # Per-agency team management (coordinator / DON / admin)
-  resources :pre_admit_evals, only: [:show, :edit, :update] do
+  resources :pre_admit_evals, only: [ :show, :edit, :update ] do
     member do
       post :confirm_pps
       post :certify
@@ -131,12 +131,12 @@ Rails.application.routes.draw do
   post "notes/:note_id/feedback", to: "note_feedbacks#create", as: :note_feedback
 
   # Aggregated AI feedback dashboard (admin / DON / curators)
-  resource :agent_feedback, only: [:show], controller: "agent_feedbacks"
+  resource :agent_feedback, only: [ :show ], controller: "agent_feedbacks"
 
-  resource  :agency_features, only: [:edit, :update], controller: "agency_features"
-  resource  :agency_profile,  only: [:edit, :update], controller: "agency_profile"
-  resources :branches, only: [:index, :new, :create, :edit, :update, :destroy]
-  resources :team_members, only: [:index, :new, :create, :edit, :update, :destroy] do
+  resource  :agency_features, only: [ :edit, :update ], controller: "agency_features"
+  resource  :agency_profile,  only: [ :edit, :update ], controller: "agency_profile"
+  resources :branches, only: [ :index, :new, :create, :edit, :update, :destroy ]
+  resources :team_members, only: [ :index, :new, :create, :edit, :update, :destroy ] do
     member { post :reactivate }
   end
 
@@ -152,7 +152,7 @@ Rails.application.routes.draw do
        as:   :handoff_acknowledgment
 
   # Clinician notifications inbox (reminders, etc.)
-  resources :notifications, only: [:index] do
+  resources :notifications, only: [ :index ] do
     member     { post :mark_read }
     collection { post :mark_all_read }
   end
@@ -183,7 +183,7 @@ Rails.application.routes.draw do
   post   "partners/complete",    to: "partners#complete", as: :complete_partner
 
   # Inquiries: public create, authenticated management
-  resources :inquiries, only: [:index, :create] do
+  resources :inquiries, only: [ :index, :create ] do
     member do
       post :claim
       post :mark_contacted
