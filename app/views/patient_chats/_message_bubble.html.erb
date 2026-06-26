@@ -120,7 +120,7 @@
       pending. Buttons are live only while this is the latest unanswered
       offer; once handled they collapse to a quiet "Handled" label. %>
   <% offer_pending = (ClinicianDispatcher.pending_relay_offer(note.patient)&.id == note.id) %>
-  <div class="max-w-2xl" data-relay-offer>
+  <div class="max-w-2xl" data-relay-offer data-relay-message="<%= note.offer_payload&.dig("message") %>">
     <div class="flex items-start gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-dashed border-[#D9B8A6]"
          title="HosAlivio drafted this message. It has not been sent yet.">
       <div class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] overflow-hidden flex-shrink-0">
@@ -128,12 +128,18 @@
       </div>
       <div class="min-w-0 flex-1">
         <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio · draft, not sent</div>
-        <div class="text-[13px] text-[#1D1C1A] mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= note.offer_display_text %></div>
+        <div data-relay-preview class="text-[13px] text-[#1D1C1A] mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= note.offer_display_text %></div>
+        <textarea data-relay-edit rows="3" maxlength="4000"
+                  class="hidden w-full mt-1.5 text-[13px] rounded-lg border border-[#D9B8A6] bg-white px-2 py-1.5 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]"></textarea>
         <% if offer_pending %>
           <div class="mt-2 flex items-center gap-2" data-relay-actions>
             <button type="button" data-action="click->patient-chat#confirmRelay" data-decision="yes"
                     class="inline-flex items-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-3 py-1 text-[12px] font-medium">
               <i class="ri-send-plane-fill text-[12px]"></i> Send
+            </button>
+            <button type="button" data-action="click->patient-chat#editRelay" data-relay-edit-btn
+                    class="inline-flex items-center gap-1 rounded-full bg-white border border-[#E4E0D8] hover:bg-[#F2EEE7] text-[#6B665F] px-3 py-1 text-[12px] font-medium">
+              <i class="ri-pencil-line text-[12px]"></i> Edit
             </button>
             <button type="button" data-action="click->patient-chat#confirmRelay" data-decision="cancel"
                     class="inline-flex items-center gap-1 rounded-full bg-white border border-[#E4E0D8] hover:bg-[#F2EEE7] text-[#6B665F] px-3 py-1 text-[12px] font-medium">

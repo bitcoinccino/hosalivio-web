@@ -71,7 +71,7 @@ class ClinicianDispatcher
     when :notify_clinician
       d.send(:dispatch_clinician_relay, notify)
     when :confirm_relay
-      d.send(:confirm_pending_relay)
+      d.send(:confirm_pending_relay, notify)
     when :cancel_relay
       d.send(:cancel_pending_relay)
     when :pharmacy_comfort_kit, :pharmacy_refill
@@ -459,7 +459,9 @@ class ClinicianDispatcher
 
   # The clinician answered a pending relay offer with "yes". Decode the
   # latest unsent offer for this patient and deliver it verbatim.
-  def confirm_pending_relay
+  # override may carry { "message" => "<edited text>" } when the clinician
+  # tweaked the draft via the Edit affordance before sending.
+  def confirm_pending_relay(override = nil)
     offer   = self.class.pending_relay_offer(@patient)
     payload = offer&.offer_payload
     unless payload
@@ -467,9 +469,13 @@ class ClinicianDispatcher
       return Result.new(dispatched: false, reason: "no_pending_offer", intent: "confirm_relay")
     end
     role    = payload["role"].to_s
-    message = payload["message"].to_s
     target  = User.where(agency_id: @agency.id).find_by(id: payload["target_user_id"]) ||
               resolve_clinician_for_role(role)
+    edited  = override.is_a?(Hash) ? override["message"].to_s.strip : nil
+    message = edited.presence || payload["message"].to_s
+    # Scrub the target's name (the @-mention is added at send time) — covers
+    # an edited message where the clinician typed the name back in.
+    message = scrub_clinician_name_from_reason(message, target).presence || message if target
     unless target && message.present?
       post_ack("That draft expired or the teammate is no longer reachable. Want me to draft it again?")
       return Result.new(dispatched: false, reason: "offer_unresolvable", intent: "confirm_relay")

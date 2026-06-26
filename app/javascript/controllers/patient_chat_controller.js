@@ -581,17 +581,24 @@ export default class extends Controller {
     wrap.className = "max-w-2xl flex items-start gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-dashed border-[#D9B8A6] opacity-0 transition-opacity duration-300"
     wrap.title = "HosAlivio drafted this message. It has not been sent yet."
     wrap.setAttribute("data-relay-offer", "")
+    wrap.setAttribute("data-relay-message", this._decodeOfferMessage(raw))
     wrap.innerHTML = `
       <div class="w-7 h-7 rounded-full bg-[#D97757] flex items-center justify-center text-white flex-shrink-0">
         <i class="ri-mail-send-line text-[14px]"></i>
       </div>
       <div class="min-w-0 flex-1">
         <div class="text-[10px] uppercase tracking-[0.18em] text-[#6B665F] font-bold">HosAlivio · draft, not sent</div>
-        <div data-role="offer" class="text-[13px] text-[#1D1C1A] mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere]"></div>
+        <div data-relay-preview class="text-[13px] text-[#1D1C1A] mt-0.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere]"></div>
+        <textarea data-relay-edit rows="3" maxlength="4000"
+                  class="hidden w-full mt-1.5 text-[13px] rounded-lg border border-[#D9B8A6] bg-white px-2 py-1.5 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]"></textarea>
         <div class="mt-2 flex items-center gap-2" data-relay-actions>
           <button type="button" data-action="click->patient-chat#confirmRelay" data-decision="yes"
                   class="inline-flex items-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-3 py-1 text-[12px] font-medium">
             <i class="ri-send-plane-fill text-[12px]"></i> Send
+          </button>
+          <button type="button" data-action="click->patient-chat#editRelay" data-relay-edit-btn
+                  class="inline-flex items-center gap-1 rounded-full bg-white border border-[#E4E0D8] hover:bg-[#F2EEE7] text-[#6B665F] px-3 py-1 text-[12px] font-medium">
+            <i class="ri-pencil-line text-[12px]"></i> Edit
           </button>
           <button type="button" data-action="click->patient-chat#confirmRelay" data-decision="cancel"
                   class="inline-flex items-center gap-1 rounded-full bg-white border border-[#E4E0D8] hover:bg-[#F2EEE7] text-[#6B665F] px-3 py-1 text-[12px] font-medium">
@@ -601,10 +608,37 @@ export default class extends Controller {
       </div>
       <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0 mt-0.5">${time}</div>
     `
-    wrap.querySelector('[data-role="offer"]').textContent = text
+    wrap.querySelector("[data-relay-preview]").textContent = text
     this.feedTarget.appendChild(wrap)
     requestAnimationFrame(() => { wrap.style.opacity = "1" })
     this._scrollToBottom()
+  }
+
+  // Decode the raw message out of a "[HOSALIVIO_OFFER]<base64 json>\n…" body
+  // so the Edit textarea pre-fills with the exact draft (not the quoted
+  // preview). UTF-8-safe. Returns "" if anything is off.
+  _decodeOfferMessage(raw) {
+    if (!String(raw).startsWith("[HOSALIVIO_OFFER]")) return ""
+    try {
+      const b64 = raw.slice("[HOSALIVIO_OFFER]".length, raw.indexOf("\n"))
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+      return JSON.parse(new TextDecoder().decode(bytes)).message || ""
+    } catch (_) { return "" }
+  }
+
+  // Edit button on a relay offer: swap the preview for a pre-filled textarea.
+  // Send then picks up the textarea's value (see confirmRelay).
+  editRelay(event) {
+    const pill = event.currentTarget.closest("[data-relay-offer]")
+    if (!pill) return
+    const preview  = pill.querySelector("[data-relay-preview]")
+    const textarea = pill.querySelector("[data-relay-edit]")
+    if (!textarea) return
+    textarea.value = pill.getAttribute("data-relay-message") || (preview ? preview.textContent : "")
+    if (preview) preview.classList.add("hidden")
+    textarea.classList.remove("hidden")
+    textarea.focus()
+    event.currentTarget.classList.add("hidden")
   }
 
   // Click handler for the Send/Cancel buttons on a relay preview. Hits the
@@ -616,6 +650,12 @@ export default class extends Controller {
     const btn      = event.currentTarget
     const decision = btn.dataset.decision === "cancel" ? "cancel" : "yes"
     const pill     = btn.closest("[data-relay-offer]")
+    // If the Edit textarea is open, Send delivers that edited text instead.
+    let edited = null
+    if (decision === "yes" && pill) {
+      const ta = pill.querySelector("[data-relay-edit]")
+      if (ta && !ta.classList.contains("hidden")) edited = ta.value.trim()
+    }
     if (pill) {
       pill.querySelectorAll("button[data-decision]").forEach((b) => {
         b.disabled = true
@@ -633,7 +673,7 @@ export default class extends Controller {
       const resp = await fetch("/api/v1/clinician_messages/confirm_relay", {
         method:  "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": csrf },
-        body:    JSON.stringify({ patient_id: this.patientIdValue, decision })
+        body:    JSON.stringify({ patient_id: this.patientIdValue, decision, ...(edited ? { message: edited } : {}) })
       })
       if (!resp.ok) { console.error("relay confirm failed:", resp.status, await resp.text()); this._clearTyping() }
     } catch (e) {

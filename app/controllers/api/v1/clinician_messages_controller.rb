@@ -93,17 +93,24 @@ module Api
 
         decision = params[:decision].to_s == "cancel" ? "cancel_relay" : "confirm_relay"
 
+        # Optional edited draft from the Edit affordance — send this instead of
+        # the original. Only on a confirm; ignored on cancel or when too long.
+        edited = params[:message].to_s.strip
+        edited = nil if edited.empty? || edited.length > MAX_BODY_LENGTH || decision == "cancel_relay"
+
         ActsAsTenant.with_tenant(patient.agency) do
           offer = ClinicianDispatcher.pending_relay_offer(patient)
           return render json: { status: "no_pending_offer" }, status: :ok unless offer
 
           # Drive the job off the offer note itself: the dispatcher reads the
           # patient/agency from it and resolves the drafted message from the
-          # offer payload — no clinician reply note is created.
-          ClinicianMessageResponseJob.perform_later(offer.id, @user.id, decision)
+          # offer payload (or the edited override) — no clinician reply note.
+          ClinicianMessageResponseJob.perform_later(
+            offer.id, @user.id, decision, nil, edited ? { "message" => edited } : nil
+          )
         end
 
-        render json: { status: "ok", decision: decision }, status: :created
+        render json: { status: "ok", decision: decision, edited: edited.present? }, status: :created
       end
 
       private
