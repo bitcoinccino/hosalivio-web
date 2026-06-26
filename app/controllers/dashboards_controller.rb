@@ -47,6 +47,18 @@ class DashboardsController < ApplicationController
 
     @unresolved_note_ids = Note.where(author_role: "family", urgency: :crisis, read_at: nil).pluck(:id)
 
+    # Recent + upcoming visits across the agency (yesterday → next 7 days),
+    # so the oversight screen shows who's being seen and when, not just the
+    # eval/NOE backlog. Ordered by the visit's anchor time (scheduled, else
+    # started). Status is derived per-row in the view.
+    visit_window_start = (Date.current - 1.day).in_time_zone.beginning_of_day
+    visit_window_end   = (Date.current + 7.days).in_time_zone.end_of_day
+    @mission_visits = Visit.where(agency: @agency)
+                           .where("COALESCE(scheduled_at, started_at) BETWEEN ? AND ?", visit_window_start, visit_window_end)
+                           .order(Arel.sql("COALESCE(scheduled_at, started_at) ASC"))
+                           .includes(:patient, :user)
+                           .limit(25)
+
     patient_ids = @recent_events.map { |ev|
       ev.subject_type == "Patient" ? ev.subject_id : ev.subject.try(:patient_id)
     }.compact.uniq

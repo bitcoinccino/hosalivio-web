@@ -231,6 +231,41 @@
         </section>
       <% end %>
 
+      <% if is_manager && @mission_visits.any? %>
+        <section class="mx-6 mt-6 rounded-2xl border border-[#EFECE6] bg-white overflow-hidden">
+          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-calendar-check-line"></i> Visits · recent &amp; upcoming</h3>
+            <span class="text-[10px] text-[#6B665F] font-mono"><%= @mission_visits.size %></span>
+          </div>
+          <div class="divide-y divide-[#EFECE6] max-h-72 overflow-y-auto">
+            <% @mission_visits.each do |v| %>
+              <%
+                if v.completed_visit?
+                  status_label, status_cls = "Completed", "bg-[#F0F7F2] text-[#2F6F4E]"
+                elsif v.currently_in_progress?
+                  status_label, status_cls = "In progress", "bg-[#FFF3EC] text-[#D97757]"
+                else
+                  status_label, status_cls = "Scheduled", "bg-[#F2EEE7] text-[#6B665F]"
+                end
+              %>
+              <%= link_to patient_path(v.patient), class: "flex items-center gap-3 px-5 py-2.5 text-[13px] hover:bg-[#FBF9F5] transition" do %>
+                <div class="w-16 flex-shrink-0 text-[11px] text-[#6B665F] font-mono leading-tight">
+                  <%= v.anchor_start&.strftime("%a %-d") %><br><%= v.anchor_start&.strftime("%-l:%M %p") %>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[#1D1C1A] font-medium truncate"><%= v.patient&.full_name %></div>
+                  <div class="text-[11px] text-[#6B665F] truncate">
+                    <%= v.discipline.to_s.upcase %> · <%= v.visit_type_label %>
+                    <% if v.user %> · <%= v.user.full_name %><% end %>
+                  </div>
+                </div>
+                <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 <%= status_cls %>"><%= status_label %></span>
+              <% end %>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+
       <div class="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden">
         <!-- Census -->
         <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col">
