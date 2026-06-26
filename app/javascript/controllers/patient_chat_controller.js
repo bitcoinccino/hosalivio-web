@@ -4,9 +4,10 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["input", "feed", "status", "quickActions", "mic", "micIcon", "micWave", "form", "placeholderOverlay", "recordButton", "recordTimer", "composer"]
   static values  = {
-    patientId: String,
-    lang:      { type: String, default: "en-US" },
-    timezone:  { type: String, default: "America/New_York" }
+    patientId:   String,
+    lang:        { type: String, default: "en-US" },
+    timezone:    { type: String, default: "America/New_York" },
+    focusNoteId: { type: String, default: "" }
   }
 
   connect() {
@@ -14,6 +15,26 @@ export default class extends Controller {
     this._openCable()
     this._initSpeech()
     this._scrollToBottom()
+    this._focusNoteFromDeepLink()
+  }
+
+  // Deep-link from a notification (?note=<id>): scroll the targeted message
+  // into view and flash a highlight ring. Works for root notes and replies
+  // (both carry data-note-id). No-ops if the note isn't in the loaded window.
+  _focusNoteFromDeepLink() {
+    const id = this.focusNoteIdValue
+    if (!id) return
+    setTimeout(() => {
+      const el = this.element.querySelector(`[data-note-id="${CSS.escape(id)}"]`)
+      if (!el) return
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      // Inline styles so the highlight never depends on Tailwind purging
+      // arbitrary-value ring utilities only referenced from JS.
+      el.style.transition = "box-shadow 0.4s ease"
+      el.style.borderRadius = "1rem"
+      el.style.boxShadow = "0 0 0 2px #D97757, 0 0 0 6px rgba(217,119,87,0.18)"
+      setTimeout(() => { el.style.boxShadow = "none" }, 2800)
+    }, 200)
   }
 
   disconnect() {

@@ -13,12 +13,7 @@
          when "visit_reminder_24h"   then "ri-time-line"
          else                             "ri-notification-3-line"
          end
-  target_url =
-    case notification.linked_type
-    when "Visit" then visit_path(notification.linked_id)
-    when "Note"  then ((pid = notification.linked&.patient_id) ? patient_path(pid) : notifications_path)
-    else notifications_path
-    end
+  target_url = notification_target_path(notification)
 %>
 <div data-controller="notification-toast"
      class="flex items-start gap-3 rounded-xl border border-[#D97757] bg-white px-3 py-2.5 shadow-lg text-[13px]

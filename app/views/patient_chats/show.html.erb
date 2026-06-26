@@ -143,6 +143,7 @@
         data-patient-chat-patient-id-value="<%= @patient.id %>"
         data-patient-chat-lang-value="<%= spoken_lang %>"
         data-patient-chat-timezone-value="<%= patient_timezone(@patient) %>"
+        data-patient-chat-focus-note-id-value="<%= params[:note] %>"
         data-patient-chat-mobile-target="tab" data-tab-name="chat">
     <!-- Patient Banner -->
     <header class="px-6 py-4 border-b border-[#EFECE6] bg-white">
@@ -349,7 +350,10 @@
                 <div data-thread-replies-for="<%= note.id %>"
                      class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 <%= 'hidden' unless thread_replies.any? %>">
                   <% thread_replies.each do |reply| %>
-                    <%= render "message_bubble", note: reply, thread_reply: true %>
+                    <%# data-note-id wrapper so a deep-link can scroll to a reply, not just the root %>
+                    <div data-note-id="<%= reply.id %>">
+                      <%= render "message_bubble", note: reply, thread_reply: true %>
+                    </div>
                   <% end %>
                 </div>
                 <% if note.conversational? %>
