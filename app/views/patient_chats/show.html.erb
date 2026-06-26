@@ -437,7 +437,7 @@
         <% if current_user.family_access? %>
           How is <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span> doing?
         <% else %>
-          Note about <span class="font-bold text-[#D97757]"><%= patient_salutation(@patient) %></span>, or ask HosAlivio.
+          Note or ask anything about <span class="font-bold text-[#D97757]"><%= patient_formal_name(@patient) %></span>
         <% end %>
       </div>
 
