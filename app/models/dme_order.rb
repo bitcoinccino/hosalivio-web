@@ -2,6 +2,7 @@ class DmeOrder < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
   include AgentAuditable
+  include BroadcastsPatientContext
 
   enum :equipment_type, {
     hospital_bed:     0,

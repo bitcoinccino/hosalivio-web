@@ -54,6 +54,7 @@ export default class extends Controller {
 
   disconnect() {
     this._ws?.close()
+    clearTimeout(this._ctxTimer)
     try { this._speech?.stop() } catch (_) {}
     this._clearTyping()
   }
@@ -904,9 +905,33 @@ export default class extends Controller {
       const data = JSON.parse(msg.data)
       if (["ping", "welcome", "confirm_subscription"].includes(data.type)) return
       const payload = data.message
-      if (!payload || payload.kind !== "note") return
+      if (!payload) return
+      // Clinical facts (vitals, visits, meds, eval, crises) changed — the
+      // server only nudges us; re-fetch the right-rail so each viewer gets
+      // their own role-scoped render. No PHI rides the socket.
+      if (payload.kind === "context_changed") { this._refreshContext(); return }
+      if (payload.kind !== "note") return
       this._appendNote(payload)
     }
+  }
+
+  // Debounced re-fetch of the clinical-context right-rail. A burst of
+  // changes (e.g. a visit finish that also logs vitals + meds) collapses
+  // into one request. On failure we keep the stale rail rather than blank it.
+  _refreshContext() {
+    clearTimeout(this._ctxTimer)
+    this._ctxTimer = setTimeout(async () => {
+      const el = document.getElementById("patient-clinical-context")
+      if (!el) return
+      try {
+        const resp = await fetch(`/patients/${this.patientIdValue}/clinical_context`, {
+          headers: { "Accept": "text/html", "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin"
+        })
+        if (!resp.ok) return
+        el.innerHTML = await resp.text()
+      } catch (_) { /* keep the existing rail on network error */ }
+    }, 250)
   }
 
   _setStatus(text, color) {

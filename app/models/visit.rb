@@ -2,6 +2,7 @@ class Visit < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
   include AgentAuditable
+  include BroadcastsPatientContext
 
   encrypts :narrative
 

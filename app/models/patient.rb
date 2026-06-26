@@ -2,6 +2,7 @@ class Patient < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
   include AgentAuditable
+  include BroadcastsPatientContext
 
   # --- Patient photo (optional headshot, shown on the chart header and on the
   # visit conversation view so each spoken turn carries a real face). ----------
@@ -90,6 +91,11 @@ class Patient < ApplicationRecord
   def age_years = dob ? ((Date.current - dob).to_i / 365) : nil
 
   private
+
+  # The patient record IS the chart subject — ping its own channel.
+  def patient_context_id
+    id
+  end
 
   def assign_mrn
     return if mrn.present?
