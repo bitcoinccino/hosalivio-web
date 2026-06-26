@@ -125,6 +125,29 @@ class PreAdmitEval < ApplicationRecord
     blockers
   end
 
+  # ── Required documents (MVP form tracking) ──────────────────────
+  # A single view of the key admission forms and whether each is on file.
+  # Election + Patient Rights are certification-BLOCKING; POLST / Advance
+  # Directive / code status are care alerts (visible, not blocking). DNR is
+  # the patient's code_status (no separate form), so it shows its value.
+  def required_documents
+    [
+      { key: "election_of_benefits", label: "Election of Benefits", on_file: election_signed?,                blocking: true },
+      { key: "patient_rights",       label: "Patient Rights",       on_file: patient_rights_reviewed?,        blocking: true },
+      { key: "polst",                label: "POLST",                on_file: patient&.polst_on_file == true,  blocking: false },
+      { key: "advance_directive",    label: "Advance Directive",    on_file: patient&.advance_directive_on_file == true, blocking: false },
+      { key: "code_status",          label: "Code status / DNR",    on_file: patient&.code_status.present?,   blocking: false,
+        value: patient&.code_status.to_s.tr("_", " ").upcase.presence }
+    ]
+  end
+
+  # Labels of forms not yet on file (care alerts + blockers), for @HosAlivio
+  # and the "missing documents" summaries. Code status is never "missing"
+  # (it always has a value), so it won't appear here.
+  def missing_required_documents
+    required_documents.reject { |d| d[:on_file] }.map { |d| d[:label] }
+  end
+
   def can_certify?
     certification_blockers.empty?
   end

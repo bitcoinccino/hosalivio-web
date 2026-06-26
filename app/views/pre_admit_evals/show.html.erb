@@ -352,6 +352,35 @@
       <% end %>
     <% end %>
 
+    <%# Required documents — full at-a-glance checklist of the key admission
+        forms, including the care alerts (POLST, Advance Directive, code
+        status) that the cert-blocker box above doesn't show. %>
+    <div class="mb-4 rounded-2xl border border-[#EFECE6] bg-white p-4">
+      <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Required documents</div>
+      <ul class="space-y-2">
+        <% @eval.required_documents.each do |doc| %>
+          <li class="flex items-center justify-between gap-3 text-[13px]">
+            <span class="flex items-center gap-2 min-w-0">
+              <% if doc[:on_file] %>
+                <i class="ri-checkbox-circle-fill text-[#2F6F4E] flex-shrink-0"></i>
+              <% else %>
+                <i class="ri-error-warning-line <%= doc[:blocking] ? "text-[#C1403A]" : "text-[#D97757]" %> flex-shrink-0"></i>
+              <% end %>
+              <span class="text-[#1D1C1A]"><%= doc[:label] %></span>
+              <% if doc[:blocking] && !doc[:on_file] %>
+                <span class="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#FFF3EC] text-[#C1403A] no-print">blocks cert</span>
+              <% end %>
+            </span>
+            <span class="text-[11px] text-[#6B665F] flex-shrink-0 font-mono">
+              <% if doc[:value].present? %><%= doc[:value] %>
+              <% elsif doc[:on_file] %>On file
+              <% else %>Missing<% end %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
     <%# MD certification panel (final + MD viewer) %>
     <% if @eval.status_final? && @eval.can_certify? && current_user.role_names.include?("md") %>
       <div class="mb-4 space-y-3 no-print">
