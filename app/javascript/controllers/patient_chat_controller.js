@@ -18,6 +18,21 @@ export default class extends Controller {
     this._focusNoteFromDeepLink()
   }
 
+  // Escape a raw message body, then highlight @mentions — @HosAlivio with the
+  // brand color + bot icon, any other @handle as a colored name. Mirrors the
+  // server-side IcdHelper#highlight_chat_mentions so live and reloaded
+  // messages look the same. Escapes BEFORE injecting spans (no XSS surface).
+  _mentionHTML(text) {
+    const esc = String(text == null ? "" : text)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    return esc.replace(/@(\w+)/g, (_m, handle) => {
+      if (handle.toLowerCase() === "hosalivio") {
+        return `<span class="inline-flex items-center gap-0.5 font-semibold text-[#D97757]"><i class="ri-heart-pulse-line text-[11px]"></i>@${handle}</span>`
+      }
+      return `<span class="font-semibold text-[#2B4A7A]">@${handle}</span>`
+    })
+  }
+
   // Deep-link from a notification (?note=<id>): scroll the targeted message
   // into view and flash a highlight ring. Works for root notes and replies
   // (both carry data-note-id). No-ops if the note isn't in the loaded window.
@@ -550,7 +565,7 @@ export default class extends Controller {
     `
     bubble.querySelector('[data-role="name"]').textContent = speakerName
     if (speakerSub) bubble.querySelector('[data-role="sub"]').textContent = speakerSub
-    bubble.querySelector("p").textContent = n.body
+    bubble.querySelector("p").innerHTML = this._mentionHTML(n.body)
     this._placeBubble(bubble, n)
     requestAnimationFrame(() => { bubble.style.opacity = "1" })
     this._scrollToBottom()
@@ -992,7 +1007,7 @@ export default class extends Controller {
     if (speakerSub) bubble.querySelector(`.text-\\[9px\\]`).textContent = speakerSub
     const bodyEl = bubble.querySelector('[data-role="body"]')
     if (n.body) {
-      bodyEl.textContent = n.body
+      bodyEl.innerHTML = this._mentionHTML(n.body)
     } else {
       bodyEl.remove()
     }
