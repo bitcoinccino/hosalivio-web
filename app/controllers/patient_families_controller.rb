@@ -73,7 +73,7 @@ class PatientFamiliesController < ApplicationController
   # to a patient outside their case load.
   def authorize_inviter!
     return if (current_user.role_names & PRIVILEGED_ROLES).any?
-    return if [@patient.assigned_rn_id, @patient.assigned_md_id].include?(current_user.id)
+    return if [ @patient.assigned_rn_id, @patient.assigned_md_id ].include?(current_user.id)
     redirect_to patient_path(@patient), alert: "Only the assigned clinician, admin, DON, or admissions can invite family."
   end
 

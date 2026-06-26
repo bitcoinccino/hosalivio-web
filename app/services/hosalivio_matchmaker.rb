@@ -104,14 +104,14 @@ class HosalivioMatchmaker
     }.compact_blank
 
     if @query.blank? && explicit.any?
-      return [explicit, "facets"]
+      return [ explicit, "facets" ]
     end
 
-    return [explicit, "none"] if @query.blank?
+    return [ explicit, "none" ] if @query.blank?
 
     parsed = keyword_parse(@query)
     merged = deep_merge_filters(explicit, parsed)
-    [merged, "heuristic"]
+    [ merged, "heuristic" ]
     # TODO: when LLM credits land, call HosalivioBrain for structured extraction
     # and return source = "claude:..." or "openai:..." here.
   end

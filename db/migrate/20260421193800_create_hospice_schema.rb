@@ -20,7 +20,7 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
       t.references :agency, type: :uuid, foreign_key: true, null: false
       t.timestamps
     end
-    add_index :user_roles, [:user_id, :role_id, :agency_id], unique: true,
+    add_index :user_roles, [ :user_id, :role_id, :agency_id ], unique: true,
               name: "idx_user_roles_on_user_role_agency"
 
     # --------------------------------------------------------------------------
@@ -77,9 +77,9 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
       t.timestamps
     end
     # MRN unique per agency
-    add_index :patients, [:agency_id, :mrn], unique: true, name: "idx_patients_on_agency_mrn"
-    add_index :patients, [:agency_id, :status]
-    add_index :patients, [:agency_id, :code_status]
+    add_index :patients, [ :agency_id, :mrn ], unique: true, name: "idx_patients_on_agency_mrn"
+    add_index :patients, [ :agency_id, :status ]
+    add_index :patients, [ :agency_id, :code_status ]
 
     # Now add patient_id to users (family portal users gated to one patient)
     add_reference :users, :patient, type: :uuid, foreign_key: true, null: true
@@ -109,9 +109,9 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :visits, [:agency_id, :patient_id, :started_at],
+    add_index :visits, [ :agency_id, :patient_id, :started_at ],
               name: "idx_visits_on_agency_patient_start"
-    add_index :visits, [:agency_id, :visit_type],
+    add_index :visits, [ :agency_id, :visit_type ],
               name: "idx_visits_on_agency_visit_type"
 
     # --------------------------------------------------------------------------
@@ -134,7 +134,7 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :medication_orders, [:agency_id, :patient_id, :status]
+    add_index :medication_orders, [ :agency_id, :patient_id, :status ]
 
     # --------------------------------------------------------------------------
     # Medication logs — each administration event.
@@ -152,7 +152,7 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :medication_logs, [:agency_id, :administered_at]
+    add_index :medication_logs, [ :agency_id, :administered_at ]
 
     # --------------------------------------------------------------------------
     # Pharmacy deliveries — comfort kits, refills, emergency drops.
@@ -169,7 +169,7 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :pharmacy_deliveries, [:agency_id, :patient_id, :status]
+    add_index :pharmacy_deliveries, [ :agency_id, :patient_id, :status ]
 
     # --------------------------------------------------------------------------
     # DME orders — hospital beds, O2, wheelchairs, etc.
@@ -191,7 +191,7 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :dme_orders, [:agency_id, :patient_id, :status]
+    add_index :dme_orders, [ :agency_id, :patient_id, :status ]
 
     # --------------------------------------------------------------------------
     # Agent events — audit trail for agent-driven changes.
@@ -212,8 +212,8 @@ class CreateHospiceSchema < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :agent_events, [:agency_id, :agent_id, :happened_at],
+    add_index :agent_events, [ :agency_id, :agent_id, :happened_at ],
               name: "idx_agent_events_on_agency_agent_time"
-    add_index :agent_events, [:agency_id, :happened_at]
+    add_index :agent_events, [ :agency_id, :happened_at ]
   end
 end

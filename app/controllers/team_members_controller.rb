@@ -1,7 +1,7 @@
 class TeamMembersController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_team_manager!
-  before_action :set_member, only: [:edit, :update, :destroy, :reactivate]
+  before_action :set_member, only: [ :edit, :update, :destroy, :reactivate ]
 
   CLINICAL_ROLES = %w[rn lpn md don sw social_worker chaplain aide admissions insurance billing dme pharmacy].freeze
   DEFAULT_PASSWORD = "hello123".freeze
@@ -10,7 +10,7 @@ class TeamMembersController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @branches = Branch.where(agency: current_user.agency).order(:name)
       scope = User.where(agency: current_user.agency)
-                  .where(family_access: [false, nil])
+                  .where(family_access: [ false, nil ])
                   .includes(:roles, :branch)
                   .order(active: :desc, full_name: :asc)
       @members_by_branch = scope.group_by(&:branch_id)

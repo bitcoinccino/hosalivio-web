@@ -607,7 +607,7 @@ class HosalivioBrain
       model:      CLAUDE_MODEL,
       max_tokens: 400,
       system:     system,
-      messages:   [{ role: "user", content: user }]
+      messages:   [ { role: "user", content: user } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
     return nil unless resp.code.to_i == 200
@@ -918,8 +918,8 @@ class HosalivioBrain
     req.body = {
       model:      CLAUDE_MODEL,
       max_tokens: 400,
-      system:     [{ type: "text", text: clinician_system_prompt }],
-      messages:   [{ role: "user", content: clinician_user_prompt }]
+      system:     [ { type: "text", text: clinician_system_prompt } ],
+      messages:   [ { role: "user", content: clinician_user_prompt } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
@@ -1342,8 +1342,8 @@ class HosalivioBrain
     req.body = {
       model:      CLAUDE_MODEL,
       max_tokens: 600,
-      system:     [{ type: "text", text: ANSWER_SYSTEM_PROMPT }],
-      messages:   [{ role: "user", content: payload_json }]
+      system:     [ { type: "text", text: ANSWER_SYSTEM_PROMPT } ],
+      messages:   [ { role: "user", content: payload_json } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: CHAT_READ_TIMEOUT) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
@@ -1378,8 +1378,8 @@ class HosalivioBrain
     req.body = {
       model:      CLAUDE_MODEL,
       max_tokens: 2000,
-      system:     [{ type: "text", text: EVAL_GAP_FILL_SYSTEM_PROMPT }],
-      messages:   [{ role: "user", content: payload_json }]
+      system:     [ { type: "text", text: EVAL_GAP_FILL_SYSTEM_PROMPT } ],
+      messages:   [ { role: "user", content: payload_json } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
@@ -1414,8 +1414,8 @@ class HosalivioBrain
     req.body = {
       model:      CLAUDE_MODEL,
       max_tokens: 1500,
-      system:     [{ type: "text", text: POLISH_SYSTEM_PROMPT }],
-      messages:   [{ role: "user", content: "Raw narrative:\n#{raw_text}" }]
+      system:     [ { type: "text", text: POLISH_SYSTEM_PROMPT } ],
+      messages:   [ { role: "user", content: "Raw narrative:\n#{raw_text}" } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
@@ -1450,8 +1450,8 @@ class HosalivioBrain
     req.body = {
       model:      CLAUDE_MODEL,
       max_tokens: 300,
-      system:     [{ type: "text", text: TEAM_SUMMARY_SYSTEM_PROMPT }],
-      messages:   [{ role: "user", content: "Visit note:\n#{text}" }]
+      system:     [ { type: "text", text: TEAM_SUMMARY_SYSTEM_PROMPT } ],
+      messages:   [ { role: "user", content: "Visit note:\n#{text}" } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
@@ -1486,8 +1486,8 @@ class HosalivioBrain
     req.body = {
       model:      CLAUDE_MODEL,
       max_tokens: 2500,
-      system:     [{ type: "text", text: SPEAKER_TAG_SYSTEM_PROMPT }],
-      messages:   [{ role: "user", content: payload_json }]
+      system:     [ { type: "text", text: SPEAKER_TAG_SYSTEM_PROMPT } ],
+      messages:   [ { role: "user", content: payload_json } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
@@ -1522,8 +1522,8 @@ class HosalivioBrain
     req.body = {
       model:      CLAUDE_MODEL,
       max_tokens: 250,
-      system:     [{ type: "text", text: PPS_SYSTEM_PROMPT }],
-      messages:   [{ role: "user", content: "Narrative:\n#{narrative}" }]
+      system:     [ { type: "text", text: PPS_SYSTEM_PROMPT } ],
+      messages:   [ { role: "user", content: "Narrative:\n#{narrative}" } ]
     }.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
     raise "Anthropic #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200

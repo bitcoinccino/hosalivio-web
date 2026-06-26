@@ -30,7 +30,7 @@ class Icd10Explanation < ApplicationRecord
   end
 
   def tooltip_text
-    [simple_description, hospice_context].compact_blank.join(" ")
+    [ simple_description, hospice_context ].compact_blank.join(" ")
   end
 
   private

@@ -246,7 +246,7 @@ class HosalivioTriager
   # offer something the user is now confirming?".
   def recent_thread_context
     notes = @patient.notes
-                    .where(clinician_only: [nil, false])
+                    .where(clinician_only: [ nil, false ])
                     .where.not(id: @note.id)
                     .order(created_at: :desc).limit(8)
                     .reverse
@@ -312,11 +312,11 @@ class HosalivioTriager
     cleaned = reason.dup
     # Pass 1: try to remove the connector + name together so we don't
     # leave dangling prepositions ("contact with" / "loop in").
-    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+    [ full, "#{first} #{last}", first, last ].uniq.reject(&:blank?).each do |name|
       cleaned = cleaned.gsub(/#{CONNECTOR_RE.source}\s+#{Regexp.escape(name)}\b/i, "")
     end
     # Pass 2: anything still standing alone, drop just the name.
-    [full, "#{first} #{last}", first, last].uniq.reject(&:blank?).each do |name|
+    [ full, "#{first} #{last}", first, last ].uniq.reject(&:blank?).each do |name|
       cleaned = cleaned.gsub(/\b#{Regexp.escape(name)}\b/i, "")
     end
     # Pass 3: collapse whitespace, prune dangling tail connectors,
@@ -333,11 +333,11 @@ class HosalivioTriager
   # branch, then any active user at the agency in that role.
   def resolve_clinician_for_role(role)
     by_assignment = case role
-                    when "rn"            then @patient.assigned_rn
-                    when "md"            then @patient.assigned_md
-                    when "sw","social_worker" then @patient.assigned_sw
-                    when "chaplain"      then @patient.assigned_chaplain
-                    end
+    when "rn"            then @patient.assigned_rn
+    when "md"            then @patient.assigned_md
+    when "sw", "social_worker" then @patient.assigned_sw
+    when "chaplain"      then @patient.assigned_chaplain
+    end
     return by_assignment if by_assignment
 
     base = User.where(agency_id: @agency.id, active: true, family_access: false)
@@ -366,8 +366,8 @@ class HosalivioTriager
     role_targets = roles.map { |r| name_for_role(r) }
     urgency_word = d[:urgency].to_s.capitalize
 
-    parts = ["#{intent_label} · #{urgency_word}",
-             "Notified: #{role_targets.join(', ')}"]
+    parts = [ "#{intent_label} · #{urgency_word}",
+             "Notified: #{role_targets.join(', ')}" ]
     parts << "" << d[:reasoning].to_s.strip if d[:reasoning].present?
     parts.join("\n")
   end

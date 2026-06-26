@@ -34,7 +34,7 @@ class AddSignatureSupport < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :signatures, [:signable_type, :signable_id]
+    add_index :signatures, [ :signable_type, :signable_id ]
     add_index :signatures, :signed_at
   end
 end

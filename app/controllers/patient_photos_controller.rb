@@ -41,7 +41,7 @@ class PatientPhotosController < ApplicationController
   # or admissions coordinator may change the chart photo.
   def authorize_editor!
     return if (current_user.role_names & PRIVILEGED_ROLES).any?
-    return if [@patient.assigned_rn_id, @patient.assigned_md_id].include?(current_user.id)
+    return if [ @patient.assigned_rn_id, @patient.assigned_md_id ].include?(current_user.id)
     redirect_to patient_path(@patient), alert: "Only the assigned clinician, admin, DON, or admissions can change the photo."
   end
 end

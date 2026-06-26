@@ -6,7 +6,7 @@ module ClinicalChartsHelper
   # stroke   : line color (string)
   # normal_range : [low, high] — values outside tint the final dot red
   def sparkline(series, width: 80, height: 20, stroke: "#2F6F4E", normal_range: nil)
-    points = Array(series).each_with_index.map { |v, i| [i, v] }.reject { |_, v| v.nil? }
+    points = Array(series).each_with_index.map { |v, i| [ i, v ] }.reject { |_, v| v.nil? }
     return tag.span("—", class: "text-[#6B665F] text-[11px] font-mono") if points.size < 2
 
     vals = points.map { |(_, v)| v }

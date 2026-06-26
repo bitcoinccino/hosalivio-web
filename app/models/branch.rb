@@ -57,13 +57,13 @@ class Branch < ApplicationRecord
   end
 
   def location_label
-    [city, state].compact_blank.join(", ").presence || name
+    [ city, state ].compact_blank.join(", ").presence || name
   end
 
   def staff_count      = users.where(active: true).count
   def patient_count    = patients.count
   def service_area_summary
-    counts = [service_area_zips.size, service_area_counties.size].sum
+    counts = [ service_area_zips.size, service_area_counties.size ].sum
     return "No service area set" if counts.zero?
     parts = []
     parts << "#{service_area_zips.size} ZIP#{'s' if service_area_zips.size != 1}" if service_area_zips.any?

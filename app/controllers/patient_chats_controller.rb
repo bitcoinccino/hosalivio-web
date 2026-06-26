@@ -27,8 +27,8 @@ class PatientChatsController < ApplicationController
       @active_orders      = @patient.medication_orders.where(status: :active).includes(:medication_logs).order(created_at: :desc).to_a
       @recent_visits      = @patient.visits.order(started_at: :desc).limit(10).to_a
       @latest_vitals_visit = @recent_visits.find { |v| v.vitals.present? && v.vitals.any? }
-      @active_dme         = @patient.dme_orders.where.not(status: [:picked_up, :returned]).order(requested_at: :desc).to_a
-      @pending_deliveries = @patient.pharmacy_deliveries.where.not(status: [:delivered, :refused]).order(created_at: :desc).to_a
+      @active_dme         = @patient.dme_orders.where.not(status: [ :picked_up, :returned ]).order(requested_at: :desc).to_a
+      @pending_deliveries = @patient.pharmacy_deliveries.where.not(status: [ :delivered, :refused ]).order(created_at: :desc).to_a
       @unresolved_crisis  = @patient.notes.where(author_role: "family", urgency: :crisis, read_at: nil).count
       @days_in_hospice    = @patient.hospice_election_date ? (Date.current - @patient.hospice_election_date).to_i : nil
       @days_to_recert     = @patient.cert_period_end ? (@patient.cert_period_end - Date.current).to_i : nil
@@ -56,7 +56,7 @@ class PatientChatsController < ApplicationController
       @can_invite_family =
         !current_user.family_access? &&
         ((current_user.role_names & PatientFamiliesController::PRIVILEGED_ROLES).any? ||
-         [@patient.assigned_rn_id, @patient.assigned_md_id].include?(current_user.id))
+         [ @patient.assigned_rn_id, @patient.assigned_md_id ].include?(current_user.id))
     end
   end
 
@@ -123,8 +123,8 @@ class PatientChatsController < ApplicationController
     return nil if orders.empty?
     ranked = orders.sort_by { |o|
       s = schedules[o]
-      [s[:status] == :overdue ? 0 : (s[:status] == :available ? 1 : 2),
-       s[:minutes] || Float::INFINITY]
+      [ s[:status] == :overdue ? 0 : (s[:status] == :available ? 1 : 2),
+       s[:minutes] || Float::INFINITY ]
     }
     ranked.first
   end

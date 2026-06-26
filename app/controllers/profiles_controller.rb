@@ -85,10 +85,10 @@ class ProfilesController < ApplicationController
 
     cfg = current_user.notification_channel(channel)
     needs_contact = case channel
-                    when "telegram" then cfg["chat_id"].to_s.presence.nil?
-                    when "whatsapp", "sms" then cfg["phone"].to_s.presence.nil?
-                    else false
-                    end
+    when "telegram" then cfg["chat_id"].to_s.presence.nil?
+    when "whatsapp", "sms" then cfg["phone"].to_s.presence.nil?
+    else false
+    end
     if needs_contact
       return render(json: { error: "Add a contact value and save before testing." }, status: :unprocessable_entity)
     end
@@ -118,10 +118,10 @@ class ProfilesController < ApplicationController
     permitted = params.require(:user).permit(
       *base,
       notification_channels: [
-        { telegram:  [:enabled, :chat_id] },
-        { whatsapp:  [:enabled, :phone] },
-        { sms:       [:enabled, :phone] },
-        { email:     [:enabled] }
+        { telegram:  [ :enabled, :chat_id ] },
+        { whatsapp:  [ :enabled, :phone ] },
+        { sms:       [ :enabled, :phone ] },
+        { email:     [ :enabled ] }
       ]
     )
 

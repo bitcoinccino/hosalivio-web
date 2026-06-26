@@ -34,7 +34,7 @@ class DashboardsController < ApplicationController
   def load_mission_stage
     @patients       = Patient.order(created_at: :desc).limit(25)
     @recent_events  = AgentEvent.order(happened_at: :desc).limit(80).to_a
-    @open_inquiries = Inquiry.where(status: [:new_lead, :claimed]).order(created_at: :desc).limit(10)
+    @open_inquiries = Inquiry.where(status: [ :new_lead, :claimed ]).order(created_at: :desc).limit(10)
 
     compliance_scope    = User.where(agency: @agency, active: true)
     @licenses_expired   = compliance_scope.where("license_expires_on < ?", Date.current).count
@@ -149,13 +149,13 @@ class DashboardsController < ApplicationController
     when "aide"
       @today_aide_plans = @todays_visits
     when "dme"
-      @dme_pending = DmeOrder.where(agency: @agency).where.not(status: [:picked_up, :returned])
+      @dme_pending = DmeOrder.where(agency: @agency).where.not(status: [ :picked_up, :returned ])
                              .order(requested_at: :desc).limit(12).includes(:patient)
-      @dme_pickups = Patient.where(agency: @agency, status: [:deceased, :discharged])
+      @dme_pickups = Patient.where(agency: @agency, status: [ :deceased, :discharged ])
                              .order(updated_at: :desc).limit(6)
     when "pharmacy"
       @pharmacy_pending = PharmacyDelivery.where(agency: @agency)
-                                           .where.not(status: [:delivered, :refused])
+                                           .where.not(status: [ :delivered, :refused ])
                                            .order(created_at: :desc).limit(12).includes(:patient)
     when "insurance"
       @noe_due = PreAdmitEval.where(agency: @agency, status: :certified)

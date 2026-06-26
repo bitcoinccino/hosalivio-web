@@ -28,7 +28,7 @@ class GoldenSeed
   def call
     ActsAsTenant.with_tenant(@agency) do
       clinicians = ensure_clinical_team
-      [maria(clinicians), john(clinicians), liam(clinicians)].compact
+      [ maria(clinicians), john(clinicians), liam(clinicians) ].compact
     end
   end
 

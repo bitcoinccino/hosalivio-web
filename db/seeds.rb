@@ -153,9 +153,9 @@ ActsAsTenant.with_tenant(agency) do
           bp:    "#{120 + rand(-10..15)}/#{70 + rand(-5..10)}",
           pulse: 84 + rand(-6..10),
           resp:  18 + rand(-2..3),
-          o2:    [94, 95, 96, 93, 97].sample
+          o2:    [ 94, 95, 96, 93, 97 ].sample
         },
-        pain_score: [2, 3, 2, 4, 3].sample,
+        pain_score: [ 2, 3, 2, 4, 3 ].sample,
         billable: true, visit_code: "G0299"
       )
     end

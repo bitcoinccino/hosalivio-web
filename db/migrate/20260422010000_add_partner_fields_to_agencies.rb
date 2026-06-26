@@ -4,7 +4,7 @@ class AddPartnerFieldsToAgencies < ActiveRecord::Migration[8.1]
       t.text    :bio
       t.jsonb   :specialties,         null: false, default: []
       t.jsonb   :insurance_accepted,  null: false, default: []
-      t.jsonb   :languages,           null: false, default: ["en"]
+      t.jsonb   :languages,           null: false, default: [ "en" ]
       t.jsonb   :service_area_zips,   null: false, default: []
       t.string  :hero_color,          null: false, default: "#D97757"
       t.string  :emoji,               null: false, default: "🩺"

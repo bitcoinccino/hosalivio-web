@@ -19,7 +19,7 @@ class ApplicationPolicy
   # Role-based helpers. Works for AgentPrincipal (single role) and User (many roles).
   def role_names
     if user.is_a?(AgentPrincipal)
-      [user.role.to_s]
+      [ user.role.to_s ]
     elsif user.respond_to?(:role_names)
       user.role_names.map(&:to_s)
     else

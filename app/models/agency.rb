@@ -43,13 +43,13 @@ class Agency < ApplicationRecord
   # ── Partner-directory scopes (used on the public landing page) ────────
   scope :partners,                 -> { where(is_partner: true, active: true) }
   scope :accepting_referrals,      -> { where(accepting_referrals: true) }
-  scope :with_specialty,           ->(s) { where("specialties  @> ?", [s].to_json) }
-  scope :with_insurance,           ->(i) { where("insurance_accepted @> ?", [i].to_json) }
-  scope :with_language,            ->(l) { where("languages @> ?", [l].to_json) }
+  scope :with_specialty,           ->(s) { where("specialties  @> ?", [ s ].to_json) }
+  scope :with_insurance,           ->(i) { where("insurance_accepted @> ?", [ i ].to_json) }
+  scope :with_language,            ->(l) { where("languages @> ?", [ l ].to_json) }
   scope :serving_zip_prefix, lambda { |prefix|
     next none if prefix.blank?
     where("service_area_zips @> ? OR service_area_zips @> ? OR zip LIKE ?",
-          [prefix].to_json, [prefix[0, 3]].to_json, "#{prefix}%")
+          [ prefix ].to_json, [ prefix[0, 3] ].to_json, "#{prefix}%")
   }
 
   SPECIALTY_CATALOG = {

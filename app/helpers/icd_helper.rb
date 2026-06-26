@@ -37,7 +37,7 @@ module IcdHelper
   # code yet.
   def icd_definition(code, fallback_description = nil)
     exp = Icd10Explanation.lookup(code)
-    return [exp.simple_description, exp.hospice_context].compact_blank.join(" — ") if exp
+    return [ exp.simple_description, exp.hospice_context ].compact_blank.join(" — ") if exp
     fallback_description.to_s.presence
   end
 

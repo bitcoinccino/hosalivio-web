@@ -12,7 +12,7 @@ class CreateBranches < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :branches, [:agency_id, :name], unique: true
+    add_index :branches, [ :agency_id, :name ], unique: true
 
     add_reference :users,    :branch, type: :uuid, foreign_key: true
     add_reference :patients, :branch, type: :uuid, foreign_key: true

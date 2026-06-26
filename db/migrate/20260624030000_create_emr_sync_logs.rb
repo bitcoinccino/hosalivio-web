@@ -20,7 +20,7 @@ class CreateEmrSyncLogs < ActiveRecord::Migration[8.1]
     # One log per (eval, target): the sync job's find_or_create_by leans on
     # this so a double-tap / retry can't open twin transmissions for the same
     # encounter (mirrors idx_one_pre_admit_eval_per_visit's intent).
-    add_index :emr_sync_logs, [:pre_admit_eval_id, :target_system],
+    add_index :emr_sync_logs, [ :pre_admit_eval_id, :target_system ],
               unique: true, name: "idx_one_sync_log_per_eval_target"
 
     # Mirror the lifecycle onto the eval for cheap list/filter queries.

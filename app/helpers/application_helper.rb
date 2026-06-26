@@ -42,7 +42,7 @@ module ApplicationHelper
     if local.length <= 2
       masked_local = "#{local[0]}*"
     else
-      masked_local = "#{local[0]}#{"*" * [local.length - 2, 4].min}#{local[-1]}"
+      masked_local = "#{local[0]}#{"*" * [ local.length - 2, 4 ].min}#{local[-1]}"
     end
     "#{masked_local}@#{domain}"
   end

@@ -107,19 +107,19 @@ class ClinicalDocumentationGuard
   def scan_hedges(text)
     HEDGE_PATTERNS.flat_map do |pat|
       matches = text.scan(pat)
-      matches.any? ? ["hedging phrase (#{first_match(pat, text)})"] : []
+      matches.any? ? [ "hedging phrase (#{first_match(pat, text)})" ] : []
     end
   end
 
   def scan_forbidden_topics(text)
     FORBIDDEN_TOPIC_PATTERNS.flat_map do |pat|
-      text.scan(pat).any? ? ["forbidden topic in chart text (#{first_match(pat, text)})"] : []
+      text.scan(pat).any? ? [ "forbidden topic in chart text (#{first_match(pat, text)})" ] : []
     end
   end
 
   def scan_placeholders(text)
     PLACEHOLDER_TOKENS.flat_map do |token|
-      text.include?(token) ? ["placeholder token (#{token})"] : []
+      text.include?(token) ? [ "placeholder token (#{token})" ] : []
     end
   end
 
