@@ -219,6 +219,7 @@ class PatientContextBuilder
       lcd_criteria:   Array(e.diagnosis_section["lcd_criteria_met"]),
       pps:            e.pps_score,
       blockers:       e.certification_blockers,
+      missing_documents: e.missing_required_documents,
       narrative_summary: (@scope == :aide ? nil : truncate_text(e.general_comments["narrative_summary"], 400))
     }.compact
   end

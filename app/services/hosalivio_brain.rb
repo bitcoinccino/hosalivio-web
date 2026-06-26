@@ -984,6 +984,12 @@ class HosalivioBrain
       - STATUS questions ("is the admission done?", "what's the status of
         the eval?"): lead with the item, its explicit status word, and the
         date in one line — e.g. "The admission visit (Jun 26) is in_progress."
+      - REQUIRED FORMS / DOCUMENTS ("what forms are missing?", "what's needed
+        for admission?", "is the POLST on file?"): use
+        PATIENT_CONTEXT.pre_admit_eval.missing_documents — it is the
+        authoritative list of required forms NOT yet on file (Election of
+        Benefits, Patient Rights, POLST, Advance Directive). If it's empty,
+        say all required forms are on file. Don't invent forms not in it.
       - For GENERAL HOSPICE EDUCATION questions ("what is hospice?", "what
         does PPS mean?", "what should I expect at end of life?", "how
         does the Medicare hospice benefit work?"): explain in plain,
