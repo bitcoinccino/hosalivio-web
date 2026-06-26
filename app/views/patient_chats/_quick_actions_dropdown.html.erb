@@ -10,19 +10,13 @@
       label: "Start a visit", sub: "Begin documenting now",
       icon: "ri-play-circle-line", color: "#D97757",
       kind: :form, form_url: start_now_visits_path(patient_id: @patient.id),
-      roles: %w[rn md sw social_worker chaplain aide don admissions]
-    },
-    upload_photo: {
-      label: "Upload a photo", sub: "Wound, equipment, ID",
-      icon: "ri-camera-line", color: "#2F6F4E",
-      kind: :coming_soon,
-      roles: %w[rn md sw social_worker aide don]
+      roles: %w[rn sw social_worker chaplain aide don admissions]
     },
     document: {
-      label: "Documents", sub: "Upload / view signed forms, paperwork",
+      label: "Documents", sub: "Upload / view signed forms, paperwork, photos",
       icon: "ri-file-text-line", color: "#2B4A7A",
       kind: :link, href: patient_documents_path(@patient),
-      roles: %w[rn md sw social_worker don admissions]
+      roles: %w[rn md sw social_worker don admissions admin]
     },
     sign_pre_admit: {
       label: "Sign pending pre-admit", sub: "Certify the latest eval",
@@ -30,17 +24,11 @@
       kind: :link, href: (@pre_admit_eval ? pre_admit_eval_path(@pre_admit_eval) : nil),
       roles: %w[md], gated: -> { @pre_admit_eval&.status_final? }
     },
-    schedule_visit: {
-      label: "Schedule for later", sub: "Future calendar slot",
-      icon: "ri-calendar-line", color: "#6B665F",
-      kind: :link, href: new_visit_path(patient_id: @patient.id),
-      roles: %w[rn md sw social_worker chaplain aide don admissions]
-    },
     invite_family: {
       label: "Invite family member", sub: "Send a chat invite to a relative",
       icon: "ri-user-add-line", color: "#D97757",
       kind: :link, href: new_patient_family_path(@patient),
-      roles: %w[admin don admissions rn md], gated: -> { @can_invite_family }
+      roles: %w[admin don admissions rn], gated: -> { @can_invite_family }
     }
   }
   actions = all_actions.values.select do |a|
