@@ -642,10 +642,24 @@ class VisitsController < ApplicationController
   # already has a 'pre_admit_review_ready' Notification linked to
   # this eval, we do not duplicate it.
   def notify_md_for_certification(eval_rec)
-    targets = User.joins(user_roles: :role)
-                  .where(agency: eval_rec.agency, active: true)
-                  .where(roles: { name: %w[md don] })
-    targets.find_each do |target|
+    assigned_md = eval_rec.patient.assigned_md
+
+    # Certification goes to the patient's ASSIGNED MD. If there isn't one
+    # (or they're inactive), fall back to every MD so the eval still reaches
+    # someone rather than orphaning. DONs always get an oversight copy.
+    md_targets =
+      if assigned_md&.active?
+        [assigned_md]
+      else
+        User.joins(user_roles: :role)
+            .where(agency: eval_rec.agency, active: true)
+            .where(roles: { name: "md" }).to_a
+      end
+    don_targets = User.joins(user_roles: :role)
+                      .where(agency: eval_rec.agency, active: true)
+                      .where(roles: { name: "don" }).to_a
+
+    (md_targets + don_targets).uniq.each do |target|
       next if Notification.exists?(user: target, kind: "pre_admit_review_ready", linked: eval_rec)
       role = target.role_names.include?("md") ? "MD" : "DON"
       title = role == "MD" ?
@@ -671,6 +685,7 @@ class VisitsController < ApplicationController
       subject:          eval_rec,
       change_set: {
         target_role:   "md",
+        target_user_id: assigned_md&.id,
         intent:        "pre_admit_certification",
         urgency:       "urgent",
         eval_id:       eval_rec.id,
