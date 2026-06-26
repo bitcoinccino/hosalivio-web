@@ -24,12 +24,6 @@
       kind: :link, href: (@pre_admit_eval ? pre_admit_eval_path(@pre_admit_eval) : nil),
       roles: %w[md], gated: -> { @pre_admit_eval&.status_final? }
     },
-    schedule_visit: {
-      label: "Schedule a visit", sub: "Book a future calendar slot",
-      icon: "ri-calendar-line", color: "#6B665F",
-      kind: :link, href: new_visit_path(patient_id: @patient.id),
-      roles: %w[rn md sw social_worker chaplain aide don admissions]
-    },
     invite_family: {
       label: "Invite family member", sub: "Send a chat invite to a relative",
       icon: "ri-user-add-line", color: "#D97757",
