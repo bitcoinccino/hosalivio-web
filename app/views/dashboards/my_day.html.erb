@@ -173,7 +173,15 @@
                           <% if patient_crisis %>
                             <span class="rounded-full bg-[#C1403A] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">Crisis</span>
                           <% end %>
-                          <% if med_overdue %>
+                          <%# MD-relevant cert status (no extra queries — uses preloaded id sets). %>
+                          <% if is_md && @md_cert_pending_pids&.include?(p.id) %>
+                            <span class="rounded-full bg-[#2B4A7A] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">Cert pending</span>
+                          <% end %>
+                          <% if is_md && @md_revision_pids&.include?(p.id) %>
+                            <span class="rounded-full border border-[#F3D7C8] bg-[#FFF7F2] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#8A4B2F]">Awaiting revision</span>
+                          <% end %>
+                          <%# Med administration + "not seen" are bedside RN signals — hide for MD. %>
+                          <% if med_overdue && !is_md %>
                             <span class="rounded-full border border-[#F3D7C8] bg-[#FFF3EC] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#C1403A]">Med overdue</span>
                           <% end %>
                           <% if handoff_waiting %>
@@ -182,7 +190,7 @@
                           <% if recert_days && recert_days <= 14 %>
                             <span class="rounded-full border border-[#C8DDD6] bg-[#E6F0EE] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#2F6F4E]">Recert <%= recert_days %>d</span>
                           <% end %>
-                          <% if days_since_seen && days_since_seen >= 5 %>
+                          <% if days_since_seen && days_since_seen >= 5 && !is_md %>
                             <span class="rounded-full border border-[#EFECE6] bg-[#FBF9F5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B665F]">Not seen <%= days_since_seen %>d</span>
                           <% end %>
                         </div>

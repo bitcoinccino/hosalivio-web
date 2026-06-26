@@ -136,6 +136,16 @@ class DashboardsController < ApplicationController
                                   .where(cert_period_end: Date.current..(Date.current + 14.days))
                                   .where("assigned_md_id = :me OR assigned_md_id IS NULL", me: me.id)
                                   .order(:cert_period_end)
+      # Evals this MD bounced back to the RN that haven't been re-routed yet,
+      # so they can track what they're waiting on.
+      @awaiting_revision = EvalRevisionRequest.open
+                                              .where(requester_id: me.id)
+                                              .recent_first
+                                              .includes(pre_admit_eval: :patient)
+      # Patient-id sets so the caseload can show cert-status pills for the MD
+      # without a per-patient query (data already loaded above).
+      @md_cert_pending_pids = @pending_certs.map(&:patient_id)
+      @md_revision_pids     = @awaiting_revision.filter_map { |r| r.pre_admit_eval&.patient_id }
     when "social_worker"
       @psychosocial_due = Patient.where(agency: @agency, status: :active, assigned_sw_id: me.id)
                                   .where("hospice_election_date >= ?", 5.days.ago).order(:hospice_election_date)
