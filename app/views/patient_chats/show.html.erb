@@ -431,7 +431,14 @@
       <%# Composer wrapper — Stimulus flips data-recording between 'false'
           and 'true'; the form is hidden and the 'Living Wave' recording
           bar takes its place while audio capture is active. %>
-      <div data-patient-chat-target="composer" data-recording="false" class="group/composer">
+      <div data-patient-chat-target="composer" data-recording="false"
+           class="group/composer relative"
+           <% unless current_user.family_access? %>data-controller="mention-autocomplete" data-mention-autocomplete-items-value="<%= @mentionables.to_json %>"<% end %>>
+
+      <%# @-mention autocomplete dropdown (populated by JS, opens above the
+          input). Clinicians only; family never gets it. %>
+      <div data-mention-autocomplete-target="menu"
+           class="hidden absolute bottom-full left-0 mb-2 w-72 max-h-64 overflow-y-auto rounded-2xl border border-[#EFECE6] bg-white shadow-lg py-1 z-50"></div>
 
       <%# The composer prompt now lives in the input's native placeholder
           (role-aware: family doesn't see the @HosAlivio hint). %>
@@ -466,6 +473,7 @@
             class="flex-1 flex items-center gap-3">
 
         <input type="text" name="text" data-patient-chat-target="input"
+               data-mention-autocomplete-target="input"
                autocomplete="off"
                placeholder="<%= current_user.family_access? ? 'Type a message…' : 'Type a message or ask @HosAlivio…' %>"
                class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
