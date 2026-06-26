@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_26_170103) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -399,6 +399,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120000) do
     t.index ["user_id"], name: "index_outbound_pings_on_user_id"
   end
 
+  create_table "patient_documents", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.datetime "created_at", null: false
+    t.string "kind"
+    t.uuid "patient_id", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "uploaded_by_id"
+    t.index ["agency_id"], name: "index_patient_documents_on_agency_id"
+    t.index ["patient_id"], name: "index_patient_documents_on_patient_id"
+    t.index ["uploaded_by_id"], name: "index_patient_documents_on_uploaded_by_id"
+  end
+
   create_table "patients", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "address_line1"
     t.string "address_line2"
@@ -669,6 +682,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120000) do
   add_foreign_key "notifications", "users"
   add_foreign_key "outbound_pings", "agencies"
   add_foreign_key "outbound_pings", "users"
+  add_foreign_key "patient_documents", "agencies"
+  add_foreign_key "patient_documents", "patients"
+  add_foreign_key "patient_documents", "users", column: "uploaded_by_id"
   add_foreign_key "patients", "agencies"
   add_foreign_key "patients", "branches"
   add_foreign_key "patients", "users", column: "assigned_chaplain_id"

@@ -72,6 +72,7 @@ Rails.application.routes.draw do
     resource  :photo, only: [ :create, :destroy ], controller: "patient_photos"
     resources :family, only: [ :new, :create, :destroy ], controller: "patient_families"
     resources :consents, only: [ :index, :new, :create, :show ], controller: "consent_forms"
+    resources :documents, only: [ :index, :create, :destroy ], controller: "patient_documents"
   end
 
   # JSON reference lookups for the admissions form (diagnosis autocomplete +

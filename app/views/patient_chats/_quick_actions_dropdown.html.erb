@@ -19,9 +19,9 @@
       roles: %w[rn md sw social_worker aide don]
     },
     document: {
-      label: "Document a form", sub: "AD, POLST, signed paperwork",
+      label: "Documents", sub: "Upload / view signed forms, paperwork",
       icon: "ri-file-text-line", color: "#2B4A7A",
-      kind: :coming_soon,
+      kind: :link, href: patient_documents_path(@patient),
       roles: %w[rn md sw social_worker don admissions]
     },
     sign_pre_admit: {
