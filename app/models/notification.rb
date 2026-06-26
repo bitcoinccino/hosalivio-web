@@ -42,15 +42,21 @@ class Notification < ApplicationRecord
   private
 
   def broadcast_realtime
+    stream = "notifications:user:#{user_id}"
+    # Toast on whatever page they're on.
     Turbo::StreamsChannel.broadcast_append_to(
-      "notifications:user:#{user_id}",
-      target:  "notification-toasts",
-      partial: "notifications/toast",
-      locals:  { notification: self }
+      stream, target: "notification-toasts",
+      partial: "notifications/toast", locals: { notification: self }
     )
+    # Live-prepend the row + clear the empty state for anyone on the inbox.
+    Turbo::StreamsChannel.broadcast_prepend_to(
+      stream, target: "notifications-list",
+      partial: "notifications/notification", locals: { notification: self }
+    )
+    Turbo::StreamsChannel.broadcast_remove_to(stream, target: "notif-empty-state")
     self.class.broadcast_badge(agency_id: agency_id, user_id: user_id)
   rescue => e
-    # A live-toast failure must never break the create or the outbound ping.
+    # A live-delivery failure must never break the create or the outbound ping.
     Rails.logger.warn("[Notification#broadcast_realtime] #{e.class}: #{e.message}")
   end
 

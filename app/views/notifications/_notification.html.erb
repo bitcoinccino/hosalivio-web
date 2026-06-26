@@ -1,0 +1,28 @@
+<%#
+  A single notification row on the inbox index. Rendered server-side for the
+  list and prepended live by Notification#broadcast_realtime. `notification`
+  local is required (Rails collection-render convention).
+%>
+<div class="rounded-xl border <%= notification.read_at.nil? ? 'border-[#D97757] bg-white' : 'border-[#EFECE6] bg-[#FBF9F5]/70' %> p-4 flex items-start gap-3">
+  <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+              <%= notification.read_at.nil? ? 'bg-[#FFF3EC] text-[#D97757]' : 'bg-[#EFECE6] text-[#6B665F]' %>">
+    <i class="<%= notification.kind == 'visit_reminder_24h' ? 'ri-calendar-check-line' : 'ri-notification-line' %>"></i>
+  </div>
+  <div class="flex-1 min-w-0">
+    <div class="text-[13px] font-medium text-[#1D1C1A]"><%= notification.title %></div>
+    <% if notification.body.present? %>
+      <div class="text-[12px] text-[#3A3936] mt-1 leading-relaxed"><%= notification.body %></div>
+    <% end %>
+    <div class="text-[10px] text-[#6B665F] font-mono mt-2">
+      <%= notification.created_at.strftime("%b %-d · %-l:%M %p") %>
+      <% if notification.linked_type == "Visit" && notification.linked_id %>
+        · <%= link_to "open in calendar", visit_path(notification.linked_id), class: "text-[#D97757] hover:underline" %>
+      <% end %>
+    </div>
+  </div>
+  <% if notification.read_at.nil? %>
+    <%= button_to mark_read_notification_path(notification), class: "text-[11px] text-[#6B665F] hover:text-[#1D1C1A]" do %>
+      <i class="ri-check-line"></i>
+    <% end %>
+  <% end %>
+</div>
