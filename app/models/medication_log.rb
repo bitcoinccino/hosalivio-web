@@ -2,6 +2,7 @@ class MedicationLog < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
   include AgentAuditable
+  include BroadcastsPatientContext
 
   # AgentAuditable expects agency_id directly; medication_log has it.
 
@@ -35,5 +36,10 @@ class MedicationLog < ApplicationRecord
     DashboardData.broadcast_needs_action(rn)
   rescue => e
     Rails.logger.warn("[MedicationLog#broadcast_dashboard_overdue_change] #{e.class}: #{e.message}")
+  end
+
+  # No direct patient_id — resolve through the order for the chart-rail ping.
+  def patient_context_id
+    medication_order&.patient_id
   end
 end

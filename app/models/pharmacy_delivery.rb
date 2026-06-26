@@ -2,6 +2,7 @@ class PharmacyDelivery < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
   include AgentAuditable
+  include BroadcastsPatientContext
 
   enum :kind, {
     comfort_kit: 0, refill: 1, new_fill: 2, emergency: 3

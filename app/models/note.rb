@@ -94,6 +94,17 @@ class Note < ApplicationRecord
   after_create_commit :broadcast_rn_needs_action
   after_update_commit :broadcast_rn_needs_action, if: -> { saved_change_to_read_at? }
 
+  # The same family-crisis create / read-toggle changes the "Open crises"
+  # tile in every open chart's right-rail. Ping the patient channel so it
+  # re-fetches (same gate as the RN needs-action push above).
+  after_create_commit :broadcast_patient_context_if_crisis
+  after_update_commit :broadcast_patient_context_if_crisis, if: -> { saved_change_to_read_at? }
+
+  def broadcast_patient_context_if_crisis
+    return unless author_role.to_s == "family" && urgency.to_s == "crisis"
+    PatientChannel.broadcast_context_changed(patient_id)
+  end
+
   def broadcast_rn_needs_action
     return unless author_role.to_s == "family" && urgency.to_s == "crisis"
     DashboardData.broadcast_needs_action(patient&.assigned_rn)

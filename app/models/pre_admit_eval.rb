@@ -1,6 +1,7 @@
 class PreAdmitEval < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
+  include BroadcastsPatientContext
 
   # State machine for the certification chain:
   # draft      → Pascal still capturing

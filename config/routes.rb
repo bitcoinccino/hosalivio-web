@@ -81,6 +81,9 @@ Rails.application.routes.draw do
   get "lookups/zip/:zip", to: "lookups#zip",  as: :zip_lookup, constraints: { zip: /\d{5}/ }
   get "patients/:id",      to: "patient_chats#show", as: :patient
   get "patients/:id/chat", to: "patient_chats#show", as: :patient_chat  # alias
+  # Live right-rail refresh — fetched by the chart when its ActionCable
+  # channel signals a clinical-context change (vitals, visits, meds, eval…).
+  get "patients/:id/clinical_context", to: "patient_chats#clinical_context", as: :patient_clinical_context
 
   # Calendar + visit CRUD (clinician-facing scheduling)
   get "calendar", to: "calendars#show", as: :calendar

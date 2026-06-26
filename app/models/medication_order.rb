@@ -2,6 +2,7 @@ class MedicationOrder < ApplicationRecord
   acts_as_tenant :agency
   has_paper_trail
   include AgentAuditable
+  include BroadcastsPatientContext
 
   enum :route, {
     po: 0, sl: 1, sc: 2, iv: 3, im: 4, pr: 5, top: 6, neb: 7, other: 8

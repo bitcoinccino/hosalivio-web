@@ -1,0 +1,289 @@
+      <!-- Active Comfort Meds — open by default, priority section -->
+      <details class="group" open>
+        <%= acc_header("ri-capsule-line", "Active Comfort Meds", @active_orders.size.to_s) %>
+        <div class="px-5 pb-4 pt-3">
+          <% if @active_orders.empty? %>
+            <div class="text-xs text-[#6B665F] italic">None</div>
+          <% else %>
+            <% headline_due = @headline_order && @order_schedules[@headline_order][:next_due_at] %>
+            <div class="mb-3 rounded-lg bg-[#FBF9F5] p-2">
+              <div class="text-[9px] uppercase tracking-widest text-[#6B665F] mb-1">Last <%= @timeline_window_hours %>h</div>
+              <%= med_timeline_ribbon(logs: @timeline_logs, window_hours: @timeline_window_hours, headline_next_due: headline_due) %>
+            </div>
+
+            <ul class="space-y-2">
+              <% @active_orders.each do |o| %>
+                <% s = @order_schedules[o] %>
+                <li class="text-[13px]">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <div class="font-medium text-[#1D1C1A] truncate"><%= o.drug_name %> <%= o.dose %></div>
+                    <span class="text-[10px] font-medium
+                                 <%= {overdue: 'text-[#C1403A]', available: 'text-[#D97757]', upcoming: 'text-[#2F6F4E]', unknown: 'text-[#6B665F]'}[s[:status]] %>">
+                      <%= s[:label] %>
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-[#6B665F] font-mono">
+                    <%= o.route.upcase %> · <%= o.frequency %><%= " · PRN" if o.prn %>
+                  </div>
+                  <% if o.prn_indication.present? %>
+                    <div class="text-[11px] text-[#6B665F] italic">for <%= o.prn_indication %></div>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+
+            <% unless current_user.family_access? %>
+              <button type="button"
+                      class="mt-3 w-full text-[11px] px-3 py-1.5 rounded-full border border-dashed border-[#D9D5CD] text-[#6B665F] hover:bg-[#FBF9F5] hover:text-[#1D1C1A]">
+                <i class="ri-add-line"></i> Add PRN
+              </button>
+            <% end %>
+          <% end %>
+        </div>
+      </details>
+
+      <% if @pre_admit_eval %>
+        <% fam = current_user.family_access? %>
+        <details class="group" <%= 'open' if @pre_admit_eval.status_final? || @pre_admit_eval.noe_overdue? %>>
+          <%= acc_header("ri-file-shield-2-line", "Admission", @pre_admit_eval.status.to_s.tr("_", " ").upcase) %>
+          <div class="px-5 pb-4 pt-2">
+            <%
+              status_color = case @pre_admit_eval.status.to_s
+                             when "draft"      then "#6B665F"
+                             when "final"      then "#2B4A7A"
+                             when "certified"  then "#2F6F4E"
+                             when "noe_filed"  then "#2F6F4E"
+                             when "revoked"    then "#C1403A"
+                             else                   "#6B665F"
+                             end
+            %>
+            <div class="flex items-center gap-2 text-[12px] mb-2">
+              <span class="w-2 h-2 rounded-full" style="background: <%= status_color %>;"></span>
+              <span class="text-[#1D1C1A] font-medium"><%= @pre_admit_eval.status.to_s.tr("_", " ").capitalize %></span>
+              <span class="text-[10px] text-[#6B665F] ml-auto font-mono"><%= @pre_admit_eval.evaluated_at&.strftime("%b %-d") %></span>
+            </div>
+
+            <div class="text-[11px] text-[#6B665F] space-y-1">
+              <% if @pre_admit_eval.primary_icd10.present? %>
+                <div>Diagnosis: <span class="font-mono text-[#1D1C1A]"><%= @pre_admit_eval.primary_icd10 %></span> <%= @pre_admit_eval.primary_icd10_description %></div>
+              <% end %>
+              <% if @pre_admit_eval.evaluator_name.present? %>
+                <div>By: <%= @pre_admit_eval.evaluator_name %></div>
+              <% end %>
+
+              <% unless fam %>
+                <% if @pre_admit_eval.noe_overdue? %>
+                  <div class="mt-2 text-[11px] text-[#C1403A] font-bold">
+                    <i class="ri-alarm-warning-fill"></i> NOE OVERDUE — file immediately
+                  </div>
+                <% elsif @pre_admit_eval.status_certified? && @pre_admit_eval.noe_deadline_at %>
+                  <div class="mt-2 text-[11px] text-[#D97757]">
+                    NOE due in <%= @pre_admit_eval.days_until_noe_deadline %>d
+                    (<%= @pre_admit_eval.noe_deadline_at.strftime("%b %-d") %>)
+                  </div>
+                <% elsif @pre_admit_eval.status_final? %>
+                  <div class="mt-2 text-[11px] text-[#2B4A7A]">Awaiting MD certification</div>
+                <% elsif @pre_admit_eval.status_noe_filed? %>
+                  <div class="mt-2 text-[11px] text-[#2F6F4E]"><i class="ri-check-line"></i> NOE filed <%= @pre_admit_eval.noe_filed_at&.strftime("%b %-d") %></div>
+                <% end %>
+
+                <% blockers = @pre_admit_eval.certification_blockers %>
+                <% if blockers.any? %>
+                  <div class="mt-2 text-[10px] text-[#C1403A]">Needs: <%= blockers.first(2).join("; ") %></div>
+                <% end %>
+              <% end %>
+            </div>
+
+            <% if fam && @pre_admit_eval.status_noe_filed? %>
+              <div class="mt-2 text-[11px] text-[#2F6F4E]">
+                <i class="ri-shield-check-line"></i> <%= @patient.first_name %> is officially on the hospice benefit. Medicare covers her care.
+              </div>
+            <% end %>
+          </div>
+        </details>
+      <% end %>
+
+      <!-- Care Snapshot (days / recert / BP / crises) — open by default -->
+      <details class="group" open>
+        <%= acc_header("ri-dashboard-3-line", "Care Snapshot") %>
+        <div class="px-5 pb-4">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="rounded-lg bg-[#FBF9F5] p-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days in hospice</div>
+              <div class="text-xl font-serif text-[#1D1C1A]"><%= @days_in_hospice || "—" %></div>
+            </div>
+            <div class="rounded-lg bg-[#FBF9F5] p-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Days to recert</div>
+              <div class="text-xl font-serif <%= @days_to_recert && @days_to_recert <= 7 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+                <%= @days_to_recert || "—" %>
+              </div>
+            </div>
+            <%
+              bp_fam_rail = current_user.family_access? && @patient.benefit_period.present?
+              bp_rail_tooltip = bp_fam_rail ? benefit_period_explanation(@patient.benefit_period, @patient.first_name) : nil
+            %>
+            <div class="rounded-lg bg-[#FBF9F5] p-3 <%= 'cursor-help' if bp_fam_rail %>"
+                 <% if bp_fam_rail %>
+                   tabindex="0"
+                   data-controller="tooltip"
+                   data-tooltip-content-value="<%= bp_rail_tooltip %>"
+                   data-action="mouseenter->tooltip#show mouseleave->tooltip#hide focus->tooltip#show blur->tooltip#hide click->tooltip#toggle"
+                 <% end %>>
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] <%= 'underline decoration-dotted decoration-[#6B665F] underline-offset-2' if bp_fam_rail %>">Benefit period</div>
+              <div class="text-sm font-medium text-[#1D1C1A] mt-0.5"><%= benefit_period_label(@patient.benefit_period) %></div>
+            </div>
+            <div class="rounded-lg <%= @unresolved_crisis > 0 ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %> p-3">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Open crises</div>
+              <div class="text-xl font-serif <%= @unresolved_crisis > 0 ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>">
+                <%= @unresolved_crisis %>
+              </div>
+            </div>
+          </div>
+
+          <% next_rn_visit = @recent_visits.find { |v| v.discipline == "rn" && v.scheduled_at && v.scheduled_at > Time.current } %>
+          <% if next_rn_visit %>
+            <div class="mt-3 rounded-lg bg-[#E6F0EE] p-3 flex items-start gap-2">
+              <i class="ri-calendar-check-line text-[#2F6F4E] mt-0.5"></i>
+              <div class="text-[12px]">
+                <div class="text-[10px] uppercase tracking-widest text-[#2F6F4E] font-bold">Next RN visit</div>
+                <div class="text-[#1D1C1A]"><%= next_rn_visit.scheduled_at.strftime("%a %b %-d · %-l:%M %p") %></div>
+                <% if next_rn_visit.user %>
+                  <div class="text-[11px] text-[#6B665F]">with <%= next_rn_visit.user.full_name %></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </details>
+
+      <%# Right-rail Quick Actions removed. The same actions now live
+          in the slide-up modal triggered by the + icon in the chat
+          composer (role-scoped: RN sees Start visit / Upload photo /
+          Document; MD adds Sign pending pre-admit; etc.). The footnote
+          about chat-as-dispatch lives in the modal header instead. %>
+
+      <!-- Latest vitals + trend sparklines -->
+      <details class="group">
+        <%= acc_header("ri-pulse-line", "Vitals", "n=#{@vitals_visits.size}") %>
+        <div class="px-5 pb-4">
+          <% if @latest_vitals_visit && (v = @latest_vitals_visit.vitals).present? %>
+          <%
+            rows = [
+              { label: "TEMP",  current: v["temp"],  series: @vitals_series[:temp],   stroke: "#C1403A", normal: [97.0, 100.4] },
+              { label: "BP",    current: v["bp"],    series: @vitals_series[:bp_sys], stroke: "#2B4A7A", normal: [90, 140] },
+              { label: "HR",    current: v["pulse"], series: @vitals_series[:pulse],  stroke: "#2F6F4E", normal: [60, 100] },
+              { label: "RR",    current: v["resp"],  series: @vitals_series[:resp],   stroke: "#7A4A8C", normal: [12, 22] },
+              { label: "SpO2",  current: v["o2"],    series: @vitals_series[:o2],     stroke: "#2F6F4E", normal: [92, 100] }
+            ]
+          %>
+          <div class="space-y-2">
+            <% rows.each do |row| %>
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-baseline gap-2 flex-shrink-0">
+                  <span class="text-[9px] text-[#6B665F] uppercase tracking-widest w-9"><%= row[:label] %></span>
+                  <span class="text-sm font-mono text-[#1D1C1A]"><%= row[:current] || "—" %></span>
+                </div>
+                <div class="flex-1 flex justify-end">
+                  <%= sparkline(row[:series], width: 100, height: 18, stroke: row[:stroke], normal_range: row[:normal]) %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+            <div class="mt-3 text-[10px] text-[#6B665F] pt-2 border-t border-[#EFECE6]">
+              Last reading: <%= @latest_vitals_visit.discipline.upcase %> ·
+              <%= @latest_vitals_visit.started_at&.strftime("%b %-d, %-l:%M %p") %>
+              <% if @latest_vitals_visit.pain_score %> · pain <%= @latest_vitals_visit.pain_score %>/10<% end %>
+            </div>
+          <% else %>
+            <div class="text-xs text-[#6B665F] italic">No vitals captured yet.</div>
+          <% end %>
+        </div>
+      </details>
+
+      <!-- Recent visits -->
+      <details class="group">
+        <%= acc_header("ri-calendar-check-line", "Recent Visits", @recent_visits.size.to_s) %>
+        <div class="px-5 pb-4">
+          <% if @recent_visits.empty? %>
+            <div class="text-xs text-[#6B665F] italic">No visits yet.</div>
+          <% else %>
+          <ul class="space-y-2">
+            <% @recent_visits.each do |v| %>
+              <li class="text-[12px] flex items-start gap-2">
+                <i class="<%=
+                  { 'rn' => 'ri-nurse-line', 'md' => 'ri-stethoscope-line',
+                    'sw' => 'ri-team-line', 'chaplain' => 'ri-hand-heart-line',
+                    'aide' => 'ri-user-2-line', 'don' => 'ri-award-line' }
+                  .fetch(v.discipline, 'ri-user-line') %> text-[#6B665F] pt-0.5"></i>
+                <div class="flex-1">
+                  <div class="text-[12px]">
+                    <span class="font-medium text-[#1D1C1A]"><%= v.discipline.upcase %></span>
+                    <span class="text-[10px] text-[#6B665F] ml-1">(<%= v.visit_type.tr("_", " ") %>)</span>
+                  </div>
+                  <div class="text-[10px] text-[#6B665F]"><%= v.started_at&.strftime("%b %-d · %-l:%M %p") || "scheduled" %></div>
+                  <% if current_user.family_access? %>
+                    <%# Family can play the visit recording and read the transcript
+                        of their loved one's visit. The polished CLINICAL note
+                        (v.narrative) stays clinician-only. %>
+                    <% fam_transcript = (respond_to?(:tidy_transcript_raw) ? tidy_transcript_raw(v.narrative_raw) : v.narrative_raw.to_s).presence %>
+                    <% if v.audio_note.attached? || fam_transcript.present? %>
+                      <details class="mt-1">
+                        <summary class="text-[11px] text-[#2B4A7A] cursor-pointer inline-flex items-center gap-1 list-none">
+                          <i class="ri-play-circle-line"></i> Recording &amp; transcript
+                        </summary>
+                        <div class="mt-2 space-y-2">
+                          <% if v.audio_note.attached? %>
+                            <%= render "visits/audio_player", src: url_for(v.audio_note), audio_class: "w-full h-8" %>
+                          <% end %>
+                          <% if fam_transcript.present? %>
+                            <div class="text-[11px] text-[#3A3936] whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto rounded-lg bg-[#FBF9F5] border border-[#EFECE6] p-2"><%= fam_transcript %></div>
+                          <% end %>
+                        </div>
+                      </details>
+                    <% end %>
+                  <% elsif v.narrative.present? %>
+                    <div class="text-[11px] text-[#3A3936] line-clamp-2 mt-0.5"><%= v.narrative %></div>
+                  <% end %>
+                </div>
+              </li>
+            <% end %>
+            </ul>
+          <% end %>
+        </div>
+      </details>
+
+      <!-- DME at home -->
+      <details class="group">
+        <%= acc_header("ri-tools-line", "DME at Home", @active_dme.size.to_s) %>
+        <div class="px-5 pb-4">
+          <% if @active_dme.empty? %>
+            <div class="text-xs text-[#6B665F] italic">None on order.</div>
+          <% else %>
+            <ul class="space-y-1">
+              <% @active_dme.each do |d| %>
+                <li class="flex items-center justify-between text-[12px]">
+                  <span class="text-[#1D1C1A]"><%= d.equipment_type.tr("_", " ") %><%= " ×#{d.quantity}" if d.quantity > 1 %></span>
+                  <span class="text-[10px] uppercase tracking-wider text-[#6B665F]"><%= d.status %></span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </div>
+      </details>
+
+      <!-- Pending pharmacy deliveries -->
+      <% if @pending_deliveries.any? %>
+        <details class="group">
+          <%= acc_header("ri-truck-line", "Pharmacy Inbound", @pending_deliveries.size.to_s) %>
+          <div class="px-5 pb-4">
+            <ul class="space-y-1">
+              <% @pending_deliveries.each do |p| %>
+                <li class="flex items-center justify-between text-[12px]">
+                  <span class="text-[#1D1C1A]"><%= p.kind.tr("_", " ") %></span>
+                  <span class="text-[10px] uppercase tracking-wider text-[#D97757]"><%= p.status %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        </details>
+      <% end %>
