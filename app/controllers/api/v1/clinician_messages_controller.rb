@@ -188,13 +188,21 @@ module Api
         AFFIRMATIVES.include?(first)
       end
 
+      OFFER_PHRASING_RE = /\b(want me to|should i|would you like me to|ping|notify|connect|flag|route)\b/i
+
+      # An OPEN offer is only the LATEST HosAlivio message — if a dispatch ack
+      # or answer came after it, the offer was already acted on. Returning a
+      # stale offer here let a second "yes" re-fire the same action, looping
+      # the dispatch (e.g. "Kendra (Insurance) asked to verify insurance"
+      # over and over). Anchoring to the latest message closes the offer once.
       def recent_hosalivio_offer(patient)
         return nil if patient.nil?
-        patient.notes
-               .where(author_role: "admissions", source: "system")
-               .where("created_at > ?", 30.minutes.ago)
-               .order(created_at: :desc)
-               .detect { |note| note.body.to_s.match?(/\b(want me to|should i|would you like me to|ping|notify|connect|flag|route)\b/i) }
+        latest = patient.notes
+                        .where(author_role: "admissions", source: "system")
+                        .where("created_at > ?", 30.minutes.ago)
+                        .order(created_at: :desc)
+                        .first
+        latest if latest&.body.to_s.match?(OFFER_PHRASING_RE)
       end
 
       # True when the body is a short reply that's most likely a
