@@ -112,11 +112,17 @@ class DashboardsController < ApplicationController
     # Role-specific priority data
     case @primary_role
     when "md"
+      # Only this MD's queue: evals for patients they're the assigned MD on,
+      # plus any patient with no MD assigned yet (so an unassigned eval still
+      # reaches someone instead of being invisible to everyone).
       @pending_certs = PreAdmitEval.where(agency: @agency, status: :final)
+                                    .joins(:patient)
+                                    .where("patients.assigned_md_id = :me OR patients.assigned_md_id IS NULL", me: me.id)
                                     .order(:evaluated_at).includes(:patient)
       @upcoming_recerts = Patient.where(agency: @agency)
                                   .where.not(cert_period_end: nil)
                                   .where(cert_period_end: Date.current..(Date.current + 14.days))
+                                  .where("assigned_md_id = :me OR assigned_md_id IS NULL", me: me.id)
                                   .order(:cert_period_end)
     when "social_worker"
       @psychosocial_due = Patient.where(agency: @agency, status: :active, assigned_sw_id: me.id)
