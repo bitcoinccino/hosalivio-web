@@ -61,6 +61,15 @@
       </div>
     <% end %>
 
+    <%# Live in-app notifications. Every page subscribes to the signed-in
+        user's own signed stream; Notification#broadcast_realtime appends a
+        toast the moment a mention / reply / assignment / flag is created,
+        on whatever page they happen to be on. %>
+    <% if user_signed_in? %>
+      <%= turbo_stream_from "notifications:user:#{current_user.id}" %>
+      <div id="notification-toasts" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[min(92vw,360px)]"></div>
+    <% end %>
+
     <%= yield %>
   </body>
 </html>
