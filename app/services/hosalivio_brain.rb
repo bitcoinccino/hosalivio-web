@@ -100,17 +100,26 @@ class HosalivioBrain
           # OutboundPing for the named user. We validate the role
           # against a fixed set; everything else is just a string the
           # caller can sanity-check.
+          allowed_roles = %w[rn md don sw social_worker chaplain aide admissions insurance billing]
+
           notify = parsed["notify"]
           notify = nil unless notify.is_a?(Hash)
-          if notify
-            allowed_roles = %w[rn md don sw social_worker chaplain aide admissions insurance billing]
-            notify_role   = notify["role"].to_s
-            notify        = nil unless allowed_roles.include?(notify_role)
-          end
+          notify = nil if notify && !allowed_roles.include?(notify["role"].to_s)
+
+          # Optional structured OFFER directive — set when the brain proactively
+          # offers to ping/notify a teammate ("Want me to flag the DON?"). The
+          # caller renders Send/Cancel buttons (the relay offer pill) so the
+          # clinician acts with one tap instead of typing "yes". Shape:
+          # { "role": "<role>", "message": "<the flag to send, situation only>" }.
+          offer = parsed["offer"]
+          offer = nil unless offer.is_a?(Hash) &&
+                             allowed_roles.include?(offer["role"].to_s) &&
+                             offer["message"].to_s.strip.present?
 
           return {
             "answer" => answer,
             "notify" => notify,
+            "offer"  => offer,
             "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
           }.compact
         rescue => e
@@ -1168,10 +1177,30 @@ class HosalivioBrain
       Do NOT emit notify for general informational answers, only when
       the user is clearly accepting a "should I contact X?" offer.
 
+    OFFER DIRECTIVE (optional, separate top-level key):
+      When you would PROACTIVELY offer to ping/notify a teammate ("Want me
+      to flag the DON?", "Should I let the RN know?"), emit a structured
+      `offer` so the UI shows one-tap Send / Cancel buttons instead of
+      making the clinician type "yes":
+        "offer": { "role": "<rn|md|don|sw|chaplain|aide|admissions|...>",
+                   "message": "<the flag to send, SITUATION only>" }
+
+      Rules:
+        - `message` follows the same rules as notify.reason: describe the
+          SITUATION, do NOT name the clinician, no patient full name.
+        - When you emit `offer`, keep `answer` focused on ANSWERING the
+          question. Do NOT also ask "want me to ping them?" in prose — the
+          Send button already asks. (offer = the proactive button; notify =
+          the user accepting a past prose offer. Don't emit both.)
+        - Only offer when a ping is genuinely useful (an unaddressed issue,
+          a gap, a follow-up the chart shows nobody has). Don't offer on
+          every answer.
+
     Output ONLY a JSON object (no markdown fences, no preamble).
     Shape:
       { "answer": "<your reply, plain text, 1-5 sentences>",
-        "notify": { "role": "...", "reason": "..." }   // omit when not needed
+        "notify": { "role": "...", "reason": "..." },  // omit unless accepting an offer
+        "offer":  { "role": "...", "message": "..." }   // omit unless proactively offering a ping
       }
   SYS
 

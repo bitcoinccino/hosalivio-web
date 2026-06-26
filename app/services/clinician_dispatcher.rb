@@ -340,6 +340,12 @@ class ClinicianDispatcher
       if (notify = result["notify"])
         execute_notify_directive(notify)
       end
+      # Proactive offer: the brain wants to ping a teammate. Post a Send/Cancel
+      # offer pill (same one the imperative relay uses) so the clinician acts
+      # with one tap instead of typing "yes".
+      if (offer = result["offer"])
+        post_ping_offer(offer["role"], offer["message"])
+      end
       AgentEvent.create!(
         agency:      @agency,
         agent_id:    "hosalivio_brain",
@@ -443,18 +449,8 @@ class ClinicianDispatcher
       return Result.new(dispatched: false, reason: "notify_clinician_incomplete", intent: "notify_clinician")
     end
 
-    label  = relay_role_label(role)
-    target = resolve_clinician_for_role(role)
-    unless target
-      post_ack("I don't see an assigned #{label} on this patient yet, so I couldn't pass that along. Want me to route it another way?")
-      return Result.new(dispatched: false, reason: "no_clinician_for_role:#{role}", intent: "notify_clinician")
-    end
-
-    # The exact text that will be sent (mention added at send time, so we
-    # strip the target's name here to avoid naming them twice).
-    message = scrub_clinician_name_from_reason(reason, target).presence || reason
-    post_relay_offer(role: role, target: target, label: label, message: message)
-    Result.new(dispatched: true, intent: "notify_clinician_offer")
+    posted = post_ping_offer(role, reason)
+    Result.new(dispatched: posted, intent: posted ? "notify_clinician_offer" : "no_clinician_for_role:#{role}")
   rescue => e
     Rails.logger.warn("[ClinicianDispatcher#dispatch_clinician_relay] #{e.class}: #{e.message}")
     post_ack("I hit a snag drafting that. Mind trying again, or tag the teammate directly?")
@@ -493,6 +489,28 @@ class ClinicianDispatcher
       post_ack("Okay, I won't send that. Nothing went out.")
     end
     Result.new(dispatched: true, intent: "cancel_relay")
+  end
+
+  # Resolve a role to its assigned clinician and post a Send/Cancel offer
+  # pill carrying `message`. Shared by the imperative relay ("let the MD
+  # know …") and the Q&A proactive offer ("Want me to flag the DON?").
+  # Returns true if an offer pill was posted, false (with a soft ack) when
+  # the role can't be resolved to a human.
+  def post_ping_offer(role, message)
+    role    = role.to_s.strip.downcase
+    message = message.to_s.strip
+    return false if role.empty? || message.empty?
+
+    label  = relay_role_label(role)
+    target = resolve_clinician_for_role(role)
+    unless target
+      post_ack("I don't see an assigned #{label} on this patient yet, so I couldn't flag them. Want me to route it another way?")
+      return false
+    end
+    # Strip the target's name so the @-mention added at send time isn't doubled.
+    clean = scrub_clinician_name_from_reason(message, target).presence || message
+    post_relay_offer(role: role, target: target, label: label, message: clean)
+    true
   end
 
   # Posts the drafted-but-unsent relay preview. The marker line stores the
