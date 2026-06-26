@@ -20,10 +20,7 @@
   <a href="/notifications" class="<%= base %> <%= active == :inbox ? on : off %> relative">
     <i class="ri-notification-3-line text-lg"></i>
     <span class="uppercase tracking-wider mt-0.5">Inbox</span>
-    <% mobile_unread = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
-    <% if mobile_unread > 0 %>
-      <span class="absolute top-1 right-1/4 w-2 h-2 rounded-full bg-[#D97757]"></span>
-    <% end %>
+    <%= render "notifications/bell_badge" %>
   </a>
   <%= link_to edit_profile_path, class: "#{base} #{active == :profile ? on : off}" do %>
     <i class="ri-user-line text-lg"></i>

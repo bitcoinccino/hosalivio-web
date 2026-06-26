@@ -24,6 +24,21 @@ class Notification < ApplicationRecord
   def read?  = read_at.present?
   def mark_read!(at = Time.current) = update!(read_at: at)
 
+  # Live-replace the unread-count bell badge on a user's stream. Called on
+  # create (count up) and after the mark-read actions (count down). Uses an
+  # explicit agency/user scope so it's tenant-safe inside model callbacks.
+  def self.broadcast_badge(agency_id:, user_id:)
+    count = unscoped.where(agency_id: agency_id, user_id: user_id, read_at: nil).count
+    Turbo::StreamsChannel.broadcast_replace_to(
+      "notifications:user:#{user_id}",
+      target:  "notif-bell-badge",
+      partial: "notifications/bell_badge",
+      locals:  { count: count }
+    )
+  rescue => e
+    Rails.logger.warn("[Notification.broadcast_badge] #{e.class}: #{e.message}")
+  end
+
   private
 
   def broadcast_realtime
@@ -33,6 +48,7 @@ class Notification < ApplicationRecord
       partial: "notifications/toast",
       locals:  { notification: self }
     )
+    self.class.broadcast_badge(agency_id: agency_id, user_id: user_id)
   rescue => e
     # A live-toast failure must never break the create or the outbound ping.
     Rails.logger.warn("[Notification#broadcast_realtime] #{e.class}: #{e.message}")

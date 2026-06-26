@@ -14,6 +14,7 @@ class NotificationsController < ApplicationController
       n = Notification.find_by(id: params[:id], user_id: current_user.id)
       n&.mark_read!
     end
+    Notification.broadcast_badge(agency_id: current_user.agency_id, user_id: current_user.id)
     redirect_back fallback_location: notifications_path
   end
 
@@ -22,6 +23,7 @@ class NotificationsController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       Notification.where(user: current_user, read_at: nil).update_all(read_at: Time.current)
     end
+    Notification.broadcast_badge(agency_id: current_user.agency_id, user_id: current_user.id)
     redirect_back fallback_location: notifications_path
   end
 end

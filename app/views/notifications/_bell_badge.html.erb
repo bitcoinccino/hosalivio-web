@@ -1,0 +1,12 @@
+<%#
+  Unread-count badge on the notifications bell. Replaceable by Turbo
+  (id below) so Notification#broadcast_realtime and the mark-read actions
+  can update it live. In a request it falls back to current_user; in a
+  broadcast the caller passes `count:`.
+%>
+<% count = local_assigns.key?(:count) ? count : Notification.where(user: current_user, read_at: nil).count %>
+<span id="notif-bell-badge">
+  <% if count.to_i > 0 %>
+    <span class="absolute top-0.5 right-1/4 min-w-[16px] h-4 px-1 rounded-full bg-[#D97757] text-white text-[9px] font-bold leading-none flex items-center justify-center"><%= count > 9 ? "9+" : count %></span>
+  <% end %>
+</span>
