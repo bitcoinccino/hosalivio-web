@@ -8,18 +8,18 @@
               <%= notification.read_at.nil? ? 'bg-[#FFF3EC] text-[#D97757]' : 'bg-[#EFECE6] text-[#6B665F]' %>">
     <i class="<%= notification.kind == 'visit_reminder_24h' ? 'ri-calendar-check-line' : 'ri-notification-line' %>"></i>
   </div>
-  <div class="flex-1 min-w-0">
-    <div class="text-[13px] font-medium text-[#1D1C1A]"><%= notification.title %></div>
+  <%# Whole content area is a link to the exact target (deep-links Note
+      notifications straight to the message in the chat). The mark-read
+      button stays a sibling so we don't nest a button inside an anchor. %>
+  <%= link_to notification_target_path(notification), class: "flex-1 min-w-0 block group" do %>
+    <div class="text-[13px] font-medium text-[#1D1C1A] group-hover:underline underline-offset-2"><%= notification.title %></div>
     <% if notification.body.present? %>
       <div class="text-[12px] text-[#3A3936] mt-1 leading-relaxed"><%= notification.body %></div>
     <% end %>
     <div class="text-[10px] text-[#6B665F] font-mono mt-2">
       <%= notification.created_at.strftime("%b %-d · %-l:%M %p") %>
-      <% if notification.linked_type == "Visit" && notification.linked_id %>
-        · <%= link_to "open in calendar", visit_path(notification.linked_id), class: "text-[#D97757] hover:underline" %>
-      <% end %>
     </div>
-  </div>
+  <% end %>
   <% if notification.read_at.nil? %>
     <%= button_to mark_read_notification_path(notification), class: "text-[11px] text-[#6B665F] hover:text-[#1D1C1A]" do %>
       <i class="ri-check-line"></i>
