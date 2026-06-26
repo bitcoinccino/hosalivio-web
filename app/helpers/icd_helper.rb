@@ -20,7 +20,25 @@ module IcdHelper
       render_icd_token(code, audience: audience)
     end
 
-    replaced.html_safe
+    highlight_chat_mentions(replaced).html_safe
+  end
+
+  # @mentions in a message body. @HosAlivio gets the brand color + bot icon
+  # (so the AI is instantly recognizable even inside a human's message);
+  # any other @handle (@Pascal, @DON, @RN) is highlighted like a name. Runs
+  # after ICD tokenization on the already-escaped string; the handle is \w+
+  # so there's nothing to inject. Safe to no-op when there are no mentions.
+  MENTION_RE = /@(\w+)/
+  def highlight_chat_mentions(html)
+    html.gsub(MENTION_RE) do
+      handle = Regexp.last_match(1)
+      if handle.casecmp?("hosalivio")
+        %(<span class="inline-flex items-center gap-0.5 font-semibold text-[#D97757]">) +
+          %(<i class="ri-heart-pulse-line text-[11px]"></i>@#{handle}</span>)
+      else
+        %(<span class="font-semibold text-[#2B4A7A]">@#{handle}</span>)
+      end
+    end
   end
 
   # Render a single ICD code (no surrounding prose) — useful for diagnosis
