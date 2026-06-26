@@ -17,6 +17,12 @@ class PatientChatsController < ApplicationController
       @replies_by_parent = reply_scope.order(:created_at).group_by(&:parent_note_id)
       @idg_roster = build_idg_roster(@patient)
 
+      # Inline RN reassignment in the IDG roster — admin / DON / admissions only
+      # (mirrors PatientPolicy#update?). @assignable_rns is the dropdown pool.
+      @can_reassign_rn = !current_user.family_access? &&
+                         (current_user.role_names & %w[admin don admissions]).any?
+      @assignable_rns  = @can_reassign_rn ? agency_rns.to_a : []
+
       # Right-rail clinical context
       @active_orders      = @patient.medication_orders.where(status: :active).includes(:medication_logs).order(created_at: :desc).to_a
       @recent_visits      = @patient.visits.order(started_at: :desc).limit(10).to_a
@@ -80,6 +86,15 @@ class PatientChatsController < ApplicationController
   # The green "present" dot means the clinician is ACTUALLY on call right
   # now (User#on_call == true), not just that they're assigned. A grey dot
   # = assigned but off-duty; slot with no user = role unassigned.
+  # Active RNs in this agency — the reassignment dropdown pool.
+  def agency_rns
+    User.joins(user_roles: :role)
+        .where(agency: @agency, active: true)
+        .where(roles: { name: "rn" })
+        .distinct
+        .order(:full_name)
+  end
+
   def build_idg_roster(patient)
     roster = [
       { role: "rn",            user: patient.assigned_rn },

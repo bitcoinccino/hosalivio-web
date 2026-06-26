@@ -25,6 +25,7 @@ class VisitsController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @visit = Visit.new(visit_params.merge(agency: current_user.agency, agent_authored: false, created_by_user_id: current_user.id))
       if @visit.save
+        @visit.deliver_assignment_email!(scheduled_by: current_user)
         redirect_to calendar_path(date: (@visit.scheduled_at || Time.current).to_date),
                     status: :see_other,
                     notice: "Visit scheduled for #{@visit.scheduled_at&.strftime('%a %b %-d, %-l:%M %p')}."
