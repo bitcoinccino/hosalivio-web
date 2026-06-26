@@ -114,6 +114,20 @@ class Visit < ApplicationRecord
   belongs_to :patient
   belongs_to :user  # clinician who visited
   belongs_to :created_by_user, class_name: "User", optional: true # whoever scheduled it (admin, admissions, RN one-tap, AI agent)
+
+  # Email the assigned clinician right after a human schedules this visit,
+  # so they don't have to wait for the 24h reminder to learn about it.
+  # No-ops when there's no assignee, the assignee has no email, the visit
+  # was AI-suggested, or the scheduler assigned it to themselves.
+  def deliver_assignment_email!(scheduled_by: nil)
+    return if user_id.blank? || agent_authored?
+    return if scheduled_by && scheduled_by.id == user_id
+    return if user&.email.blank?
+
+    VisitReminderMailer.with(visit: self, scheduled_by: scheduled_by).assigned.deliver_later
+  rescue => e
+    Rails.logger.warn("[Visit#deliver_assignment_email!] #{e.class}: #{e.message}")
+  end
   has_one    :pre_admit_eval
   # has_one's dependent: :nullify only unlinks ONE row. A rare duplicate draft
   # eval for the same visit left a straggler that blocked deletion with a FK

@@ -65,6 +65,7 @@ Rails.application.routes.draw do
   # Defined before the patients/:id show route so /patients/new isn't
   # swallowed by the :id segment.
   resources :patients, only: [:new, :create] do
+    member { patch :reassign_rn }   # admin/DON/admissions: change the assigned case-manager RN
     resource  :photo, only: [:create, :destroy], controller: "patient_photos"
     resources :family, only: [:new, :create, :destroy], controller: "patient_families"
     resources :consents, only: [:index, :new, :create, :show], controller: "consent_forms"

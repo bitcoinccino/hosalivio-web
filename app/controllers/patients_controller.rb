@@ -27,7 +27,39 @@ class PatientsController < ApplicationController
     end
   end
 
+  # PATCH /patients/:id/reassign_rn — change the patient's case-manager RN.
+  # Gated to REGISTRAR_ROLES by the authorize_registrar! before_action
+  # (mirrors PatientPolicy#update?). Only touches assigned_rn_id; a blank
+  # value unassigns. Validates the target is an active RN in this agency.
+  def reassign_rn
+    ActsAsTenant.with_tenant(current_user.agency) do
+      patient = Patient.find(params[:id])
+      rn_id   = params[:assigned_rn_id].presence
+      rn      = rn_id && agency_rns.find_by(id: rn_id)
+
+      if rn_id && rn.nil?
+        return redirect_to patient_path(patient), status: :see_other,
+          alert: "That nurse isn't an active RN in your agency."
+      end
+
+      patient.update!(assigned_rn_id: rn&.id)
+      redirect_to patient_path(patient), status: :see_other,
+        notice: rn ? "#{patient.full_name} reassigned to #{rn.full_name}." \
+                   : "#{patient.full_name}'s RN was unassigned."
+    end
+  end
+
   private
+
+  # Active users with the RN role in the current agency — the pool of
+  # valid reassignment targets.
+  def agency_rns
+    User.joins(user_roles: :role)
+        .where(agency: current_user.agency, active: true)
+        .where(roles: { name: "rn" })
+        .distinct
+        .order(:full_name)
+  end
 
   def redirect_family_users
     return unless current_user&.family_access?
