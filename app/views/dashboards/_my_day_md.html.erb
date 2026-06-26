@@ -1,57 +1,86 @@
-<%# MD priority panel — certifications are the core MD bottleneck %>
-<% if @pending_certs.any? || @upcoming_recerts.any? %>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <section class="rounded-2xl bg-white border border-[#2B4A7A] overflow-hidden">
-      <div class="px-5 py-3 bg-[#F0F4FA] border-b border-[#EFECE6]">
-        <h3 class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold"><i class="ri-stethoscope-line"></i> Pending certifications (<%= @pending_certs.size %>)</h3>
-      </div>
-      <% if @pending_certs.empty? %>
-        <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No evals awaiting MD certification.</div>
-      <% else %>
-        <ul class="divide-y divide-[#EFECE6]">
-          <% @pending_certs.each do |eval_rec| %>
-            <li>
-              <%= link_to pre_admit_eval_path(eval_rec), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
-                <div class="flex items-baseline justify-between gap-2">
-                  <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= eval_rec.patient.full_name %></div>
-                  <span class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= eval_rec.evaluated_at&.strftime("%b %-d") %></span>
-                </div>
-                <div class="text-[11px] text-[#6B665F] mt-0.5 truncate">
-                  <span class="font-mono"><%= eval_rec.primary_icd10 %></span> <%= eval_rec.primary_icd10_description %>
-                </div>
-                <% blockers = eval_rec.certification_blockers %>
-                <% if blockers.any? %>
-                  <div class="text-[10px] text-[#C1403A] mt-1">Blocks: <%= blockers.first(2).join("; ") %></div>
-                <% end %>
-              <% end %>
-            </li>
-          <% end %>
-        </ul>
-      <% end %>
-    </section>
+<%# MD cockpit. Certifications are the core MD action and revenue gate, so
+    the queue leads full-width and always renders (even empty) as the MD's
+    anchor. Recert deadlines + evals awaiting RN revision sit below. %>
 
-    <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
-      <div class="px-5 py-3 border-b border-[#EFECE6]">
-        <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-calendar-schedule-line"></i> Recert / F2F within 14 days (<%= @upcoming_recerts.size %>)</h3>
-      </div>
-      <% if @upcoming_recerts.empty? %>
-        <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No recertifications due.</div>
-      <% else %>
-        <ul class="divide-y divide-[#EFECE6]">
-          <% @upcoming_recerts.each do |p| %>
-            <li>
-              <%= link_to patient_path(p), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
-                <% days_left = (p.cert_period_end - Date.current).to_i %>
-                <div class="flex items-baseline justify-between gap-2">
-                  <div class="text-[13px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
-                  <span class="text-[11px] font-mono font-bold <%= days_left <= 7 ? 'text-[#C1403A]' : 'text-[#D97757]' %>"><%= days_left %>d</span>
-                </div>
-                <div class="text-[11px] text-[#6B665F] mt-0.5"><%= p.benefit_period&.upcase %> ends <%= p.cert_period_end.strftime("%b %-d") %></div>
-              <% end %>
-            </li>
-          <% end %>
-        </ul>
-      <% end %>
-    </section>
+<%# ── Primary: pending certifications ─────────────────────────── %>
+<section class="rounded-2xl bg-white border border-[#2B4A7A] overflow-hidden">
+  <div class="px-5 py-3 bg-[#F0F4FA] border-b border-[#EFECE6] flex items-center justify-between">
+    <h3 class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold"><i class="ri-stethoscope-line"></i> Awaiting your certification (<%= @pending_certs.size %>)</h3>
+    <span class="text-[10px] text-[#6B665F]">Review &amp; certify the terminal prognosis</span>
   </div>
-<% end %>
+  <% if @pending_certs.empty? %>
+    <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No evals awaiting certification. You're clear.</div>
+  <% else %>
+    <ul class="divide-y divide-[#EFECE6]">
+      <% @pending_certs.each do |eval_rec| %>
+        <li>
+          <%= link_to pre_admit_eval_path(eval_rec), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+            <div class="flex items-baseline justify-between gap-2">
+              <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= eval_rec.patient.full_name %></div>
+              <span class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= eval_rec.evaluated_at&.strftime("%b %-d") %></span>
+            </div>
+            <div class="text-[11px] text-[#6B665F] mt-0.5 truncate">
+              <span class="font-mono"><%= eval_rec.primary_icd10 %></span> <%= eval_rec.primary_icd10_description %>
+            </div>
+            <% blockers = eval_rec.certification_blockers %>
+            <% if blockers.any? %>
+              <div class="text-[10px] text-[#C1403A] mt-1">Blocks: <%= blockers.first(2).join("; ") %></div>
+            <% end %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>
+
+<%# ── Secondary row: recert deadlines + evals you sent back ─────── %>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6]">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-calendar-schedule-line"></i> Recert / F2F within 14 days (<%= @upcoming_recerts.size %>)</h3>
+    </div>
+    <% if @upcoming_recerts.empty? %>
+      <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">No recertifications due.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @upcoming_recerts.each do |p| %>
+          <li>
+            <%= link_to patient_path(p), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <% days_left = (p.cert_period_end - Date.current).to_i %>
+              <div class="flex items-baseline justify-between gap-2">
+                <div class="text-[13px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
+                <span class="text-[11px] font-mono font-bold <%= days_left <= 7 ? "text-[#C1403A]" : "text-[#D97757]" %>"><%= days_left %>d</span>
+              </div>
+              <div class="text-[11px] text-[#6B665F] mt-0.5"><%= p.benefit_period&.upcase %> ends <%= p.cert_period_end.strftime("%b %-d") %></div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+
+  <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6]">
+      <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold"><i class="ri-arrow-go-back-line"></i> Awaiting RN revision (<%= @awaiting_revision.size %>)</h3>
+    </div>
+    <% if @awaiting_revision.empty? %>
+      <div class="px-5 py-8 text-center text-[12px] text-[#6B665F]">Nothing sent back for revision.</div>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @awaiting_revision.each do |req| %>
+          <% eval_rec = req.pre_admit_eval %>
+          <% next unless eval_rec %>
+          <li>
+            <%= link_to pre_admit_eval_path(eval_rec), class: "block px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <div class="flex items-baseline justify-between gap-2">
+                <div class="text-[13px] text-[#1D1C1A] truncate"><%= eval_rec.patient&.full_name %></div>
+                <span class="text-[10px] text-[#6B665F] font-mono flex-shrink-0">sent <%= req.created_at.strftime("%b %-d") %></span>
+              </div>
+              <div class="text-[11px] text-[#6B665F] mt-0.5 italic truncate">"<%= req.comment.to_s[0, 80] %>"</div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>

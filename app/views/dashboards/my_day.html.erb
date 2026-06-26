@@ -106,15 +106,22 @@
             the card refreshes itself without a full page reload. %>
         <%= turbo_stream_from "dashboard:user:#{current_user.id}" %>
 
+        <%# MDs don't record bedside visits or administer/log meds, so the
+            "Today's visits" and "Overdue meds" cards below are hidden for
+            them — their dashboard centers on certifications + caseload. The
+            remaining cards go full-width when the bedside card is dropped. %>
+        <% is_md = @primary_role == "md" %>
+
         <%# ── Daily context row (top) ───────────────────────────
             Today's visits + My caseload — what an RN opens the app
             to see first ("what am I doing today, who am I
-            responsible for"). Side-by-side on wide screens, stacked
-            on narrow. %>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <%= render "dashboards/todays_visits_card",
-                todays_visits:  @todays_visits,
-                viewer_user_id: current_user.id %>
+            responsible for"). MD: caseload only, full width. %>
+        <div class="grid grid-cols-1 <%= is_md ? "" : "lg:grid-cols-2" %> gap-4">
+          <% unless is_md %>
+            <%= render "dashboards/todays_visits_card",
+                  todays_visits:  @todays_visits,
+                  viewer_user_id: current_user.id %>
+          <% end %>
 
           <%# Caseload card — kept inline (no partial yet) since it
               doesn't have a live broadcast hook. Same visual shape
@@ -166,7 +173,15 @@
                           <% if patient_crisis %>
                             <span class="rounded-full bg-[#C1403A] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">Crisis</span>
                           <% end %>
-                          <% if med_overdue %>
+                          <%# MD-relevant cert status (no extra queries — uses preloaded id sets). %>
+                          <% if is_md && @md_cert_pending_pids&.include?(p.id) %>
+                            <span class="rounded-full bg-[#2B4A7A] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">Cert pending</span>
+                          <% end %>
+                          <% if is_md && @md_revision_pids&.include?(p.id) %>
+                            <span class="rounded-full border border-[#F3D7C8] bg-[#FFF7F2] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#8A4B2F]">Awaiting revision</span>
+                          <% end %>
+                          <%# Med administration + "not seen" are bedside RN signals — hide for MD. %>
+                          <% if med_overdue && !is_md %>
                             <span class="rounded-full border border-[#F3D7C8] bg-[#FFF3EC] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#C1403A]">Med overdue</span>
                           <% end %>
                           <% if handoff_waiting %>
@@ -175,7 +190,7 @@
                           <% if recert_days && recert_days <= 14 %>
                             <span class="rounded-full border border-[#C8DDD6] bg-[#E6F0EE] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#2F6F4E]">Recert <%= recert_days %>d</span>
                           <% end %>
-                          <% if days_since_seen && days_since_seen >= 5 %>
+                          <% if days_since_seen && days_since_seen >= 5 && !is_md %>
                             <span class="rounded-full border border-[#EFECE6] bg-[#FBF9F5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6B665F]">Not seen <%= days_since_seen %>d</span>
                           <% end %>
                         </div>
@@ -194,14 +209,14 @@
         </div>
 
         <%# ── Action / alerts row (bottom) ─────────────────────
-            Overdue meds + Handoffs. These are exception alerts that
-            sit BELOW the daily context — they're loud (red borders,
-            crisis pills) so they don't get missed even when not at
-            the top. %>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <%= render "dashboards/overdue_meds_card",
-                overdue_meds:   @overdue_meds,
-                viewer_user_id: current_user.id %>
+            Overdue meds + Handoffs. Exception alerts. MD: handoffs only
+            (overdue-med administration isn't an MD action), full width. %>
+        <div class="grid grid-cols-1 <%= is_md ? "" : "lg:grid-cols-2" %> gap-4">
+          <% unless is_md %>
+            <%= render "dashboards/overdue_meds_card",
+                  overdue_meds:   @overdue_meds,
+                  viewer_user_id: current_user.id %>
+          <% end %>
           <%= render "dashboards/handoffs_card",
                 pending_handoffs: @pending_handoffs,
                 viewer_user_id:   current_user.id %>
