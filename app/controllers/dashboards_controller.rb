@@ -2,7 +2,7 @@ class DashboardsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
 
-  MANAGER_ROLES = %w[admin don admissions ceo].freeze
+  MANAGER_ROLES = %w[admin don admissions].freeze
   CLINICAL_ROLES = %w[rn md social_worker chaplain aide dme pharmacy insurance billing].freeze
 
   def show

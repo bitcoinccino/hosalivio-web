@@ -102,7 +102,7 @@
         No agency yet — run <code class="font-mono text-[#1D1C1A]">bin/rails db:seed</code>.
       </div>
     <% else %>
-      <% manager_roles = %w[admin don admissions ceo] %>
+      <% manager_roles = %w[admin don admissions] %>
       <% is_manager = (current_user.role_names & manager_roles).any? %>
       <% if is_manager && (@pending_certifications.any? || @pending_noe.any?) %>
         <section class="mx-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -28,7 +28,7 @@
       chaplain, aide) get a read-only view because changing the
       assignment from the bedside is a workflow violation; they
       ping admissions if anything's wrong. %>
-  <% can_edit_metadata = (current_user.role_names & %w[admin don admissions ceo]).any? %>
+  <% can_edit_metadata = (current_user.role_names & %w[admin don admissions]).any? %>
   <% role_label = @visit.discipline.to_s.presence&.upcase || "VISIT" %>
   <% calendar_return_path = calendar_path(date: (@visit.scheduled_at || Time.current).to_date.iso8601) %>
 

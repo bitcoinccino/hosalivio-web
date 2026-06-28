@@ -213,7 +213,7 @@
                 <%# Sync to EMR (VITAS gateway) — admin / DON / MD. Enabled once
                     the eval is certified, or to retry a failed transmission;
                     shown disabled (with why) before then. %>
-                <% if (current_user.role_names & %w[admin don md ceo]).any? %>
+                <% if (current_user.role_names & %w[admin don md]).any? %>
                   <% sync_enabled = @eval.sync_failed? ||
                                     ((@eval.status_certified? || @eval.status_noe_filed?) && !@eval.sync_processing?) %>
                   <% if sync_enabled %>

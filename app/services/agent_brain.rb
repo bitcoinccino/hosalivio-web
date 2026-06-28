@@ -32,8 +32,7 @@ class AgentBrain
     "billing"       => "billing",
     "chaplain"      => "chaplain",
     "social_worker" => "social_worker",
-    "aide"          => "aides",
-    "ceo"           => "ceo"
+    "aide"          => "aides"
   }.freeze
 
   # Output-schema vocabulary. Triager maps each to a concrete DB write.
@@ -63,7 +62,7 @@ class AgentBrain
   # produce structured records (pharm_delivery, dme_order, insurance note,
   # billing claim) are skipped to avoid prompt bloat without protection value.
   ROLES_REQUIRING_DOCUMENTATION_DISCIPLINE = %w[
-    admissions rn lpn md don aide social_worker chaplain ceo
+    admissions rn lpn md don aide social_worker chaplain
   ].freeze
 
   # Universal documentation hygiene. Non-negotiable. Appended to the system
@@ -347,7 +346,7 @@ class AgentBrain
                              "frequency", "prn": true|false, "prn_indication", "start_date", "end_date" }
       write_pharm_delivery { "patient_id", "medication_order_id" (optional), "kind": "comfort_kit|refill|new_fill|emergency" }
       write_dme_order     { "patient_id", "equipment_type", "quantity", "vendor" }
-      handoff_to          { "target_role": "rn|md|don|dme|pharmacy|insurance|billing|chaplain|social_worker|aide|admissions|ceo",
+      handoff_to          { "target_role": "rn|md|don|dme|pharmacy|insurance|billing|chaplain|social_worker|aide|admissions",
                              "intent", "urgency": "crisis|urgent|normal" }
       broadcast_reply     { "patient_id", "body", "urgency": "normal" }   (posts a family-visible note from YOU)
       no_action           {}                                              (observe; do not write anything)

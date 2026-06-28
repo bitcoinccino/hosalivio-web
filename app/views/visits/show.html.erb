@@ -145,7 +145,7 @@
           # Clinical detail (medical snapshot + start) is for the assigned
           # clinician + managers + the reviewing MD only.
           is_assigned   = @visit.user_id == current_user.id
-          is_mgr        = (current_user.role_names & %w[admin don admissions ceo]).any?
+          is_mgr        = (current_user.role_names & %w[admin don admissions]).any?
           can_see_clin  = is_assigned || is_mgr || current_user.role_names.include?("md")
           can_start     = !@visit.completed_visit? && (is_assigned || is_mgr)
         %>
@@ -366,7 +366,7 @@
                     title: "Completed visits are locked except vitals corrections and late-entry workflows." do %>
                 <i class="ri-lock-2-line"></i> Corrections
               <% end %>
-            <% elsif (current_user.role_names & %w[admin don admissions ceo]).any? %>
+            <% elsif (current_user.role_names & %w[admin don admissions]).any? %>
               <%# Reschedule + remove are scheduling actions — admin/admissions
                   only. The assigned RN records the visit (start_now) and
                   discards their own draft from the recording workspace. %>

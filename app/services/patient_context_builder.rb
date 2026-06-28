@@ -10,7 +10,7 @@
 # relying on the model to filter via system prompt.
 
 class PatientContextBuilder
-  FULL_CLINICAL = %w[rn md don admissions admin ceo].freeze
+  FULL_CLINICAL = %w[rn md don admissions admin].freeze
   AIDE_ONLY     = %w[aide].freeze
   PSYCHOSOCIAL  = %w[sw social_worker chaplain].freeze
   FAMILY        = %w[family].freeze

@@ -176,7 +176,7 @@ class PreAdmitEvalsController < ApplicationController
   # land after an eval was already certified (the auto-fire on certification
   # no-opped because the gateway was dormant).
   def retry_sync
-    unless (current_user.role_names & %w[admin don md ceo]).any?
+    unless (current_user.role_names & %w[admin don md]).any?
       redirect_to(pre_admit_eval_path(@eval), alert: "Only admin / DON / MD can trigger an EMR sync.") and return
     end
 
