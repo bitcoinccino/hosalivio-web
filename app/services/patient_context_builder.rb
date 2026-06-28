@@ -141,7 +141,7 @@ class PatientContextBuilder
     # a started_at. completed = has ended_at; in_progress = started, not ended;
     # scheduled = neither.
     status = if v.ended_at.present?      then "completed"
-    elsif v.started_at.present? then "in_progress"
+    elsif v.started_at.present? then "in progress"
     else                             "scheduled"
     end
     {

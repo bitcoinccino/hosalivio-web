@@ -18,7 +18,12 @@ class ClinicianMessageResponseJob < ApplicationJob
         action, ack, notify = classify_action(note, requester)
       end
       if action.blank? || action == "no_action"
-        broadcast_idle(note)
+        # A direct @HosAlivio mention should never vanish without a reply.
+        # If we couldn't classify it, post a short ack; otherwise (an action-
+        # verb message with no mention) fall back to the silent idle signal.
+        unless ClinicianDispatcher.acknowledge_unactionable(note: note, requester: requester, ack: ack)
+          broadcast_idle(note)
+        end
         return
       end
 

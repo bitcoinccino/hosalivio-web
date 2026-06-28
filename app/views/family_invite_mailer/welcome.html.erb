@@ -26,16 +26,16 @@
     <tr>
       <td style="padding: 0 32px 16px;">
         <div style="background: #FBF9F5; border: 1px solid #EFECE6; border-radius: 12px; padding: 16px;">
-          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #6B665F; font-weight: bold;">Your sign-in</div>
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #6B665F; font-weight: bold;">How to sign in</div>
+          <div style="font-size: 13px; margin-top: 4px;">No password to remember. Open the family portal and enter your email:</div>
           <div style="font-size: 13px; margin-top: 4px;">Email: <strong><%= @user.email %></strong></div>
-          <div style="font-size: 13px;">Temporary password: <code style="background: #EFECE6; padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', Menlo, monospace;"><%= @temp_password %></code></div>
-          <div style="font-size: 12px; color: #6B665F; margin-top: 8px;">Please change your password on first sign-in.</div>
+          <div style="font-size: 12px; color: #6B665F; margin-top: 8px;">We'll email you a 6-digit code to sign in. The code expires in 15 minutes.</div>
         </div>
       </td>
     </tr>
     <tr>
       <td style="padding: 8px 32px 28px; text-align: center;">
-        <a href="<%= new_user_session_url %>"
+        <a href="<%= new_passwordless_url %>"
            style="display: inline-block; background: #D97757; color: white; text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 500; font-size: 14px;">
           Open the family portal
         </a>

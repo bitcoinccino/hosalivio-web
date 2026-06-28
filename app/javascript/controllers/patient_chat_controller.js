@@ -533,18 +533,17 @@ export default class extends Controller {
     const speakerName = n.author_name || this._roleLabel(n.author_role)
     const speakerSub  = n.author_subtitle || ""
     const labelColor  = this._labelColor(n.author_role)
-    const roleIcon    = this._roleIcon(n.author_role)
     const urgencyPill = n.urgency === "urgent"
       ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider flex-shrink-0">URGENT</span>`
       : ""
 
     const bubble = document.createElement("div")
-    bubble.className = "max-w-2xl ml-auto bg-[#FBF9F5] border border-dashed border-[#B9B4AB] rounded-3xl px-5 py-4 opacity-0 transition-opacity duration-300"
+    bubble.className = "max-w-2xl min-w-0 ml-auto bg-[#E9F1FB] border border-dashed border-[#A9C2E6] rounded-3xl px-5 py-4 overflow-hidden opacity-0 transition-opacity duration-300"
     bubble.title = `Internal note · ${speakerName} · ${time}`
     bubble.innerHTML = `
       <div class="flex items-center justify-between mb-1 gap-2">
         <div class="min-w-0 flex items-center gap-2.5">
-          <i class="${roleIcon} text-[14px]" style="color: ${labelColor};"></i>
+          ${this._avatarHTML(n, 40)}
           <div class="min-w-0">
             <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: ${labelColor};">
               <span class="truncate" data-role="name"></span>
@@ -682,9 +681,22 @@ export default class extends Controller {
     }
   }
 
+  // Any HosAlivio ack means the server now treats the pending relay offer as
+  // resolved (pending_relay_offer keys off the latest AI note). Mirror that
+  // client-side so the offer bubble flips from its optimistic "Sending…" /
+  // "Cancelling…" placeholder to "Handled" live — otherwise it stays stuck
+  // on "Sending…" until the page is refreshed and the server re-renders it.
+  // Matches the server-rendered Handled state (quiet italic, no buttons).
+  _markRelayOffersHandled() {
+    this.element.querySelectorAll("[data-relay-offer] [data-relay-actions]").forEach((actions) => {
+      actions.innerHTML = `<span class="text-[11px] text-[#9A938A] italic">Handled</span>`
+    })
+  }
+
   _appendHosalivioAck(n) {
+    this._markRelayOffersHandled()
     const time = new Date(n.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: this.timezoneValue })
-    const text = String(n.body || "").replace(/^\[HOSALIVIO_ACK\]\s*/, "")
+    const text = String(n.body || "").replace(/^\[HOSALIVIO_(?:ACK|ANSWER)\]\s*/, "")
 
     const wrap = document.createElement("div")
     wrap.className = "max-w-2xl flex items-start gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6] opacity-0 transition-opacity duration-300"
@@ -700,7 +712,17 @@ export default class extends Controller {
       <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0 mt-0.5">${time}</div>
     `
     wrap.querySelector('[data-role="ack"]').textContent = text
-    this.feedTarget.appendChild(wrap)
+    // Only a Q&A answer carries the follow-up Reply (the question's own thread
+    // is suppressed). Dispatch confirmations (hosalivio_ack) get no Reply.
+    if (n.note_id && n.audit_kind === "hosalivio_answer") {
+      const container = document.createElement("div")
+      container.setAttribute("data-note-id", n.note_id)
+      container.appendChild(wrap)
+      container.appendChild(this._buildThreadBlock(n.note_id))
+      this.feedTarget.appendChild(container)
+    } else {
+      this.feedTarget.appendChild(wrap)
+    }
     requestAnimationFrame(() => { wrap.style.opacity = "1" })
     this._scrollToBottom()
   }
@@ -956,7 +978,7 @@ export default class extends Controller {
       // Clear the "HosAlivio is thinking" dots when any system /
       // HosAlivio message lands. Without this, the typing indicator
       // would stick around forever after a Q&A reply or dispatch ack.
-      if (n.audit_kind === "hosalivio_ack" || n.audit_kind === "hosalivio_offer" || n.audit_kind === "guardrail" || n.action_payload) {
+      if (n.audit_kind === "hosalivio_ack" || n.audit_kind === "hosalivio_answer" || n.audit_kind === "hosalivio_offer" || n.audit_kind === "guardrail" || n.action_payload) {
         this._clearTyping()
       }
       if (n.audit_kind === "guardrail") {
@@ -965,7 +987,7 @@ export default class extends Controller {
         this._appendActionBanner(n)
       } else if (n.audit_kind === "hosalivio_offer") {
         this._appendHosalivioOffer(n)
-      } else if (n.audit_kind === "hosalivio_ack") {
+      } else if (n.audit_kind === "hosalivio_ack" || n.audit_kind === "hosalivio_answer") {
         this._appendHosalivioAck(n)
       } else if (n.author_user_id) {
         this._appendHuddleBubble(n)
@@ -991,10 +1013,11 @@ export default class extends Controller {
 
     const bubble      = document.createElement("div")
     const labelColor  = n.ai_authored ? "#6B665F" : this._labelColor(n.author_role)
-    const roleIcon    = n.ai_authored ? "ri-robot-2-line" : this._roleIcon(n.author_role)
     const isFamily    = n.author_role === "family"
     const align       = isFamily ? "" : "ml-auto"
-    const bg          = isFamily ? "bg-[#FFF3EC]" : "bg-[#E6F0EE]"
+    // HosAlivio = light orange, patient/family = light purple, clinicians =
+    // light blue (mirrors the server's bubble_bg in _message_bubble).
+    const bg          = n.ai_authored ? "bg-[#FFF3EC]" : (isFamily ? "bg-[#F0EBFB]" : "bg-[#E9F1FB]")
     const aiRing      = n.ai_authored ? "ring-1 ring-dashed ring-[#B9B4AB]" : ""
 
     // Real-name-first: show the human's actual name when available; fall back
@@ -1029,18 +1052,14 @@ export default class extends Controller {
       ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>`
       : ""
 
-    bubble.className = `max-w-2xl min-w-0 ${align} ${bg} border border-[#EFECE6] ${aiRing} rounded-3xl px-5 py-4 opacity-0 transition-opacity duration-300`
+    bubble.className = `max-w-2xl min-w-0 ${align} ${bg} border border-[#EFECE6] ${aiRing} rounded-3xl px-5 py-4 overflow-hidden opacity-0 transition-opacity duration-300`
     bubble.setAttribute("title", bubbleTitle)
 
     const subEl = speakerSub
       ? `<div class="text-[9px] uppercase tracking-[0.18em] text-[#6B665F] font-mono mt-0.5"></div>`
       : ""
 
-    const aiAvatar = n.ai_authored
-      ? `<div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-white border border-[#EFECE6]">
-           <img src="${document.body.dataset.hosalivioBotSrc || '/assets/hosalivio_assistant.png'}" class="w-full h-full object-cover object-top scale-125 origin-top" alt="HosAlivio">
-         </div>`
-      : `<i class="${roleIcon} text-[14px]"></i>`
+    const aiAvatar = this._avatarHTML(n, 40)
 
     const sentToFamilyChip = (n.ai_authored && !viewerIsFamily)
       ? `<span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full px-2 py-0.5" title="This message was sent to the family — they've already read it.">
@@ -1097,14 +1116,20 @@ export default class extends Controller {
     if (n.note_id) wrap.setAttribute("data-note-id", n.note_id)
     wrap.appendChild(bubble)
     // Only conversational notes get a Reply affordance — mirrors the server.
-    if (n.note_id && this._conversational(n)) wrap.appendChild(this._buildThreadBlock(n.note_id))
+    if (n.note_id && this._conversational(n) && !this._asksHosalivio(n)) wrap.appendChild(this._buildThreadBlock(n.note_id))
     this.feedTarget.appendChild(wrap)
   }
 
   _conversational(n) {
     if (n.action_payload) return false
-    const NON_CONV = ["action", "guardrail", "hosalivio_ack", "triage", "rationale"]
+    const NON_CONV = ["action", "guardrail", "hosalivio_ack", "hosalivio_answer", "triage", "rationale"]
     return !(n.audit_kind && NON_CONV.includes(n.audit_kind))
+  }
+
+  // A clinician question addressed to the bot: hide its own thread; HosAlivio's
+  // answer (hosalivio_ack) carries the follow-up Reply instead (mirrors server).
+  _asksHosalivio(n) {
+    return /@hosalivio\b/i.test(String(n.body || ""))
   }
 
   _threadContainerFor(parentId) {
@@ -1115,7 +1140,11 @@ export default class extends Controller {
     container.appendChild(bubble)
     container.classList.remove("hidden")
     const header = this.feedTarget.querySelector(`[data-thread-header-for="${CSS.escape(String(parentId))}"]`)
-    if (header) header.classList.remove("hidden")
+    if (header) {
+      header.classList.remove("hidden")
+      // Thread is now expanded (showing the live reply) → point the chevron up.
+      header.querySelector("[data-thread-chevron]")?.classList.remove("rotate-180")
+    }
     const count = container.children.length
     const label = this.feedTarget.querySelector(`[data-thread-label-for="${CSS.escape(String(parentId))}"]`)
     if (label) label.textContent = `${count} ${count === 1 ? "reply" : "replies"}`
@@ -1131,7 +1160,7 @@ export default class extends Controller {
               class="hidden inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium">
         <i class="ri-corner-down-right-line"></i>
         <span data-thread-label-for="${noteId}">0 replies</span>
-        <i class="ri-arrow-up-s-line transition-transform" data-thread-chevron></i>
+        <i class="ri-arrow-up-s-line rotate-180 transition-transform" data-thread-chevron></i>
       </button>
       <div data-thread-replies-for="${noteId}" class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 hidden"></div>
       <button type="button" data-action="click->patient-chat#openReply" data-note-id="${noteId}"
@@ -1161,20 +1190,44 @@ export default class extends Controller {
     const existing = wrap.querySelector(`[data-reply-composer-for="${CSS.escape(String(noteId))}"]`)
     if (existing) { existing.querySelector("input").focus(); return }
 
+    // Reuse the main composer's server-rendered mentionables so replies get the
+    // same @-autocomplete (clinicians only; family never gets it). Adding the
+    // controller + targets to this dynamically-inserted form auto-connects via
+    // Stimulus's MutationObserver.
+    const viewerIsFamily = document.body.dataset.viewerFamily === "true"
+    const mentionItems = viewerIsFamily
+      ? null
+      : (this.element.querySelector("[data-mention-autocomplete-items-value]")?.getAttribute("data-mention-autocomplete-items-value") || null)
+
     const composer = document.createElement("form")
     composer.setAttribute("data-reply-composer-for", noteId)
-    composer.className = "ml-7 md:ml-12 mt-1 flex items-center gap-2"
+    composer.className = "ml-7 md:ml-12 mt-1 relative"
+    if (mentionItems) {
+      composer.setAttribute("data-controller", "mention-autocomplete")
+      composer.setAttribute("data-mention-autocomplete-items-value", mentionItems)
+    }
+    const menuHTML = mentionItems
+      ? `<div data-mention-autocomplete-target="menu" class="hidden absolute bottom-full left-0 mb-2 w-72 max-h-64 overflow-y-auto rounded-2xl border border-[#EFECE6] bg-white shadow-lg py-1 z-50"></div>`
+      : ""
     composer.innerHTML = `
-      <button type="button" data-reply-mic title="Record a voice reply"
-              class="flex-shrink-0 w-8 h-8 rounded-full border border-[#D9D5CD] bg-white text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center">
-        <i class="ri-mic-line"></i>
-      </button>
-      <input type="text" placeholder="Reply…" maxlength="2000"
-             class="flex-1 min-w-0 rounded-full border border-[#D9D5CD] bg-white px-3 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-[#D97757]" />
-      <button type="submit" class="inline-flex items-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-3 py-1.5 text-[12px] font-medium">
-        <i class="ri-send-plane-2-line"></i> Send
-      </button>
-      <button type="button" data-reply-cancel class="text-[11px] text-[#6B665F] hover:text-[#1D1C1A]">Cancel</button>
+      ${menuHTML}
+      <div class="flex items-center gap-1.5 bg-white rounded-full border border-[#D9D5CD] focus-within:border-[#D97757] focus-within:ring-1 focus-within:ring-[#D97757] pl-1.5 pr-1.5 py-1 transition">
+        <button type="button" data-reply-mic title="Record a voice reply"
+                class="flex-shrink-0 w-8 h-8 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center">
+          <i class="ri-mic-line"></i>
+        </button>
+        <input type="text" placeholder="${mentionItems ? "Reply…  @ to mention" : "Reply…"}" maxlength="2000" autocomplete="off"
+               ${mentionItems ? 'data-mention-autocomplete-target="input"' : ""}
+               class="flex-1 min-w-0 bg-transparent border-0 px-1 py-1 text-[13px] focus:outline-none" />
+        <button type="submit" title="Send reply"
+                class="flex-shrink-0 inline-flex items-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-3 py-1.5 text-[12px] font-medium">
+          <i class="ri-send-plane-2-line"></i><span class="hidden sm:inline"> Send</span>
+        </button>
+        <button type="button" data-reply-cancel title="Cancel"
+                class="flex-shrink-0 w-7 h-7 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
     `
     wrap.appendChild(composer)
     const input = composer.querySelector("input")
@@ -1254,6 +1307,24 @@ export default class extends Controller {
     } catch (err) {
       console.error("reply error:", err)
     }
+  }
+
+  // Consistent chat avatar for live-appended bubbles — mirrors the server's
+  // chat_avatar_tag helper: photo when the broadcast carried one, otherwise a
+  // colored initials circle (never a bare icon). HosAlivio gets the bot circle.
+  _avatarHTML(n, px = 40) {
+    const dim = `width:${px}px;height:${px}px`
+    const wrap = (inner) => `<span class="inline-flex flex-shrink-0 rounded-full overflow-hidden" style="${dim}">${inner}</span>`
+    if (n.ai_authored) {
+      return wrap(`<span class="w-full h-full flex items-center justify-center bg-[#D97757] text-white"><i class="ri-heart-pulse-line" style="font-size:${Math.round(px * 0.5)}px"></i></span>`)
+    }
+    if (n.author_avatar_url) {
+      return wrap(`<img src="${n.author_avatar_url}" class="w-full h-full object-cover" alt="">`)
+    }
+    const name = n.author_name || this._roleLabel(n.author_role)
+    const initials = String(name).trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?"
+    const color = this._labelColor(n.author_role)
+    return wrap(`<span class="w-full h-full flex items-center justify-center text-white font-semibold" style="background:${color};font-size:${Math.round(px * 0.4)}px">${initials}</span>`)
   }
 
   _roleIcon(role) {

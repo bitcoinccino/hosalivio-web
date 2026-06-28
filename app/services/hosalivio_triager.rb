@@ -17,6 +17,7 @@ class HosalivioTriager
     "caregiver_distress" => %w[social_worker chaplain],
     "transitioning"      => %w[rn chaplain],
     "med_refill"         => %w[pharmacy rn],
+    "callback_request"   => %w[rn],
     "spiritual"          => %w[chaplain social_worker],
     "logistics"          => %w[dme rn],
     "status_question"    => %w[rn],
@@ -32,6 +33,7 @@ class HosalivioTriager
     "caregiver_distress" => "Caregiver distress",
     "transitioning"      => "End-of-life transition",
     "med_refill"         => "Medication refill",
+    "callback_request"   => "Callback request",
     "spiritual"          => "Spiritual support",
     "logistics"          => "Logistics request",
     "status_question"    => "Status check",
@@ -153,10 +155,11 @@ class HosalivioTriager
     # 3 — HANDOFF EVENTS (one per target role; these surface on Mission Stage)
     roles.each { |role| emit_handoff(role, decision[:intent], decision[:urgency]) }
 
-    # 4 — FAMILY-FACING REPLY (broadcasts to the chat UI via Note callback).
-    #     Threaded under the family's message so the question + HosAlivio's
-    #     answer read as one conversation. parent is family-visible, so the
-    #     reply inherits family visibility.
+    # 4 — FAMILY-FACING ACK (auto-posted immediately; broadcasts via Note
+    #     callback). The brain keeps this acknowledgment promise-free, so it's
+    #     safe to send without review — the family gets fast empathy even on a
+    #     pain/distress message. Threaded under the family's message so the
+    #     question + HosAlivio's reply read as one conversation.
     Note.create!(
       agency:      @agency,
       patient:     @patient,
@@ -166,6 +169,21 @@ class HosalivioTriager
       urgency:     "normal",     # reply itself is calm; urgency captured internally
       source:      "system"
     )
+
+    # 4.5 — COMMITMENT DRAFT (hybrid gate). If HosAlivio's response promised a
+    #       concrete action (a refill, a callback, an equipment fix, a confirmed
+    #       time), DON'T tell the family directly — hold it as a clinician-only
+    #       Send/Edit/Cancel draft. A human confirms before the promise reaches
+    #       the family (reuses the family-relay offer→confirm flow).
+    if decision[:commitment].present?
+      ClinicianDispatcher.post_family_relay_offer(
+        agency:           @agency,
+        patient:          @patient,
+        message:          decision[:commitment],
+        family_thread_id: thread_anchor&.id,
+        preview_lead:     "Here's the follow-up I'd send the family:"
+      )
+    end
 
     # 5 — MARK INBOUND AS HANDLED (idempotent — triage! is safe to retry)
     @note.mark_read!

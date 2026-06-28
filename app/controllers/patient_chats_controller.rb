@@ -153,6 +153,11 @@ class PatientChatsController < ApplicationController
       { role: "social_worker", user: patient.assigned_sw },
       { role: "chaplain",      user: patient.assigned_chaplain }
     ]
+    # Only surface disciplines that are actually staffed. The RN (case manager)
+    # always shows — it's the required role for admission and carries the
+    # reassign control — but unstaffed MD/SW/Chaplain slots stay hidden until
+    # someone is assigned, instead of cluttering the rail as "(unassigned)".
+    roster.select! { |row| row[:role] == "rn" || row[:user].present? }
     roster.map do |row|
       row[:name]    = row[:user]&.full_name || humanize_role(row[:role])
       row[:present] = row[:user]&.on_call == true

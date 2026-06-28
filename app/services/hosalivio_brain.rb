@@ -28,7 +28,7 @@ class HosalivioBrain
 
   INTENTS = %w[
     pain_crisis dyspnea decline caregiver_distress transitioning
-    med_refill spiritual logistics status_question other
+    med_refill callback_request spiritual logistics status_question other
   ].freeze
 
   URGENCIES = %w[crisis urgent normal].freeze
@@ -375,12 +375,18 @@ class HosalivioBrain
     # flows naturally. Hospice users find dashes cold; commas read warmer.
     reply     = reply.gsub(/\s*[—–]\s*/, ", ")
     reasoning = parsed[:reasoning].to_s.strip.gsub(/\s*[—–]\s*/, ", ")
+    # The commitment (a promised action/follow-up) is drafted-and-held for a
+    # clinician to confirm before the family sees it. null/"null"/blank → no
+    # commitment, so only the immediate ack auto-posts.
+    commitment = parsed[:commitment].to_s.strip.gsub(/\s*[—–]\s*/, ", ")
+    commitment = nil if commitment.empty? || commitment.casecmp("null").zero?
     {
-      intent:    INTENTS.include?(parsed[:intent])    ? parsed[:intent]  : "other",
-      urgency:   URGENCIES.include?(parsed[:urgency]) ? parsed[:urgency] : (@note.urgency.presence || "normal"),
-      reasoning: reasoning,
-      reply:     reply,
-      source:    source
+      intent:     INTENTS.include?(parsed[:intent])    ? parsed[:intent]  : "other",
+      urgency:    URGENCIES.include?(parsed[:urgency]) ? parsed[:urgency] : (@note.urgency.presence || "normal"),
+      reasoning:  reasoning,
+      reply:      reply,
+      commitment: commitment,
+      source:     source
     }
   end
 
@@ -663,14 +669,22 @@ class HosalivioBrain
       ────────────────────────────────
       You are triaging a single inbound message from a patient's family member.
 
-      Output ONLY a JSON object (no preamble, no markdown fences) with these four keys:
+      Output ONLY a JSON object (no preamble, no markdown fences) with these keys:
 
       {
         "intent":    one of #{INTENTS.inspect},
         "urgency":   one of #{URGENCIES.inspect},
         "reasoning": one sentence for the clinical team explaining what you heard and why this classification,
-        "reply":     a warm, specific reply to the family in plain language, 2 to 4 sentences, name the clinician you are alerting, be honest about what you do not know
+        "reply":     a warm acknowledgment to the family, 1 to 3 sentences. This is sent to the family IMMEDIATELY, so it MUST NOT promise or commit any concrete action — no "I'll arrange ...", "we'll deliver ...", "the kit is on its way", "someone will call you at ...". Acknowledge with empathy, name the clinician you are alerting, you MAY ask one clarifying question, and be honest about what you do not know.,
+        "commitment": the part of your response that PROMISES or COMMITS a concrete action or specific follow-up (e.g. "I'll arrange a comfort kit refill and have it brought over as soon as possible.", "I've asked your nurse to call you this afternoon."), written as a warm, family-ready message. A clinician reviews and Sends this before the family ever sees it. Set to null when your acknowledgment already says everything and there is no action to promise (e.g. a simple status update like "she's resting").
       }
+
+      ACK vs COMMITMENT — split your response:
+        - reply       = the safe, immediate empathy + "I've alerted <clinician>". No promises.
+        - commitment  = anything that commits the team to do something for the family
+                        (a refill, a callback, an equipment fix, a confirmed time). Held
+                        for a clinician to confirm. Use null when there's nothing to commit.
+        - Do NOT repeat the commitment inside reply. Keep them distinct.
 
       VOICE RULES (apply to BOTH reply AND reasoning):
         - Plain English, conversational, calm. Speak like a real human
@@ -685,7 +699,7 @@ class HosalivioBrain
 
       URGENCY
         crisis  : life or comfort critical right now (uncontrolled pain, dyspnea, active dying signs)
-        urgent  : address within hours (meds running out, caregiver distress, moderate symptom change)
+        urgent  : address within hours (meds running out, caregiver distress, moderate symptom change, a request to be called back)
         normal  : routine or informational, fine until next scheduled touch
 
       INTENT VOCABULARY (use these exactly, do not invent new values)
@@ -695,6 +709,10 @@ class HosalivioBrain
         caregiver_distress  : the family member is overwhelmed or asking for themselves
         transitioning       : signs of imminent dying (mottling, terminal restlessness, cold extremities, visioning)
         med_refill          : out of or running low on a medication
+        callback_request    : the family is asking for someone to call them
+                              ("call me", "can someone call us?", "please
+                              call"). This is a request to be phoned, not a
+                              question to answer in chat. Usually urgent.
         spiritual           : coping, meaning, faith, fear of dying
         logistics           : equipment, delivery, scheduling, paperwork
         status_question     : "when is the nurse coming?" and similar
@@ -743,13 +761,29 @@ class HosalivioBrain
     notify_clinician
   ].freeze
 
-  # Roles a notify_clinician relay can target. Scoped to the two clinician
-  # teammates in the MVP four-persona boundary (Admission RN + MD); Admin
-  # isn't a relay target and Family is reached through the family chat, not
-  # an @-mention. Each resolves to a real assigned human (or the first
-  # active user with that role), who gets an @-mention note + bell
-  # notification.
-  NOTIFY_CLINICIAN_ROLES = %w[rn md].freeze
+  # Roles a notify_clinician relay can target: the two clinician teammates
+  # (Admission RN + MD) plus the DON (Director of Nursing). Admin isn't a
+  # relay target and Family is reached through the family chat, not an
+  # @-mention. Each resolves to a real assigned human (or the first active
+  # user with that role), who gets an @-mention note + bell notification.
+  NOTIFY_CLINICIAN_ROLES = %w[rn md don].freeze
+
+  # Free-text role words the brain (or the clinician) might use, normalized
+  # to a canonical NOTIFY_CLINICIAN_ROLES key. "@Director"/"DON"/"Director of
+  # Nursing" all mean the DON; "nurse" means the RN; "doctor"/"physician"
+  # the MD. Keeps the relay from silently dropping on a synonym.
+  NOTIFY_ROLE_ALIASES = {
+    "director"            => "don",
+    "director of nursing" => "don",
+    "don"                 => "don",
+    "nurse"               => "rn",
+    "rn"                  => "rn",
+    "doctor"              => "md",
+    "physician"           => "md",
+    "md"                  => "md",
+    "family"              => "family",
+    "the family"          => "family"
+  }.freeze
 
   def clinician_system_prompt
     <<~SYS
@@ -763,8 +797,8 @@ class HosalivioBrain
         "audience":   one of ["family", "team"],
         "action":     one of #{CLINICIAN_ACTIONS.inspect},
         "body_rewrite": cleaned message body, or null,
-        "notify":     { "role": one of #{NOTIFY_CLINICIAN_ROLES.inspect},
-                        "reason": "the message to relay" } OR null,
+        "notify":     { "role": one of #{(NOTIFY_CLINICIAN_ROLES + ["family"]).inspect},
+                        "reason": "the message to relay (a warm, family-ready draft when role is \"family\")" } OR null,
         "ack":        short confirmation string OR null,
         "reasoning":  one sentence
       }
@@ -798,16 +832,21 @@ class HosalivioBrain
                                to know').
         notify_clinician     : the clinician is asking YOU to relay an
                                update or message to a SPECIFIC teammate on
-                               the care team. Only two relay targets exist:
-                               the MD and the RN. Strong signals:
+                               the care team. Three relay targets exist:
+                               the MD, the RN, and the DON (Director of
+                               Nursing). Strong signals:
                                'let the MD know ...', 'notify the RN that
-                               ...', 'create a note for the MD about ...',
-                               'flag the nurse that ...'. This is NOT a
-                               question and NOT a clinical order; it just
-                               carries a message to a named role. Set the
-                               "notify" object: role = "md" or "rn",
+                               ...', 'let the Director know ...', 'create a
+                               note for the MD about ...', 'flag the nurse
+                               that ...'. This is NOT a question and NOT a
+                               clinical order; it just carries a message to
+                               a named role. Set the "notify" object:
+                               role = "md", "rn", or "don",
                                reason = the message to relay (see the
-                               notify rules below).
+                               notify rules below). Map role words to keys:
+                               Director / Director of Nursing / DON -> "don";
+                               nurse / RN -> "rn"; doctor / physician / MD ->
+                               "md".
                                Examples:
                                  'let the MD know the admission is almost
                                   completed' -> action notify_clinician,
@@ -817,10 +856,41 @@ class HosalivioBrain
                                   -> action notify_clinician,
                                   notify { role: "rn", reason: "Family
                                   needs a callback." }
+                                 'let the Director know I'm working on it'
+                                  -> action notify_clinician,
+                                  notify { role: "don", reason: "Working
+                                  on it." }
+                               FAMILY relays: the clinician may instead ask
+                               you to update the patient's FAMILY ('let the
+                               family know ...', 'tell Carlos the kit is on
+                               the way', 'let <family member name> know ...',
+                               'update the family that ...'). Use
+                               notify_clinician with role = "family". For a
+                               family relay, the "reason" must be a WARM,
+                               family-appropriate message you draft yourself:
+                               reassuring, plain language, no clinical jargon
+                               or abbreviations, addressed to the family. The
+                               clinician reviews and confirms it before it
+                               reaches the family, so write the final message,
+                               not a terse note.
+                               Examples:
+                                 'let Alvarez know the comfort kit is on the
+                                  way' -> action notify_clinician,
+                                  notify { role: "family", reason: "Good news,
+                                  the comfort kit is on its way to you and
+                                  should arrive soon. Please reach out if you
+                                  need anything in the meantime." }
+                                 'tell the family the doctor will call this
+                                  afternoon' -> action notify_clinician,
+                                  notify { role: "family", reason: "Maria's
+                                  doctor will be giving you a call this
+                                  afternoon to check in. Thank you for your
+                                  patience." }
                                If the relay target is anyone other than the
-                               MD or RN, do NOT use notify_clinician. For a
-                               generic 'loop in admissions' with no concrete
-                               content, prefer admissions_handoff instead.
+                               MD, RN, DON, or the family, do NOT use
+                               notify_clinician. For a generic 'loop in
+                               admissions' with no concrete content, prefer
+                               admissions_handoff instead.
         billing_question     : a billing or claim issue specifically
         answer_question      : ANY question the clinician is asking
                                HosAlivio about THIS patient. Strong signal:
@@ -874,18 +944,25 @@ class HosalivioBrain
 
       notify
         Set ONLY when action is notify_clinician; otherwise null.
-          role   : which teammate to relay to, one of
-                   #{NOTIFY_CLINICIAN_ROLES.inspect}.
-          reason : the message to relay, written as a short first-person
-                   statement in the clinician's voice. This is the actual
-                   text the teammate will read.
-        Rules for reason:
+          role   : who to relay to, one of
+                   #{(NOTIFY_CLINICIAN_ROLES + ["family"]).inspect}.
+          reason : the message to relay. For a teammate (md/rn/don): a short
+                   first-person statement in the clinician's voice — the actual
+                   text the teammate reads. For "family": a warm, finished
+                   message addressed TO the family (see family rules below).
+        Rules for reason (teammate relays):
           - Carry ONLY the clinician's message. Do not add new facts.
           - Do NOT name the target teammate (no "the MD", no "Dr. Cole").
             The system adds the @-mention separately, so naming them here
             makes the note read with the name twice.
           - Plain English, commas/periods only. NEVER use em-dashes.
           - Keep the patient's first name only if needed for clarity.
+        Rules for reason (role = "family"):
+          - Write the FINAL family-facing message, warm and reassuring.
+          - Plain language, no clinical jargon or abbreviations.
+          - Convey only what the clinician said; do not invent specifics
+            (no made-up times/quantities the clinician didn't give).
+          - The clinician confirms it before the family ever sees it.
 
       ack
         Required when action != no_action, EXCEPT notify_clinician (the
@@ -967,7 +1044,7 @@ class HosalivioBrain
       - For PATIENT-SPECIFIC questions: use ONLY facts present in
         PATIENT_CONTEXT. Never speculate, never invent, never extrapolate.
       - For VISITS and visit status: rely ONLY on each visit's explicit
-        `status` field (scheduled / in_progress / completed). Never call a
+        `status` field (scheduled / in progress / completed). Never call a
         visit "completed" because it has a clinician name or a start time.
         If the visits list is empty or absent, say there are no visits on
         record yet. Do not invent visit history. Stay consistent: do not
@@ -983,7 +1060,7 @@ class HosalivioBrain
         field is blank, say "status not recorded", never infer it.
       - STATUS questions ("is the admission done?", "what's the status of
         the eval?"): lead with the item, its explicit status word, and the
-        date in one line — e.g. "The admission visit (Jun 26) is in_progress."
+        date in one line — e.g. "The admission visit (Jun 26) is in progress."
       - REQUIRED FORMS / DOCUMENTS ("what forms are missing?", "what's needed
         for admission?", "is the POLST on file?"): use
         PATIENT_CONTEXT.pre_admit_eval.missing_documents — it is the
@@ -1143,7 +1220,7 @@ class HosalivioBrain
          RE-DERIVE the answer from PATIENT_CONTEXT's explicit fields (for
          visit/eval status, the `status` field) and give ONE clean, correct
          answer. You MAY name the correction in a single factual clause
-         ("Re-checking the chart, the admission visit is in_progress, not
+         ("Re-checking the chart, the admission visit is in progress, not
          completed") — that is a correction, NOT an apology. Then stop.
          Do not grovel, do not write a postmortem, and never restate the
          claim the user is disputing. If the chart is genuinely ambiguous
@@ -1652,8 +1729,12 @@ class HosalivioBrain
   def sanitize_notify_directive(raw)
     return nil unless raw.is_a?(Hash)
     role   = (raw["role"] || raw[:role]).to_s.strip.downcase
+    role   = NOTIFY_ROLE_ALIASES[role] || role
     reason = (raw["reason"] || raw[:reason]).to_s.strip.gsub(/\s*[—–]\s*/, ", ")
-    return nil unless NOTIFY_CLINICIAN_ROLES.include?(role)
+    # "family" is a valid relay target too (HosAlivio drafts a family-facing
+    # update for the clinician to confirm); it isn't a clinician role, so it's
+    # allowed explicitly rather than via NOTIFY_CLINICIAN_ROLES.
+    return nil unless NOTIFY_CLINICIAN_ROLES.include?(role) || role == "family"
     return nil if reason.empty? || reason.casecmp("null").zero?
     { "role" => role, "reason" => reason }
   end
@@ -1689,6 +1770,7 @@ class HosalivioBrain
       elsif text.match?(/\b(pain|hurt|moan|gasp|choking|severe)\b/)                     then "pain_crisis"
       elsif text.match?(/\b(breath|breathing|can['t]*\s*breathe|dyspnea|air hunger)\b/) then "dyspnea"
       elsif text.match?(/\b(refill|out of|running low|need more|resupply)\b/)           then "med_refill"
+      elsif text.match?(/(call me|call us|please call|can someone call|give (me|us) a call|phone me)/) then "callback_request"
       elsif text.match?(/\b(chaplain|pray|god|faith|afraid|dying|coping|spiritual)\b/)  then "spiritual"
       elsif text.match?(/\b(bed|oxygen|walker|wheelchair|delivery|equipment|dme)\b/)    then "logistics"
       elsif text.match?(/\b(when|where|nurse|visit|schedule|eta|coming)\b/)             then "status_question"
@@ -1704,6 +1786,9 @@ class HosalivioBrain
         "Reaching your nurse now. Help him sit upright and loosen anything around his chest while you wait. If he turns blue or stops breathing, call 911."
       when "med_refill"
         "Pinged pharmacy and your nurse. Expect a call within the hour to confirm the refill."
+      when "callback_request"
+        rn = @patient.assigned_rn&.full_name&.split&.first || "your nurse"
+        "Understood. I've asked #{rn} to call you as soon as possible."
       when "spiritual"
         "Our chaplain and social worker team will reach out today."
       when "status_question"
@@ -1719,6 +1804,7 @@ class HosalivioBrain
       urgency:   @note.urgency.presence || "normal",
       reasoning: "LLMs unavailable (#{reason}). Regex fallback used.",
       reply:     reply,
+      commitment: nil,  # degraded mode: acknowledge only, never hold a draft
       source:    "fallback:regex"
     }
   end

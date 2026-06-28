@@ -1,0 +1,47 @@
+<%# One root note + its thread. Extracted from show.html.erb so the feed can
+    render it in both the collapsed "earlier" section and the open recent-day
+    section without duplicating markup. The data-note-id wrapper lets the chat
+    JS locate a parent for live replies. Local: note. %>
+<% thread_replies = @replies_by_parent[note.id] || [] %>
+<%
+  # An @HosAlivio question is a Q→A, not a discussion starter: hide its own
+  # Reply/thread while it's bare (HosAlivio's answer posts as a sibling and
+  # carries the follow-up Reply). The answer (hosalivio_answer) is where
+  # follow-ups thread.
+  is_hosalivio_answer = note.audit_kind == :hosalivio_answer
+  asks_hosalivio      = !is_hosalivio_answer && note.body.to_s.match?(/@hosalivio\b/i)
+  suppress_thread     = asks_hosalivio && thread_replies.empty?
+  show_thread         = !suppress_thread && (note.conversational? || is_hosalivio_answer || thread_replies.any?)
+  reply_allowed       = note.conversational? || is_hosalivio_answer
+%>
+<div data-note-id="<%= note.id %>">
+  <%= render "message_bubble", note: note %>
+  <% if show_thread %>
+    <div class="ml-7 md:ml-12 mt-1">
+      <button type="button" data-action="click->patient-chat#toggleThread"
+              data-thread-header-for="<%= note.id %>"
+              class="inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium <%= 'hidden' unless thread_replies.any? %>">
+        <i class="ri-corner-down-right-line"></i>
+        <span data-thread-label-for="<%= note.id %>"><%= thread_replies.size %> <%= "reply".pluralize(thread_replies.size) %></span>
+        <%# Collapsed by default: replies container is hidden, chevron points
+            down (rotated) to read as "expand". toggleThread un-rotates on open. %>
+        <i class="ri-arrow-up-s-line rotate-180 transition-transform" data-thread-chevron></i>
+      </button>
+      <div data-thread-replies-for="<%= note.id %>"
+           class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 hidden">
+        <% thread_replies.each do |reply| %>
+          <%# data-note-id wrapper so a deep-link can scroll to a reply, not just the root %>
+          <div data-note-id="<%= reply.id %>">
+            <%= render "message_bubble", note: reply, thread_reply: true %>
+          </div>
+        <% end %>
+      </div>
+      <% if reply_allowed %>
+        <button type="button" data-action="click->patient-chat#openReply" data-note-id="<%= note.id %>"
+                class="mt-1 inline-flex items-center gap-1 text-[11px] text-[#D97757] hover:underline font-medium">
+          <i class="ri-reply-line"></i> Reply
+        </button>
+      <% end %>
+    </div>
+  <% end %>
+</div>
