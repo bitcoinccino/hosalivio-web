@@ -52,7 +52,8 @@ class HosalivioTriager
     "pharmacy"      => "Pharmacy",
     "dme"           => "DME",
     "insurance"     => "Insurance",
-    "aide"          => "Aide",
+    "aide"          => "Care Assistant",
+    "lpn"           => "Support Nurse",
     "don"           => "Scheduling Coordinator",
     "admissions"    => "Admissions"
   }.freeze
