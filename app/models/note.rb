@@ -227,8 +227,10 @@ class Note < ApplicationRecord
       return nil if rel.blank? || name.blank?
       return "#{rel.capitalize} of #{name}"
     end
-    role_up = author_role.to_s.tr("_", " ").upcase
-    ai_authored? ? "AI auto-reply · #{role_up}" : role_up
+    # Clinician-facing role label (family viewers get the warmer family_role_label
+    # in the bubble). Falls back to the upcased role key for anything unmapped.
+    label = HosalivioTriager::ROLE_LABELS[author_role.to_s] || author_role.to_s.tr("_", " ").upcase
+    ai_authored? ? "AI auto-reply · #{label}" : label
   end
 
   private

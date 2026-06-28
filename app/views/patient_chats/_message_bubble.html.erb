@@ -19,6 +19,7 @@
   label_color = is_ai ? "#6B665F" : case role
                 when "family"      then "#C1403A"
                 when "rn"          then "#2F6F4E"
+                when "visit_rn"    then "#2F6F4E"
                 when "md"          then "#2B4A7A"
                 when "social_worker" then "#7A4A8C"
                 when "chaplain"    then "#8C6A2F"
@@ -38,9 +39,9 @@
 
   # Warmer, personal subtitle for family viewers. Clinicians see the raw role.
   family_role_label = {
-    "rn" => "Your RN", "md" => "Your doctor",
+    "rn" => "Your Intake Nurse", "visit_rn" => "Your Primary Nurse", "md" => "Your Doctor",
     "social_worker" => "Your social worker", "chaplain" => "Your chaplain",
-    "aide" => "Your aide", "don" => "Your DON",
+    "aide" => "Your aide", "don" => "Your Care Coordinator",
     "admissions" => "Your care coordinator", "pharmacy" => "Your pharmacist",
     "dme" => "Your equipment team", "insurance" => "Your benefits coordinator"
   }
@@ -70,6 +71,7 @@
   role_icon = is_ai ? "ri-robot-2-line" : {
     "family" => "ri-user-heart-line",
     "rn" => "ri-nurse-line",
+    "visit_rn" => "ri-nurse-line",
     "md" => "ri-stethoscope-line",
     "social_worker" => "ri-team-line",
     "chaplain" => "ri-hand-heart-line",

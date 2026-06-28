@@ -756,7 +756,8 @@ class HosalivioBrain
         Age:               #{@patient.age_years}
         Code status:       #{@patient.code_status}
         Primary diagnosis: #{@patient.primary_diagnosis}
-        Assigned RN:       #{@patient.assigned_rn&.full_name || "(unassigned)"}
+        Primary Nurse (ongoing care, alert this nurse): #{(@patient.assigned_visit_rn || @patient.assigned_rn)&.full_name || "(unassigned)"}
+        Admission Nurse (intake only):                   #{@patient.assigned_rn&.full_name || "(unassigned)"}
         Assigned MD:       #{@patient.assigned_md&.full_name || "(unassigned)"}
         Chaplain:          #{@patient.assigned_chaplain&.full_name || "(unassigned)"}
         Social worker:     #{@patient.assigned_sw&.full_name || "(unassigned)"}
@@ -1813,14 +1814,14 @@ class HosalivioBrain
     reply =
       case intent
       when "pain_crisis"
-        rn = @patient.assigned_rn&.full_name&.split&.first || "your nurse"
+        rn = (@patient.assigned_visit_rn || @patient.assigned_rn)&.full_name&.split&.first || "your nurse"
         "I've alerted #{rn} and the MD. Someone will respond within the next few minutes. If this becomes life-threatening, please call 911. We are not emergency services."
       when "dyspnea"
         "Reaching your nurse now. Help him sit upright and loosen anything around his chest while you wait. If he turns blue or stops breathing, call 911."
       when "med_refill"
         "Pinged pharmacy and your nurse. Expect a call within the hour to confirm the refill."
       when "callback_request"
-        rn = @patient.assigned_rn&.full_name&.split&.first || "your nurse"
+        rn = (@patient.assigned_visit_rn || @patient.assigned_rn)&.full_name&.split&.first || "your nurse"
         "Understood. I've asked #{rn} to call you as soon as possible."
       when "spiritual"
         "Our chaplain and social worker team will reach out today."

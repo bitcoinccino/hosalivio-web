@@ -1027,8 +1027,8 @@ export default class extends Controller {
     // Warmer subtitle for family viewers; clinicians see the raw role.
     const viewerIsFamily = document.body.dataset.viewerFamily === "true"
     const familyLabels = {
-      rn: "Your RN", md: "Your doctor", social_worker: "Your social worker",
-      chaplain: "Your chaplain", aide: "Your aide", don: "Your DON",
+      rn: "Your Intake Nurse", visit_rn: "Your Primary Nurse", md: "Your Doctor", social_worker: "Your social worker",
+      chaplain: "Your chaplain", aide: "Your aide", don: "Your Care Coordinator",
       admissions: "Your care coordinator", pharmacy: "Your pharmacist",
       dme: "Your equipment team", insurance: "Your benefits coordinator"
     }
@@ -1329,7 +1329,7 @@ export default class extends Controller {
 
   _roleIcon(role) {
     return ({
-      family: "ri-user-heart-line", rn: "ri-nurse-line", md: "ri-stethoscope-line",
+      family: "ri-user-heart-line", rn: "ri-nurse-line", visit_rn: "ri-nurse-line", md: "ri-stethoscope-line",
       social_worker: "ri-team-line", chaplain: "ri-hand-heart-line",
       pharmacy: "ri-capsule-line", aide: "ri-user-2-line", don: "ri-award-line",
       dme: "ri-tools-line", insurance: "ri-bank-card-line",
@@ -1345,9 +1345,9 @@ export default class extends Controller {
 
   _roleLabel(role) {
     return ({
-      family: "Family", rn: "RN", md: "MD",
+      family: "Family", rn: "Admission Nurse", visit_rn: "Visit Nurse", md: "Admitting Physician",
       social_worker: "Social Worker", chaplain: "Chaplain",
-      pharmacy: "Pharmacy", aide: "Aide", don: "DON",
+      pharmacy: "Pharmacy", aide: "Aide", don: "Scheduling Coordinator",
       dme: "DME", insurance: "Insurance",
       admissions: "Front Door",
       front_door_inbound: "Front Door", system: "System"
@@ -1356,7 +1356,7 @@ export default class extends Controller {
 
   _labelColor(role) {
     return ({
-      family: "#D97757", rn: "#2F6F4E", md: "#2B4A7A",
+      family: "#D97757", rn: "#2F6F4E", visit_rn: "#2F6F4E", md: "#2B4A7A",
       social_worker: "#7A4A8C", chaplain: "#8C6A2F",
       pharmacy: "#5A2F7A", aide: "#3A6B6B", don: "#1D1C1A",
       dme: "#6B5A2F", insurance: "#4A4A6B",

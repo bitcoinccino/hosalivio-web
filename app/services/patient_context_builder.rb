@@ -254,7 +254,8 @@ class PatientContextBuilder
   # "who is her RN?" without scanning the whole agency roster.
   def care_team_block
     {
-      assigned_rn:       user_summary(@patient.assigned_rn),
+      admission_nurse:   user_summary(@patient.assigned_rn),         # intake only
+      primary_nurse:     user_summary(@patient.assigned_visit_rn || @patient.assigned_rn),  # ongoing care
       assigned_md:       user_summary(@patient.assigned_md),
       social_worker:     user_summary(@patient.assigned_sw),
       chaplain:          user_summary(@patient.assigned_chaplain)

@@ -754,6 +754,7 @@ class ClinicianDispatcher
   def resolve_clinician_for_role(role)
     by_assignment = case role
     when "rn"            then @patient.assigned_rn
+    when "visit_rn"      then @patient.assigned_visit_rn || @patient.assigned_rn  # fall back to admission RN
     when "md"            then @patient.assigned_md
     when "sw", "social_worker" then @patient.assigned_sw
     when "chaplain"      then @patient.assigned_chaplain

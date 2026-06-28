@@ -149,26 +149,29 @@ class PatientChatsController < ApplicationController
   def build_idg_roster(patient)
     roster = [
       { role: "rn",            user: patient.assigned_rn },
+      { role: "visit_rn",      user: patient.assigned_visit_rn },
       { role: "md",            user: patient.assigned_md },
       { role: "social_worker", user: patient.assigned_sw },
       { role: "chaplain",      user: patient.assigned_chaplain }
     ]
-    # Only surface disciplines that are actually staffed. The RN (case manager)
-    # always shows — it's the required role for admission and carries the
-    # reassign control — but unstaffed MD/SW/Chaplain slots stay hidden until
-    # someone is assigned, instead of cluttering the rail as "(unassigned)".
-    roster.select! { |row| row[:role] == "rn" || row[:user].present? }
+    # Only surface disciplines that are actually staffed. Both nurse roles
+    # (Admission + Primary/Visit) always show since they're the core of the
+    # care team; unstaffed MD/SW/Chaplain slots stay hidden until someone is
+    # assigned, instead of cluttering the rail as "(unassigned)".
+    roster.select! { |row| %w[rn visit_rn].include?(row[:role]) || row[:user].present? }
     roster.map do |row|
-      row[:name]    = row[:user]&.full_name || humanize_role(row[:role])
-      row[:present] = row[:user]&.on_call == true
+      row[:name]       = row[:user]&.full_name || humanize_role(row[:role])
+      row[:role_label] = HosalivioTriager::ROLE_LABELS[row[:role]] || row[:role].tr("_", " ")
+      row[:present]    = row[:user]&.on_call == true
       row
     end
   end
 
   def humanize_role(role)
     {
-      "rn" => "RN Case Manager (unassigned)",
-      "md" => "Hospice Physician (unassigned)",
+      "rn" => "Admission Nurse (unassigned)",
+      "visit_rn" => "Primary Nurse (unassigned)",
+      "md" => "Admitting Physician (unassigned)",
       "social_worker" => "Social Worker (unassigned)",
       "chaplain" => "Chaplain (unassigned)"
     }.fetch(role, role.humanize)

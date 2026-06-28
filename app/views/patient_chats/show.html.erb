@@ -145,7 +145,7 @@
                        : (row[:present]  ? "#{user_first} is on call now"
                                          : "#{user_first} — assigned, not on call right now")
           %>
-          <div class="flex items-center gap-3 text-sm group-data-[collapsed=true]/sb:justify-center" title="<%= row[:name] %> (<%= row[:role].tr("_", " ") %>)">
+          <div class="flex items-center gap-3 text-sm group-data-[collapsed=true]/sb:justify-center" title="<%= row[:name] %> (<%= row[:role_label] %>)">
             <span class="relative w-7 h-7 flex-shrink-0">
               <span class="flex items-center justify-center w-7 h-7 rounded-full overflow-hidden bg-white border border-[#D9D5CD] text-[#6B665F]">
                 <% if row[:user]&.has_avatar? %>
@@ -155,6 +155,7 @@
                   <i class="<%=
                     {
                       'rn'            => 'ri-nurse-line',
+                  'visit_rn'      => 'ri-nurse-line',
                       'md'            => 'ri-stethoscope-line',
                       'social_worker' => 'ri-team-line',
                       'chaplain'      => 'ri-hand-heart-line'
@@ -168,7 +169,7 @@
             </span>
             <div class="group-data-[collapsed=true]/sb:hidden">
               <div class="text-[13px] text-[#1D1C1A] leading-tight"><%= row[:name] %></div>
-              <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role].tr("_", " ") %></div>
+              <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role_label] %></div>
             </div>
           </div>
           <% if @can_reassign_rn && row[:role] == "rn" %>
@@ -176,7 +177,7 @@
                 Auto-submits on change; controller redirects back with a notice. %>
             <%= form_with url: reassign_rn_patient_path(@patient), method: :patch,
                           class: "group-data-[collapsed=true]/sb:hidden mt-1 ml-10" do %>
-              <label for="reassign-rn-select" class="sr-only">Reassign RN</label>
+              <label for="reassign-rn-select" class="sr-only">Reassign Admission Nurse</label>
               <select id="reassign-rn-select" name="assigned_rn_id"
                       onchange="this.form.requestSubmit()"
                       class="w-full text-[12px] rounded-md border border-[#D9D5CD] bg-white px-2 py-1 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
