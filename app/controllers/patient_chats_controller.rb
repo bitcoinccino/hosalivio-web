@@ -21,7 +21,8 @@ class PatientChatsController < ApplicationController
       # (mirrors PatientPolicy#update?). @assignable_rns is the dropdown pool.
       @can_reassign_rn = !current_user.family_access? &&
                          (current_user.role_names & %w[admin don admissions]).any?
-      @assignable_rns  = @can_reassign_rn ? agency_rns.to_a : []
+      @assignable_rns  = @can_reassign_rn ? agency_rns.to_a : []   # admission + primary nurse pool
+      @assignable_lpns = @can_reassign_rn ? agency_lpns.to_a : []  # support nurse pool
 
       # Right-rail clinical context (vitals, visits, meds, eval, crises…).
       # Extracted so #clinical_context can re-render just the rail live
@@ -146,6 +147,14 @@ class PatientChatsController < ApplicationController
         .order(:full_name)
   end
 
+  def agency_lpns
+    User.joins(user_roles: :role)
+        .where(agency: @agency, active: true)
+        .where(roles: { name: "lpn" })
+        .distinct
+        .order(:full_name)
+  end
+
   def build_idg_roster(patient)
     roster = [
       { role: "rn",            user: patient.assigned_rn },
@@ -155,11 +164,11 @@ class PatientChatsController < ApplicationController
       { role: "social_worker", user: patient.assigned_sw },
       { role: "chaplain",      user: patient.assigned_chaplain }
     ]
-    # Only surface disciplines that are actually staffed. Both nurse roles
-    # (Admission + Primary/Visit) always show since they're the core of the
-    # care team; unstaffed MD/SW/Chaplain slots stay hidden until someone is
-    # assigned, instead of cluttering the rail as "(unassigned)".
-    roster.select! { |row| %w[rn visit_rn].include?(row[:role]) || row[:user].present? }
+    # The three nurse slots (Admission, Primary/Visit, Support/LPN) always show
+    # so admins can assign them from the roster even when empty; unstaffed
+    # MD/SW/Chaplain slots stay hidden until someone is assigned, instead of
+    # cluttering the rail as "(unassigned)".
+    roster.select! { |row| %w[rn visit_rn lpn].include?(row[:role]) || row[:user].present? }
     roster.map do |row|
       row[:name]       = row[:user]&.full_name || humanize_role(row[:role])
       row[:role_label] = HosalivioTriager::ROLE_LABELS[row[:role]] || row[:role].tr("_", " ")

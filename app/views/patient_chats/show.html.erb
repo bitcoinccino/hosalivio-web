@@ -173,18 +173,28 @@
               <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role_label] %></div>
             </div>
           </div>
-          <% if @can_reassign_rn && row[:role] == "rn" %>
-            <%# Admin/DON/admissions: reassign the case-manager RN inline.
-                Auto-submits on change; controller redirects back with a notice. %>
-            <%= form_with url: reassign_rn_patient_path(@patient), method: :patch,
+          <% if @can_reassign_rn && %w[rn visit_rn lpn].include?(row[:role]) %>
+            <%# Admin/DON/admissions: assign this nurse slot inline (admission RN,
+                primary RN, or LPN). Auto-submits on change; the controller
+                validates the pick against the right role pool and redirects back. %>
+            <%
+              pool, current_id =
+                case row[:role]
+                when "lpn"      then [ @assignable_lpns, @patient.assigned_lpn_id ]
+                when "visit_rn" then [ @assignable_rns,  @patient.assigned_visit_rn_id ]
+                else                 [ @assignable_rns,  @patient.assigned_rn_id ]
+                end
+            %>
+            <%= form_with url: reassign_member_patient_path(@patient), method: :patch,
                           class: "group-data-[collapsed=true]/sb:hidden mt-1 ml-10" do %>
-              <label for="reassign-rn-select" class="sr-only">Reassign Admission Nurse</label>
-              <select id="reassign-rn-select" name="assigned_rn_id"
+              <input type="hidden" name="field" value="<%= row[:role] %>">
+              <label for="reassign-<%= row[:role] %>-select" class="sr-only">Reassign <%= row[:role_label] %></label>
+              <select id="reassign-<%= row[:role] %>-select" name="user_id"
                       onchange="this.form.requestSubmit()"
                       class="w-full text-[12px] rounded-md border border-[#D9D5CD] bg-white px-2 py-1 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
                 <option value="">Unassigned</option>
-                <% @assignable_rns.each do |rn| %>
-                  <option value="<%= rn.id %>" <%= "selected" if rn.id == @patient.assigned_rn_id %>><%= rn.full_name %></option>
+                <% pool.each do |u| %>
+                  <option value="<%= u.id %>" <%= "selected" if u.id == current_id %>><%= u.full_name %></option>
                 <% end %>
               </select>
             <% end %>
