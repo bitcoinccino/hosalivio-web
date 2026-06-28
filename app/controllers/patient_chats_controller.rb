@@ -150,6 +150,7 @@ class PatientChatsController < ApplicationController
     roster = [
       { role: "rn",            user: patient.assigned_rn },
       { role: "visit_rn",      user: patient.assigned_visit_rn },
+      { role: "lpn",           user: patient.assigned_lpn },
       { role: "md",            user: patient.assigned_md },
       { role: "social_worker", user: patient.assigned_sw },
       { role: "chaplain",      user: patient.assigned_chaplain }
@@ -171,6 +172,7 @@ class PatientChatsController < ApplicationController
     {
       "rn" => "Admission Nurse (unassigned)",
       "visit_rn" => "Primary Nurse (unassigned)",
+      "lpn" => "Support Nurse (unassigned)",
       "md" => "Admitting Physician (unassigned)",
       "social_worker" => "Social Worker (unassigned)",
       "chaplain" => "Chaplain (unassigned)"
