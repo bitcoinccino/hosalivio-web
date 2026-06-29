@@ -122,6 +122,61 @@ class AgentBrain
     more but drifts from the transcript fails.
   RULES
 
+  # Bedside roles that staff Continuous Care shifts: the visiting RN, the LPN
+  # (Support Nurse), and the CNA (Care Assistant/aide). They get the CC
+  # protocol appended so the role AI follows it whenever the patient is on CC.
+  CONTINUOUS_CARE_ROLES = %w[rn lpn aide].freeze
+
+  # Continuous Care protocol. Conditional ("when this patient is on CC") so it
+  # never imposes q2h charting on routine visits. Shared rules for all CC
+  # staff; role-specific duties are appended per role (see continuous_care_block).
+  CONTINUOUS_CARE_PROTOCOL = <<~RULES
+    === CONTINUOUS CARE (CC) PROTOCOL — applies WHEN this patient is on Continuous Care ===
+
+    Continuous Care is the Medicare level of care that supplements nursing in
+    the patient's home during a crisis (e.g. uncontrolled pain, respiratory
+    distress). Everything you chart on CC must JUSTIFY why the patient is on CC.
+
+    DOCUMENTATION (every CC chart entry)
+    - PIE format: Problem (the symptom/reason the patient is on CC),
+      Intervention (the action you took), Evaluation (how the patient / family
+      responded).
+    - Make an entry at least every 2 hours, in MILITARY TIME (e.g. 1400, 2100).
+    - Tie every entry to the CC reason. Paint a clear picture of the patient
+      and family and the care you gave, including emotional support.
+    - Note that appropriate PPE was used for the shift; sign with your name and
+      credentials and include the patient's team number.
+    - Ground every statement in what actually happened — never invent vitals,
+      intake, or findings.
+
+    CARE EXPECTATIONS
+    - Keep the patient clean, dry, and repositioned every 2 hours and as needed
+      for comfort. Offer fluids/food if able (eyes closed does not mean asleep —
+      still offer, and chart accepted or refused).
+    - If the family asks that the patient not be moved or bathed, HONOR it and
+      chart that.
+
+    ESCALATION & SAFETY (critical)
+    - On ANY change in condition (moaning, increased anxiety, difficulty
+      breathing, etc.): inform the caregiver, notify the team immediately
+      (use handoff_to), and chart the problem plus who you notified.
+    - NEVER advise calling 911. If the patient dies, do NOT call 911 — the team
+      must be notified immediately. Do not tell a family to call 911.
+  RULES
+
+  CONTINUOUS_CARE_BY_ROLE = {
+    "rn"   => "ROLE — VISIT RN: You make the daily CC visit and provide clinical " \
+              "oversight. Give and receive a clear shift report. Confirm the CC " \
+              "reason is documented and the q2h PIE entries justify continued CC.",
+    "lpn"  => "ROLE — LPN (Support Nurse): Perform a head-to-toe assessment with " \
+              "vitals each shift and chart them. You administer medications and keep " \
+              "the MAR updated; chart meds given.",
+    "aide" => "ROLE — CNA (Care Assistant): Describe the patient in detail and chart " \
+              "it. Provide personal care — bathe, dress, keep clean and dry, " \
+              "reposition every 2 hours, offer fluids/food. You MAY NOT give " \
+              "medications; if meds are needed, notify the LPN or RN."
+  }.freeze
+
   class << self
     def call(role:, agency:, event: nil, context: {}, depth: 1)
       new(role:, agency:, event:, context:, depth:).call
@@ -135,6 +190,7 @@ class AgentBrain
       [ inst.send(:soul_md),
        inst.send(:persona_block),
        inst.send(:documentation_discipline_block),
+       inst.send(:continuous_care_block),
        inst.send(:overrides_block),
        inst.send(:instruction_block) ].reject { |s| s.to_s.strip.empty? }.join("\n\n---\n\n")
     end
@@ -249,6 +305,7 @@ class AgentBrain
         # Non-negotiable documentation discipline, non-cacheable on purpose so
         # any tightening of CMS rules takes effect on the next deploy.
         { type: "text", text: documentation_discipline_block },
+        { type: "text", text: continuous_care_block },
         { type: "text", text: overrides_block },
         { type: "text", text: instruction_block }
       ].reject { |b| b[:text].to_s.strip.empty? },
@@ -265,7 +322,7 @@ class AgentBrain
     req = Net::HTTP::Post.new(uri)
     req["content-type"]  = "application/json"
     req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    system_text = [ soul_md, persona_block, documentation_discipline_block, overrides_block, instruction_block ]
+    system_text = [ soul_md, persona_block, documentation_discipline_block, continuous_care_block, overrides_block, instruction_block ]
                     .reject { |s| s.to_s.strip.empty? }.join("\n\n---\n\n")
     req.body = {
       model: OPENAI_MODEL,
@@ -323,6 +380,13 @@ class AgentBrain
   def documentation_discipline_block
     return "" unless ROLES_REQUIRING_DOCUMENTATION_DISCIPLINE.include?(@role)
     DOCUMENTATION_DISCIPLINE
+  end
+
+  # Continuous Care protocol for the bedside CC roles (visit RN / LPN / CNA),
+  # with the role's specific duties appended. Empty for other roles.
+  def continuous_care_block
+    return "" unless CONTINUOUS_CARE_ROLES.include?(@role)
+    [ CONTINUOUS_CARE_PROTOCOL, CONTINUOUS_CARE_BY_ROLE[@role] ].compact.join("\n")
   end
 
   def instruction_block
