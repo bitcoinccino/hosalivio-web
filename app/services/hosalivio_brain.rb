@@ -27,7 +27,7 @@ class HosalivioBrain
   # OpenRouter (OpenAI-compatible) fallback — e.g. GLM. Set OPENROUTER_API_KEY
   # to enable and OPENROUTER_MODEL to the exact slug.
   OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
-  OPENROUTER_MODEL = ENV.fetch("OPENROUTER_MODEL", "z-ai/glm-4.6")
+  OPENROUTER_MODEL = ENV.fetch("OPENROUTER_MODEL", "z-ai/glm-5.2")
   CHAT_READ_TIMEOUT = Integer(ENV.fetch("HOSALIVIO_CHAT_READ_TIMEOUT", "12"))
 
   INTENTS = %w[

@@ -55,7 +55,7 @@ class AgentBrain
   # OpenRouter (OpenAI-compatible) — optional fallback provider, e.g. GLM.
   # Set OPENROUTER_API_KEY to enable; OPENROUTER_MODEL to the exact slug.
   OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
-  OPENROUTER_MODEL = ENV.fetch("OPENROUTER_MODEL", "z-ai/glm-4.6")
+  OPENROUTER_MODEL = ENV.fetch("OPENROUTER_MODEL", "z-ai/glm-5.2")
 
   PROVIDER_CHAIN = %i[claude openai openrouter].freeze
 
