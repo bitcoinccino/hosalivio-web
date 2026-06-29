@@ -1,0 +1,28 @@
+<%# One PIE intervention row. Local: f (fields_for builder). The medication-source
+    controller forces the caregiver/HA phrase into Response to care. %>
+<div class="border border-[#EFECE6] rounded-lg p-3 mb-3 space-y-2 <%= 'bg-[#FEFCE8]' if local_assigns[:ai] %>" data-nested-form-row data-controller="medication-source">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <div><%= f.label :ref_number, "Ref #", class: cc_label %><%= f.text_field :ref_number, class: cc_input %></div>
+    <div class="md:col-span-2"><%= f.label :symptom, "Symptom (Problem)", class: cc_label %><%= f.text_field :symptom, class: cc_input %></div>
+    <div>
+      <%= f.label :med_source, "Med source", class: cc_label %>
+      <%= f.select :med_source, [ [ "Nurse", "nurse" ], [ "Caregiver / HA", "caregiver" ] ], {},
+            class: cc_input, data: { "medication-source-target": "source", action: "change->medication-source#toggle" } %>
+    </div>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+    <div><%= f.label :med_name_and_dose, "Med & dose", class: cc_label %><%= f.text_field :med_name_and_dose, class: cc_input %></div>
+    <div><%= f.label :initial_time, "Initial time", class: cc_label %><%= f.time_field :initial_time, class: cc_input %></div>
+    <div><%= f.label :initial_level, "Initial level", class: cc_label %><%= f.text_field :initial_level, placeholder: "0-10 / None…", class: cc_input %></div>
+    <div><%= f.label :post_time, "Post time", class: cc_label %><%= f.time_field :post_time, class: cc_input %></div>
+    <div><%= f.label :post_level, "Post level", class: cc_label %><%= f.text_field :post_level, class: cc_input %></div>
+  </div>
+  <div>
+    <%= f.label :response_to_care, "Response to care / collaboration (Evaluation)", class: cc_label %>
+    <%= f.text_area :response_to_care, rows: 2, class: cc_input, data: { "medication-source-target": "response" } %>
+  </div>
+  <div class="flex justify-end items-center gap-2">
+    <%= f.hidden_field :_destroy %>
+    <button type="button" data-action="nested-form#remove" class="text-[11px] text-[#C1403A] hover:underline">Remove</button>
+  </div>
+</div>

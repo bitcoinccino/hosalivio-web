@@ -1,0 +1,31 @@
+<% content_for :title, "CC charts · #{@patient.full_name}" %>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4">
+  <div class="max-w-3xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="font-serif text-xl text-[#1D1C1A]">Continuous Care charts — <%= @patient.full_name %></h1>
+      <%= link_to new_patient_cc_interval_chart_path(@patient),
+            class: "px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium" do %>
+        <i class="ri-add-line"></i> New chart
+      <% end %>
+    </div>
+
+    <% if @charts.empty? %>
+      <p class="text-[#6B665F] text-sm">No Continuous Care charts yet.</p>
+    <% else %>
+      <ul class="space-y-2">
+        <% @charts.each do |c| %>
+          <li>
+            <%= link_to cc_interval_chart_path(c),
+                  class: "block bg-white border border-[#EFECE6] rounded-lg px-4 py-3 hover:bg-[#FBF9F5]" do %>
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-[#1D1C1A]"><%= c.date_of_shift.strftime("%b %-d, %Y") %></span>
+                <span class="text-[11px] uppercase tracking-wider font-bold <%= c.status_signed? ? 'text-emerald-700' : 'text-[#D97757]' %>"><%= c.status %></span>
+              </div>
+              <div class="text-[12px] text-[#6B665F]">by <%= c.user&.full_name %></div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+</div>

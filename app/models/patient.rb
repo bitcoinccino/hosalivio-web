@@ -63,6 +63,8 @@ class Patient < ApplicationRecord
   # --- Associations --------------------------------------------------------
   belongs_to :agency
   belongs_to :branch,            optional: true
+  has_many :cc_interval_charts, dependent: :destroy   # Continuous Care shift charts
+
   belongs_to :assigned_rn,       class_name: "User", optional: true   # Admission/Intake Nurse (admits only)
   belongs_to :assigned_visit_rn, class_name: "User", optional: true   # Visit/Primary Nurse (ongoing care)
   belongs_to :assigned_md,       class_name: "User", optional: true

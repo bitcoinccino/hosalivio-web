@@ -1,0 +1,101 @@
+<% content_for :title, "CC chart · #{@patient.full_name}" %>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="bg-white rounded-2xl border border-[#EFECE6] p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h1 class="font-serif text-xl text-[#1D1C1A]">CC Interval Chart</h1>
+          <p class="text-[12px] text-[#6B665F]"><%= @patient.full_name %> · MR# <%= @patient.mrn %></p>
+          <p class="text-[13px] mt-1 text-[#1D1C1A]">
+            <%= @chart.date_of_shift.strftime("%b %-d, %Y") %> ·
+            <%= @chart.shift_start_time&.strftime("%H%M") %>–<%= @chart.shift_end_time&.strftime("%H%M") %> ·
+            charted by <%= @chart.user&.full_name %>
+          </p>
+        </div>
+        <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-full <%= @chart.status_signed? ? 'bg-emerald-100 text-emerald-700' : 'bg-[#FFF3EC] text-[#D97757]' %>"><%= @chart.status %></span>
+      </div>
+      <% unless @chart.status_signed? %>
+        <div class="mt-3"><%= link_to "Edit", edit_cc_interval_chart_path(@chart), class: "text-[13px] text-[#D97757] hover:underline" %></div>
+      <% end %>
+    </div>
+
+    <!-- Vitals -->
+    <% if @chart.cc_vitals_records.any? %>
+      <div class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden">
+        <%= cc_section "Vital signs" %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-[12px]">
+            <thead class="bg-[#FBF9F5] text-[#6B665F]"><tr>
+              <% %w[Time Temp Pulse B/P Resp Intake Output BM].each do |h| %><th class="px-2 py-1 text-left font-semibold"><%= h %></th><% end %>
+            </tr></thead>
+            <tbody>
+              <% @chart.cc_vitals_records.each do |v| %>
+                <tr class="border-t border-[#EFECE6]">
+                  <td class="px-2 py-1"><%= v.recorded_at&.strftime("%H%M") %></td>
+                  <td class="px-2 py-1"><%= v.temperature %></td>
+                  <td class="px-2 py-1"><%= v.pulse %></td>
+                  <td class="px-2 py-1"><%= v.blood_pressure %></td>
+                  <td class="px-2 py-1"><%= v.respiration %></td>
+                  <td class="px-2 py-1"><%= v.intake_details %></td>
+                  <td class="px-2 py-1"><%= v.output_diapers %></td>
+                  <td class="px-2 py-1"><%= v.bowel_movement %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- POC interventions -->
+    <% if @chart.cc_poc_interventions.any? %>
+      <div class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden">
+        <%= cc_section "POC interventions (PIE)" %>
+        <div class="divide-y divide-[#EFECE6]">
+          <% @chart.cc_poc_interventions.each do |p| %>
+            <div class="p-3 text-[13px]">
+              <div class="font-medium text-[#1D1C1A]"><%= p.symptom %> <span class="text-[#6B665F]">(<%= p.initial_level %> → <%= p.post_level %>)</span></div>
+              <div class="text-[12px] text-[#6B665F]"><%= [ p.med_name_and_dose, p.med_source, "#{p.initial_time&.strftime("%H%M")}→#{p.post_time&.strftime("%H%M")}" ].compact_blank.join(" · ") %></div>
+              <% if p.response_to_care.present? %><div class="mt-1"><%= p.response_to_care %></div><% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Controlled substance counts -->
+    <% if @chart.cc_controlled_substance_counts.any? %>
+      <div class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden">
+        <%= cc_section "Controlled substance count" %>
+        <table class="min-w-full text-[12px]">
+          <thead class="bg-[#FBF9F5] text-[#6B665F]"><tr><th class="px-2 py-1 text-left font-semibold">Drug</th><th class="px-2 py-1">Start</th><th class="px-2 py-1">End</th></tr></thead>
+          <tbody>
+            <% @chart.cc_controlled_substance_counts.each do |c| %>
+              <tr class="border-t border-[#EFECE6]"><td class="px-2 py-1"><%= c.drug_name %></td><td class="px-2 py-1 text-center"><%= c.count_at_start %></td><td class="px-2 py-1 text-center"><%= c.count_at_end %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <!-- Sign-off -->
+    <% if @chart.status_signed? %>
+      <% sig = @chart.signatures.recent_first.first %>
+      <div class="bg-[#E6F0EE] border border-[#2F6F4E] rounded-2xl p-4 text-[13px] text-[#2F6F4E]">
+        <i class="ri-quill-pen-line"></i> Signed by <%= sig&.signed_name %><%= " on #{sig.signed_at.strftime("%b %-d, %Y %H%M")}" if sig&.signed_at %>.
+      </div>
+    <% else %>
+      <%= render "shared/signature_panel",
+            submit_path: sign_cc_interval_chart_path(@chart),
+            submit_method: :post,
+            submit_label: "Sign & lock chart",
+            headline: "Sign this interval chart",
+            intent_text: "I attest this Continuous Care interval chart is accurate and complete.",
+            tone: :certify %>
+    <% end %>
+
+    <div><%= link_to "← All CC charts", patient_cc_interval_charts_path(@patient), class: "text-[13px] text-[#6B665F] hover:underline" %></div>
+  </div>
+</div>
