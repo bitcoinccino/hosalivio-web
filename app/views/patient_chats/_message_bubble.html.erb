@@ -88,10 +88,15 @@
   }.fetch(role, "ri-user-line")
 %>
 
-<% if note.clinician_only? && note.author_user_id.present? && note.action_payload.blank? %>
+<% if note.clinician_only? && note.author_user_id.present? && note.action_payload.blank? && !%i[hosalivio_ack hosalivio_answer hosalivio_offer guardrail].include?(note.audit_kind) %>
   <%# IDG huddle bubble — a real human posting privately to the care team.
       Family doesn't see this (server scope + JS guard). Visually distinct
-      from the family-facing thread: dashed border, muted bg, "Team only" chip. %>
+      from the family-facing thread: dashed border, muted bg, "Team only" chip.
+      HosAlivio marker notes (ack/answer/offer/guardrail) can also carry an
+      author_user_id (e.g. a handoff "Got it" ack), so they're excluded here —
+      otherwise they'd render raw with the [HOSALIVIO_*] prefix instead of
+      falling through to their pill branches below. Mirrors the JS priority in
+      patient_chat_controller.js (audit_kind checked before the huddle case). %>
   <div class="max-w-2xl ml-auto bg-[#E9F1FB] border border-dashed border-[#A9C2E6] rounded-3xl px-5 py-4"
        title="Internal note · <%= note.author_user&.full_name %> · <%= in_patient_zone(note.created_at, @patient, "%b %-d %-l:%M %p") %>">
     <div class="flex items-center justify-between mb-1 gap-2">
