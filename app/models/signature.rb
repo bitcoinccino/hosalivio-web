@@ -33,7 +33,8 @@ class Signature < ApplicationRecord
     "drawn_inline_by_patient"          => "Patient signed in person",
     "drawn_inline_by_representative"   => "Representative signed in person",
     "registered_signature"             => "Registered signature",
-    "drawn_inline"                     => "Drawn inline"
+    "drawn_inline"                     => "Drawn inline",
+    "comfort_kit_authorize"            => "Comfort kit authorization"
   }.freeze
 
   def verification_label

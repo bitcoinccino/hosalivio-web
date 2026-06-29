@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_29_002540) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_29_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -386,22 +386,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_002540) do
 
   create_table "medication_orders", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "agency_id", null: false
+    t.boolean "comfort_kit", default: false, null: false
+    t.boolean "controlled", default: false, null: false
     t.datetime "created_at", null: false
     t.string "dose", null: false
     t.string "drug_name", null: false
     t.date "end_date"
     t.string "frequency", null: false
+    t.text "instructions"
     t.uuid "patient_id", null: false
+    t.uuid "pre_admit_eval_id"
     t.uuid "prescribed_by_id", null: false
     t.boolean "prn", default: false, null: false
     t.string "prn_indication"
+    t.string "quantity"
     t.integer "route", null: false
     t.date "start_date", null: false
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["agency_id", "patient_id", "status"], name: "index_medication_orders_on_agency_id_and_patient_id_and_status"
     t.index ["agency_id"], name: "index_medication_orders_on_agency_id"
+    t.index ["patient_id", "comfort_kit"], name: "index_medication_orders_on_patient_id_and_comfort_kit"
     t.index ["patient_id"], name: "index_medication_orders_on_patient_id"
+    t.index ["pre_admit_eval_id"], name: "index_medication_orders_on_pre_admit_eval_id"
     t.index ["prescribed_by_id"], name: "index_medication_orders_on_prescribed_by_id"
   end
 
@@ -767,6 +774,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_002540) do
   add_foreign_key "medication_logs", "users", column: "administered_by_id"
   add_foreign_key "medication_orders", "agencies"
   add_foreign_key "medication_orders", "patients"
+  add_foreign_key "medication_orders", "pre_admit_evals", on_delete: :nullify
   add_foreign_key "medication_orders", "users", column: "prescribed_by_id"
   add_foreign_key "notes", "agencies"
   add_foreign_key "notes", "notes", column: "parent_note_id", on_delete: :nullify
