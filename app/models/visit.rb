@@ -14,12 +14,12 @@ class Visit < ApplicationRecord
   has_one_attached :audio_note
 
   enum :discipline, {
-    rn: 0, md: 1, sw: 2, chaplain: 3, aide: 4, don: 5
+    rn: 0, md: 1, sw: 2, chaplain: 3, aide: 4, don: 5, lpn: 6
   }, prefix: true, validate: true
 
   enum :visit_type, {
     routine: 0, admission: 1, recert: 2, face_to_face: 3, discharge: 4, death: 5,
-    follow_up: 6, inquiry: 7
+    follow_up: 6, inquiry: 7, continuous: 8
   }, prefix: true, validate: true
 
   # Friendly category mapping the chart UI uses to gate the
@@ -35,7 +35,8 @@ class Visit < ApplicationRecord
     "follow_up"    => :follow_up,
     "discharge"    => :follow_up,
     "death"        => :follow_up,
-    "inquiry"      => :inquiry
+    "inquiry"      => :inquiry,
+    "continuous"   => :routine
   }.freeze
 
   VISIT_TYPE_LABELS = {
@@ -46,7 +47,8 @@ class Visit < ApplicationRecord
     "recert"       => "Recert (face-to-face)",
     "face_to_face" => "Face-to-face",
     "discharge"    => "Discharge",
-    "death"        => "Death"
+    "death"        => "Death",
+    "continuous"   => "Continuous Care"
   }.freeze
 
   def visit_category   = VISIT_TYPE_CATEGORIES[visit_type.to_s] || :follow_up

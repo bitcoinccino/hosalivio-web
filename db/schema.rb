@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_28_231243) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_29_002540) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -146,6 +146,85 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_231243) do
     t.index ["npi"], name: "index_branches_on_npi"
     t.index ["service_area_counties"], name: "index_branches_on_service_area_counties", using: :gin
     t.index ["service_area_zips"], name: "index_branches_on_service_area_zips", using: :gin
+  end
+
+  create_table "cc_controlled_substance_counts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.uuid "cc_interval_chart_id", null: false
+    t.integer "count_at_end"
+    t.integer "count_at_start"
+    t.datetime "created_at", null: false
+    t.string "drug_name", null: false
+    t.uuid "medication_order_id"
+    t.datetime "updated_at", null: false
+    t.index ["agency_id"], name: "index_cc_controlled_substance_counts_on_agency_id"
+    t.index ["cc_interval_chart_id"], name: "index_cc_controlled_substance_counts_on_cc_interval_chart_id"
+    t.index ["medication_order_id"], name: "index_cc_controlled_substance_counts_on_medication_order_id"
+  end
+
+  create_table "cc_interval_charts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.boolean "airborne_isolation", default: false, null: false
+    t.boolean "contact_isolation", default: false, null: false
+    t.datetime "created_at", null: false
+    t.date "date_of_shift", null: false
+    t.boolean "droplet_isolation", default: false, null: false
+    t.boolean "face_shield_or_goggles", default: false, null: false
+    t.boolean "facility_or_ha_shift", default: false, null: false
+    t.boolean "gown_or_apron", default: false, null: false
+    t.boolean "mask", default: false, null: false
+    t.boolean "n95_mask", default: false, null: false
+    t.uuid "patient_id", null: false
+    t.boolean "see_attached_addendum", default: false, null: false
+    t.time "shift_end_time"
+    t.time "shift_start_time"
+    t.integer "status", default: 0, null: false
+    t.boolean "universal_precautions", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.uuid "visit_id"
+    t.index ["agency_id"], name: "index_cc_interval_charts_on_agency_id"
+    t.index ["patient_id"], name: "index_cc_interval_charts_on_patient_id"
+    t.index ["user_id"], name: "index_cc_interval_charts_on_user_id"
+    t.index ["visit_id"], name: "index_cc_interval_charts_on_visit_id"
+  end
+
+  create_table "cc_poc_interventions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.uuid "cc_interval_chart_id", null: false
+    t.datetime "created_at", null: false
+    t.string "initial_level"
+    t.time "initial_time"
+    t.string "med_name_and_dose"
+    t.integer "med_source", default: 0, null: false
+    t.uuid "medication_order_id"
+    t.jsonb "non_verbal_indicators", default: {}, null: false
+    t.string "post_level"
+    t.time "post_time"
+    t.string "ref_number"
+    t.text "response_to_care"
+    t.string "symptom"
+    t.datetime "updated_at", null: false
+    t.index ["agency_id"], name: "index_cc_poc_interventions_on_agency_id"
+    t.index ["cc_interval_chart_id"], name: "index_cc_poc_interventions_on_cc_interval_chart_id"
+    t.index ["medication_order_id"], name: "index_cc_poc_interventions_on_medication_order_id"
+  end
+
+  create_table "cc_vitals_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.string "blood_pressure"
+    t.string "bowel_movement"
+    t.uuid "cc_interval_chart_id", null: false
+    t.datetime "created_at", null: false
+    t.string "intake_details"
+    t.string "output_diapers"
+    t.integer "pulse"
+    t.time "recorded_at", null: false
+    t.integer "respiration"
+    t.decimal "temperature", precision: 4, scale: 1
+    t.datetime "updated_at", null: false
+    t.index ["agency_id"], name: "index_cc_vitals_records_on_agency_id"
+    t.index ["cc_interval_chart_id"], name: "index_cc_vitals_records_on_cc_interval_chart_id"
   end
 
   create_table "chat_feedbacks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -660,6 +739,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_231243) do
   add_foreign_key "branches", "users", column: "director_of_nursing_id"
   add_foreign_key "branches", "users", column: "manager_id"
   add_foreign_key "branches", "users", column: "medical_director_id"
+  add_foreign_key "cc_controlled_substance_counts", "agencies"
+  add_foreign_key "cc_controlled_substance_counts", "cc_interval_charts"
+  add_foreign_key "cc_controlled_substance_counts", "medication_orders"
+  add_foreign_key "cc_interval_charts", "agencies"
+  add_foreign_key "cc_interval_charts", "patients"
+  add_foreign_key "cc_interval_charts", "users"
+  add_foreign_key "cc_interval_charts", "visits"
+  add_foreign_key "cc_poc_interventions", "agencies"
+  add_foreign_key "cc_poc_interventions", "cc_interval_charts"
+  add_foreign_key "cc_poc_interventions", "medication_orders"
+  add_foreign_key "cc_vitals_records", "agencies"
+  add_foreign_key "cc_vitals_records", "cc_interval_charts"
   add_foreign_key "consent_forms", "agencies"
   add_foreign_key "consent_forms", "patients"
   add_foreign_key "dme_orders", "agencies"
