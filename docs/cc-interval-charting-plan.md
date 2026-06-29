@@ -188,6 +188,57 @@ focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]
 
 ---
 
+## Refinements (from the finalized plan)
+
+**Codebase corrections to the finalized plan:**
+- Discipline is **`Visit#discipline`**, not `User#discipline` (there is no
+  discipline column on User; a user's discipline = `user.role_names`). Extend
+  `Visit#discipline` with `lpn`.
+- **CNA = the existing `aide` role** — do NOT add a separate `cna`. The CNA
+  medication boundary keys off the charting user's role.
+
+**CNA medication boundary (model validation, keyed off role, not a User enum):**
+```ruby
+# in CcPocIntervention / CcControlledSubstanceCount
+validate :cna_cannot_document_meds
+def cna_cannot_document_meds
+  charting_user = cc_interval_chart&.user
+  return unless charting_user&.role_names&.include?("aide")
+  if med_name_and_dose.present?
+    errors.add(:base, "CNAs cannot document medications — notify the LPN or RN.")
+  end
+end
+```
+
+**Phase 2 — named Stimulus controllers:**
+- `cc-form-defaults` — toggling `facility_or_ha_shift` / `see_attached_addendum`
+  dims/hides the now-optional validation targets.
+- `medication-source` — when a row's source is caregiver/HA, set the response
+  field read-only and auto-insert the required phrase
+  "Patient or Caregiver Indicated They Provided".
+- Standard nested-fields "add row" buttons for `poc_interventions` /
+  `vitals_records` / `controlled_substance_counts`.
+
+**Phase 3 — extraction example + highlighted review UX:**
+Dictation: *"Arrived at 0800. BP 120/80, pulse 72. Patient moaning and
+grimacing intensely. Administered liquid morphine 5mg at 0815. Reassessed at
+0900, grimacing resolved, patient sleeping."* maps to:
+```json
+{ "cc_vitals_records_attributes": [
+    { "recorded_at": "0800", "blood_pressure": "120/80", "pulse": 72 } ],
+  "cc_poc_interventions_attributes": [
+    { "symptom": "moaning and grimacing intensely", "initial_level": "Severe",
+      "med_name_and_dose": "liquid morphine 5mg", "med_source": "nurse",
+      "initial_time": "0815", "post_time": "0900", "post_level": "None",
+      "response_to_care": "Effective",
+      "non_verbal_indicators": { "facial": "grimacing", "vocal": "moaning" } } ] }
+```
+Review UX: an **AI processing drawer** takes the dictation, submits async, and
+**prefills** the Phase-2 form. AI-populated fields are subtly tinted (cream /
+soft yellow) so the clinician can scan what to verify; they correct, tick the
+verification box, and **electronically sign** (`Signature`) to commit — nothing
+reaches the EHR tables unsigned.
+
 ## Phased roadmap
 
 1. **Foundations + data** — `continuous` visit_type, `lpn` discipline,
