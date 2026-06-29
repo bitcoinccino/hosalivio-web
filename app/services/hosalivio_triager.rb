@@ -117,6 +117,21 @@ class HosalivioTriager
             .exists?
   end
 
+  GRATITUDE_RE = /\b(?:thank(?:s| ?you| ?u)?|thx|thanx|ty|appreciate(?:d| it)?|grateful)\b/i
+  # A real request riding alongside the thanks ("thanks, can you send…") must
+  # still be triaged, not closed out with a "you're welcome".
+  NEED_RE = /\b(?:can|could|when|where|why|how|need|send|call|schedule|refill|order|come|coming|visit|deliver|fix|out of|running low)\b/i
+
+  # A pure social closer: short, no question, expresses gratitude, and carries no
+  # actionable request. These get a warm acknowledgment instead of being fed to
+  # the Q&A brain (which has nothing to answer and falls back to an apology).
+  def pleasantry?(body)
+    s = body.to_s.strip
+    return false if s.empty? || s.include?("?")
+    return false if s.split(/\s+/).length > 6
+    s.match?(GRATITUDE_RE) && !s.match?(NEED_RE)
+  end
+
   # Phrases that mark a HosAlivio turn as an OFFER awaiting a yes/no.
   OFFER_CUES = [
     /\bwould you like\b/i, /\bwant me to\b/i, /\bshall i\b/i, /\bshould i\b/i,
@@ -159,6 +174,15 @@ class HosalivioTriager
     if human_clinician_recently_active? && !@note.urgency_crisis?
       Rails.logger.info("[HosalivioTriager] suppressing AI — human clinician active in thread for patient=#{@patient.id}")
       @note.mark_read!
+      return
+    end
+
+    # 0.4 — PURE PLEASANTRY (a thank-you / sign-off with no question and no
+    # pending offer to decide). Acknowledge warmly and stop — don't feed it to
+    # the Q&A brain, which has nothing to answer and falls back to an apologetic
+    # "I've nudged the team" that also isn't true.
+    if !@note.urgency_crisis? && !pending_family_offer? && pleasantry?(@note.body)
+      acknowledge_pleasantry!
       return
     end
 
@@ -245,6 +269,22 @@ class HosalivioTriager
     @note.thread_root? ? @note : @note.parent_note
   end
 
+  # Warm, commitment-free acknowledgment of a thank-you / sign-off. No Q&A,
+  # no nudge, no handoff — just close the loop kindly, threaded under the
+  # conversation.
+  def acknowledge_pleasantry!
+    Note.create!(
+      agency:      @agency,
+      patient:     @patient,
+      parent_note: thread_anchor,
+      author_role: "admissions",
+      body:        "You're very welcome. We're always here for #{@patient.first_name} — just reach out any time.",
+      urgency:     "normal",
+      source:      "system"
+    )
+    @note.mark_read!
+  end
+
   # Family Q&A path. Calls HosalivioBrain.answer_clinician_question with
   # role: "family" (which gates the patient context to lay-friendly,
   # no specific drug names/doses) and posts the answer as a normal,
@@ -260,7 +300,8 @@ class HosalivioTriager
       role:           "family",
       thread_context: recent_thread_context
     )
-    reply_text = result&.dig("answer").presence || "I'm not able to answer that just now. I've nudged the care team so someone can get back to you."
+    reply_text = result&.dig("answer").presence ||
+                 "I want to make sure you get the right help — could you tell me a little more about what you need for #{@patient.first_name}?"
 
     Note.create!(
       agency:      @agency,
