@@ -10,10 +10,22 @@
       <p class="text-[12px] text-[#6B665F] mt-1">
         Dictate or paste the shift in plain language — HosAlivio fills the chart below for you to review and sign.
       </p>
-      <%= form_with url: extract_patient_cc_interval_charts_path(@patient), method: :post, class: "mt-2" do %>
-        <textarea name="dictation" rows="3" class="<%= cc_input %>"
-          placeholder="e.g. Arrived 0800. BP 120/80, pulse 72. Patient grimacing and moaning; gave liquid morphine 5mg at 0815. Reassessed 0900, comfortable, sleeping."><%= @dictation %></textarea>
-        <div class="flex justify-end mt-2">
+      <%# data-controller="dictation" → on-device Web Speech transcription into
+          the textarea (same controller available to visit narratives). Tap the
+          mic to speak the shift; the transcript appends to whatever's typed. %>
+      <%= form_with url: extract_patient_cc_interval_charts_path(@patient), method: :post,
+            data: { controller: "dictation" }, class: "mt-2" do %>
+        <div class="relative">
+          <textarea name="dictation" rows="3" data-dictation-target="output" class="<%= cc_input %> pr-12"
+            placeholder="Type or tap the mic — e.g. Arrived 0800. BP 120/80, pulse 72. Patient grimacing and moaning; gave liquid morphine 5mg at 0815. Reassessed 0900, comfortable, sleeping."><%= @dictation %></textarea>
+          <button type="button" data-action="dictation#toggle" data-dictation-target="button"
+                  title="Dictate" aria-label="Dictate"
+                  class="absolute top-2 right-2 w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] flex items-center justify-center transition">
+            <i class="ri-mic-line"></i>
+          </button>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <span data-dictation-target="status" class="text-[11px] text-[#6B665F]"></span>
           <%= submit_tag "Draft with HosAlivio", class: "px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
         </div>
       <% end %>
