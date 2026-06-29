@@ -28,7 +28,7 @@ module Cc
 
     def call
       return {} if @dictation.empty?
-      raw = request_claude || request_openai
+      raw = request_claude || request_oai(:openai) || request_oai(:openrouter)
       return {} if raw.blank?
       sanitize(parse(raw))
     rescue => e
@@ -92,13 +92,24 @@ module Cc
       JSON.parse(resp.body).dig("content", 0, "text").to_s
     end
 
-    def request_openai
-      return nil unless HosalivioBrain.valid_key?(ENV["OPENAI_API_KEY"])
-      uri = URI(HosalivioBrain::OPENAI_URL)
+    # OpenAI-compatible call, shared by :openai and :openrouter (GLM). Returns
+    # nil when that provider's key is missing so the chain falls through.
+    def request_oai(provider)
+      url, key_env, model =
+        case provider
+        when :openrouter then [ HosalivioBrain::OPENROUTER_URL, "OPENROUTER_API_KEY", HosalivioBrain::OPENROUTER_MODEL ]
+        else                  [ HosalivioBrain::OPENAI_URL, "OPENAI_API_KEY", HosalivioBrain::OPENAI_MODEL ]
+        end
+      return nil unless HosalivioBrain.valid_key?(ENV[key_env])
+      uri = URI(url)
       req = Net::HTTP::Post.new(uri)
       req["content-type"]  = "application/json"
-      req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-      req.body = { model: HosalivioBrain::OPENAI_MODEL, max_tokens: MAX_TOKENS,
+      req["authorization"] = "Bearer #{ENV.fetch(key_env)}"
+      if provider == :openrouter
+        req["HTTP-Referer"] = ENV.fetch("OPENROUTER_REFERER", "https://hosalivio.com")
+        req["X-Title"]      = "HosAlivio"
+      end
+      req.body = { model: model, max_tokens: MAX_TOKENS,
                    messages: [ { role: "system", content: SYSTEM },
                                { role: "user", content: user_prompt } ] }.to_json
       resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }

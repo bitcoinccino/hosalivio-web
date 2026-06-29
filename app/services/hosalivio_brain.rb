@@ -24,6 +24,10 @@ class HosalivioBrain
   # OpenAI fallback config
   OPENAI_URL   = "https://api.openai.com/v1/chat/completions"
   OPENAI_MODEL = ENV.fetch("HOSALIVIO_BRAIN_OPENAI_MODEL", ENV.fetch("HOSALIVIO_LUCIA_OPENAI_MODEL", "gpt-4o"))
+  # OpenRouter (OpenAI-compatible) fallback — e.g. GLM. Set OPENROUTER_API_KEY
+  # to enable and OPENROUTER_MODEL to the exact slug.
+  OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
+  OPENROUTER_MODEL = ENV.fetch("OPENROUTER_MODEL", "z-ai/glm-4.6")
   CHAT_READ_TIMEOUT = Integer(ENV.fetch("HOSALIVIO_CHAT_READ_TIMEOUT", "12"))
 
   INTENTS = %w[

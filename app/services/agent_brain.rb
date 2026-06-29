@@ -52,7 +52,12 @@ class AgentBrain
   OPENAI_URL   = "https://api.openai.com/v1/chat/completions"
   OPENAI_MODEL = ENV.fetch("HOSALIVIO_AGENT_OPENAI_MODEL", ENV.fetch("HOSALIVIO_LUCIA_OPENAI_MODEL", "gpt-4o"))
 
-  PROVIDER_CHAIN = %i[claude openai].freeze
+  # OpenRouter (OpenAI-compatible) — optional fallback provider, e.g. GLM.
+  # Set OPENROUTER_API_KEY to enable; OPENROUTER_MODEL to the exact slug.
+  OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
+  OPENROUTER_MODEL = ENV.fetch("OPENROUTER_MODEL", "z-ai/glm-4.6")
+
+  PROVIDER_CHAIN = %i[claude openai openrouter].freeze
 
   # Cap handoff chain depth so RN→MD→RN loops can't runaway.
   MAX_DEPTH = 3
@@ -197,8 +202,9 @@ class AgentBrain
 
     def provider_enabled?(provider)
       case provider
-      when :claude then valid_key?(ENV["ANTHROPIC_API_KEY"])
-      when :openai then valid_key?(ENV["OPENAI_API_KEY"])
+      when :claude     then valid_key?(ENV["ANTHROPIC_API_KEY"])
+      when :openai     then valid_key?(ENV["OPENAI_API_KEY"])
+      when :openrouter then valid_key?(ENV["OPENROUTER_API_KEY"])
       end
     end
 
@@ -226,7 +232,7 @@ class AgentBrain
     PROVIDER_CHAIN.each do |provider|
       next unless self.class.provider_enabled?(provider)
       begin
-        return sanitize(parse(request(provider)), "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}")
+        return sanitize(parse(request(provider)), "#{provider}:#{model_for(provider)}")
       rescue => e
         attempts << "#{provider}=#{e.class}"
         Rails.logger.warn("[AgentBrain:#{@role}:#{provider}] #{e.class}: #{e.message}")
@@ -286,7 +292,15 @@ class AgentBrain
   def request(provider)
     case provider
     when :claude then request_claude
-    when :openai then request_openai
+    else              request_oai(provider)   # :openai / :openrouter (OpenAI-compatible)
+    end
+  end
+
+  def model_for(provider)
+    case provider
+    when :claude     then CLAUDE_MODEL
+    when :openrouter then OPENROUTER_MODEL
+    else                  OPENAI_MODEL
     end
   end
 
@@ -317,25 +331,34 @@ class AgentBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def request_openai
-    uri = URI(OPENAI_URL)
+  # OpenAI-compatible request, shared by :openai and :openrouter (GLM). Only the
+  # endpoint/key/model differ; OpenRouter omits response_format (not all models
+  # support it) and relies on the prompt + lenient JSON parse.
+  def request_oai(provider = :openai)
+    url, key_env, model =
+      case provider
+      when :openrouter then [ OPENROUTER_URL, "OPENROUTER_API_KEY", OPENROUTER_MODEL ]
+      else                  [ OPENAI_URL, "OPENAI_API_KEY", OPENAI_MODEL ]
+      end
+    uri = URI(url)
     req = Net::HTTP::Post.new(uri)
     req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
+    req["authorization"] = "Bearer #{ENV.fetch(key_env)}"
+    if provider == :openrouter
+      req["HTTP-Referer"] = ENV.fetch("OPENROUTER_REFERER", "https://hosalivio.com")
+      req["X-Title"]      = "HosAlivio"
+    end
     system_text = [ soul_md, persona_block, documentation_discipline_block, continuous_care_block, overrides_block, instruction_block ]
                     .reject { |s| s.to_s.strip.empty? }.join("\n\n---\n\n")
-    req.body = {
-      model: OPENAI_MODEL,
-      max_tokens: 800,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system_text },
-        { role: "user",   content: user_prompt }
-      ]
-    }.to_json
+    body = {
+      model: model, max_tokens: 800,
+      messages: [ { role: "system", content: system_text }, { role: "user", content: user_prompt } ]
+    }
+    body[:response_format] = { type: "json_object" } unless provider == :openrouter
+    req.body = body.to_json
 
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    raise "#{provider} #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
     JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
   end
 
