@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_29_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_30_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -419,6 +419,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_190000) do
     t.text "body", null: false
     t.boolean "clinician_only", default: false, null: false
     t.datetime "created_at", null: false
+    t.boolean "family_offer", default: false, null: false
     t.datetime "feedback_at"
     t.uuid "feedback_by_id"
     t.text "feedback_notes"
