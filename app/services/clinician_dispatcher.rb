@@ -571,7 +571,7 @@ class ClinicianDispatcher
     message = message.to_s.strip
     return nil if message.empty?
     payload = { "target" => "family", "message" => message, "family_thread_id" => family_thread_id }
-    Note.create!(
+    note = Note.create!(
       agency:         agency,
       patient:        patient,
       parent_note:    nil,
@@ -581,8 +581,30 @@ class ClinicianDispatcher
       source:         "system",
       clinician_only: true
     )
+    notify_assigned_rn_of_offer(note: note, patient: patient, agency: agency)
+    note
   rescue ActiveRecord::RecordInvalid
     nil
+  end
+
+  # Nudge the patient's responsible nurse that a family-facing draft is waiting
+  # for their Send — otherwise a held commitment only surfaces if they happen to
+  # open this patient's chat. In-app bell only (relay_offer_pending is suppressed
+  # from outbound pings); clicking deep-links to the draft in the patient chat.
+  # Targets the ongoing Primary/Visit RN, falling back to the Admission RN.
+  def self.notify_assigned_rn_of_offer(note:, patient:, agency:)
+    rn = patient.assigned_visit_rn || patient.assigned_rn
+    return unless rn
+    Notification.create!(
+      agency: agency,
+      user:   rn,
+      kind:   "relay_offer_pending",
+      title:  "Draft reply awaiting your Send — #{patient.first_name}",
+      body:   "HosAlivio drafted a family update that needs your review before it goes out.",
+      linked: note
+    )
+  rescue => e
+    Rails.logger.warn("[ClinicianDispatcher.notify_assigned_rn_of_offer] #{e.class}: #{e.message}")
   end
 
   def post_family_relay_offer(message)

@@ -37,10 +37,13 @@ module TestWorld
     end
   end
 
-  def create_patient(agency:, first_name: "Maria", last_name: "Gonzalez", assigned_md: nil)
+  def create_patient(agency:, first_name: "Maria", last_name: "Gonzalez",
+                     assigned_md: nil, assigned_rn: nil, assigned_visit_rn: nil)
     in_tenant(agency) do
       Patient.create!(agency: agency, first_name: first_name, last_name: last_name,
-                      dob: Date.new(1940, 1, 1), mrn: "MRN#{rand_suffix(4)}", assigned_md: assigned_md)
+                      dob: Date.new(1940, 1, 1), mrn: "MRN#{rand_suffix(4)}",
+                      assigned_md: assigned_md, assigned_rn: assigned_rn,
+                      assigned_visit_rn: assigned_visit_rn)
     end
   end
 
