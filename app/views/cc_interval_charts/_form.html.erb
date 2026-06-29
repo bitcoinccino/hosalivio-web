@@ -1,0 +1,97 @@
+<%= form_with model: @chart,
+      url: (@chart.persisted? ? cc_interval_chart_path(@chart) : patient_cc_interval_charts_path(@patient)),
+      method: (@chart.persisted? ? :patch : :post),
+      data: { controller: "cc-form-defaults" },
+      class: "max-w-5xl mx-auto p-4 md:p-6 bg-white rounded-2xl border border-[#EFECE6] space-y-6 text-[#1D1C1A]" do |f| %>
+
+  <% if @chart.errors.any? %>
+    <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
+      <i class="ri-error-warning-line mr-1"></i><%= @chart.errors.full_messages.to_sentence %>
+    </div>
+  <% end %>
+
+  <!-- Metadata -->
+  <div class="border-b border-[#EFECE6] pb-4">
+    <h2 class="font-serif text-xl text-[#1D1C1A]">CC Interval (Shift) Charting</h2>
+    <p class="text-[12px] text-[#6B665F]"><%= @patient.full_name %> · MR# <%= @patient.mrn %></p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <div><%= f.label :date_of_shift, "Date of shift", class: cc_label %><%= f.date_field :date_of_shift, class: cc_input %></div>
+      <div><%= f.label :shift_start_time, "Shift start (VIPU / at bedside)", class: cc_label %><%= f.time_field :shift_start_time, class: cc_input %></div>
+      <div class="flex items-end">
+        <label class="inline-flex items-center gap-2 text-[13px] text-[#1D1C1A] pb-1.5">
+          <%= f.check_box :facility_or_ha_shift, data: { "cc-form-defaults-target": "toggle", action: "change->cc-form-defaults#sync" } %>
+          Facility patient or HA shift
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vitals / data collection (q2h check-ins) -->
+  <div data-cc-form-defaults-target="optional">
+    <%= cc_section "Vital signs / data collection (chart every 2 hours)" %>
+    <div class="border border-[#EFECE6] rounded-b p-3" data-controller="nested-form">
+      <%= f.fields_for :cc_vitals_records do |vf| %><%= render "vitals_fields", f: vf %><% end %>
+      <div data-nested-form-target="anchor"></div>
+      <template data-nested-form-target="template">
+        <%= f.fields_for :cc_vitals_records, CcVitalsRecord.new, child_index: "NEW_RECORD" do |vf| %><%= render "vitals_fields", f: vf %><% end %>
+      </template>
+      <button type="button" data-action="nested-form#add" class="mt-1 inline-flex items-center gap-1 text-[12px] text-[#D97757] hover:underline font-medium"><i class="ri-add-line"></i> Add interval</button>
+    </div>
+  </div>
+
+  <!-- POC interventions (PIE) -->
+  <div>
+    <%= cc_section "POC interventions performed (Problem · Intervention · Evaluation)" %>
+    <div class="border border-[#EFECE6] rounded-b p-3" data-controller="nested-form">
+      <%= f.fields_for :cc_poc_interventions do |pf| %><%= render "poc_fields", f: pf %><% end %>
+      <div data-nested-form-target="anchor"></div>
+      <template data-nested-form-target="template">
+        <%= f.fields_for :cc_poc_interventions, CcPocIntervention.new, child_index: "NEW_RECORD" do |pf| %><%= render "poc_fields", f: pf %><% end %>
+      </template>
+      <button type="button" data-action="nested-form#add" class="mt-1 inline-flex items-center gap-1 text-[12px] text-[#D97757] hover:underline font-medium"><i class="ri-add-line"></i> Add intervention</button>
+    </div>
+  </div>
+
+  <!-- Controlled substance count -->
+  <div data-cc-form-defaults-target="optional">
+    <%= cc_section "Controlled substance count" %>
+    <div class="border border-[#EFECE6] rounded-b p-3" data-controller="nested-form">
+      <%= f.fields_for :cc_controlled_substance_counts do |cf| %><%= render "cs_fields", f: cf %><% end %>
+      <div data-nested-form-target="anchor"></div>
+      <template data-nested-form-target="template">
+        <%= f.fields_for :cc_controlled_substance_counts, CcControlledSubstanceCount.new, child_index: "NEW_RECORD" do |cf| %><%= render "cs_fields", f: cf %><% end %>
+      </template>
+      <button type="button" data-action="nested-form#add" class="mt-1 inline-flex items-center gap-1 text-[12px] text-[#D97757] hover:underline font-medium"><i class="ri-add-line"></i> Add count</button>
+    </div>
+  </div>
+
+  <!-- PPE & precautions -->
+  <div>
+    <%= cc_section "PPE & precautions" %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 border border-[#EFECE6] rounded-b p-4 bg-[#FBF9F5] text-[13px]">
+      <% { universal_precautions: "Universal precautions", gown_or_apron: "Gown / apron",
+           face_shield_or_goggles: "Face shield / goggles", mask: "Mask", n95_mask: "N95 mask",
+           contact_isolation: "Contact isolation", airborne_isolation: "Airborne isolation",
+           droplet_isolation: "Droplet isolation" }.each do |attr, label| %>
+        <label class="inline-flex items-center gap-2"><%= f.check_box attr %><%= label %></label>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Shift end -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#FBF9F5] p-4 rounded-lg border border-[#EFECE6]">
+    <div><%= f.label :shift_end_time, "Shift end (VIPU / left residence)", class: cc_label %><%= f.time_field :shift_end_time, class: cc_input %></div>
+    <div class="flex items-end">
+      <label class="inline-flex items-center gap-2 text-[13px] pb-1.5">
+        <%= f.check_box :see_attached_addendum, data: { "cc-form-defaults-target": "toggle", action: "change->cc-form-defaults#sync" } %>
+        See attached interval charting addendum
+      </label>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-3 border-t border-[#EFECE6] pt-4">
+    <%= link_to "Cancel", patient_cc_interval_charts_path(@patient), class: "px-4 py-2 text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+    <%= f.submit (@chart.persisted? ? "Update draft" : "Save draft"),
+          class: "px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+  </div>
+<% end %>

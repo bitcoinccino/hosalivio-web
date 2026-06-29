@@ -1,0 +1,10 @@
+<%# One controlled-substance count row. Local: f (fields_for builder). %>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2 items-end border-b border-[#EFECE6] pb-3 mb-3" data-nested-form-row>
+  <div><%= f.label :drug_name, "Drug (narcotic)", class: cc_label %><%= f.text_field :drug_name, class: cc_input %></div>
+  <div><%= f.label :count_at_start, "Count @ start", class: cc_label %><%= f.number_field :count_at_start, class: cc_input %></div>
+  <div><%= f.label :count_at_end, "Count @ end", class: cc_label %><%= f.number_field :count_at_end, class: cc_input %></div>
+  <div class="flex items-center pb-1.5">
+    <%= f.hidden_field :_destroy %>
+    <button type="button" data-action="nested-form#remove" class="text-[11px] text-[#C1403A] hover:underline">Remove</button>
+  </div>
+</div>

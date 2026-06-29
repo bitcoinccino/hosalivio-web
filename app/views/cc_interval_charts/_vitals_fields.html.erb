@@ -1,0 +1,15 @@
+<%# One interval vitals check-in row. Local: f (fields_for builder). %>
+<div class="grid grid-cols-2 md:grid-cols-9 gap-2 items-end border-b border-[#EFECE6] pb-3 mb-3" data-nested-form-row>
+  <div><%= f.label :recorded_at, "Time", class: cc_label %><%= f.time_field :recorded_at, class: cc_input %></div>
+  <div><%= f.label :temperature, "Temp °F", class: cc_label %><%= f.text_field :temperature, class: cc_input %></div>
+  <div><%= f.label :pulse, "Pulse", class: cc_label %><%= f.number_field :pulse, class: cc_input %></div>
+  <div><%= f.label :blood_pressure, "B/P", class: cc_label %><%= f.text_field :blood_pressure, placeholder: "120/80", class: cc_input %></div>
+  <div><%= f.label :respiration, "Resp", class: cc_label %><%= f.number_field :respiration, class: cc_input %></div>
+  <div><%= f.label :intake_details, "Intake", class: cc_label %><%= f.text_field :intake_details, class: cc_input %></div>
+  <div><%= f.label :output_diapers, "Output", class: cc_label %><%= f.text_field :output_diapers, class: cc_input %></div>
+  <div><%= f.label :bowel_movement, "BM", class: cc_label %><%= f.text_field :bowel_movement, class: cc_input %></div>
+  <div class="flex items-center pb-1.5">
+    <%= f.hidden_field :_destroy %>
+    <button type="button" data-action="nested-form#remove" class="text-[11px] text-[#C1403A] hover:underline">Remove</button>
+  </div>
+</div>

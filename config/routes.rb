@@ -76,6 +76,12 @@ Rails.application.routes.draw do
     resources :family, only: [ :new, :create, :destroy ], controller: "patient_families"
     resources :consents, only: [ :index, :new, :create, :show ], controller: "consent_forms"
     resources :documents, only: [ :index, :create, :destroy ], controller: "patient_documents"
+    # Continuous Care interval (shift) charting. Shallow: index/new/create nest
+    # under the patient; show/edit/update + sign are top-level by chart id.
+    resources :cc_interval_charts, shallow: true,
+              only: [ :index, :new, :create, :show, :edit, :update ] do
+      member { post :sign }
+    end
   end
 
   # JSON reference lookups for the admissions form (diagnosis autocomplete +
