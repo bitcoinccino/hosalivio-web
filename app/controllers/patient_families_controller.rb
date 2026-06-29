@@ -17,8 +17,11 @@ class PatientFamiliesController < ApplicationController
   end
 
   def create
-    temp_password = generate_temp_password
-    relationship  = normalized_relationship
+    relationship = normalized_relationship
+    # Family signs in passwordlessly (one-time email code via PasswordlessController);
+    # we still set an unguessable password so the Devise record is valid, but it is
+    # never emailed or shown — nobody ever types it.
+    secret_password = generate_unused_password
 
     ActsAsTenant.with_tenant(@patient.agency) do
       @family_user = User.new(
@@ -30,20 +33,19 @@ class PatientFamiliesController < ApplicationController
         phone_number:  params.dig(:user, :phone_number).to_s.strip,
         relationship:  relationship,
         timezone:      params.dig(:user, :timezone).presence || "America/New_York",
-        password:      temp_password,
-        password_confirmation: temp_password
+        password:      secret_password,
+        password_confirmation: secret_password
       )
 
       if @family_user.save
         stamp_audit_event(relationship)
         begin
           FamilyInviteMailer.with(user: @family_user, patient: @patient,
-                                   temp_password: temp_password,
                                    invited_by: current_user).welcome.deliver_later
         rescue => e
           Rails.logger.warn("[PatientFamilies] mailer failed for #{@family_user.email}: #{e.class} #{e.message}")
         end
-        flash[:notice] = "Invited #{@family_user.full_name} (#{relationship} of #{@patient.first_name}). Temporary password: #{temp_password}"
+        flash[:notice] = "Invited #{@family_user.full_name} (#{relationship} of #{@patient.first_name}). They'll get a welcome email and sign in with a one-time code."
         redirect_to patient_path(@patient), status: :see_other
       else
         flash.now[:alert] = @family_user.errors.full_messages.to_sentence
@@ -84,8 +86,10 @@ class PatientFamiliesController < ApplicationController
     RELATIONSHIPS.include?(selected) ? selected : "family"
   end
 
-  def generate_temp_password
-    "hos-#{SecureRandom.alphanumeric(8).downcase}"
+  # An unguessable password set only to satisfy Devise validations. Family
+  # never sees or types it — they sign in with one-time email codes.
+  def generate_unused_password
+    "hos-#{SecureRandom.alphanumeric(24).downcase}"
   end
 
   def stamp_audit_event(relationship)

@@ -145,6 +145,10 @@ class Note < ApplicationRecord
   RATIONALE_BODY_RE = /\A[A-Z][\w ]+ rationale\n\n/.freeze
   GUARDRAIL_PREFIX  = "[GUARDRAIL_BLOCKED]"
   HOSALIVIO_ACK_PREFIX = "[HOSALIVIO_ACK]"
+  # A HosAlivio answer to a clinician question. Renders like an ack pill but is
+  # reply-able (follow-ups thread under it) — unlike a dispatch confirmation,
+  # which is also an ack but isn't a conversation.
+  HOSALIVIO_ANSWER_PREFIX = "[HOSALIVIO_ANSWER]"
   # A pending relay HosAlivio drafted but has not sent yet. The first line
   # is "[HOSALIVIO_OFFER]<base64 json payload>"; everything after the first
   # newline is the human-readable preview. The payload carries the resolved
@@ -156,6 +160,7 @@ class Note < ApplicationRecord
     txt = body.to_s
     return :guardrail  if txt.start_with?(GUARDRAIL_PREFIX)
     return :hosalivio_offer if txt.start_with?(HOSALIVIO_OFFER_PREFIX)
+    return :hosalivio_answer if txt.start_with?(HOSALIVIO_ANSWER_PREFIX)
     return :hosalivio_ack if txt.start_with?(HOSALIVIO_ACK_PREFIX)
     return :triage     if txt.lines.any? { |l| l.start_with?("Notified:") }
     return :rationale  if txt.match?(RATIONALE_BODY_RE)
@@ -184,7 +189,7 @@ class Note < ApplicationRecord
   # clinician's chat/huddle message) — as opposed to a system/audit artifact
   # (action banner, guardrail block, HosAlivio ack/offer, triage/rationale log).
   # Drives whether the chat shows a Reply affordance under the note.
-  NON_CONVERSATIONAL_KINDS = %i[action guardrail hosalivio_ack hosalivio_offer triage rationale].freeze
+  NON_CONVERSATIONAL_KINDS = %i[action guardrail hosalivio_ack hosalivio_answer hosalivio_offer triage rationale].freeze
   def conversational?
     NON_CONVERSATIONAL_KINDS.exclude?(audit_kind)
   end
@@ -222,8 +227,10 @@ class Note < ApplicationRecord
       return nil if rel.blank? || name.blank?
       return "#{rel.capitalize} of #{name}"
     end
-    role_up = author_role.to_s.tr("_", " ").upcase
-    ai_authored? ? "AI auto-reply · #{role_up}" : role_up
+    # Clinician-facing role label (family viewers get the warmer family_role_label
+    # in the bubble). Falls back to the upcased role key for anything unmapped.
+    label = HosalivioTriager::ROLE_LABELS[author_role.to_s] || author_role.to_s.tr("_", " ").upcase
+    ai_authored? ? "AI auto-reply · #{label}" : label
   end
 
   private
@@ -236,7 +243,13 @@ class Note < ApplicationRecord
     return unless root
     self.patient_id     = root.patient_id
     self.agency_id      = root.agency_id
-    self.clinician_only = root.clinician_only
+    # A reply normally inherits the thread's visibility — EXCEPT a clinician's
+    # @HosAlivio command, which stays team-only even inside a family thread.
+    # The clinician is instructing the bot privately; only HosAlivio's
+    # confirmed relay (deliver_family_relay) is posted family-visible. This
+    # preserves the note's own clinician_only rather than forcing it, so a
+    # family member's @HosAlivio message stays family-visible.
+    self.clinician_only = root.clinician_only unless body.to_s.match?(/@hosalivio\b/i)
   end
 
   # One level deep: the parent must itself be a root. Prevents reply-to-reply
@@ -265,6 +278,15 @@ class Note < ApplicationRecord
     if audio.attached?
       audio_url = Rails.application.routes.url_helpers.rails_blob_path(audio, only_path: true)
     end
+    # Author photo so live-appended bubbles match the server-rendered ones
+    # (otherwise a real-time reply falls back to an initials circle even when
+    # the person has an avatar). Lazy variant URL — processed on first GET.
+    author_avatar_url = nil
+    if author_user&.avatar&.attached?
+      author_avatar_url = Rails.application.routes.url_helpers.rails_representation_path(
+        author_user.avatar.variant(resize_to_fill: [ 80, 80 ]), only_path: true
+      )
+    end
     ActionCable.server.broadcast(
       "patient:#{patient_id}",
       {
@@ -275,6 +297,7 @@ class Note < ApplicationRecord
         author_user_id:    author_user_id,
         author_name:       display_author_name,
         author_subtitle:   display_author_subtitle,
+        author_avatar_url: author_avatar_url,
         ai_authored:       ai_authored?,
         clinician_only:    clinician_only,        # JS filters family viewers
         action_payload:    action_payload,        # nil unless body is "[ACTION:...]"

@@ -1,0 +1,64 @@
+<%# Invite-family form. Shared by the standalone page (new.html.erb) and the
+    in-chat modal (patient_chats/show). Locals:
+      patient      — the Patient being invited to
+      family_user  — a User for default field values (defaults to a fresh one) %>
+<% family_user ||= User.new(family_access: true, timezone: (current_user.timezone.presence || "America/New_York")) %>
+<% modal = false unless defined?(modal) %>
+<%
+  input_cls = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
+  label_cls = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+%>
+<%= form_with(url: patient_family_index_path(patient), method: :post, local: true, scope: :user, html: { class: "space-y-4" }) do |f| %>
+  <% if flash[:alert].present? %>
+    <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
+      <i class="ri-error-warning-line mr-1"></i><%= flash[:alert] %>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :full_name, "Full name", class: label_cls %>
+    <%= f.text_field :full_name, required: true,
+          placeholder: "e.g. Carlos Alvarez", class: input_cls %>
+  </div>
+
+  <div>
+    <%= f.label :email, class: label_cls %>
+    <%= f.email_field :email, required: true, placeholder: "name@email.com", class: input_cls %>
+  </div>
+
+  <div class="space-y-3" data-controller="relationship">
+    <div>
+      <%= f.label :relationship, class: label_cls %>
+      <% rel_options = PatientFamiliesController::RELATIONSHIPS.map { |r| [r.capitalize, r] } %>
+      <%= f.select :relationship, rel_options, { prompt: "Select…" },
+            class: input_cls,
+            data: { action: "change->relationship#toggleOther" } %>
+    </div>
+    <div data-relationship-target="other" class="<%= 'hidden' unless (family_user.relationship || '') == 'other' %>">
+      <%= f.label :relationship_other, "If other, specify", class: label_cls %>
+      <%= f.text_field :relationship_other,
+            placeholder: "daughter-in-law, godson…", class: input_cls %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :timezone, class: label_cls %>
+    <%= f.select :timezone,
+          ActiveSupport::TimeZone.us_zones.map { |z| [z.name, z.name] },
+          { selected: family_user.timezone },
+          class: input_cls %>
+  </div>
+
+  <div class="pt-3 border-t border-[#EFECE6] flex items-center justify-end gap-2">
+    <% if modal %>
+      <button type="button" data-action="dialog#close"
+              class="text-[13px] text-[#6B665F] hover:text-[#1D1C1A] px-3 py-2 rounded-full hover:bg-[#F2EEE7]">
+        Cancel
+      </button>
+    <% else %>
+      <%= link_to "Cancel", patient_path(patient), class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A] px-3 py-2" %>
+    <% end %>
+    <%= f.submit "Send invite",
+          class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+  </div>
+<% end %>

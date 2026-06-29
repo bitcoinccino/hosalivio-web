@@ -106,6 +106,19 @@ class ClinicianDispatcher
     body.to_s.match?(MENTION_RE)
   end
 
+  # A direct @HosAlivio message that classification couldn't turn into an
+  # action (vague ask, unsupported relay target, plain chit-chat). Post a
+  # short ack so a direct delegation never vanishes without a reply. No-op
+  # (returns false) when HosAlivio wasn't actually @-mentioned — an action-
+  # verb message with no mention shouldn't get an unsolicited bot reply.
+  # `ack` is the optional conversational reply the brain already drafted;
+  # we prefer it over the generic fallback when present.
+  def self.acknowledge_unactionable(note:, requester:, ack: nil)
+    return false unless mentions_hosalivio?(note.body)
+    new(note, requester).send(:post_unactionable_ack, ack)
+    true
+  end
+
   # Short yes/no the clinician types to answer a pending relay preview.
   RELAY_AFFIRMATIVE_RE = /\A\s*(?:@hosalivio\b[\s,:-]*)?(yes|yep|yeah|yup|ok|okay|sure|send( it)?|do it|please|confirm(ed)?|go ahead)\b[\s.!]*\z/i
   RELAY_NEGATIVE_RE    = /\A\s*(?:@hosalivio\b[\s,:-]*)?(no|nope|cancel|don'?t|do not|stop|never\s*mind|nvm|hold off|wait)\b[\s.!]*\z/i
@@ -326,11 +339,11 @@ class ClinicianDispatcher
     # "What can you do? / who are you?" is a fixed answer — skip the LLM and
     # post a short, scannable capability blurb instead of a verbose paragraph.
     if capability_question?(@note.body)
-      post_ack(capability_blurb)
+      post_answer(capability_blurb)
       return Result.new(dispatched: true, intent: "capability_answer")
     end
 
-    role = (@requester.role_names & %w[rn md don admissions admin ceo aide sw social_worker chaplain]).first || "rn"
+    role = (@requester.role_names & %w[rn md don admissions admin aide sw social_worker chaplain]).first || "rn"
     result = HosalivioBrain.answer_clinician_question(
       question:       @note.body.to_s,
       patient:        @patient,
@@ -339,7 +352,7 @@ class ClinicianDispatcher
     )
 
     if result
-      post_ack(result["answer"])
+      post_answer(result["answer"])
       # Same notify-on-acceptance path as the family side: when the
       # clinician confirms an offer ("yes, ping admissions") the
       # brain returns a notify directive, which we execute as a
@@ -369,7 +382,7 @@ class ClinicianDispatcher
         }
       )
     else
-      post_ack(fallback_answer_for(role))
+      post_answer(fallback_answer_for(role))
     end
     Result.new(dispatched: true, intent: "answer_question")
   end
@@ -479,6 +492,20 @@ class ClinicianDispatcher
     notify = notify.is_a?(Hash) ? notify : {}
     role   = (notify["role"] || notify[:role]).to_s.strip.downcase
     reason = (notify["reason"] || notify[:reason]).to_s.strip
+
+    # "Let the family know …" — relay an update to the patient's family rather
+    # than a teammate. Same draft→preview→confirm flow, but the confirmed
+    # message is posted family-visible (see confirm_family_relay). HosAlivio
+    # has already drafted a warm, family-appropriate message in `reason`.
+    if role == "family"
+      if reason.empty?
+        post_ack("I caught that you want to update the family, but not what to say. Try \"@HosAlivio let the family know the comfort kit is on the way.\"")
+        return Result.new(dispatched: false, reason: "family_relay_incomplete", intent: "relay_to_family")
+      end
+      posted = post_family_relay_offer(reason)
+      return Result.new(dispatched: posted, intent: posted ? "relay_to_family_offer" : "family_relay_error")
+    end
+
     if role.empty? || reason.empty?
       post_ack("I caught that you want to flag a teammate, but not who or what. Try \"let the MD know the admission is almost done.\"")
       return Result.new(dispatched: false, reason: "notify_clinician_incomplete", intent: "notify_clinician")
@@ -503,6 +530,7 @@ class ClinicianDispatcher
       post_ack("I don't have a drafted message waiting, so there's nothing to send. Tell me what to pass along and to whom.")
       return Result.new(dispatched: false, reason: "no_pending_offer", intent: "confirm_relay")
     end
+    return confirm_family_relay(payload, override) if payload["target"] == "family"
     role    = payload["role"].to_s
     target  = User.where(agency_id: @agency.id).find_by(id: payload["target_user_id"]) ||
               resolve_clinician_for_role(role)
@@ -530,6 +558,86 @@ class ClinicianDispatcher
       post_ack("Okay, I won't send that. Nothing went out.")
     end
     Result.new(dispatched: true, intent: "cancel_relay")
+  end
+
+  # Draft-but-unsent offer to update the FAMILY. Clinician-only and top-level
+  # (parent_note nil) so it never inherits a family thread's visibility — only
+  # the clinician sees the draft + Send/Edit/Cancel. The payload marks the
+  # target "family" and stashes the family thread root so the confirmed message
+  # threads under the family's conversation. Shared by the clinician relay
+  # ("@HosAlivio let the family know …") and the family-triage hybrid gate
+  # (HosalivioTriager holds a promised commitment for review).
+  def self.post_family_relay_offer(agency:, patient:, message:, family_thread_id: nil, preview_lead: "Here's what I'll send to the family:")
+    message = message.to_s.strip
+    return nil if message.empty?
+    payload = { "target" => "family", "message" => message, "family_thread_id" => family_thread_id }
+    Note.create!(
+      agency:         agency,
+      patient:        patient,
+      parent_note:    nil,
+      author_role:    "admissions",
+      body:           "#{Note::HOSALIVIO_OFFER_PREFIX}#{Base64.strict_encode64(payload.to_json)}\n#{preview_lead}\n\n\"#{message}\"",
+      urgency:        "normal",
+      source:         "system",
+      clinician_only: true
+    )
+  rescue ActiveRecord::RecordInvalid
+    nil
+  end
+
+  def post_family_relay_offer(message)
+    self.class.post_family_relay_offer(
+      agency: @agency, patient: @patient, message: message,
+      family_thread_id: @note.parent_note_id
+    ).present?
+  end
+
+  # The clinician confirmed a family-relay offer. Deliver the (possibly edited)
+  # message into the family-visible thread and notify the family.
+  def confirm_family_relay(payload, override = nil)
+    edited  = override.is_a?(Hash) ? override["message"].to_s.strip : nil
+    message = (edited.presence || payload["message"].to_s).strip
+    if message.empty?
+      post_ack("That draft expired. Tell me what to pass along and I'll redraft it.")
+      return Result.new(dispatched: false, reason: "offer_unresolvable", intent: "confirm_relay")
+    end
+    delivered = deliver_family_relay(message, payload["family_thread_id"])
+    if delivered
+      post_ack("Sent to the family. They've been notified.")
+      Result.new(dispatched: true, intent: "confirm_relay")
+    else
+      post_ack("I hit a snag sending that to the family. Mind trying again?")
+      Result.new(dispatched: false, reason: "family_relay_send_failed", intent: "confirm_relay")
+    end
+  end
+
+  # Post the confirmed update into the family-visible thread (family sees it +
+  # gets a bell). Authored as a system/HosAlivio note so it renders as a warm
+  # care-team message in the family chat (broadcasts via the Note callback).
+  def deliver_family_relay(message, family_thread_id)
+    root = family_thread_id.present? ? @patient.notes.find_by(id: family_thread_id) : nil
+    note = Note.create!(
+      agency:         @agency,
+      patient:        @patient,
+      parent_note:    root,
+      author_role:    "admissions",
+      body:           message,
+      urgency:        "normal",
+      source:         "system",
+      clinician_only: false
+    )
+    User.where(agency_id: @agency.id, patient_id: @patient.id, family_access: true, active: true).find_each do |fam|
+      Notification.create!(
+        agency: @agency, user: fam, kind: "mentioned",
+        title:  "Update from #{@patient.first_name}'s care team",
+        body:   message.to_s.truncate(140),
+        linked: note
+      )
+    end
+    note
+  rescue => e
+    Rails.logger.warn("[ClinicianDispatcher#deliver_family_relay] #{e.class}: #{e.message}")
+    nil
   end
 
   # Resolve a role to its assigned clinician and post a Send/Cancel offer
@@ -646,6 +754,7 @@ class ClinicianDispatcher
   def resolve_clinician_for_role(role)
     by_assignment = case role
     when "rn"            then @patient.assigned_rn
+    when "visit_rn"      then @patient.assigned_visit_rn || @patient.assigned_rn  # fall back to admission RN
     when "md"            then @patient.assigned_md
     when "sw", "social_worker" then @patient.assigned_sw
     when "chaplain"      then @patient.assigned_chaplain
@@ -658,19 +767,39 @@ class ClinicianDispatcher
     base.first
   end
 
+  # Soft ack for a direct @HosAlivio mention we couldn't action. Prefer the
+  # brain's own conversational reply; otherwise a generic nudge that names
+  # what HosAlivio can actually do, so the clinician isn't left guessing.
+  def post_unactionable_ack(ack = nil)
+    text = ack.to_s.strip.presence ||
+      "I saw your note, but I couldn't tell what you'd like me to do. I can pass a message to the MD, RN, or DON (\"let the RN know …\"), or answer a question about this patient. What would you like?"
+    post_ack(text)
+  end
+
   # Posts a short HosAlivio reply into the team-only audit trail so
   # the requester sees the dispatch confirmed inline.
   def post_ack(text)
+    post_hosalivio_note(Note::HOSALIVIO_ACK_PREFIX, text)
+  end
+
+  # A HosAlivio answer to a clinician question. Same pill as an ack, but the
+  # [HOSALIVIO_ANSWER] prefix marks it reply-able so follow-ups thread under
+  # it — dispatch confirmations (post_ack) stay non-reply-able.
+  def post_answer(text)
+    post_hosalivio_note(Note::HOSALIVIO_ANSWER_PREFIX, text)
+  end
+
+  def post_hosalivio_note(prefix, text)
     Note.create!(
       agency:         @agency,
       patient:        @patient,
       # When @HosAlivio was invoked inside a thread, thread the answer under
-      # that conversation's root (nil otherwise → normal top-level ack).
+      # that conversation's root (nil otherwise → normal top-level note).
       parent_note:    reply_anchor,
       author_role:    "admissions",
-      # [HOSALIVIO_ACK] prefix triggers the bot-avatar pill renderer
-      # in the chat partial + Cable JS. Strip the prefix when displayed.
-      body:           "[HOSALIVIO_ACK] #{text}",
+      # The prefix triggers the bot-avatar pill renderer in the chat partial +
+      # Cable JS. Stripped before display.
+      body:           "#{prefix} #{text}",
       urgency:        "normal",
       source:         "system",
       clinician_only: true
@@ -683,7 +812,13 @@ class ClinicianDispatcher
   # Replies are one level deep, so a reply's parent IS the root.
   def reply_anchor
     return nil unless @note.parent_note_id
-    @note.parent_note
+    root = @note.parent_note
+    # Don't thread HosAlivio's clinician-facing acks/offers under a family-
+    # visible root — they'd inherit family visibility. Keep them top-level and
+    # team-only. The explicit family relay (deliver_family_relay) is the only
+    # thing that posts into the family thread.
+    return nil unless root&.clinician_only
+    root
   end
 
   # Visible "the system stopped this from happening" note. Body is

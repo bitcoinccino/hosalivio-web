@@ -122,7 +122,7 @@ class VisitsController < ApplicationController
       # owned by admissions/admin/DON. Performing clinicians can
       # update narrative + vitals but not the assignment. Strip
       # those fields if a non-scheduler PATCH tries to change them.
-      scheduler_roles = %w[admin don admissions ceo]
+      scheduler_roles = %w[admin don admissions]
       recording_type_picker =
         params[:recording_type_picker].to_s == "1" &&
         @visit.user_id == current_user.id &&
@@ -326,7 +326,7 @@ class VisitsController < ApplicationController
       redirect_to(edit_visit_path(@visit), status: :see_other, alert: "Completed visits can't be deleted. File a late-entry correction instead.") and return
     end
 
-    is_scheduler = (current_user.role_names & %w[admin don admissions ceo]).any?
+    is_scheduler = (current_user.role_names & %w[admin don admissions]).any?
     # The assigned clinician may discard their own in-progress DRAFT (a recording
     # they started and don't want to keep), but a not-yet-started SCHEDULED slot
     # is admin's schedule — only a scheduler removes it from the calendar.
@@ -820,11 +820,11 @@ class VisitsController < ApplicationController
   end
 
   # A visit is the assigned clinician's workspace. Only that clinician, whoever
-  # scheduled it, agency managers (admin/DON/admissions/ceo), and the reviewing
+  # scheduled it, agency managers (admin/DON/admissions), and the reviewing
   # MD may open / record / edit / route it — so an unassigned clinician (e.g.
   # another RN) can't touch an admission that isn't theirs and corrupt its
   # audit trail or sign-off.
-  VISIT_ACCESS_ROLES = %w[admin don admissions ceo md].freeze
+  VISIT_ACCESS_ROLES = %w[admin don admissions md].freeze
   def visit_accessible?(visit)
     return true if visit.user_id == current_user.id
     return true if visit.created_by_user_id == current_user.id
@@ -836,7 +836,7 @@ class VisitsController < ApplicationController
   # may act for oversight. The reviewing MD can READ a visit for clinical
   # context (visit_accessible?) but must NOT write to it or sign the RN's
   # route-to-MD handoff — note md is absent from VISIT_WRITER_ROLES.
-  VISIT_WRITER_ROLES = %w[admin don admissions ceo].freeze
+  VISIT_WRITER_ROLES = %w[admin don admissions].freeze
   def authorize_visit_writer!
     return if @visit.user_id == current_user.id
     return if @visit.created_by_user_id == current_user.id
@@ -858,7 +858,7 @@ class VisitsController < ApplicationController
   # form) is an admin / admissions / DON action. Performing clinicians start
   # their OWN visit through #start_now (self-assigned) and record the visits
   # already on their list — they never use the scheduler form.
-  SCHEDULER_ROLES = %w[admin don admissions ceo].freeze
+  SCHEDULER_ROLES = %w[admin don admissions].freeze
   def authorize_visit_scheduler!
     return if (current_user.role_names & SCHEDULER_ROLES).any?
     redirect_to dashboard_path, status: :see_other,

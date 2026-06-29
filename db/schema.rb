@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_26_170103) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_28_231243) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -419,9 +419,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_170103) do
     t.uuid "agency_id", null: false
     t.jsonb "allergies", default: [], null: false
     t.uuid "assigned_chaplain_id"
+    t.uuid "assigned_lpn_id"
     t.uuid "assigned_md_id"
     t.uuid "assigned_rn_id"
     t.uuid "assigned_sw_id"
+    t.uuid "assigned_visit_rn_id"
     t.integer "benefit_period"
     t.uuid "branch_id"
     t.string "caregiver_name"
@@ -459,9 +461,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_170103) do
     t.index ["agency_id", "status"], name: "index_patients_on_agency_id_and_status"
     t.index ["agency_id"], name: "index_patients_on_agency_id"
     t.index ["assigned_chaplain_id"], name: "index_patients_on_assigned_chaplain_id"
+    t.index ["assigned_lpn_id"], name: "index_patients_on_assigned_lpn_id"
     t.index ["assigned_md_id"], name: "index_patients_on_assigned_md_id"
     t.index ["assigned_rn_id"], name: "index_patients_on_assigned_rn_id"
     t.index ["assigned_sw_id"], name: "index_patients_on_assigned_sw_id"
+    t.index ["assigned_visit_rn_id"], name: "index_patients_on_assigned_visit_rn_id"
     t.index ["branch_id"], name: "index_patients_on_branch_id"
   end
 
@@ -688,9 +692,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_170103) do
   add_foreign_key "patients", "agencies"
   add_foreign_key "patients", "branches"
   add_foreign_key "patients", "users", column: "assigned_chaplain_id"
+  add_foreign_key "patients", "users", column: "assigned_lpn_id"
   add_foreign_key "patients", "users", column: "assigned_md_id"
   add_foreign_key "patients", "users", column: "assigned_rn_id"
   add_foreign_key "patients", "users", column: "assigned_sw_id"
+  add_foreign_key "patients", "users", column: "assigned_visit_rn_id"
   add_foreign_key "pharmacy_deliveries", "agencies"
   add_foreign_key "pharmacy_deliveries", "medication_orders"
   add_foreign_key "pharmacy_deliveries", "patients"

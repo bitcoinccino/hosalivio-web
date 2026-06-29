@@ -6,17 +6,26 @@
   is_ai        = note.ai_authored?
 
   alignment = is_family   ? ""                : (is_careteam ? "ml-auto" : "mx-auto")
-  bubble_bg = is_family   ? "bg-[#FFF3EC]"    : (is_careteam ? "bg-[#E6F0EE]" : "bg-[#EFECE6]")
+  # Speaker-type color coding: HosAlivio = light orange, patient/family =
+  # light purple, clinicians = light blue. AI takes precedence over its role
+  # so a HosAlivio note always reads orange regardless of which role it spoke on.
+  bubble_bg = if is_ai        then "bg-[#FFF3EC]"
+              elsif is_family then "bg-[#F0EBFB]"
+              elsif is_careteam then "bg-[#E9F1FB]"
+              else                 "bg-[#EFECE6]"
+              end
   text_color = "text-[#1D1C1A]"
 
   label_color = is_ai ? "#6B665F" : case role
                 when "family"      then "#C1403A"
                 when "rn"          then "#2F6F4E"
+                when "visit_rn"    then "#2F6F4E"
                 when "md"          then "#2B4A7A"
                 when "social_worker" then "#7A4A8C"
                 when "chaplain"    then "#8C6A2F"
                 when "pharmacy"    then "#5A2F7A"
                 when "aide"        then "#3A6B6B"
+                when "lpn"         then "#3A8C6E"
                 when "don"         then "#1D1C1A"
                 when "dme"         then "#6B5A2F"
                 when "insurance"   then "#4A4A6B"
@@ -31,9 +40,9 @@
 
   # Warmer, personal subtitle for family viewers. Clinicians see the raw role.
   family_role_label = {
-    "rn" => "Your RN", "md" => "Your doctor",
+    "rn" => "Your Intake Nurse", "visit_rn" => "Your Primary Nurse", "md" => "Your Doctor",
     "social_worker" => "Your social worker", "chaplain" => "Your chaplain",
-    "aide" => "Your aide", "don" => "Your DON",
+    "aide" => "Your Care Assistant", "lpn" => "Your Support Nurse", "don" => "Your Care Coordinator",
     "admissions" => "Your care coordinator", "pharmacy" => "Your pharmacist",
     "dme" => "Your equipment team", "insurance" => "Your benefits coordinator"
   }
@@ -63,11 +72,13 @@
   role_icon = is_ai ? "ri-robot-2-line" : {
     "family" => "ri-user-heart-line",
     "rn" => "ri-nurse-line",
+    "visit_rn" => "ri-nurse-line",
     "md" => "ri-stethoscope-line",
     "social_worker" => "ri-team-line",
     "chaplain" => "ri-hand-heart-line",
     "pharmacy" => "ri-capsule-line",
     "aide" => "ri-user-2-line",
+    "lpn" => "ri-nurse-line",
     "don" => "ri-award-line",
     "dme" => "ri-tools-line",
     "insurance" => "ri-bank-card-line",
@@ -81,17 +92,13 @@
   <%# IDG huddle bubble — a real human posting privately to the care team.
       Family doesn't see this (server scope + JS guard). Visually distinct
       from the family-facing thread: dashed border, muted bg, "Team only" chip. %>
-  <div class="max-w-2xl ml-auto bg-[#FBF9F5] border border-dashed border-[#B9B4AB] rounded-3xl px-5 py-4"
+  <div class="max-w-2xl ml-auto bg-[#E9F1FB] border border-dashed border-[#A9C2E6] rounded-3xl px-5 py-4"
        title="Internal note · <%= note.author_user&.full_name %> · <%= in_patient_zone(note.created_at, @patient, "%b %-d %-l:%M %p") %>">
     <div class="flex items-center justify-between mb-1 gap-2">
       <div class="min-w-0 flex items-center gap-2.5">
-        <% if note.author_user&.has_avatar? %>
-          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-            <%= image_tag note.author_user.avatar.variant(resize_to_fill: [120, 120]).processed, class: "w-full h-full object-cover" %>
-          </div>
-        <% else %>
-          <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
-        <% end %>
+        <span title="<%= speaker_name %>">
+          <%= chat_avatar_tag(name: speaker_name, user: note.author_user, is_ai: is_ai, color: label_color, px: 40) %>
+        </span>
         <div class="min-w-0">
           <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: <%= label_color %>;">
             <span class="truncate"><%= speaker_name %></span>
@@ -153,11 +160,12 @@
       <div class="text-[10px] text-[#6B665F] font-mono flex-shrink-0"><%= in_patient_zone(note.created_at, @patient) %></div>
     </div>
   </div>
-<% elsif note.clinician_only? && note.audit_kind == :hosalivio_ack %>
-  <%# HosAlivio ack pill: bot avatar + the dispatcher's confirmation
-      message ('Simone (Pharmacy) notified, comfort kit on the way.').
+<% elsif note.clinician_only? && %i[hosalivio_ack hosalivio_answer].include?(note.audit_kind) %>
+  <%# HosAlivio ack/answer pill: bot avatar + the message. Acks are dispatch
+      confirmations ('Simone (Pharmacy) notified…'); answers are Q&A replies
+      (reply-able, see the thread gate in show.html.erb). Same pill either way.
       Subtle, team-only, never family-visible. %>
-  <% ack_text = note.body.to_s.sub(/\A\[HOSALIVIO_ACK\]\s*/, "") %>
+  <% ack_text = note.body.to_s.sub(/\A\[HOSALIVIO_(?:ACK|ANSWER)\]\s*/, "") %>
   <div class="max-w-2xl">
     <div class="flex items-center gap-3 px-3 py-2 rounded-2xl bg-[#FBF9F5] border border-[#EFECE6]"
          title="HosAlivio dispatch confirmation">
@@ -263,15 +271,17 @@
     </div>
     <div class="px-5 py-4">
       <% if note.body.present? %>
-        <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></p>
+        <p class="font-serif text-[16px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body, emphasize: is_ai) %></p>
       <% end %>
       <% if note.audio.attached? %>
         <%= audio_tag url_for(note.audio), controls: true, class: "w-full h-9 mt-2" %>
       <% end %>
     </div>
   </div>
-<% elsif !note.clinician_only? && is_system %>
-  <%# System / HosAlivio triage: centered, subtle %>
+<% elsif !note.clinician_only? && is_system && !is_ai %>
+  <%# Non-AI triage breadcrumb: short, centered, subtle pill. A substantive
+      HosAlivio family REPLY (is_ai) is a full message, not a pill — it falls
+      through to the conversational bubble below, which wraps long text. %>
   <div class="max-w-xl mx-auto text-center">
     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full <%= bubble_bg %> border border-[#EFECE6]">
       <% if is_ai %>
@@ -282,7 +292,7 @@
         <i class="<%= role_icon %> text-[14px]" style="color: <%= label_color %>;"></i>
       <% end %>
       <span class="text-[10px] font-bold uppercase tracking-widest" style="color: <%= label_color %>;"><%= is_ai ? "HosAlivio" : "Triaged" %></span>
-      <span class="text-[12px] text-[#3A3936] break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body) %></span>
+      <span class="text-[12px] text-[#3A3936] break-words [overflow-wrap:anywhere]"><%= explain_icd(note.body, emphasize: is_ai) %></span>
       <% if note.urgency_urgent? %>
         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#D97757] text-white tracking-wider">URGENT</span>
       <% end %>
@@ -294,18 +304,11 @@
        class="max-w-xl min-w-0 <%= alignment %> <%= bubble_bg %> border border-[#EFECE6] rounded-3xl px-5 py-4 overflow-hidden <%= 'ring-1 ring-dashed ring-[#B9B4AB]' if is_ai %>">
     <div class="flex items-center justify-between mb-1 gap-2">
       <div class="min-w-0 flex items-center gap-2.5">
-        <% if is_ai %>
-          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#D97757] flex items-center justify-center text-white" title="HosAlivio">
-            <i class="ri-heart-pulse-line text-[20px]"></i>
-          </div>
-        <% elsif note.author_user&.has_avatar? %>
-          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-            <%= image_tag note.author_user.avatar.variant(resize_to_fill: [120, 120]).processed, class: "w-full h-full object-cover" %>
-          </div>
-        <% end %>
+        <span title="<%= is_ai ? 'HosAlivio' : speaker_name %>">
+          <%= chat_avatar_tag(name: speaker_name, user: note.author_user, is_ai: is_ai, color: label_color, px: 40) %>
+        </span>
         <div class="min-w-0">
           <div class="inline-flex items-center gap-1.5 text-[13px] font-medium" style="color: <%= label_color %>;">
-            <% unless is_ai || note.author_user&.has_avatar? %><i class="<%= role_icon %> text-[14px]"></i><% end %>
             <span class="truncate"><%= speaker_name %></span>
           </div>
           <% if speaker_sub.present? %>
@@ -318,7 +321,7 @@
       <% end %>
     </div>
     <% if note.body.present? %>
-      <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= explain_icd(note.body) %></p>
+      <p class="font-serif text-[16px] <%= text_color %> leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] mt-1"><%= explain_icd(note.body, emphasize: is_ai) %></p>
     <% end %>
     <% if note.audio.attached? %>
       <%= audio_tag url_for(note.audio), controls: true, class: "w-full h-9 mt-2" %>

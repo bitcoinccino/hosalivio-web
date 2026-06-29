@@ -9,13 +9,13 @@ portal so you can reach the care team looking after <%= @patient.full_name %> an
 You can send messages, report symptom changes, and read updates from every
 discipline (RN, MD, social worker, chaplain) in one place.
 
-YOUR SIGN-IN
+HOW TO SIGN IN
+  No password to remember. Open the family portal and enter your email:
   Email: <%= @user.email %>
-  Temporary password: <%= @temp_password %>
 
-Please change your password on first sign-in.
+We'll email you a 6-digit code to sign in. The code expires in 15 minutes.
 
-Open the family portal: <%= new_user_session_url %>
+Open the family portal: <%= new_passwordless_url %>
 
 ---
 This is a secure clinical channel. If you received this in error, please email the agency

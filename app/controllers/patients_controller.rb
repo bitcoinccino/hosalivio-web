@@ -49,6 +49,36 @@ class PatientsController < ApplicationController
     end
   end
 
+  # PATCH /patients/:id/reassign_member — assign/unassign a care-team nurse
+  # slot. `field` selects the slot; blank `user_id` unassigns. Validates the
+  # target holds the right role in this agency. Same REGISTRAR_ROLES gate.
+  ASSIGNABLE_NURSE_SLOTS = {
+    "rn"       => { column: :assigned_rn_id,       pool: :rn,  label: "Admission Nurse" },
+    "visit_rn" => { column: :assigned_visit_rn_id, pool: :rn,  label: "Primary Nurse" },
+    "lpn"      => { column: :assigned_lpn_id,      pool: :lpn, label: "Support Nurse" }
+  }.freeze
+
+  def reassign_member
+    ActsAsTenant.with_tenant(current_user.agency) do
+      patient = Patient.find(params[:id])
+      slot    = ASSIGNABLE_NURSE_SLOTS[params[:field].to_s]
+      return redirect_to(patient_path(patient), status: :see_other, alert: "Unknown assignment.") unless slot
+
+      pool    = slot[:pool] == :lpn ? agency_lpns : agency_rns
+      user_id = params[:user_id].presence
+      user    = user_id && pool.find_by(id: user_id)
+      if user_id && user.nil?
+        return redirect_to patient_path(patient), status: :see_other,
+          alert: "That person isn't an active #{slot[:label]} in your agency."
+      end
+
+      patient.update!(slot[:column] => user&.id)
+      redirect_to patient_path(patient), status: :see_other,
+        notice: user ? "#{patient.full_name}'s #{slot[:label]} set to #{user.full_name}." \
+                      : "#{patient.full_name}'s #{slot[:label]} was unassigned."
+    end
+  end
+
   private
 
   # Active users with the RN role in the current agency — the pool of
@@ -57,6 +87,14 @@ class PatientsController < ApplicationController
     User.joins(user_roles: :role)
         .where(agency: current_user.agency, active: true)
         .where(roles: { name: "rn" })
+        .distinct
+        .order(:full_name)
+  end
+
+  def agency_lpns
+    User.joins(user_roles: :role)
+        .where(agency: current_user.agency, active: true)
+        .where(roles: { name: "lpn" })
         .distinct
         .order(:full_name)
   end

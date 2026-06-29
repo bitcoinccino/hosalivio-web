@@ -63,8 +63,10 @@ class Patient < ApplicationRecord
   # --- Associations --------------------------------------------------------
   belongs_to :agency
   belongs_to :branch,            optional: true
-  belongs_to :assigned_rn,       class_name: "User", optional: true
+  belongs_to :assigned_rn,       class_name: "User", optional: true   # Admission/Intake Nurse (admits only)
+  belongs_to :assigned_visit_rn, class_name: "User", optional: true   # Visit/Primary Nurse (ongoing care)
   belongs_to :assigned_md,       class_name: "User", optional: true
+  belongs_to :assigned_lpn,      class_name: "User", optional: true   # Support Nurse (LPN)
   belongs_to :assigned_sw,       class_name: "User", optional: true
   belongs_to :assigned_chaplain, class_name: "User", optional: true
 

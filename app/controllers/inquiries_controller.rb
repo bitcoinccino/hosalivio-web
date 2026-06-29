@@ -136,7 +136,7 @@ class InquiriesController < ApplicationController
   # ── helpers ─────────────────────────────────────────────────────────
   private
 
-  INQUIRY_MANAGER_ROLES = %w[admin don admissions ceo].freeze
+  INQUIRY_MANAGER_ROLES = %w[admin don admissions].freeze
   def authorize_inquiry_manager!
     return if (current_user.role_names & INQUIRY_MANAGER_ROLES).any?
     redirect_to dashboard_path, status: :see_other,

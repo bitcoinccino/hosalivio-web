@@ -10,10 +10,17 @@ module IcdHelper
   # Usage:
   #   <%= explain_icd(note.body) %>                            # defaults to current_user audience
   #   <%= explain_icd("Dx C50.911 with bone mets", audience: :family) %>
-  def explain_icd(text, audience: nil)
+  #   <%= explain_icd(note.body, emphasize: is_ai) %>          # bold key clinical tokens
+  #
+  # `emphasize:` bolds a known vocabulary of load-bearing tokens (visit
+  # statuses, code status, blocker / missing-doc counts) so HosAlivio's
+  # status answers are scannable. Gated to bot messages by the caller; we
+  # don't want to bold "scheduled" in a family member's casual sentence.
+  def explain_icd(text, audience: nil, emphasize: false)
     return "".html_safe if text.blank?
     audience ||= (current_user&.family_access? ? :family : :clinical)
     safe = ERB::Util.html_escape(text.to_s)
+    safe = highlight_keywords(safe) if emphasize
 
     replaced = safe.gsub(ICD10_REGEX) do
       code = Regexp.last_match(1)
@@ -21,6 +28,32 @@ module IcdHelper
     end
 
     highlight_chat_mentions(replaced).html_safe
+  end
+
+  # Bold a small, fixed vocabulary of clinical keywords for scannability.
+  # Runs on the already-escaped string, BEFORE ICD / @mention tokenization,
+  # so there are no HTML tags yet to match inside — the patterns only ever
+  # see plain prose. The inserted <strong> is trusted markup that survives
+  # the final .html_safe. Deterministic (no LLM trust) and additive: the
+  # model keeps emitting plain text; the view does the highlighting, same
+  # as the ICD and @mention passes.
+  #
+  # KEYWORD_PATTERNS order matters only in that none of the alternatives
+  # overlap, so each pass is independent.
+  KEYWORD_PATTERNS = [
+    # Visit / eval statuses (the words PatientContextBuilder emits).
+    /\b(completed|in progress|scheduled|draft)\b/i,
+    # Code status.
+    /\b(DNR|DNI|DNAR|full code)\b/i,
+    # Counts: "2 open blockers", "Missing documents (4)".
+    /\b(\d+\s+open\s+blockers?)\b/i,
+    /\b(missing documents?\s*\(\d+\))/i
+  ].freeze
+
+  def highlight_keywords(html)
+    KEYWORD_PATTERNS.reduce(html) do |str, pattern|
+      str.gsub(pattern) { %(<strong class="font-semibold">#{Regexp.last_match(1)}</strong>) }
+    end
   end
 
   # @mentions in a message body. @HosAlivio gets the brand color + bot icon

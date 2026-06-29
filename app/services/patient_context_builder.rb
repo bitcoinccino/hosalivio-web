@@ -10,7 +10,7 @@
 # relying on the model to filter via system prompt.
 
 class PatientContextBuilder
-  FULL_CLINICAL = %w[rn md don admissions admin ceo].freeze
+  FULL_CLINICAL = %w[rn md don admissions admin].freeze
   AIDE_ONLY     = %w[aide].freeze
   PSYCHOSOCIAL  = %w[sw social_worker chaplain].freeze
   FAMILY        = %w[family].freeze
@@ -141,7 +141,7 @@ class PatientContextBuilder
     # a started_at. completed = has ended_at; in_progress = started, not ended;
     # scheduled = neither.
     status = if v.ended_at.present?      then "completed"
-    elsif v.started_at.present? then "in_progress"
+    elsif v.started_at.present? then "in progress"
     else                             "scheduled"
     end
     {
@@ -254,7 +254,8 @@ class PatientContextBuilder
   # "who is her RN?" without scanning the whole agency roster.
   def care_team_block
     {
-      assigned_rn:       user_summary(@patient.assigned_rn),
+      admission_nurse:   user_summary(@patient.assigned_rn),         # intake only
+      primary_nurse:     user_summary(@patient.assigned_visit_rn || @patient.assigned_rn),  # ongoing care
       assigned_md:       user_summary(@patient.assigned_md),
       social_worker:     user_summary(@patient.assigned_sw),
       chaplain:          user_summary(@patient.assigned_chaplain)

@@ -8,7 +8,7 @@
   # Scheduling is a manager action. Performing clinicians (RN/MD) view their
   # own schedule read-only — so the "+ Add" / click-to-book affordances and
   # the empty-cell copy both branch on this.
-  can_schedule = (current_user.role_names & %w[admin don admissions ceo]).any?
+  can_schedule = (current_user.role_names & %w[admin don admissions]).any?
 %>
 
 <div class="min-h-screen" data-controller="calendar">

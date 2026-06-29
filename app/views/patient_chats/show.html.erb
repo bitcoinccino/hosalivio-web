@@ -47,8 +47,12 @@
           <div class="space-y-2">
             <% @family_users.each do |fu| %>
               <div class="flex items-center gap-2 <%= 'opacity-50' unless fu.active %>">
-                <div class="w-7 h-7 rounded-full bg-[#D97757] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  <%= fu.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                <div class="w-7 h-7 rounded-full overflow-hidden bg-[#D97757] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  <% if fu.has_avatar? %>
+                    <%= image_tag fu.avatar.variant(resize_to_fill: [64, 64]).processed, class: "w-full h-full object-cover", alt: fu.full_name %>
+                  <% else %>
+                    <%= fu.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                  <% end %>
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-[12px] text-[#1D1C1A] truncate"><%= fu.full_name %></div>
@@ -56,18 +60,73 @@
                     <%= fu.relationship.presence ? "#{fu.relationship.capitalize} of #{@patient.first_name}" : "Family member" %>
                   </div>
                 </div>
-                <%# Per-row revoke stays here since it's per-family-user;
-                    the Invite link itself moved to the quick-actions
-                    dropdown in the composer. %>
-                <% if @can_invite_family && fu.active %>
-                  <%= button_to patient_family_path(@patient, fu), method: :delete,
-                        form: { class: "inline" },
-                        data: { turbo_confirm: "Revoke family access for #{fu.full_name}?" },
-                        class: "text-[10px] text-[#C1403A] hover:bg-[#FFF3EC] rounded-full w-6 h-6 flex items-center justify-center",
-                        title: "Revoke access" do %>
-                    <i class="ri-close-line"></i>
-                  <% end %>
-                <% end %>
+                <%# View opens a modal card for this family member. Revoke
+                    (gated to inviters; the Invite link itself lives in the
+                    composer's quick-actions) now lives inside that card. %>
+                <div data-controller="dialog" class="flex-shrink-0">
+                  <button type="button" data-action="dialog#open"
+                          class="text-[11px] text-[#6B665F] bg-white border border-[#D9D5CD] hover:bg-[#F2EEE7] hover:text-[#1D1C1A] rounded-full px-2.5 h-6 inline-flex items-center gap-1 whitespace-nowrap"
+                          title="View <%= fu.full_name %>">
+                    <i class="ri-eye-line"></i> View
+                  </button>
+                  <dialog data-dialog-target="el" data-action="click->dialog#backdrop"
+                          class="fixed inset-0 m-auto h-fit w-fit max-w-[90vw] max-h-[90vh] rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
+                    <div class="w-80 max-w-[90vw] bg-white rounded-2xl border border-[#EFECE6] shadow-xl overflow-hidden text-left">
+                      <%# Header: avatar, name, relationship, active/revoked %>
+                      <div class="flex items-start gap-3 p-4 bg-[#FBF9F5] border-b border-[#EFECE6]">
+                        <div class="w-12 h-12 rounded-full overflow-hidden bg-[#D97757] text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
+                          <% if fu.has_avatar? %>
+                            <%= image_tag fu.avatar.variant(resize_to_fill: [120, 120]).processed, class: "w-full h-full object-cover", alt: fu.full_name %>
+                          <% else %>
+                            <%= fu.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                          <% end %>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <div class="font-serif text-lg text-[#1D1C1A] truncate"><%= fu.full_name %></div>
+                          <div class="text-[12px] text-[#6B665F]">
+                            <%= fu.relationship.presence ? "#{fu.relationship.capitalize} of #{@patient.first_name}" : "Family member" %>
+                          </div>
+                          <span class="mt-1 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider <%= fu.active ? 'text-emerald-700' : 'text-[#C1403A]' %>">
+                            <span class="w-1.5 h-1.5 rounded-full <%= fu.active ? 'bg-emerald-500' : 'bg-[#C1403A]' %>"></span>
+                            <%= fu.active ? 'Active' : 'Revoked' %>
+                          </span>
+                        </div>
+                        <button type="button" data-action="dialog#close" title="Close"
+                                class="text-[#6B665F] hover:text-[#1D1C1A] w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#EFECE6] flex-shrink-0">
+                          <i class="ri-close-line"></i>
+                        </button>
+                      </div>
+                      <%# Details %>
+                      <dl class="px-4 py-3 space-y-2 text-[12px]">
+                        <% if fu.email.present? %>
+                          <div class="flex items-center justify-between gap-3">
+                            <dt class="text-[#6B665F] flex-shrink-0">Email</dt>
+                            <dd class="text-[#1D1C1A] truncate"><%= fu.email %></dd>
+                          </div>
+                        <% end %>
+                        <div class="flex items-center justify-between gap-3">
+                          <dt class="text-[#6B665F]">Last seen</dt>
+                          <dd class="text-[#1D1C1A]"><%= fu.last_seen_at.present? ? "#{time_ago_in_words(fu.last_seen_at)} ago" : "Offline" %></dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                          <dt class="text-[#6B665F]">Linked since</dt>
+                          <dd class="text-[#1D1C1A]"><%= fu.created_at.strftime("%b %-d, %Y") %></dd>
+                        </div>
+                      </dl>
+                      <%# Footer: revoke stays gated to inviters + active rows %>
+                      <% if @can_invite_family && fu.active %>
+                        <div class="px-4 py-3 border-t border-[#EFECE6] flex justify-end">
+                          <%= button_to patient_family_path(@patient, fu), method: :delete,
+                                form: { class: "inline" },
+                                data: { turbo_confirm: "Revoke family access for #{fu.full_name}?" },
+                                class: "text-[12px] text-[#C1403A] hover:bg-[#FFF3EC] border border-[#F0C9BC] rounded-full px-3 py-1 inline-flex items-center gap-1" do %>
+                            <i class="ri-close-line"></i> Revoke access
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </dialog>
+                </div>
               </div>
             <% end %>
           </div>
@@ -86,15 +145,24 @@
                        : (row[:present]  ? "#{user_first} is on call now"
                                          : "#{user_first} — assigned, not on call right now")
           %>
-          <div class="flex items-center gap-3 text-sm group-data-[collapsed=true]/sb:justify-center" title="<%= row[:name] %> (<%= row[:role].tr("_", " ") %>)">
-            <span class="relative flex items-center justify-center w-7 h-7 rounded-full bg-white border border-[#D9D5CD] text-[#6B665F] flex-shrink-0">
-              <i class="<%=
-                {
-                  'rn'            => 'ri-nurse-line',
-                  'md'            => 'ri-stethoscope-line',
-                  'social_worker' => 'ri-team-line',
-                  'chaplain'      => 'ri-hand-heart-line'
-                }.fetch(row[:role], 'ri-user-line') %> text-sm"></i>
+          <div class="flex items-center gap-3 text-sm group-data-[collapsed=true]/sb:justify-center" title="<%= row[:name] %> (<%= row[:role_label] %>)">
+            <span class="relative w-7 h-7 flex-shrink-0">
+              <span class="flex items-center justify-center w-7 h-7 rounded-full overflow-hidden bg-white border border-[#D9D5CD] text-[#6B665F]">
+                <% if row[:user]&.has_avatar? %>
+                  <%= image_tag row[:user].avatar.variant(resize_to_fill: [64, 64]).processed,
+                        class: "w-full h-full object-cover", alt: row[:name] %>
+                <% else %>
+                  <i class="<%=
+                    {
+                      'rn'            => 'ri-nurse-line',
+                  'visit_rn'      => 'ri-nurse-line',
+                  'lpn'           => 'ri-nurse-line',
+                      'md'            => 'ri-stethoscope-line',
+                      'social_worker' => 'ri-team-line',
+                      'chaplain'      => 'ri-hand-heart-line'
+                    }.fetch(row[:role], 'ri-user-line') %> text-sm"></i>
+                <% end %>
+              </span>
               <% if row[:user] %>
                 <span title="<%= dot_title %>"
                       class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#EFECE6] <%= row[:present] ? 'bg-emerald-500' : 'bg-[#B9B4AB]' %>"></span>
@@ -102,21 +170,31 @@
             </span>
             <div class="group-data-[collapsed=true]/sb:hidden">
               <div class="text-[13px] text-[#1D1C1A] leading-tight"><%= row[:name] %></div>
-              <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role].tr("_", " ") %></div>
+              <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role_label] %></div>
             </div>
           </div>
-          <% if @can_reassign_rn && row[:role] == "rn" %>
-            <%# Admin/DON/admissions: reassign the case-manager RN inline.
-                Auto-submits on change; controller redirects back with a notice. %>
-            <%= form_with url: reassign_rn_patient_path(@patient), method: :patch,
+          <% if @can_reassign_rn && %w[rn visit_rn lpn].include?(row[:role]) %>
+            <%# Admin/DON/admissions: assign this nurse slot inline (admission RN,
+                primary RN, or LPN). Auto-submits on change; the controller
+                validates the pick against the right role pool and redirects back. %>
+            <%
+              pool, current_id =
+                case row[:role]
+                when "lpn"      then [ @assignable_lpns, @patient.assigned_lpn_id ]
+                when "visit_rn" then [ @assignable_rns,  @patient.assigned_visit_rn_id ]
+                else                 [ @assignable_rns,  @patient.assigned_rn_id ]
+                end
+            %>
+            <%= form_with url: reassign_member_patient_path(@patient), method: :patch,
                           class: "group-data-[collapsed=true]/sb:hidden mt-1 ml-10" do %>
-              <label for="reassign-rn-select" class="sr-only">Reassign RN</label>
-              <select id="reassign-rn-select" name="assigned_rn_id"
+              <input type="hidden" name="field" value="<%= row[:role] %>">
+              <label for="reassign-<%= row[:role] %>-select" class="sr-only">Reassign <%= row[:role_label] %></label>
+              <select id="reassign-<%= row[:role] %>-select" name="user_id"
                       onchange="this.form.requestSubmit()"
                       class="w-full text-[12px] rounded-md border border-[#D9D5CD] bg-white px-2 py-1 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
                 <option value="">Unassigned</option>
-                <% @assignable_rns.each do |rn| %>
-                  <option value="<%= rn.id %>" <%= "selected" if rn.id == @patient.assigned_rn_id %>><%= rn.full_name %></option>
+                <% pool.each do |u| %>
+                  <option value="<%= u.id %>" <%= "selected" if u.id == current_id %>><%= u.full_name %></option>
                 <% end %>
               </select>
             <% end %>
@@ -149,8 +227,12 @@
     <header class="px-6 py-4 border-b border-[#EFECE6] bg-white">
       <div class="flex items-center gap-4">
         <!-- Avatar -->
-        <div class="w-12 h-12 rounded-full bg-[#EFECE6] text-[#1D1C1A] font-serif text-lg flex items-center justify-center flex-shrink-0">
-          <%= @patient.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+        <div class="w-12 h-12 rounded-full overflow-hidden bg-[#EFECE6] text-[#1D1C1A] font-serif text-lg flex items-center justify-center flex-shrink-0">
+          <% if @patient.has_photo? %>
+            <%= image_tag @patient.photo.variant(resize_to_fill: [120, 120]).processed, class: "w-full h-full object-cover", alt: @patient.full_name %>
+          <% else %>
+            <%= @patient.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+          <% end %>
         </div>
 
         <!-- Identity block -->
@@ -308,64 +390,69 @@
          data-patient-chat-target="feed"
          data-last-date="<%= @notes.last&.created_at&.in_time_zone(patient_timezone(@patient))&.to_date&.iso8601 %>">
       <% if @notes.empty? %>
-        <div class="text-center text-sm text-[#6B665F] py-20">
-          No messages yet. Tap <i class="ri-add-line text-[#D97757]"></i> or <i class="ri-mic-line text-[#D97757]"></i> to start.
+        <div class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
+          <p>No messages yet. Tap <i class="ri-add-line text-[#D97757]"></i> or <i class="ri-mic-line text-[#D97757]"></i> to start.</p>
         </div>
       <% else %>
-        <% last_date = nil %>
-        <% @notes.each do |note| %>
-          <% note_date = note.created_at.to_date %>
-          <%
-            # Anchor the day-boundary to the patient's branch timezone so a
-            # midnight-Eastern message doesn't get a "Yesterday" pill for a
-            # clinician viewing in Pacific.
-            note_local_date = note.created_at.in_time_zone(patient_timezone(@patient)).to_date
-          %>
-          <% if note_local_date != last_date %>
-            <div class="flex items-center justify-center pt-2 pb-1">
-              <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">
-                <%= relative_date_label(note_local_date) %>
-              </div>
-            </div>
-            <% last_date = note_local_date %>
-          <% end %>
-          <%# Root note + its thread. The data-note-id wrapper lets the chat JS
-              locate a parent for live replies; the reply button / count / replies
-              container all live below the bubble so the 8-branch bubble partial
-              stays untouched. %>
-          <% thread_replies = @replies_by_parent[note.id] || [] %>
-          <div data-note-id="<%= note.id %>">
-            <%= render "message_bubble", note: note %>
-            <%# Thread block only on conversational notes (or any note that
-                already has replies); system/audit artifacts get no Reply. %>
-            <% if note.conversational? || thread_replies.any? %>
-              <div class="ml-7 md:ml-12 mt-1">
-                <button type="button" data-action="click->patient-chat#toggleThread"
-                        data-thread-header-for="<%= note.id %>"
-                        class="inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium <%= 'hidden' unless thread_replies.any? %>">
-                  <i class="ri-corner-down-right-line"></i>
-                  <span data-thread-label-for="<%= note.id %>"><%= thread_replies.size %> <%= "reply".pluralize(thread_replies.size) %></span>
-                  <i class="ri-arrow-up-s-line transition-transform" data-thread-chevron></i>
-                </button>
-                <div data-thread-replies-for="<%= note.id %>"
-                     class="pl-3 border-l-2 border-[#EFECE6] space-y-2 mt-1 <%= 'hidden' unless thread_replies.any? %>">
-                  <% thread_replies.each do |reply| %>
-                    <%# data-note-id wrapper so a deep-link can scroll to a reply, not just the root %>
-                    <div data-note-id="<%= reply.id %>">
-                      <%= render "message_bubble", note: reply, thread_reply: true %>
+        <%
+          # Day boundary anchored to the patient's branch timezone (so a
+          # midnight-Eastern message doesn't get the wrong pill for a Pacific
+          # viewer). Everything before the most-recent day collapses behind one
+          # toggle; the latest day stays open and scrolled to the newest message.
+          tz             = patient_timezone(@patient)
+          latest_local   = @notes.last.created_at.in_time_zone(tz).to_date
+          earlier_notes, recent_notes = @notes.partition { |n| n.created_at.in_time_zone(tz).to_date < latest_local }
+          focus_id         = params[:note].presence
+          focus_in_earlier = focus_id.present? && earlier_notes.any? { |n| n.id.to_s == focus_id }
+        %>
+
+        <%# Collapsed "earlier messages" section (all days before the latest).
+            Opens automatically when a deep-link (?note=) points inside it. %>
+        <% if earlier_notes.any? %>
+          <details class="group/earlier peer/earlier" <%= "open" if focus_in_earlier %>>
+            <summary class="list-none cursor-pointer flex items-center justify-center [&::-webkit-details-marker]:hidden">
+              <span class="inline-flex items-center gap-1 px-3 py-1 text-[11px] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full hover:bg-[#EFECE6] transition">
+                <i class="ri-arrow-up-s-line group-open/earlier:rotate-180 transition-transform"></i>
+                <span class="group-open/earlier:hidden">Show earlier messages</span>
+                <span class="hidden group-open/earlier:inline">Back to recent messages</span>
+              </span>
+            </summary>
+            <div class="space-y-5 mt-5">
+              <% last_date = nil %>
+              <% earlier_notes.each do |note| %>
+                <% note_local_date = note.created_at.in_time_zone(tz).to_date %>
+                <% if note_local_date != last_date %>
+                  <div class="flex items-center justify-center pt-2 pb-1">
+                    <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">
+                      <%= relative_date_label(note_local_date) %>
                     </div>
-                  <% end %>
-                </div>
-                <% if note.conversational? %>
-                  <button type="button" data-action="click->patient-chat#openReply" data-note-id="<%= note.id %>"
-                          class="mt-1 inline-flex items-center gap-1 text-[11px] text-[#D97757] hover:underline font-medium">
-                    <i class="ri-reply-line"></i> Reply
-                  </button>
+                  </div>
+                  <% last_date = note_local_date %>
                 <% end %>
-              </div>
-            <% end %>
-          </div>
+                <%= render "feed_note", note: note %>
+              <% end %>
+            </div>
+          </details>
         <% end %>
+
+        <%# The latest day. Hidden while the earlier section is expanded (peer-open),
+            so "Show earlier messages" swaps to a focused history view instead of
+            stacking earlier on top of today. %>
+        <div class="space-y-5 peer-open/earlier:hidden">
+          <% last_date = nil %>
+          <% recent_notes.each do |note| %>
+            <% note_local_date = note.created_at.in_time_zone(tz).to_date %>
+            <% if note_local_date != last_date %>
+              <div class="flex items-center justify-center pt-2 pb-1">
+                <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">
+                  <%= relative_date_label(note_local_date) %>
+                </div>
+              </div>
+              <% last_date = note_local_date %>
+            <% end %>
+            <%= render "feed_note", note: note %>
+          <% end %>
+        </div>
       <% end %>
     </div>
 
@@ -375,29 +462,41 @@
         <!-- Family-only quick-reply chips: phrasing assumes a family voice
              ("She's resting", "Need comfort kit refill"), so clinicians
              never see them. -->
-        <div class="mb-2 flex gap-1.5 flex-wrap">
+        <div class="mb-2 flex gap-2 flex-wrap">
           <button type="button" data-action="click->patient-chat#quickAction" data-urgency="crisis"
                   data-template="Pain is out of control. She's hurting badly.">
-            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] hover:bg-[#FFEDE2] transition">
+            <span class="inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] hover:bg-[#FFEDE2] transition">
               <i class="ri-alarm-warning-line"></i> Pain still bad
             </span>
           </button>
           <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
                   data-template="She's resting now, breathing is calm.">
-            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+            <span class="inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
               <i class="ri-moon-line"></i> She's resting now
             </span>
           </button>
           <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
                   data-template="Please call me as soon as you can.">
-            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+            <span class="inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
               <i class="ri-phone-line"></i> Call me
             </span>
           </button>
           <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
                   data-template="We're running low on comfort kit supplies — please send a refill.">
-            <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+            <span class="inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
               <i class="ri-medicine-bottle-line"></i> Need comfort kit refill
+            </span>
+          </button>
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="urgent"
+                  data-template="We're out of morphine.">
+            <span class="inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+              <i class="ri-capsule-line"></i> Out of morphine
+            </span>
+          </button>
+          <button type="button" data-action="click->patient-chat#quickAction" data-urgency="normal"
+                  data-template="When is the nurse coming?">
+            <span class="inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#1D1C1A] hover:bg-[#EFECE6] transition">
+              <i class="ri-calendar-schedule-line"></i> When is the nurse coming?
             </span>
           </button>
         </div>
@@ -457,7 +556,7 @@
             <i class="ri-add-line"></i>
           </button>
         <% else %>
-          <div class="relative flex-shrink-0" data-controller="quick-actions">
+          <div class="relative flex-shrink-0" data-controller="quick-actions dialog">
             <button type="button"
                     data-action="click->quick-actions#toggle"
                     title="Quick actions"
@@ -465,6 +564,34 @@
               <i class="ri-add-line"></i>
             </button>
             <%= render "patient_chats/quick_actions_dropdown" %>
+
+            <%# Invite-family modal. Opened by the "Invite family member"
+                quick-action (data-action="dialog#open"); shares this dialog
+                controller scope. Form posts normally; on success the create
+                action redirects (full reload refreshes the family roster),
+                on validation error it falls back to the standalone page. %>
+            <% if @can_invite_family %>
+              <dialog data-dialog-target="el" data-action="click->dialog#backdrop"
+                      class="fixed inset-0 m-auto h-fit w-fit max-w-[90vw] max-h-[90vh] rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
+                <div class="w-[26rem] max-w-[90vw] bg-white rounded-2xl border border-[#EFECE6] shadow-xl overflow-hidden text-left">
+                  <div class="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-[#EFECE6]">
+                    <div class="min-w-0">
+                      <h2 class="font-serif text-lg text-[#1D1C1A]">Invite family member</h2>
+                      <p class="text-[12px] text-[#6B665F] mt-0.5">
+                        Grants access to <span class="font-medium"><%= @patient.full_name %></span>'s comfort-care chat. They'll get a welcome email and sign in with a one-time code — no password needed.
+                      </p>
+                    </div>
+                    <button type="button" data-action="dialog#close" title="Close"
+                            class="text-[#6B665F] hover:text-[#1D1C1A] w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#EFECE6] flex-shrink-0">
+                      <i class="ri-close-line"></i>
+                    </button>
+                  </div>
+                  <div class="px-5 py-4">
+                    <%= render "patient_families/form", patient: @patient, family_user: nil, modal: true %>
+                  </div>
+                </div>
+              </dialog>
+            <% end %>
           </div>
         <% end %>
 

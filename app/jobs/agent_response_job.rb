@@ -10,7 +10,7 @@ class AgentResponseJob < ApplicationJob
   # Don't wake target roles we know have no SOUL yet. Avoids pointless LLM
   # calls and avoids creating "no_action" audit notes for every handoff while
   # the roster is still being written.
-  CONFIGURED_ROLES = %w[admissions rn lpn md pharmacy social_worker chaplain dme don aide insurance billing ceo].freeze
+  CONFIGURED_ROLES = %w[admissions rn lpn md pharmacy social_worker chaplain dme don aide insurance billing].freeze
 
   def perform(agent_event_id)
     event = AgentEvent.unscoped.find_by(id: agent_event_id)
