@@ -1286,6 +1286,11 @@ export default class extends Controller {
     const csrfMeta = document.querySelector("meta[name='csrf-token']")
     const csrf     = csrfMeta ? csrfMeta.content : ""
     composer.remove()
+    // Show "HosAlivio is thinking" while the reply is processed, same as the
+    // main composer (this path was missing it, so threaded replies showed no
+    // waiting state and the answer just popped in). 800ms lets the user's own
+    // reply bubble Cable-echo nest first; the incoming HosAlivio reply clears it.
+    this._scheduleTyping(800)
     try {
       let resp
       if (blob) {
@@ -1303,9 +1308,9 @@ export default class extends Controller {
           body:    JSON.stringify({ patient_id: this.patientIdValue, text, parent_note_id: noteId, source: "text" })
         })
       }
-      if (!resp.ok) console.error("reply failed:", resp.status, await resp.text())
+      if (!resp.ok) { console.error("reply failed:", resp.status, await resp.text()); this._clearTyping() }
     } catch (err) {
-      console.error("reply error:", err)
+      console.error("reply error:", err); this._clearTyping()
     }
   }
 
