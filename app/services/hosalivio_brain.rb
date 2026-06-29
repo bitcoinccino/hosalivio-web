@@ -820,7 +820,7 @@ class HosalivioBrain
         "audience":   one of ["family", "team"],
         "action":     one of #{CLINICIAN_ACTIONS.inspect},
         "body_rewrite": cleaned message body, or null,
-        "notify":     { "role": one of #{(NOTIFY_CLINICIAN_ROLES + ["family"]).inspect},
+        "notify":     { "role": one of #{(NOTIFY_CLINICIAN_ROLES + [ "family" ]).inspect},
                         "reason": "the message to relay (a warm, family-ready draft when role is \"family\")" } OR null,
         "ack":        short confirmation string OR null,
         "reasoning":  one sentence
@@ -968,7 +968,7 @@ class HosalivioBrain
       notify
         Set ONLY when action is notify_clinician; otherwise null.
           role   : who to relay to, one of
-                   #{(NOTIFY_CLINICIAN_ROLES + ["family"]).inspect}.
+                   #{(NOTIFY_CLINICIAN_ROLES + [ "family" ]).inspect}.
           reason : the message to relay. For a teammate (md/rn/don): a short
                    first-person statement in the clinician's voice — the actual
                    text the teammate reads. For "family": a warm, finished
