@@ -11,6 +11,7 @@ module OutboundPings
     # corrected at the source (the dispatcher), not here.
     def self.from_notification(notification)
       return if notification.user.blank?
+      return if Notification::IN_APP_ONLY_KINDS.include?(notification.kind)
       return if notification.user.enabled_channels.empty?
 
       # Generic PHI-free preview based on kind. Dispatcher titles like

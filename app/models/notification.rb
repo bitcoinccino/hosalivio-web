@@ -5,6 +5,11 @@ class Notification < ApplicationRecord
   belongs_to :user
   belongs_to :linked, polymorphic: true, optional: true
 
+  # Kinds that stay in-app only (bell + toast), never fanned out to an external
+  # ping. For lower-stakes, non-time-critical nudges where an SMS/Telegram would
+  # be noise. Enforced at the OutboundPings::Enqueuer chokepoint.
+  IN_APP_ONLY_KINDS = %w[relay_offer_pending].freeze
+
   validates :kind, :title, presence: true
 
   scope :unread,     -> { where(read_at: nil) }
