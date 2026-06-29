@@ -109,9 +109,13 @@ module Cc
         req["HTTP-Referer"] = ENV.fetch("OPENROUTER_REFERER", "https://hosalivio.com")
         req["X-Title"]      = "HosAlivio"
       end
-      req.body = { model: model, max_tokens: MAX_TOKENS,
-                   messages: [ { role: "system", content: SYSTEM },
-                               { role: "user", content: user_prompt } ] }.to_json
+      body = { model: model, max_tokens: MAX_TOKENS,
+               messages: [ { role: "system", content: SYSTEM },
+                           { role: "user", content: user_prompt } ] }
+      # GLM-5.2 is a reasoning model; disable its hidden chain-of-thought so the
+      # token budget goes to the JSON chart, not thinking.
+      body[:reasoning] = { enabled: false } if provider == :openrouter
+      req.body = body.to_json
       resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
       return nil unless resp.code.to_i == 200
       JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s

@@ -355,6 +355,9 @@ class AgentBrain
       messages: [ { role: "system", content: system_text }, { role: "user", content: user_prompt } ]
     }
     body[:response_format] = { type: "json_object" } unless provider == :openrouter
+    # GLM-5.2 is a reasoning model; without this it spends the whole token
+    # budget on hidden chain-of-thought and returns null content.
+    body[:reasoning]       = { enabled: false } if provider == :openrouter
     req.body = body.to_json
 
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }

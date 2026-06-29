@@ -67,7 +67,10 @@ class HosalivioBrain
   # Shared OpenAI-compatible chat call (system + single user message) used by
   # every openai-style request method, for both :openai and :openrouter (GLM).
   # OpenRouter omits response_format (not universally supported) and relies on
-  # the prompt + the callers' lenient JSON parsing.
+  # the prompt + the callers' lenient JSON parsing. It also DISABLES reasoning:
+  # GLM-5.2 is a reasoning model that otherwise spends the whole max_tokens
+  # budget on its hidden chain-of-thought and returns null content at our
+  # smaller budgets (PPS 250, summary 300).
   def self.oai_chat(provider:, system:, user:, max_tokens:, read_timeout: 30, json: true)
     url, key_env, model = oai_endpoint(provider)
     uri = URI(url)
@@ -78,6 +81,7 @@ class HosalivioBrain
     body = { model: model, max_tokens: max_tokens,
              messages: [ { role: "system", content: system }, { role: "user", content: user } ] }
     body[:response_format] = { type: "json_object" } if json && provider != :openrouter
+    body[:reasoning]       = { enabled: false } if provider == :openrouter
     req.body = body.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: read_timeout) { |h| h.request(req) }
     raise "#{provider} #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
@@ -485,6 +489,7 @@ class HosalivioBrain
       ]
     }
     body[:response_format] = { type: "json_object" } unless provider == :openrouter
+    body[:reasoning]       = { enabled: false } if provider == :openrouter
     req.body = body.to_json
 
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
@@ -1106,6 +1111,7 @@ class HosalivioBrain
       ]
     }
     body[:response_format] = { type: "json_object" } unless provider == :openrouter
+    body[:reasoning]       = { enabled: false } if provider == :openrouter
     req.body = body.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
     raise "#{provider} #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
