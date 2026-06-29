@@ -24,6 +24,10 @@ class HosalivioBrain
   # OpenAI fallback config
   OPENAI_URL   = "https://api.openai.com/v1/chat/completions"
   OPENAI_MODEL = ENV.fetch("HOSALIVIO_BRAIN_OPENAI_MODEL", ENV.fetch("HOSALIVIO_LUCIA_OPENAI_MODEL", "gpt-4o"))
+  # OpenRouter (OpenAI-compatible) fallback — e.g. GLM. Set OPENROUTER_API_KEY
+  # to enable and OPENROUTER_MODEL to the exact slug.
+  OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
+  OPENROUTER_MODEL = ENV.fetch("OPENROUTER_MODEL", "z-ai/glm-5.2")
   CHAT_READ_TIMEOUT = Integer(ENV.fetch("HOSALIVIO_CHAT_READ_TIMEOUT", "12"))
 
   INTENTS = %w[
@@ -35,14 +39,62 @@ class HosalivioBrain
 
   # Ordered provider chain. Each returns {intent, urgency, reasoning, reply, source}
   # or raises. `fallback` never raises.
-  PROVIDER_CHAIN = %i[claude openai].freeze
+  PROVIDER_CHAIN = %i[claude openai openrouter].freeze
+
+  # OpenAI-compatible endpoint config for a provider (openai / openrouter).
+  # OpenRouter (GLM) only differs by url/key/model, so the OpenAI request
+  # methods share this resolver and treat openrouter as a drop-in.
+  def self.oai_endpoint(provider)
+    provider == :openrouter ? [ OPENROUTER_URL, "OPENROUTER_API_KEY", OPENROUTER_MODEL ]
+                            : [ OPENAI_URL, "OPENAI_API_KEY", OPENAI_MODEL ]
+  end
+
+  def self.model_for(provider)
+    case provider
+    when :claude     then CLAUDE_MODEL
+    when :openrouter then OPENROUTER_MODEL
+    else                  OPENAI_MODEL
+    end
+  end
+
+  # OpenRouter asks for these attribution headers; no-op for plain OpenAI.
+  def self.oai_extra_headers(req, provider)
+    return unless provider == :openrouter
+    req["HTTP-Referer"] = ENV.fetch("OPENROUTER_REFERER", "https://hosalivio.com")
+    req["X-Title"]      = "HosAlivio"
+  end
+
+  # Shared OpenAI-compatible chat call (system + single user message) used by
+  # every openai-style request method, for both :openai and :openrouter (GLM).
+  # OpenRouter omits response_format (not universally supported) and relies on
+  # the prompt + the callers' lenient JSON parsing. It also DISABLES reasoning:
+  # GLM-5.2 is a reasoning model that otherwise spends the whole max_tokens
+  # budget on its hidden chain-of-thought and returns null content at our
+  # smaller budgets (PPS 250, summary 300).
+  def self.oai_chat(provider:, system:, user:, max_tokens:, read_timeout: 30, json: true)
+    url, key_env, model = oai_endpoint(provider)
+    uri = URI(url)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]  = "application/json"
+    req["authorization"] = "Bearer #{ENV.fetch(key_env)}"
+    oai_extra_headers(req, provider)
+    body = { model: model, max_tokens: max_tokens,
+             messages: [ { role: "system", content: system }, { role: "user", content: user } ] }
+    body[:response_format] = { type: "json_object" } if json && provider != :openrouter
+    body[:reasoning]       = { enabled: false } if provider == :openrouter
+    req.body = body.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: read_timeout) { |h| h.request(req) }
+    raise "#{provider} #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  end
 
   class << self
     def enabled?(provider = nil)
       case provider
-      when :claude then valid_key?(ENV["ANTHROPIC_API_KEY"])
-      when :openai then valid_key?(ENV["OPENAI_API_KEY"])
-      when nil     then PROVIDER_CHAIN.any? { |p| enabled?(p) }
+      when :claude     then valid_key?(ENV["ANTHROPIC_API_KEY"])
+      when :openai     then valid_key?(ENV["OPENAI_API_KEY"])
+      when :openrouter then valid_key?(ENV["OPENROUTER_API_KEY"])
+      when nil         then PROVIDER_CHAIN.any? { |p| enabled?(p) }
       end
     end
 
@@ -85,7 +137,7 @@ class HosalivioBrain
         next unless provider_enabled?(provider)
         begin
           started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          raw      = (provider == :claude) ? request_answer_claude(payload) : request_answer_openai(payload)
+          raw      = (provider == :claude) ? request_answer_claude(payload) : request_answer_openai(payload, provider)
           elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
           Rails.logger.info("[HosalivioBrain.answer_clinician_question:#{provider}] elapsed_ms=#{elapsed_ms}")
           parsed   = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
@@ -120,7 +172,7 @@ class HosalivioBrain
             "answer" => answer,
             "notify" => notify,
             "offer"  => offer,
-            "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
+            "source" => "#{provider}:#{model_for(provider)}"
           }.compact
         rescue => e
           Rails.logger.warn("[HosalivioBrain.answer_clinician_question:#{provider}] #{e.class}: #{e.message}")
@@ -168,7 +220,7 @@ class HosalivioBrain
       PROVIDER_CHAIN.each do |provider|
         next unless provider_enabled?(provider)
         begin
-          raw    = (provider == :claude) ? request_eval_fill_claude(payload) : request_eval_fill_openai(payload)
+          raw    = (provider == :claude) ? request_eval_fill_claude(payload) : request_eval_fill_openai(payload, provider)
           parsed = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
           deltas = parsed["deltas"]
           return {} unless deltas.is_a?(Hash)
@@ -193,7 +245,7 @@ class HosalivioBrain
       PROVIDER_CHAIN.each do |provider|
         next unless provider_enabled?(provider)
         begin
-          raw      = (provider == :claude) ? request_polish_claude(raw_text) : request_polish_openai(raw_text)
+          raw      = (provider == :claude) ? request_polish_claude(raw_text) : request_polish_openai(raw_text, provider)
           parsed   = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
           polished = parsed["polished"].to_s.strip
           next if polished.empty?
@@ -201,7 +253,7 @@ class HosalivioBrain
           polished = polished.gsub(/[–—]/, ", ")
           return {
             "polished" => polished,
-            "source"   => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
+            "source"   => "#{provider}:#{model_for(provider)}"
           }
         rescue => e
           Rails.logger.warn("[HosalivioBrain.polish_narrative:#{provider}] #{e.class}: #{e.message}")
@@ -219,11 +271,11 @@ class HosalivioBrain
       PROVIDER_CHAIN.each do |provider|
         next unless provider_enabled?(provider)
         begin
-          raw     = (provider == :claude) ? request_summary_claude(text) : request_summary_openai(text)
+          raw     = (provider == :claude) ? request_summary_claude(text) : request_summary_openai(text, provider)
           parsed  = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
           summary = parsed["summary"].to_s.strip.gsub(/[–—]/, ", ")
           next if summary.empty?
-          return { "summary" => summary, "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}" }
+          return { "summary" => summary, "source" => "#{provider}:#{model_for(provider)}" }
         rescue => e
           Rails.logger.warn("[HosalivioBrain.summarize_for_team:#{provider}] #{e.class}: #{e.message}")
         end
@@ -246,7 +298,7 @@ class HosalivioBrain
       PROVIDER_CHAIN.each do |provider|
         next unless provider_enabled?(provider)
         begin
-          raw    = (provider == :claude) ? request_speaker_tags_claude(payload) : request_speaker_tags_openai(payload)
+          raw    = (provider == :claude) ? request_speaker_tags_claude(payload) : request_speaker_tags_openai(payload, provider)
           parsed = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
           tagged = parsed["tagged_transcript"].to_s.strip
           next if tagged.empty?
@@ -254,7 +306,7 @@ class HosalivioBrain
           tagged = tagged.gsub(/[–—]/, ", ")
           return {
             "tagged" => tagged,
-            "source" => "#{provider}:#{provider == :claude ? CLAUDE_MODEL : OPENAI_MODEL}"
+            "source" => "#{provider}:#{model_for(provider)}"
           }
         rescue => e
           Rails.logger.warn("[HosalivioBrain.tag_speaker_turns:#{provider}] #{e.class}: #{e.message}")
@@ -269,7 +321,7 @@ class HosalivioBrain
       PROVIDER_CHAIN.each do |provider|
         next unless provider_enabled?(provider)
         begin
-          raw    = (provider == :claude) ? request_pps_claude(narrative) : request_pps_openai(narrative)
+          raw    = (provider == :claude) ? request_pps_claude(narrative) : request_pps_openai(narrative, provider)
           parsed = JSON.parse(raw.to_s.sub(/\A```(?:json)?\s*/m, "").sub(/\s*```\z/m, "").strip)
           score  = parsed["score"].to_i
           next   unless score.between?(10, 100)
@@ -300,8 +352,9 @@ class HosalivioBrain
 
     def provider_enabled?(provider)
       case provider
-      when :claude then valid_key?(ENV["ANTHROPIC_API_KEY"])
-      when :openai then valid_key?(ENV["OPENAI_API_KEY"])
+      when :claude     then valid_key?(ENV["ANTHROPIC_API_KEY"])
+      when :openai     then valid_key?(ENV["OPENAI_API_KEY"])
+      when :openrouter then valid_key?(ENV["OPENROUTER_API_KEY"])
       end
     end
 
@@ -343,9 +396,9 @@ class HosalivioBrain
     PROVIDER_CHAIN.each do |provider|
       next unless self.class.enabled?(provider)
       begin
-        raw    = (provider == :claude) ? request_claude_clinician : request_openai_clinician
+        raw    = (provider == :claude) ? request_claude_clinician : request_openai_clinician(provider)
         parsed = parse(raw).transform_keys(&:to_sym)
-        return sanitize_clinician(parsed, "claude:#{CLAUDE_MODEL}".sub("claude", provider.to_s))
+        return sanitize_clinician(parsed, "#{provider}:#{model_for(provider)}")
       rescue => e
         Rails.logger.warn("[HosalivioBrain.classify_for:#{provider}] #{e.class}: #{e.message}")
       end
@@ -355,17 +408,20 @@ class HosalivioBrain
 
   private
 
+  # Instance delegators so the per-note request methods can resolve the
+  # endpoint/model/headers for whichever provider the chain is trying.
+  def oai_endpoint(provider)           = self.class.oai_endpoint(provider)
+  def model_for(provider)              = self.class.model_for(provider)
+  def oai_extra_headers(req, provider) = self.class.oai_extra_headers(req, provider)
+
   def attempt(provider)
-    raw    = provider == :claude ? request_claude : request_openai
+    raw    = provider == :claude ? request_claude : request_openai(provider)
     parsed = parse(raw)
     sanitize(parsed, source_tag(provider))
   end
 
   def source_tag(provider)
-    case provider
-    when :claude then "claude:#{CLAUDE_MODEL}"
-    when :openai then "openai:#{OPENAI_MODEL}"
-    end
+    "#{provider}:#{model_for(provider)}"
   end
 
   def sanitize(parsed, source)
@@ -417,23 +473,27 @@ class HosalivioBrain
 
   # ── OpenAI fallback ────────────────────────────────────────────────
 
-  def request_openai
-    uri = URI(OPENAI_URL)
+  def request_openai(provider = :openai)
+    url, key_env, model = oai_endpoint(provider)
+    uri = URI(url)
     req = Net::HTTP::Post.new(uri)
     req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model: OPENAI_MODEL,
+    req["authorization"] = "Bearer #{ENV.fetch(key_env)}"
+    oai_extra_headers(req, provider)
+    body = {
+      model: model,
       max_tokens: 700,
-      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: "#{soul_md}\n\n---\n\n#{instruction_block}" },
         { role: "user",   content: user_prompt }
       ]
-    }.to_json
+    }
+    body[:response_format] = { type: "json_object" } unless provider == :openrouter
+    body[:reasoning]       = { enabled: false } if provider == :openrouter
+    req.body = body.to_json
 
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    raise "#{provider} #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
 
     data = JSON.parse(resp.body)
     data.dig("choices", 0, "message", "content").to_s
@@ -1035,22 +1095,26 @@ class HosalivioBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def request_openai_clinician
-    uri = URI(OPENAI_URL)
+  def request_openai_clinician(provider = :openai)
+    url, key_env, model = oai_endpoint(provider)
+    uri = URI(url)
     req = Net::HTTP::Post.new(uri)
     req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model: OPENAI_MODEL,
+    req["authorization"] = "Bearer #{ENV.fetch(key_env)}"
+    oai_extra_headers(req, provider)
+    body = {
+      model: model,
       max_tokens: 400,
-      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: clinician_system_prompt },
         { role: "user",   content: clinician_user_prompt }
       ]
-    }.to_json
+    }
+    body[:response_format] = { type: "json_object" } unless provider == :openrouter
+    body[:reasoning]       = { enabled: false } if provider == :openrouter
+    req.body = body.to_json
     resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
+    raise "#{provider} #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
     JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
   end
 
@@ -1529,23 +1593,9 @@ class HosalivioBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def self.request_answer_openai(payload_json)
-    uri = URI(OPENAI_URL)
-    req = Net::HTTP::Post.new(uri)
-    req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model:           OPENAI_MODEL,
-      max_tokens:      600,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: ANSWER_SYSTEM_PROMPT },
-        { role: "user",   content: payload_json }
-      ]
-    }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: CHAT_READ_TIMEOUT) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
-    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  def self.request_answer_openai(payload_json, provider = :openai)
+    oai_chat(provider: provider, system: ANSWER_SYSTEM_PROMPT, user: payload_json,
+             max_tokens: 600, read_timeout: CHAT_READ_TIMEOUT)
   end
 
   def self.request_eval_fill_claude(payload_json)
@@ -1565,23 +1615,8 @@ class HosalivioBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def self.request_eval_fill_openai(payload_json)
-    uri = URI(OPENAI_URL)
-    req = Net::HTTP::Post.new(uri)
-    req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model:           OPENAI_MODEL,
-      max_tokens:      2000,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: EVAL_GAP_FILL_SYSTEM_PROMPT },
-        { role: "user",   content: payload_json }
-      ]
-    }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
-    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  def self.request_eval_fill_openai(payload_json, provider = :openai)
+    oai_chat(provider: provider, system: EVAL_GAP_FILL_SYSTEM_PROMPT, user: payload_json, max_tokens: 2000)
   end
 
   def self.request_polish_claude(raw_text)
@@ -1601,23 +1636,9 @@ class HosalivioBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def self.request_polish_openai(raw_text)
-    uri = URI(OPENAI_URL)
-    req = Net::HTTP::Post.new(uri)
-    req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model:           OPENAI_MODEL,
-      max_tokens:      1500,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: POLISH_SYSTEM_PROMPT },
-        { role: "user",   content: "Raw narrative:\n#{raw_text}" }
-      ]
-    }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 25) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
-    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  def self.request_polish_openai(raw_text, provider = :openai)
+    oai_chat(provider: provider, system: POLISH_SYSTEM_PROMPT, user: "Raw narrative:\n#{raw_text}",
+             max_tokens: 1500, read_timeout: 25)
   end
 
   def self.request_summary_claude(text)
@@ -1637,23 +1658,9 @@ class HosalivioBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def self.request_summary_openai(text)
-    uri = URI(OPENAI_URL)
-    req = Net::HTTP::Post.new(uri)
-    req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model:           OPENAI_MODEL,
-      max_tokens:      300,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: TEAM_SUMMARY_SYSTEM_PROMPT },
-        { role: "user",   content: "Visit note:\n#{text}" }
-      ]
-    }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
-    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  def self.request_summary_openai(text, provider = :openai)
+    oai_chat(provider: provider, system: TEAM_SUMMARY_SYSTEM_PROMPT, user: "Visit note:\n#{text}",
+             max_tokens: 300, read_timeout: 20)
   end
 
   def self.request_speaker_tags_claude(payload_json)
@@ -1673,23 +1680,8 @@ class HosalivioBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def self.request_speaker_tags_openai(payload_json)
-    uri = URI(OPENAI_URL)
-    req = Net::HTTP::Post.new(uri)
-    req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model:           OPENAI_MODEL,
-      max_tokens:      2500,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SPEAKER_TAG_SYSTEM_PROMPT },
-        { role: "user",   content: payload_json }
-      ]
-    }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 30) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
-    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  def self.request_speaker_tags_openai(payload_json, provider = :openai)
+    oai_chat(provider: provider, system: SPEAKER_TAG_SYSTEM_PROMPT, user: payload_json, max_tokens: 2500)
   end
 
   def self.request_pps_claude(narrative)
@@ -1709,23 +1701,9 @@ class HosalivioBrain
     JSON.parse(resp.body).dig("content", 0, "text").to_s
   end
 
-  def self.request_pps_openai(narrative)
-    uri = URI(OPENAI_URL)
-    req = Net::HTTP::Post.new(uri)
-    req["content-type"]  = "application/json"
-    req["authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    req.body = {
-      model: OPENAI_MODEL,
-      max_tokens: 250,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: PPS_SYSTEM_PROMPT },
-        { role: "user",   content: "Narrative:\n#{narrative}" }
-      ]
-    }.to_json
-    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 20) { |h| h.request(req) }
-    raise "OpenAI #{resp.code}: #{resp.body.to_s[0, 300]}" unless resp.code.to_i == 200
-    JSON.parse(resp.body).dig("choices", 0, "message", "content").to_s
+  def self.request_pps_openai(narrative, provider = :openai)
+    oai_chat(provider: provider, system: PPS_SYSTEM_PROMPT, user: "Narrative:\n#{narrative}",
+             max_tokens: 250, read_timeout: 20)
   end
 
   def sanitize_clinician(parsed, source)
