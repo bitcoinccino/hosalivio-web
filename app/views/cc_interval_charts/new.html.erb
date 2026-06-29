@@ -1,4 +1,32 @@
 <% content_for :title, "New CC chart · #{@patient.full_name}" %>
 <div class="min-h-screen bg-[#FBF9F5] py-8 px-4">
+
+  <!-- HosAlivio dictation drawer -->
+  <div class="max-w-5xl mx-auto mb-4">
+    <div class="bg-white border border-[#EFECE6] rounded-2xl p-4">
+      <div class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-[#6B665F]">
+        <i class="ri-sparkling-2-line text-[#D97757]"></i> Draft with HosAlivio
+      </div>
+      <p class="text-[12px] text-[#6B665F] mt-1">
+        Dictate or paste the shift in plain language — HosAlivio fills the chart below for you to review and sign.
+      </p>
+      <%= form_with url: extract_patient_cc_interval_charts_path(@patient), method: :post, class: "mt-2" do %>
+        <textarea name="dictation" rows="3" class="<%= cc_input %>"
+          placeholder="e.g. Arrived 0800. BP 120/80, pulse 72. Patient grimacing and moaning; gave liquid morphine 5mg at 0815. Reassessed 0900, comfortable, sleeping."><%= @dictation %></textarea>
+        <div class="flex justify-end mt-2">
+          <%= submit_tag "Draft with HosAlivio", class: "px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @ai_prefilled %>
+    <div class="max-w-5xl mx-auto mb-3">
+      <div class="bg-[#FEFCE8] border border-[#E8D98A] rounded-xl px-4 py-2 text-[13px] text-[#7A6A2F]">
+        <i class="ri-sparkling-2-line"></i> Drafted by HosAlivio. Highlighted rows were AI-filled — review every field before saving &amp; signing.
+      </div>
+    </div>
+  <% end %>
+
   <%= render "form" %>
 </div>

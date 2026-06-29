@@ -80,7 +80,8 @@ Rails.application.routes.draw do
     # under the patient; show/edit/update + sign are top-level by chart id.
     resources :cc_interval_charts, shallow: true,
               only: [ :index, :new, :create, :show, :edit, :update ] do
-      member { post :sign }
+      member     { post :sign }
+      collection { post :extract }   # HosAlivio dictation → prefilled draft
     end
   end
 

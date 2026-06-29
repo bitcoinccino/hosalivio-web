@@ -4,7 +4,7 @@
 class CcIntervalChartsController < ApplicationController
   before_action :authenticate_user!
   before_action :block_family
-  before_action :set_patient, only: [ :index, :new, :create ]
+  before_action :set_patient, only: [ :index, :new, :create, :extract ]
   before_action :set_chart,   only: [ :show, :edit, :update, :sign ]
 
   def index
@@ -17,6 +17,25 @@ class CcIntervalChartsController < ApplicationController
       @chart.cc_vitals_records.build
       @chart.cc_poc_interventions.build
       @chart.cc_controlled_substance_counts.build
+    end
+  end
+
+  # POST /patients/:patient_id/cc_interval_charts/extract — HosAlivio turns the
+  # dictation into a prefilled DRAFT for review. Nothing is persisted here; the
+  # clinician edits and submits #create, then signs.
+  def extract
+    with_tenant do
+      attrs = Cc::ChartExtractor.call(
+        patient: @patient, dictation: params[:dictation], role: current_user.role_names.first
+      )
+      @chart = @patient.cc_interval_charts.new(attrs.merge(user: current_user))
+      @chart.date_of_shift ||= Date.current
+      @dictation    = params[:dictation].to_s
+      @ai_prefilled = true
+      seed_blank_rows
+      flash.now[:notice] = attrs.present? ? "HosAlivio drafted this from your dictation — review every field, then save." \
+                                          : "Couldn't draft from that. Fill the chart in manually."
+      render :new, status: :ok
     end
   end
 
