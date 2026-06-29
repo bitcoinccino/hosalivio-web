@@ -51,6 +51,8 @@ class StaleRelayOfferSweepJob < ApplicationJob
     return false unless don
 
     waited = STALE_AFTER.to_i / 60
+    # Address the recipient by their human role label, never the "DON" acronym.
+    label  = HosalivioTriager::ROLE_LABELS.fetch("don", "care coordinator")
     AgentEvent.create!(
       agency:           agency,
       agent_id:         "system",
@@ -64,8 +66,8 @@ class StaleRelayOfferSweepJob < ApplicationJob
       agency: agency,
       user:   don,
       kind:   "relay_offer_escalated",
-      title:  "Unsent family draft needs attention — #{offer.patient.first_name}",
-      body:   "A drafted family update has been waiting over #{waited} minutes without being sent. Please review or reassign.",
+      title:  "Unsent family draft needs your review — #{offer.patient.first_name}",
+      body:   "A drafted family update has waited over #{waited} minutes without the assigned nurse sending it. As #{label}, please review or reassign.",
       linked: offer
     )
     true
