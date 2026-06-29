@@ -72,8 +72,11 @@ module Api
           # Wake HosAlivio — classifies, escalates, and replies in a background job.
           HosalivioTriageJob.perform_later(note.id)
 
+          # HosAlivio always replies to a family message (ack / answer / handoff),
+          # so the chat UI should keep the "thinking" indicator until it lands.
           render json: { status: "ok", id: note.id, urgency: note.urgency,
-                         parent_note_id: note.parent_note_id }, status: :created
+                         parent_note_id: note.parent_note_id,
+                         ai_reply_expected: true }, status: :created
         end
       end
 

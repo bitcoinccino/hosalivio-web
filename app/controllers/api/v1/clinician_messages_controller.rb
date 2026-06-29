@@ -59,12 +59,17 @@ module Api
             # @HosAlivio mention wakes the dispatcher. A bare "yes"/"cancel"
             # in the thread also wakes it when a relay preview is awaiting
             # confirmation, so the clinician doesn't have to re-tag the bot.
-            if note.clinician_only && (ClinicianDispatcher.mentions_hosalivio?(body) ||
-                                       ClinicianDispatcher.relay_confirmation_for(note))
-              ClinicianMessageResponseJob.perform_later(note.id, @user.id, "classify")
-            end
+            # !! so the JSON is a strict true/false (relay_confirmation_for can
+            # return nil), which the client checks with === false.
+            wake_ai = !!(note.clinician_only && (ClinicianDispatcher.mentions_hosalivio?(body) ||
+                                                 ClinicianDispatcher.relay_confirmation_for(note)))
+            ClinicianMessageResponseJob.perform_later(note.id, @user.id, "classify") if wake_ai
+            # ai_reply_expected lets the chat UI keep or drop the "thinking"
+            # indicator: a plain thread reply gets no AI reply, so the dots
+            # shouldn't hang.
             return render json: { status: "ok", id: note.id, parent_note_id: parent.id,
-                                  clinician_only: note.clinician_only }, status: :created
+                                  clinician_only: note.clinician_only,
+                                  ai_reply_expected: wake_ai }, status: :created
           end
 
           decision = fast_decision_for(body, patient)
@@ -74,13 +79,12 @@ module Api
 
           notify_mentioned_users(note, body, patient) if note.clinician_only
 
-          if decision[:action].present? && decision[:action] != "no_action"
-            ClinicianMessageResponseJob.perform_later(note.id, @user.id, decision[:action], decision[:ack])
-          end
+          ai_reply_expected = decision[:action].present? && decision[:action] != "no_action"
+          ClinicianMessageResponseJob.perform_later(note.id, @user.id, decision[:action], decision[:ack]) if ai_reply_expected
 
           render json: { status: "ok", id: note.id, clinician_only: note.clinician_only,
                          audience: decision[:audience], action: decision[:action],
-                         source: decision[:source] }, status: :created
+                         source: decision[:source], ai_reply_expected: ai_reply_expected }, status: :created
         end
       end
 

@@ -445,6 +445,12 @@ export default class extends Controller {
       const err = await resp.text()
       console.error("send failed:", resp.status, err)
       this._clearTyping()
+    } else {
+      // The server tells us whether a HosAlivio reply is actually coming. If
+      // not (a plain team note or a no-op), drop the thinking dots now instead
+      // of letting them hang for 90s and then force a page reload.
+      const data = await resp.json().catch(() => null)
+      if (data && data.ai_reply_expected === false) this._clearTyping()
     }
   }
 
@@ -1308,7 +1314,14 @@ export default class extends Controller {
           body:    JSON.stringify({ patient_id: this.patientIdValue, text, parent_note_id: noteId, source: "text" })
         })
       }
-      if (!resp.ok) { console.error("reply failed:", resp.status, await resp.text()); this._clearTyping() }
+      if (!resp.ok) {
+        console.error("reply failed:", resp.status, await resp.text()); this._clearTyping()
+      } else {
+        // No HosAlivio reply coming for this reply (a plain human thread reply)?
+        // Drop the thinking dots now rather than hang for 90s + reload.
+        const data = await resp.json().catch(() => null)
+        if (data && data.ai_reply_expected === false) this._clearTyping()
+      }
     } catch (err) {
       console.error("reply error:", err); this._clearTyping()
     }
