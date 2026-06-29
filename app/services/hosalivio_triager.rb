@@ -269,6 +269,21 @@ class HosalivioTriager
     @note.thread_root? ? @note : @note.parent_note
   end
 
+  # Timing/scheduling questions should never get the generic "tell me more"
+  # fallback — that reads as evasive. When the brain returns nothing for one,
+  # give a warm, honest answer that offers to check with the nurse. The "Would
+  # you like me to do that?" makes it a pending offer, so a later "yes" is acted
+  # on via responds_to_pending_offer?.
+  SCHEDULING_Q = /\b(?:when|what time|how long|coming|arrive|arriving|arrives|on (?:her|his|the) way|schedule[d]?)\b/i
+
+  def fallback_answer_for(body)
+    if SCHEDULING_Q.match?(body.to_s)
+      "I don't have the exact visit time in front of me right now, but I can check with the nurse and get back to you. Would you like me to do that?"
+    else
+      "I want to make sure you get the right help — could you tell me a little more about what you need for #{@patient.first_name}?"
+    end
+  end
+
   # Warm, commitment-free acknowledgment of a thank-you / sign-off. No Q&A,
   # no nudge, no handoff — just close the loop kindly, threaded under the
   # conversation.
@@ -300,8 +315,7 @@ class HosalivioTriager
       role:           "family",
       thread_context: recent_thread_context
     )
-    reply_text = result&.dig("answer").presence ||
-                 "I want to make sure you get the right help — could you tell me a little more about what you need for #{@patient.first_name}?"
+    reply_text = result&.dig("answer").presence || fallback_answer_for(@note.body)
 
     Note.create!(
       agency:      @agency,
