@@ -117,6 +117,43 @@ class HosalivioTriager
             .exists?
   end
 
+  # Phrases that mark a HosAlivio turn as an OFFER awaiting a yes/no.
+  OFFER_CUES = [
+    /\bwould you like\b/i, /\bwant me to\b/i, /\bshall i\b/i, /\bshould i\b/i,
+    /\bdo you want me\b/i, /\bi can (?:flag|let|reach|notify|connect|pass|loop|ask)\b/i,
+    /\blet me know if\b/i
+  ].freeze
+
+  # True when the immediately-preceding family-visible message was a HosAlivio
+  # offer awaiting a reply (ends with a question + offer phrasing). If so, the
+  # family's next message is almost certainly answering it.
+  def pending_family_offer?
+    last = @patient.notes
+                   .where(clinician_only: [ nil, false ])
+                   .where.not(id: @note.id)
+                   .order(created_at: :desc).first
+    return false unless last&.ai_authored?
+    body = last.body.to_s
+    body.include?("?") && OFFER_CUES.any? { |re| body.match?(re) }
+  end
+
+  # Cues that a longer message is RESPONDING to a pending offer (deciding it),
+  # not raising a brand-new topic.
+  RESPONSE_CUES = /\b(?:no|nope|thanks|thank you|go ahead|do it|do that|please do|flag|notify|let (?:them|him|her) know|reach out|contact|connect)\b/i
+
+  # Route a reply to the context-aware path when there's a pending offer AND the
+  # message reads as a response to it — short, or carrying an affirmative/
+  # negative/directive cue anywhere (so "Flag the right person for me, please."
+  # is recognized as a yes even though it's 7 words and doesn't start with one).
+  # Genuinely new topics fall through to the triage path (which now also has
+  # conversation memory), so escalations/handoffs aren't skipped.
+  def responds_to_pending_offer?
+    return false unless pending_family_offer?
+    s = @note.body.to_s.strip
+    return true if s.split(/\s+/).length <= CONTEXT_REPLY_MAX_WORDS
+    AFFIRMATIVES.any? { |w| s.match?(/\b#{Regexp.escape(w)}\b/i) } || s.match?(RESPONSE_CUES)
+  end
+
   def triage!
     # 0 — SUPPRESS if a human clinician is actively in this thread
     if human_clinician_recently_active? && !@note.urgency_crisis?
@@ -132,13 +169,15 @@ class HosalivioTriager
     # context to the brain. Crisis messages still use the normal
     # triage below because they need handoffs even when phrased
     # conversationally.
-    if !@note.urgency_crisis? && (looks_like_question?(@note.body) || context_reply?(@note.body))
+    if !@note.urgency_crisis? && (looks_like_question?(@note.body) || context_reply?(@note.body) || responds_to_pending_offer?)
       answer_family!
       return
     end
 
-    # 1 — ASK THE BRAIN (never raises; returns fallback on failure)
-    decision = HosalivioBrain.call(note: @note)
+    # 1 — ASK THE BRAIN (never raises; returns fallback on failure). Pass the
+    #     recent conversation so the generic triage path also has memory of the
+    #     prior turns (e.g. an offer HosAlivio just made), not just this message.
+    decision = HosalivioBrain.call(note: @note, thread_context: recent_thread_context)
     roles    = ESCALATION_ROLES.fetch(decision[:intent], ESCALATION_ROLES["other"])
 
     # Stamp Current so AgentAuditable attributes every write to HosAlivio's session.

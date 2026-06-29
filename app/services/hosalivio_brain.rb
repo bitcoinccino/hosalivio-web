@@ -98,8 +98,8 @@ class HosalivioBrain
       end
     end
 
-    def call(note:)
-      new(note).call
+    def call(note:, thread_context: nil)
+      new(note, thread_context: thread_context).call
     end
 
     # Reads a clinician-authored message and decides:
@@ -369,9 +369,13 @@ class HosalivioBrain
     end
   end
 
-  def initialize(note)
+  def initialize(note, thread_context: nil)
     @note    = note
     @patient = note.patient
+    # Recent patient-scoped conversation (oldest first), so the classifier can
+    # interpret the latest message in context — e.g. recognize a "yes, please"
+    # as accepting an offer HosAlivio made a turn earlier instead of restarting.
+    @thread_context = thread_context
   end
 
   def call
@@ -725,9 +729,13 @@ class HosalivioBrain
 
   def instruction_block
     <<~INSTR
-      RESPONSE FORMAT — THIS TURN ONLY
-      ────────────────────────────────
-      You are triaging a single inbound message from a patient's family member.
+      RESPONSE FORMAT
+      ───────────────
+      You are triaging the latest inbound message from a patient's family member.
+      If a CONVERSATION SO FAR is shown above, read the latest message in that
+      context: it may be a reply to something you just said (often accepting an
+      offer you made). Classify by what the family actually needs across the
+      conversation, and never ask them to start over on something already discussed.
 
       Output ONLY a JSON object (no preamble, no markdown fences) with these keys:
 
@@ -822,9 +830,26 @@ class HosalivioBrain
         Chaplain:          #{@patient.assigned_chaplain&.full_name || "(unassigned)"}
         Social worker:     #{@patient.assigned_sw&.full_name || "(unassigned)"}
 
-      FAMILY MESSAGE (source: #{@note.source}, family-declared urgency: #{@note.urgency})
+      #{conversation_block}FAMILY MESSAGE (source: #{@note.source}, family-declared urgency: #{@note.urgency})
         #{@note.body}
     USR
+  end
+
+  # Renders the recent conversation so the model interprets the latest message
+  # in context. Empty string when no history was supplied (keeps the prompt
+  # identical to before for callers that don't pass context).
+  def conversation_block
+    return "" if @thread_context.blank?
+    lines = @thread_context.map do |m|
+      role = (m[:role] || m["role"]).to_s
+      body = (m[:body] || m["body"]).to_s
+      "  [#{role}] #{body}"
+    end.join("\n")
+    <<~CTX
+      CONVERSATION SO FAR (oldest first — use it to read the latest message in context; a short "yes, please" / "go ahead" / "do it" is the family ACCEPTING an offer you already made, so classify by that ORIGINAL topic and act on it instead of asking them to start over)
+      #{lines}
+
+    CTX
   end
 
   # ── Clinician message classifier (LLM) ────────────────────────────
