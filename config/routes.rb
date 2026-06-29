@@ -140,6 +140,11 @@ Rails.application.routes.draw do
       post :request_changes
       post :retry_sync
     end
+    # Emergency comfort-kit order set: intake nurse reviews & saves drafts (show/
+    # create), MD authorizes + signs (authorize).
+    resource :comfort_kit, only: [ :show, :create ], controller: "comfort_kits" do
+      post :authorize
+    end
   end
   # Clinician thumbs-up / thumbs-down on AI-authored notes
   post "notes/:note_id/feedback", to: "note_feedbacks#create", as: :note_feedback

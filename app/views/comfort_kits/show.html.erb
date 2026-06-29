@@ -1,0 +1,116 @@
+<% content_for :title, "Comfort Kit · #{@eval.patient.full_name}" %>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4">
+  <div class="max-w-4xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-5">
+      <%= link_to pre_admit_eval_path(@eval), class: "text-[12px] text-[#6B665F] hover:text-[#D97757] inline-flex items-center gap-1" do %>
+        <i class="ri-arrow-left-line"></i> Back to admission eval
+      <% end %>
+      <div class="flex items-center gap-3 mt-2">
+        <div class="w-3 h-7 bg-[#D97757] rounded-sm"></div>
+        <div>
+          <h1 class="text-xl font-bold text-[#1D1C1A]">Emergency Comfort Kit</h1>
+          <p class="text-[13px] text-[#6B665F]"><%= @eval.patient.full_name %> · admission orders</p>
+        </div>
+      </div>
+    </div>
+
+    <% if @orders.empty? %>
+      <%# ── State 1: review & select suggestions ───────────────────────── %>
+      <%= form_with url: pre_admit_eval_comfort_kit_path(@eval), method: :post, class: "bg-white border border-[#EFECE6] rounded-2xl shadow-sm overflow-hidden" do %>
+        <div class="px-6 pt-5 pb-3 border-b border-[#EFECE6]">
+          <h2 class="text-[13px] font-bold uppercase tracking-wide text-[#1D1C1A]">Suggested kit orders</h2>
+          <p class="text-[12px] text-[#6B665F] mt-1">
+            Review and uncheck anything not needed. Saved items become <strong>drafts</strong> — they carry no
+            prescribing authority until the MD authorizes and signs them.
+          </p>
+        </div>
+
+        <div class="divide-y divide-[#F0EDE7]">
+          <% @suggestions.each do |med| %>
+            <% key = Medications::InitializeComfortKitService::BASELINE_KIT_ITEMS.find { |i| i[:name] == med.drug_name }[:key] %>
+            <label class="flex items-start gap-3 px-6 py-3 hover:bg-[#FBF9F5] cursor-pointer">
+              <input type="checkbox" name="items[]" value="<%= key %>" checked
+                     class="mt-1 h-4 w-4 rounded border-[#D9D5CD] accent-[#D97757]">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[14px] font-semibold text-[#1D1C1A]"><%= med.drug_name %></span>
+                  <span class="text-[11px] text-[#6B665F]">· Qty <%= med.quantity %> · <%= med.dose %></span>
+                  <% if med.controlled %>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase tracking-wider">Controlled</span>
+                  <% end %>
+                </div>
+                <p class="text-[12px] text-[#4A4A45] mt-0.5"><%= med.instructions %></p>
+              </div>
+            </label>
+          <% end %>
+        </div>
+
+        <div class="px-6 py-4 bg-[#FBF9F5] border-t border-[#EFECE6] flex items-center justify-between">
+          <p class="text-[11px] text-[#6B665F]">Unchecked items are discarded — nothing is saved until you submit.</p>
+          <%= submit_tag "Save selected as drafts", class: "px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-semibold cursor-pointer" %>
+        </div>
+      <% end %>
+
+    <% else %>
+      <%# ── State 2/3: saved orders (draft → authorize, or active) ──────── %>
+      <% drafts = @orders.select(&:order_draft?) %>
+      <% active = @orders.select(&:order_active?) %>
+
+      <% if drafts.any? %>
+        <div class="mb-4 rounded-xl px-4 py-2.5 bg-[#FFF3EC] border border-[#D97757] text-[12px] text-[#8a4a30]">
+          <i class="ri-time-line"></i> <%= drafts.size %> draft order<%= "s" if drafts.size != 1 %> awaiting MD authorization.
+        </div>
+      <% elsif active.any? %>
+        <div class="mb-4 rounded-xl px-4 py-2.5 bg-[#E6F0EE] border border-[#2F6F4E] text-[12px] text-[#265a3d]">
+          <i class="ri-shield-check-line"></i> Comfort kit authorized — <%= active.size %> active order<%= "s" if active.size != 1 %>.
+        </div>
+      <% end %>
+
+      <div class="bg-white border border-[#EFECE6] rounded-2xl shadow-sm overflow-hidden divide-y divide-[#F0EDE7]">
+        <% @orders.each do |order| %>
+          <div class="px-6 py-3">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[14px] font-semibold text-[#1D1C1A]"><%= order.drug_name %></span>
+              <span class="text-[11px] text-[#6B665F]">· Qty <%= order.quantity %> · <%= order.dose %></span>
+              <% if order.controlled %>
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase tracking-wider">Controlled</span>
+              <% end %>
+              <% if order.order_active? %>
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#E6F0EE] text-[#265a3d] border border-[#2F6F4E] uppercase tracking-wider">Active</span>
+              <% else %>
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#F0EDE7] text-[#6B665F] border border-[#D9D5CD] uppercase tracking-wider">Draft</span>
+              <% end %>
+            </div>
+            <p class="text-[12px] text-[#4A4A45] mt-0.5"><%= order.instructions %></p>
+            <% if order.order_active? && (sig = order.signatures.last) %>
+              <p class="text-[11px] text-[#6B665F] mt-1">
+                <i class="ri-quill-pen-line"></i> Authorized by <%= sig.signed_name %> · <%= sig.signed_at.strftime("%b %-d, %Y %-l:%M %p") %>
+              </p>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+      <% if drafts.any? %>
+        <div class="mt-5">
+          <% if current_user.role_names.include?("md") %>
+            <%= render "shared/signature_panel",
+                  submit_path:   authorize_pre_admit_eval_comfort_kit_path(@eval),
+                  submit_method: :post,
+                  submit_label:  "Authorize & sign kit",
+                  headline:      "MD authorization",
+                  intent_text:   "I, the attending physician, authorize these comfort-kit medication orders and apply my electronic signature.",
+                  confirm:       "Authorize and sign #{drafts.size} comfort-kit order#{'s' if drafts.size != 1}?",
+                  tone:          :certify %>
+          <% else %>
+            <div class="rounded-2xl border border-[#D9D5CD] bg-white p-5 text-[12px] text-[#6B665F]">
+              <i class="ri-information-line"></i> These orders are staged as drafts. The attending MD authorizes and signs them to make them active.
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

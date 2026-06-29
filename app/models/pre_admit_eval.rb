@@ -37,6 +37,11 @@ class PreAdmitEval < ApplicationRecord
   # renders the most recent of each verification_method.
   has_many :signatures, as: :signable, dependent: :destroy
 
+  # Comfort-kit emergency med orders placed during this admission. :nullify so
+  # the standing orders survive if the eval is ever removed.
+  has_many :medication_orders, dependent: :nullify
+  def comfort_kit_orders = medication_orders.comfort_kit
+
   # Round-trip records when an MD asks the RN to revise. Open
   # rows surface as a banner on the visit edit page; closed rows
   # stay around for the audit trail.

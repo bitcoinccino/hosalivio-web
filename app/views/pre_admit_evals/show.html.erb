@@ -879,6 +879,18 @@
         <% end %>
       <% end %>
 
+      <%# === 5b. EMERGENCY COMFORT KIT (admission order set) ======= %>
+      <%= render layout: "pre_admit_evals/card", locals: { title: "Emergency comfort kit", icon: "ri-first-aid-kit-line text-[#D97757]", open: false } do %>
+        <p class="text-[12px] text-[#6B665F] mb-3">
+          Standing emergency medications (pain, agitation, terminal secretions, nausea) pre-positioned in the home.
+          The intake nurse stages the kit; the attending MD authorizes and signs it.
+        </p>
+        <%= link_to pre_admit_eval_comfort_kit_path(@eval),
+              class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-semibold" do %>
+          <i class="ri-first-aid-kit-line"></i> Manage comfort kit
+        <% end %>
+      <% end %>
+
       <%# === 6. OTHER SYMPTOMS & NOTES (collapsed) =================
           Blank / placeholder values ("—", "no specific finding reported")
           are treated as empty via eval_present?, so empty fields and whole
