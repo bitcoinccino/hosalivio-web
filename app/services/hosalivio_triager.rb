@@ -277,11 +277,31 @@ class HosalivioTriager
   SCHEDULING_Q = /\b(?:when|what time|how long|coming|arrive|arriving|arrives|on (?:her|his|the) way|schedule[d]?)\b/i
 
   def fallback_answer_for(body)
-    if SCHEDULING_Q.match?(body.to_s)
-      "I don't have the exact visit time in front of me right now, but I can check with the nurse and get back to you. Would you like me to do that?"
+    if timing_question?(body)
+      "I don't have the exact visit time in front of me right now, but I've let your nurse know you're asking and they'll reach out with an update."
     else
       "I want to make sure you get the right help — could you tell me a little more about what you need for #{@patient.first_name}?"
     end
+  end
+
+  def timing_question?(body)
+    SCHEDULING_Q.match?(body.to_s)
+  end
+
+  # Dedupe: did we already flag the nurse about visit timing for this patient in
+  # the last 2 hours? Keyed off an AgentEvent marker (plain columns) rather than
+  # the note body, which is encrypted at rest and can't be matched in SQL — so
+  # repeated "any update?" messages don't ping the nurse over and over.
+  def recently_flagged_nurse_about_timing?
+    AgentEvent.where(agency: @agency, action: "family_timing_inquiry", subject: @patient)
+              .where("happened_at > ?", 2.hours.ago)
+              .exists?
+  end
+
+  def record_timing_inquiry!
+    AgentEvent.create!(agency: @agency, agent_id: "hosalivio_brain",
+                       action: "family_timing_inquiry", subject: @patient,
+                       happened_at: Time.current, change_set: {})
   end
 
   # Warm, commitment-free acknowledgment of a thank-you / sign-off. No Q&A,
@@ -331,9 +351,16 @@ class HosalivioTriager
     # named clinician, execute it: drop a clinician_only urgent note
     # that @-mentions the right person, which fires the existing
     # OutboundPing pipeline (Telegram / SMS / email).
-    if (notify = result&.dig("notify"))
-      execute_notify(notify)
+    notify = result&.dig("notify")
+    # A nurse-timing question always flags the patient's nurse so they reach out
+    # with an update — unless the brain already emitted a notify, or we already
+    # flagged them about timing recently (don't ping on every "any update?").
+    if notify.nil? && timing_question?(@note.body) && !recently_flagged_nurse_about_timing?
+      notify = { "role" => "visit_rn",
+                 "reason" => "Family is asking when the next nurse visit is, please reach out with the timing." }
+      record_timing_inquiry!
     end
+    execute_notify(notify) if notify
 
     AgentEvent.create!(
       agency:      @agency,
@@ -451,6 +478,7 @@ class HosalivioTriager
   def resolve_clinician_for_role(role)
     by_assignment = case role
     when "rn"            then @patient.assigned_rn
+    when "visit_rn"      then @patient.assigned_visit_rn || @patient.assigned_rn
     when "md"            then @patient.assigned_md
     when "sw", "social_worker" then @patient.assigned_sw
     when "chaplain"      then @patient.assigned_chaplain
