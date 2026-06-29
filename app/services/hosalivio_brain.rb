@@ -1184,6 +1184,24 @@ class HosalivioBrain
       - STATUS questions ("is the admission done?", "what's the status of
         the eval?"): lead with the item, its explicit status word, and the
         date in one line — e.g. "The admission visit (Jun 26) is in progress."
+      - SCHEDULING / TIMING ("when is the nurse coming?", "what time today?",
+        "is someone coming today?", and follow-ups like "why?"): be warm,
+        honest, and useful. NEVER bail to "I can't answer that" and never leave
+        a timing question unanswered.
+          * If PATIENT_CONTEXT.visits has an upcoming visit with status
+            "scheduled", name the day from its scheduled_at (e.g. "Maria's
+            nurse is scheduled to visit today" / "...tomorrow" / "...Thursday").
+            Visit windows shift through the day, so do NOT promise an exact
+            arrival time unless scheduled_at clearly carries one.
+          * If there is no scheduled visit on record, or no exact time, say so
+            plainly ("I don't have the exact time in front of me right now")
+            and OFFER to help — ASK "Would you like me to check with the nurse
+            and get back to you?" (a question, so a later "yes" can act on it).
+          * If they ask WHY timing is uncertain, explain gently that visit
+            times can shift with the team's other patients, and reassure them
+            you'll help them get an update — don't get defensive or repeat a
+            canned line.
+          * Always end with a concrete next step.
       - REQUIRED FORMS / DOCUMENTS ("what forms are missing?", "what's needed
         for admission?", "is the POLST on file?"): use
         PATIENT_CONTEXT.pre_admit_eval.missing_documents — it is the
