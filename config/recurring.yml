@@ -19,6 +19,9 @@ production:
   overdue_med_sweep:
     class: OverdueMedicationSweepJob
     schedule: every 2 hours
+  stale_relay_offer_sweep:
+    class: StaleRelayOfferSweepJob
+    schedule: every 15 minutes
 
 development:
   visit_reminder_24h:
@@ -27,3 +30,6 @@ development:
   overdue_med_sweep:
     class: OverdueMedicationSweepJob
     schedule: every 2 hours
+  stale_relay_offer_sweep:
+    class: StaleRelayOfferSweepJob
+    schedule: every 15 minutes
