@@ -1195,8 +1195,9 @@ class HosalivioBrain
             arrival time unless scheduled_at clearly carries one.
           * If there is no scheduled visit on record, or no exact time, say so
             plainly ("I don't have the exact time in front of me right now")
-            and OFFER to help — ASK "Would you like me to check with the nurse
-            and get back to you?" (a question, so a later "yes" can act on it).
+            and reassure them you're letting their nurse know so the nurse
+            follows up with an update. Do NOT ask permission to check — the
+            system flags the nurse automatically — and never promise a time.
           * If they ask WHY timing is uncertain, explain gently that visit
             times can shift with the team's other patients, and reassure them
             you'll help them get an update — don't get defensive or repeat a

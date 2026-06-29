@@ -16,13 +16,13 @@ class HosalivioSchedulingFallbackTest < ActiveSupport::TestCase
     end
   end
 
-  test "scheduling questions get an offer-to-check fallback, not the generic one" do
+  test "scheduling questions get a nurse-notified fallback, not the generic one" do
     t = triager
     [ "When is the nurse coming?", "what time today?", "is someone coming today?",
       "how long until the nurse arrives?", "is she on her way?" ].each do |q|
       ans = t.send(:fallback_answer_for, q)
-      assert_includes ans, "check with the nurse", "#{q.inspect} → scheduling fallback"
-      assert_includes ans, "Would you like me to do that?", "ends with an offer a yes can act on"
+      assert_includes ans, "let your nurse know", "#{q.inspect} → scheduling fallback"
+      assert_includes ans, "reach out with an update"
     end
   end
 
@@ -35,6 +35,6 @@ class HosalivioSchedulingFallbackTest < ActiveSupport::TestCase
 
   test "the answer prompt instructs how to handle scheduling/timing questions" do
     assert_includes HosalivioBrain::ANSWER_SYSTEM_PROMPT, "SCHEDULING / TIMING"
-    assert_includes HosalivioBrain::ANSWER_SYSTEM_PROMPT, "check with the nurse"
+    assert_includes HosalivioBrain::ANSWER_SYSTEM_PROMPT, "letting their nurse know"
   end
 end
