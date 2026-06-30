@@ -20,7 +20,7 @@ class PreAdmitEvalCoverageTest < ActiveSupport::TestCase
     in_tenant(@agency) do
       assert ev.icd10_in_index?
       assert_equal :likely_covered, ev.cms_coverage.status
-      assert_equal "Heart Disease — CHF", ev.cms_coverage.lcd
+      assert_equal "L34548", ev.cms_coverage.lcd_id # Hospice Cardiopulmonary Conditions
     end
   end
 

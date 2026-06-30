@@ -616,10 +616,15 @@
                 <% end %>
                 <% if (cov = @eval.cms_coverage) %>
                   <% covered = cov.status == :likely_covered %>
-                  <span title="Automated hospice-LCD heuristic, not an official CMS coverage determination — confirm against the CMS Coverage Database."
+                  <span title="Diagnosis→LCD category is an automated heuristic; the cited LCD is the real CMS document. Coverage still depends on documented terminal decline."
                         class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full <%= covered ? "bg-[#E6F0EA] text-[#2F6F4E] border border-[#7FB99A]" : "bg-[#FEF6E7] text-[#8A6A2F] border border-[#E8D08A]" %>">
-                    <i class="<%= covered ? "ri-shield-check-line" : "ri-alert-line" %>"></i> Hospice-LCD check (auto): <%= covered ? "likely" : "needs review" %>
+                    <i class="<%= covered ? "ri-shield-check-line" : "ri-alert-line" %>"></i> Hospice LCD: <%= covered ? "likely" : "needs review" %>
                   </span>
+                  <% if cov.lcd_id.present? %>
+                    <%= link_to (cov.lcd_url.presence || "#"), target: "_blank", rel: "noopener",
+                          class: "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#F0F4FA] text-[#2B4A7A] border border-[#C8D6E8] hover:underline",
+                          title: cov.lcd_title do %><i class="ri-file-text-line"></i> <%= cov.lcd_id %><% end %>
+                  <% end %>
                 <% end %>
               </div>
               <% if @eval.cms_coverage&.summary.present? %>
