@@ -79,6 +79,16 @@ export default class extends Controller {
     this._openCaptureModal()
   }
 
+  // "Talk to a hospice nurse · 24/7" button. No partner context — this is a
+  // general inquiry that routes to the HOS house agency's admissions queue.
+  nurseLine(event) {
+    if (event) event.preventDefault()
+    this._partnerId    = null
+    this._partnerName  = null
+    this._sourcePrompt = "nurse_24_7"
+    this._openCaptureModal()
+  }
+
   closeCapture(event) {
     if (event) event.preventDefault?.()
     if (!this.hasCaptureTarget) return
