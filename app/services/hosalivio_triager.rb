@@ -139,17 +139,25 @@ class HosalivioTriager
     /\blet me know if\b/i
   ].freeze
 
+  # True when an outgoing HosAlivio reply offers to do something and awaits a
+  # yes/no. Evaluated once when the reply is posted and persisted on the note
+  # (family_offer), so detection doesn't depend on re-parsing prose later.
+  def offer_reply?(text)
+    s = text.to_s
+    s.include?("?") && OFFER_CUES.any? { |re| s.match?(re) }
+  end
+
   # True when the immediately-preceding family-visible message was a HosAlivio
-  # offer awaiting a reply (ends with a question + offer phrasing). If so, the
-  # family's next message is almost certainly answering it.
+  # offer awaiting a reply. Trusts the persisted family_offer marker first; falls
+  # back to the body heuristic only for notes posted before the marker existed.
   def pending_family_offer?
     last = @patient.notes
                    .where(clinician_only: [ nil, false ])
                    .where.not(id: @note.id)
                    .order(created_at: :desc).first
     return false unless last&.ai_authored?
-    body = last.body.to_s
-    body.include?("?") && OFFER_CUES.any? { |re| body.match?(re) }
+    return true if last.family_offer?
+    offer_reply?(last.body)
   end
 
   # Cues that a longer message is RESPONDING to a pending offer (deciding it),
@@ -229,13 +237,14 @@ class HosalivioTriager
     #     pain/distress message. Threaded under the family's message so the
     #     question + HosAlivio's reply read as one conversation.
     Note.create!(
-      agency:      @agency,
-      patient:     @patient,
-      parent_note: thread_anchor,
-      author_role: "admissions",
-      body:        decision[:reply],
-      urgency:     "normal",     # reply itself is calm; urgency captured internally
-      source:      "system"
+      agency:       @agency,
+      patient:      @patient,
+      parent_note:  thread_anchor,
+      author_role:  "admissions",
+      body:         decision[:reply],
+      urgency:      "normal",     # reply itself is calm; urgency captured internally
+      source:       "system",
+      family_offer: offer_reply?(decision[:reply])
     )
 
     # 4.5 — COMMITMENT DRAFT (hybrid gate). If HosAlivio's response promised a
@@ -338,13 +347,14 @@ class HosalivioTriager
     reply_text = result&.dig("answer").presence || fallback_answer_for(@note.body)
 
     Note.create!(
-      agency:      @agency,
-      patient:     @patient,
-      parent_note: thread_anchor,        # thread the answer under the question
-      author_role: "admissions",
-      body:        reply_text,
-      urgency:     "normal",
-      source:      "system"
+      agency:       @agency,
+      patient:      @patient,
+      parent_note:  thread_anchor,        # thread the answer under the question
+      author_role:  "admissions",
+      body:         reply_text,
+      urgency:      "normal",
+      source:       "system",
+      family_offer: offer_reply?(reply_text)
     )
 
     # If the brain decided the family accepted an offer to contact a
