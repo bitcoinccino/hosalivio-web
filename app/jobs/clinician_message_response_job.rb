@@ -48,9 +48,13 @@ class ClinicianMessageResponseJob < ApplicationJob
   def classify_action(note, requester)
     decision = HosalivioBrain.classify_clinician_message(note: note, requester: requester)
     action = decision[:action].to_s.presence || "no_action"
+    # A status/summary ask must always reach answer_question (which has a
+    # deterministic chart summary), even if the classifier — LLM-backed — bailed.
+    action = "answer_question" if action == "no_action" && ClinicianDispatcher.summary_question?(note.body)
     [ action, decision[:ack], decision[:notify] ]
   rescue => e
     Rails.logger.warn("[ClinicianMessageResponseJob#classify_action] #{e.class}: #{e.message}")
+    return [ "answer_question", nil, nil ] if ClinicianDispatcher.summary_question?(note.body)
     [ "no_action", nil, nil ]
   end
 
