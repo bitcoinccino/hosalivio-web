@@ -131,6 +131,28 @@ class PreAdmitEval < ApplicationRecord
     blockers
   end
 
+  # ── Diagnosis coding & CMS coverage advisories (read-only) ──────────
+  # Computed from the local ICD-10 index + the hospice-LCD category map. These
+  # INFORM the certification decision (surfaced on the eval); they don't block
+  # it — consistent with the app's "warn, don't block" stance on coding.
+
+  # The authoritative ICD-10-CM record for the primary terminal diagnosis, or nil.
+  def icd10_record
+    return @icd10_record if defined?(@icd10_record)
+    @icd10_record = primary_icd10.present? ? Coding::Icd10.lookup(primary_icd10) : nil
+  end
+
+  def icd10_in_index?
+    icd10_record.present?
+  end
+
+  # Medicare hospice LCD coverage signal for the primary diagnosis (Struct with
+  # status / lcd / summary), or nil when no diagnosis is on file.
+  def cms_coverage
+    return @cms_coverage if defined?(@cms_coverage)
+    @cms_coverage = primary_icd10.present? ? Cms::HospiceCoverage.call(primary_icd10) : nil
+  end
+
   # ── Required documents (MVP form tracking) ──────────────────────
   # A single view of the key admission forms and whether each is on file.
   # Election + Patient Rights are certification-BLOCKING; POLST / Advance

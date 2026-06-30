@@ -606,6 +606,26 @@
           <div>
             <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Primary terminal</div>
             <div class="text-[13px] mt-0.5"><% if pdx["icd10"].present? %><strong class="font-mono"><%= pdx["icd10"] %></strong> · <% end %><%= pdx["description"].presence || "—" %></div>
+            <%# ICD-10 index check + CMS hospice-LCD coverage signal — advisory, informs (doesn't block) certification %>
+            <% if pdx["icd10"].present? %>
+              <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                <% if @eval.icd10_in_index? %>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#E6F0EA] text-[#2F6F4E] border border-[#7FB99A]"><i class="ri-check-line"></i> ICD-10 verified</span>
+                <% else %>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#FFF3EC] text-[#C1403A] border border-[#E3B7AC]"><i class="ri-error-warning-line"></i> Code not in ICD-10 index — verify</span>
+                <% end %>
+                <% if (cov = @eval.cms_coverage) %>
+                  <% covered = cov.status == :likely_covered %>
+                  <span title="Automated hospice-LCD heuristic, not an official CMS coverage determination — confirm against the CMS Coverage Database."
+                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full <%= covered ? "bg-[#E6F0EA] text-[#2F6F4E] border border-[#7FB99A]" : "bg-[#FEF6E7] text-[#8A6A2F] border border-[#E8D08A]" %>">
+                    <i class="<%= covered ? "ri-shield-check-line" : "ri-alert-line" %>"></i> Hospice-LCD check (auto): <%= covered ? "likely" : "needs review" %>
+                  </span>
+                <% end %>
+              </div>
+              <% if @eval.cms_coverage&.summary.present? %>
+                <p class="text-[11px] text-[#6B665F] mt-1 leading-snug"><%= @eval.cms_coverage.summary %></p>
+              <% end %>
+            <% end %>
             <% if Array(dx["secondary_diagnoses"]).any? %>
               <div class="mt-2"><div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Secondary</div>
                 <ul class="list-disc ml-5 mt-1 text-[12px] text-[#1D1C1A] space-y-0.5">
