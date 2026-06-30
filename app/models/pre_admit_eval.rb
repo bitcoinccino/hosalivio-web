@@ -211,6 +211,20 @@ class PreAdmitEval < ApplicationRecord
     true
   end
 
+  # Medicare claims diagnosis history imported from DPC (advisory), or nil.
+  def medicare_claims_history
+    h = diagnosis_section["medicare_claims_history"]
+    h.is_a?(Hash) ? h : nil
+  end
+
+  # Kick off a DPC claims import for this eval. No-op (returns false) unless DPC
+  # is configured. patient_dpc_id is the patient's id within DPC.
+  def enqueue_dpc_import(patient_dpc_id)
+    return false unless Dpc.configured? && patient_dpc_id.present?
+    DpcClaimsImportJob.perform_later(id, patient_dpc_id)
+    true
+  end
+
   private
 
   def stamp_noe_deadline
