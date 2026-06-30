@@ -106,6 +106,15 @@ class ClinicianDispatcher
     body.to_s.match?(MENTION_RE)
   end
 
+  # A "where do things stand" ask. Routed to answer_question even when the LLM
+  # classifier is down (returns no_action), because answer_question can fall
+  # back to a deterministic chart summary.
+  SUMMARY_RE = /\b(?:summar(?:y|ize|ise|ies)|status|catch (?:me )?up|where are we|what'?s going on|going on with|update on|brief me|overview|recap|sum up|how'?s? (?:\w+ )?doing)\b/i
+
+  def self.summary_question?(body)
+    SUMMARY_RE.match?(body.to_s)
+  end
+
   # A direct @HosAlivio message that classification couldn't turn into an
   # action (vague ask, unsupported relay target, plain chit-chat). Post a
   # short ack so a direct delegation never vanishes without a reply. No-op
@@ -381,6 +390,10 @@ class ClinicianDispatcher
           notified_role:  notify&.dig("role")
         }
       )
+    elsif self.class.summary_question?(@note.body)
+      # The brain is down, but a status/summary ask can still be answered from
+      # the chart deterministically — better than an apology during an outage.
+      post_answer(PatientStatusSummary.call(patient: @patient, role: role))
     else
       post_answer(fallback_answer_for(role))
     end
