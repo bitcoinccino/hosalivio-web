@@ -930,15 +930,48 @@
         <i class="ri-send-plane-2-line text-[#D97757]"></i>
         Sending your request to <span class="font-medium" data-welcome-target="partnerBannerName"></span>.
       </div>
-      <div class="font-serif text-[16px] text-[#1D1C1A] mb-5">Leave your ZIP and the best way to reach you. A real coordinator, not a bot, gets back to you, usually within the hour.</div>
+      <div class="font-serif text-[16px] text-[#1D1C1A] mb-5">Share a few details and a way to reach you. A real coordinator, not a bot, gets back to you, usually within the hour.</div>
 
+      <%# Field styling is shared; keep it in one place so every input/select matches. %>
+      <% field_class = "w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
       <form data-action="submit->welcome#submitCapture" class="space-y-3">
-        <input type="text" name="zip" placeholder="ZIP code" required inputmode="numeric" pattern="[0-9]{5}"
-               class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
-        <input type="text" name="name" placeholder="First name" required
-               class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
-        <input type="text" name="contact" placeholder="Phone or email — e.g. (305) 555-0100" required
-               class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+        <div class="grid grid-cols-2 gap-3">
+          <input type="text" name="first_name" placeholder="First name" required aria-label="First name" class="<%= field_class %>">
+          <input type="text" name="last_name" placeholder="Last name" required aria-label="Last name" class="<%= field_class %>">
+        </div>
+
+        <select name="requester_role" aria-label="Your role" class="<%= field_class %> text-[#6B665F]">
+          <option value="" selected>I am the patient's… (optional)</option>
+          <% Inquiry::REQUESTER_ROLE_OPTIONS.each do |role| %>
+            <option value="<%= role %>"><%= role %></option>
+          <% end %>
+        </select>
+
+        <div class="grid grid-cols-2 gap-3">
+          <input type="tel" name="caregiver_phone" placeholder="Caregiver phone" required aria-label="Caregiver phone number"
+                 inputmode="tel" class="<%= field_class %>">
+          <input type="email" name="email" placeholder="Email (optional)" aria-label="Email" class="<%= field_class %>">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="block text-[11px] text-[#6B665F] mb-1">Date of birth</span>
+            <input type="date" name="dob" aria-label="Patient date of birth" class="<%= field_class %>">
+          </label>
+          <label class="block">
+            <span class="block text-[11px] text-[#6B665F] mb-1">ZIP code</span>
+            <input type="text" name="zip" placeholder="33101" required inputmode="numeric" pattern="[0-9]{5}"
+                   aria-label="ZIP code" class="<%= field_class %>">
+          </label>
+        </div>
+
+        <select name="diagnosis" aria-label="Primary diagnosis" class="<%= field_class %> text-[#6B665F]">
+          <option value="" selected>Primary diagnosis (optional)</option>
+          <% Inquiry::DIAGNOSIS_OPTIONS.each do |dx| %>
+            <option value="<%= dx %>"><%= dx %></option>
+          <% end %>
+        </select>
+
         <div class="flex items-center justify-between gap-3 pt-3 border-t border-[#EFECE6] text-[11px] text-[#6B665F]">
           <span><i class="ri-shield-check-line"></i> Not stored in any medical record.</span>
           <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">

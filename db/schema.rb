@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_30_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_30_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -332,6 +332,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_120000) do
 
   create_table "inquiries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "agency_id", null: false
+    t.string "caregiver_phone"
     t.datetime "claimed_at"
     t.uuid "claimed_by_id"
     t.string "contact"
@@ -339,9 +340,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_120000) do
     t.datetime "converted_at"
     t.uuid "converted_patient_id"
     t.datetime "created_at", null: false
+    t.string "diagnosis"
+    t.string "dob"
+    t.string "email"
     t.string "first_name"
     t.boolean "is_general", default: false, null: false
+    t.string "last_name"
     t.text "question"
+    t.string "requester_role"
     t.string "routed_to_role", default: "admissions", null: false
     t.string "source_prompt", default: "capture", null: false
     t.integer "status", default: 0, null: false

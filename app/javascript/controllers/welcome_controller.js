@@ -153,12 +153,17 @@ export default class extends Controller {
     const fd   = new FormData(form)
 
     const payload = {
-      agency_id:     this._partnerId,          // null for "Ask HosAlivio anything" / general
-      source_prompt: this._sourcePrompt,
-      name:          fd.get("name"),
-      contact:       fd.get("contact"),
-      zip:           fd.get("zip"),
-      question:      this._question || ""
+      agency_id:       this._partnerId,        // null for "Ask HosAlivio anything" / general
+      source_prompt:   this._sourcePrompt,
+      first_name:      fd.get("first_name"),
+      last_name:       fd.get("last_name"),
+      requester_role:  fd.get("requester_role"),
+      caregiver_phone: fd.get("caregiver_phone"),
+      email:           fd.get("email"),
+      dob:             fd.get("dob"),
+      diagnosis:       fd.get("diagnosis"),
+      zip:             fd.get("zip"),
+      question:        this._question || ""
     }
 
     const csrfMeta = document.querySelector("meta[name='csrf-token']")
