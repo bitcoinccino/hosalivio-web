@@ -39,6 +39,9 @@ class Inquiry < ApplicationRecord
   private
 
   def fan_out
+    # Synchronous: light up the Mission Stage for the receiving agency.
     InquiryProcessor.new(self).call
+    # Async: page the on-call admissions (scheduling) coordinator immediately.
+    InquiryAlertJob.perform_later(id, agency_id)
   end
 end
