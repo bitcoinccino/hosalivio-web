@@ -14,17 +14,30 @@ class InquiriesController < ApplicationController
     partner = target_agency(params[:agency_id])
     return render json: { error: "no_agencies_configured" }, status: :service_unavailable if partner.nil?
 
+    caregiver_phone = params[:caregiver_phone].to_s.strip
+    email           = params[:email].to_s.strip
+    # `contact` stays the canonical "how to reach you" the alert/inbox already
+    # use: prefer the caregiver phone, fall back to email (or a legacy single
+    # `contact` field from older callers).
+    contact         = params[:contact].to_s.strip.presence || caregiver_phone.presence || email
+
     ActsAsTenant.with_tenant(partner) do
       inquiry = Inquiry.create!(
-        agency:         partner,
-        is_general:     params[:agency_id].blank?,
-        first_name:     params[:name].to_s.strip.presence,
-        contact:        params[:contact].to_s.strip,
-        zip:            params[:zip].to_s.strip,
-        question:       params[:question].to_s.strip,
-        source_prompt:  params[:source_prompt].to_s.presence || "capture",
-        routed_to_role: params[:routed_to_role].to_s.presence || "admissions",
-        status:         :new_lead
+        agency:          partner,
+        is_general:      params[:agency_id].blank?,
+        first_name:      (params[:first_name].presence || params[:name]).to_s.strip.presence,
+        last_name:       params[:last_name].to_s.strip.presence,
+        dob:             params[:dob].to_s.strip.presence,
+        caregiver_phone: caregiver_phone.presence,
+        email:           email.presence,
+        diagnosis:       params[:diagnosis].to_s.strip.presence,
+        requester_role:  params[:requester_role].to_s.strip.presence,
+        contact:         contact,
+        zip:             params[:zip].to_s.strip,
+        question:        params[:question].to_s.strip,
+        source_prompt:   params[:source_prompt].to_s.presence || "capture",
+        routed_to_role:  params[:routed_to_role].to_s.presence || "admissions",
+        status:          :new_lead
       )
       render json: { status: "ok", id: inquiry.id, agency: partner.name }, status: :created
     end
@@ -78,15 +91,15 @@ class InquiriesController < ApplicationController
         patient = Patient.create!(
           agency:            current_user.agency,
           first_name:        params[:first_name].presence || @inquiry.first_name.to_s.strip,
-          last_name:         params[:last_name].to_s.strip,
-          dob:               params[:dob],
+          last_name:         params[:last_name].presence || @inquiry.last_name.to_s.strip,
+          dob:               params[:dob].presence || @inquiry.dob.presence,
           gender:            params[:gender].presence,
-          primary_diagnosis: params[:primary_diagnosis].to_s.strip,
+          primary_diagnosis: params[:primary_diagnosis].presence || @inquiry.diagnosis.to_s.strip,
           zip:               @inquiry.zip.to_s.strip,
-          phone:             phone,
-          email:             email,
+          phone:             phone || @inquiry.caregiver_phone.presence,
+          email:             email || @inquiry.email.presence,
           caregiver_name:    params[:caregiver_name].presence,
-          caregiver_phone:   params[:caregiver_phone].presence,
+          caregiver_phone:   params[:caregiver_phone].presence || @inquiry.caregiver_phone.presence,
           status:            :referred,
           code_status:       params[:code_status].presence || :full_code
         )
@@ -169,15 +182,21 @@ class InquiriesController < ApplicationController
 
   def inquiry_json(i)
     {
-      id:            i.id,
-      first_name:    i.first_name,
-      zip_prefix:    i.zip_prefix,
-      contact:       i.contact,
-      question:      i.question,
-      source_prompt: i.source_prompt,
-      is_general:    i.is_general,
-      status:        i.status,
-      created_at:    i.created_at.iso8601
+      id:              i.id,
+      first_name:      i.first_name,
+      last_name:       i.last_name,
+      dob:             i.dob,
+      zip_prefix:      i.zip_prefix,
+      contact:         i.contact,
+      caregiver_phone: i.caregiver_phone,
+      email:           i.email,
+      diagnosis:       i.diagnosis,
+      requester_role:  i.requester_role,
+      question:        i.question,
+      source_prompt:   i.source_prompt,
+      is_general:      i.is_general,
+      status:          i.status,
+      created_at:      i.created_at.iso8601
     }
   end
 end

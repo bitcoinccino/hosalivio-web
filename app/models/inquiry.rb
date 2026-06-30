@@ -4,9 +4,46 @@ class Inquiry < ApplicationRecord
 
   # PHI-light but still personal info. Encrypt at rest.
   encrypts :first_name
+  encrypts :last_name
   encrypts :contact
+  encrypts :caregiver_phone
+  encrypts :email
+  encrypts :dob                              # stored as a "YYYY-MM-DD" string
+  encrypts :diagnosis
   encrypts :zip,      deterministic: true   # deterministic so we can prefix-filter later
   encrypts :question
+
+  # Plain-language terminal-diagnosis buckets for the public form. These map
+  # onto the CMS hospice-LCD terminal-status categories (see Cms::HospiceCoverage)
+  # without making a family pick an ICD-10 code.
+  DIAGNOSIS_OPTIONS = [
+    "Cancer",
+    "Heart disease (CHF)",
+    "Lung disease (COPD)",
+    "Dementia or Alzheimer's",
+    "Stroke",
+    "Parkinson's or ALS",
+    "Kidney (renal) failure",
+    "Liver disease",
+    "General decline / weakness",
+    "Other",
+    "Not sure"
+  ].freeze
+
+  # Who is submitting the request — a family member or a referring clinician.
+  REQUESTER_ROLE_OPTIONS = [
+    "Caregiver or Family Member",
+    "Physician",
+    "Advanced Practice Provider",
+    "Director of Nursing",
+    "Nurse",
+    "Social Worker",
+    "Care Coordinator",
+    "Healthcare Administrator"
+  ].freeze
+
+  validates :diagnosis,      inclusion: { in: DIAGNOSIS_OPTIONS },      allow_blank: true
+  validates :requester_role, inclusion: { in: REQUESTER_ROLE_OPTIONS }, allow_blank: true
 
   enum :status, {
     new_lead:   0,
