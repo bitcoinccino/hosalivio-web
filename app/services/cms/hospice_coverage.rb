@@ -1,36 +1,34 @@
 module Cms
   # Maps a primary ICD-10 to the Medicare hospice LCD ("Determining Terminal
-  # Status") disease category it falls under, and a coverage signal.
+  # Status") it falls under, and a coverage signal.
   #
-  # Deterministic and OFFLINE: it encodes the standard hospice-LCD disease
-  # categories by ICD-10 range. It does NOT call api.coverage.cms.gov, whose LCD
-  # data endpoints currently require a CMS auth token (+ AMA CPT license). When
-  # that token is configured, a live LCD lookup can replace `match_lcd` without
-  # changing callers — same Result shape.
+  # The ICD-10 → category match is a deterministic heuristic; the category is
+  # then resolved to a REAL, current CMS hospice LCD (id + cms.gov url) via
+  # Cms::CoverageApi.cached_hospice_lcds (live-refreshed, with a verified baked-in
+  # fallback). So the citation is authoritative; whether a specific code is
+  # *covered* under that LCD still depends on documented terminal decline, which
+  # is why this informs — it doesn't block — certification.
   class HospiceCoverage
-    # Ordered: first match wins, so specific patterns precede broad ones.
-    # [regex over the dotless UPPER code, hospice LCD label].
-    LCD_MAP = [
-      [ /\AI50/,                 "Heart Disease — CHF" ],
-      [ /\AI(?:[0-4]\d|5[0-2])/, "Heart Disease" ],                 # I00–I52
-      [ /\AI6/,                  "Stroke / Cerebrovascular" ],      # I60–I69
-      [ /\AC/,                   "Neoplasms (Cancer)" ],            # C00–C99
-      [ /\AD0/,                  "Neoplasms (in situ)" ],           # D00–D09
-      [ /\AG30/,                 "Alzheimer's / Dementia" ],
-      [ /\AF0[0-3]/,             "Dementia" ],
-      [ /\AG20/,                 "Parkinson's Disease" ],
-      [ /\AG12/,                 "ALS / Motor Neuron Disease" ],
-      [ /\AG35/,                 "Multiple Sclerosis" ],
-      [ /\AG9[123]/,             "Coma / Persistent Vegetative State" ],
-      [ /\AJ4[0-7]/,             "Pulmonary — COPD" ],
-      [ /\AJ8[0-4]/,             "Pulmonary — Interstitial Lung Disease" ],
-      [ /\AN1[789]/,             "Renal Disease" ],                 # N17–N19
-      [ /\AK7[0-7]/,             "Liver Disease" ],
-      [ /\AB20/,                 "HIV / AIDS" ],
-      [ /\A(?:R6[24]|R53)/,      "Adult Failure to Thrive / Debility" ]
+    # Ordered: first match wins. [regex over the dotless UPPER code, a title
+    # pattern matching the governing hospice LCD].
+    LCD_RULES = [
+      [ /\AI50/,                  /cardiopulmonary/i ],
+      [ /\AI(?:[0-4]\d|5[0-2])/,  /cardiopulmonary/i ],   # I00–I52 heart
+      [ /\AJ4[0-7]/,              /cardiopulmonary/i ],   # COPD
+      [ /\AJ8[0-4]/,              /cardiopulmonary/i ],   # ILD
+      [ /\AI6/,                   /neurolog/i ],          # stroke
+      [ /\AG9[123]/,              /neurolog/i ],          # coma
+      [ /\AG20/,                  /neurolog/i ],          # Parkinson's
+      [ /\AG12/,                  /neurolog/i ],          # ALS
+      [ /\AG35/,                  /neurolog/i ],          # MS
+      [ /\A(?:G30|F0[0-3])/,      /alzheimer/i ],         # dementia
+      [ /\AN1[789]/,              /renal/i ],             # N17–N19
+      [ /\AK7[0-7]/,              /liver/i ],
+      [ /\A(?:R6[24]|R53)/,       /failure to thrive/i ], # debility/FTT
+      [ /\A(?:C|D0|B20)/,         /determining terminal status/i ] # cancer, HIV → general
     ].freeze
 
-    Result = Struct.new(:status, :lcd, :summary, keyword_init: true)
+    Result = Struct.new(:status, :lcd_id, :lcd_title, :lcd_url, :summary, keyword_init: true)
 
     def self.call(code)
       new(code).call
@@ -42,25 +40,26 @@ module Cms
 
     def call
       return needs_review("No diagnosis code on file.") if @code.empty?
-      lcd = match_lcd(@code)
-      return needs_review("#{@code} doesn't match a standard hospice terminal-status LCD category. Automated check — verify against the CMS Coverage Database and consider a more specific terminal diagnosis.") unless lcd
+      title_re = LCD_RULES.find { |re, _| @code.match?(re) }&.last
+      unless title_re
+        return needs_review("#{@code} doesn't match a hospice terminal-status LCD category. Verify coverage and consider a more specific terminal diagnosis.")
+      end
 
+      lcd  = Cms::CoverageApi.cached_hospice_lcds.find { |l| l["title"].to_s.match?(title_re) }
+      cite = lcd ? "#{lcd['id']} (#{lcd['title']})" : "for this category"
       Result.new(
-        status:  :likely_covered,
-        lcd:     lcd,
-        summary: "#{@code} matches the Medicare hospice LCD category for #{lcd} (Determining Terminal Status). Automated heuristic — confirm against the CMS Coverage Database; eligibility still requires documented terminal decline."
+        status:    :likely_covered,
+        lcd_id:    lcd&.dig("id"),
+        lcd_title: lcd&.dig("title"),
+        lcd_url:   lcd&.dig("url"),
+        summary:   "#{@code} maps to the Medicare hospice LCD #{cite}. Eligibility still requires documented terminal decline — confirm against the LCD."
       )
     end
 
     private
 
-    def match_lcd(code)
-      LCD_MAP.each { |re, label| return label if code.match?(re) }
-      nil
-    end
-
     def needs_review(summary)
-      Result.new(status: :needs_review, lcd: nil, summary: summary)
+      Result.new(status: :needs_review, summary: summary)
     end
   end
 end
