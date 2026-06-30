@@ -89,6 +89,7 @@ class PublicChatsController < ActionController::Base
     cards = branches.first(8).map do |b|
       a = b.agency
       {
+        agency_id:      a&.id,
         agency_name:    a&.name,
         agency_dba:     a&.dba_name,
         branch_name:    b.name,
@@ -242,6 +243,7 @@ class PublicChatsController < ActionController::Base
     branches.first(8).map do |b|
       a = b.agency
       {
+        agency_id:    a&.id,
         agency_name:  a&.name,
         agency_dba:   a&.dba_name,
         branch_name:  b.name,

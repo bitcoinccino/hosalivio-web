@@ -79,13 +79,21 @@ export default class extends Controller {
     this._openCaptureModal()
   }
 
-  // "Talk to a hospice nurse · 24/7" button. No partner context — this is a
-  // general inquiry that routes to the HOS house agency's admissions queue.
+  // "Talk to a hospice nurse · 24/7" / "Request call" CTAs. Opens the capture
+  // modal. With no dataset it's a general inquiry → HOS house agency's
+  // admissions queue. A chat agency-card passes data-agency-id/-name so the
+  // inquiry routes to that specific partner instead.
   nurseLine(event) {
     if (event) event.preventDefault()
-    this._partnerId    = null
-    this._partnerName  = null
-    this._sourcePrompt = "nurse_24_7"
+    const ds = (event && event.currentTarget && event.currentTarget.dataset) || {}
+    this._partnerId    = ds.agencyId || null
+    this._partnerName  = ds.agencyName || null
+    this._sourcePrompt = ds.source || "nurse_24_7"
+
+    if (this._partnerId && this.hasPartnerBannerTarget) {
+      this.partnerBannerNameTarget.textContent = this._partnerName || "this partner"
+      this.partnerBannerTarget.classList.remove("hidden")
+    }
     this._openCaptureModal()
   }
 
