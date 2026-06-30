@@ -20,7 +20,7 @@ import { Controller } from "@hotwired/stimulus"
 //                 (cost / home / how to start). Hidden after first turn.
 export default class extends Controller {
   static targets = ["transcript", "form", "input", "send", "intro", "audience", "audienceBtn", "quickStart"]
-  static values  = { url: String, agenciesUrl: String, callbackUrl: String, feedbackUrl: String }
+  static values  = { url: String, agenciesUrl: String, feedbackUrl: String }
 
   connect() {
     this._sending = false
@@ -227,9 +227,9 @@ export default class extends Controller {
       <textarea rows="2" maxlength="500" placeholder="A line or two helps us improve…"
                 class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[12px] resize-none"></textarea>
       <div class="flex items-center justify-between gap-2 flex-wrap">
-        <a href="${escapeHtml(this.callbackUrlValue || '#')}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[11px] font-bold uppercase tracking-widest">
+        <button type="button" data-action="click->welcome#nurseLine" data-source="chat_feedback" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[11px] font-bold uppercase tracking-widest">
           <i class="ri-phone-fill"></i> Talk to a nurse · 24/7
-        </a>
+        </button>
         <button type="button" class="text-[11px] text-[#D97757] hover:text-[#c46a4b] font-bold uppercase tracking-widest">
           Send feedback
         </button>
@@ -273,8 +273,6 @@ export default class extends Controller {
       ? `We don't have a direct partner in ${where} yet, but we can still help you find a vetted hospice today.`
       : `New partners are added every week, and our team can match you with a vetted hospice today.`
 
-    const cta = this.callbackUrlValue || "#"
-
     const wrap = document.createElement("div")
     wrap.className = "flex items-start gap-2"
     wrap.innerHTML = `
@@ -284,14 +282,14 @@ export default class extends Controller {
       <div class="max-w-[85%] rounded-2xl rounded-bl-sm border border-[#EFECE6] bg-white shadow-sm px-4 py-3">
         <div class="font-serif text-[15px] text-[#1D1C1A] mb-1">${escapeHtml(headline)}</div>
         <p class="text-[13px] text-[#3A3936] leading-relaxed mb-3">${escapeHtml(subline)}</p>
-        <a href="${escapeHtml(cta)}" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[12px] font-bold uppercase tracking-widest shadow-sm transition">
+        <button type="button" data-action="click->welcome#nurseLine" data-source="chat_no_results" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-[12px] font-bold uppercase tracking-widest shadow-sm transition">
           <span class="relative inline-flex w-2 h-2">
             <span class="absolute inline-flex w-full h-full rounded-full bg-white opacity-60 animate-ping"></span>
             <span class="relative inline-flex w-2 h-2 rounded-full bg-white"></span>
           </span>
           <i class="ri-phone-fill"></i>
           Talk to a hospice nurse · 24/7
-        </a>
+        </button>
       </div>
     `
     this.transcriptTarget.appendChild(wrap)
@@ -306,12 +304,8 @@ export default class extends Controller {
       card.className = "rounded-2xl border border-[#EFECE6] bg-white p-4 shadow-sm"
       const name = (a.agency_dba && a.agency_dba !== a.agency_name) ? `${a.agency_name} (${a.agency_dba})` : a.agency_name
       const langs = (a.languages || []).map(l => l.toUpperCase()).join(" · ")
-      // Pre-fill the inquiry form with which agency the visitor
-      // wants — keeps the callback request specific so the
-      // partnerships team isn't guessing.
-      const callbackUrl = this.callbackUrlValue
-        ? `${this.callbackUrlValue}?agency_name=${encodeURIComponent(name || '')}`
-        : "#"
+      // Carry which agency the visitor wants into the capture modal so the
+      // inquiry routes to that specific partner, not the general queue.
       card.innerHTML = `
         <div class="flex items-start justify-between gap-2 flex-wrap">
           <div class="min-w-0">
@@ -325,9 +319,9 @@ export default class extends Controller {
         ${langs ? `<div class="text-[11px] text-[#6B665F] mt-0.5"><i class="ri-translate-2"></i> ${escapeHtml(langs)}</div>` : ""}
         ${a.match_reason ? `<div class="text-[10px] text-[#D97757] mt-1 font-bold uppercase tracking-widest">${escapeHtml(a.match_reason)}</div>` : ""}
         <div class="mt-3">
-          <a href="${escapeHtml(callbackUrl)}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-semibold w-full justify-center sm:w-auto">
+          <button type="button" data-action="click->welcome#nurseLine" data-source="chat_agency_card" ${a.agency_id ? `data-agency-id="${escapeHtml(String(a.agency_id))}"` : ""} data-agency-name="${escapeHtml(name || '')}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-semibold w-full justify-center sm:w-auto">
             <i class="ri-phone-fill"></i> Request call
-          </a>
+          </button>
         </div>
       `
       container.appendChild(card)
