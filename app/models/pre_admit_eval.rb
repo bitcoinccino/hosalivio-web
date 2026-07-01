@@ -188,10 +188,19 @@ class PreAdmitEval < ApplicationRecord
 
   # ── External EMR push (VITAS) ───────────────────────────────────
 
-  # Builds the outbound payload for the external EMR gateway. Shaped loosely
-  # on a FHIR Encounter; the full clinical detail rides in raw_json (the
-  # structured eval we already produce). Pure read — no side effects.
+  # Conformant HL7 FHIR R4 document Bundle for this eval (Composition-led).
+  # See Fhir::PreAdmitEvalBundle. Pure read — no side effects.
+  def compile_fhir_bundle
+    Fhir::PreAdmitEvalBundle.new(self).as_bundle
+  end
+
+  # Builds the outbound payload for the external EMR gateway. Defaults to the
+  # legacy loose hash; set EMR_PAYLOAD_FORMAT=fhir to emit the conformant FHIR
+  # R4 Bundle instead (opt-in until VITAS confirms it on their end). The full
+  # clinical detail rides in raw_json. Pure read — no side effects.
   def compile_vitas_payload
+    return compile_fhir_bundle if ENV["EMR_PAYLOAD_FORMAT"].to_s.downcase == "fhir"
+
     {
       resource_type:      "Encounter",
       provider_eval_id:   id,
