@@ -75,10 +75,6 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
-
-  # HL7 FHIR R4 models + StructureDefinition validation. Used to assert our
-  # generated FHIR bundles conform to the base spec (see Fhir:: services).
-  gem "fhir_models", "~> 5.0"
 end
 
 # ============================================================================
@@ -99,6 +95,11 @@ gem "paper_trail"
 gem "jsonapi-serializer"
 gem "jwt"
 gem "rack-cors"
+
+# HL7 FHIR R4 models + StructureDefinition validation. Used to render/validate
+# our outbound bundles AND to schema-check inbound referral payloads at runtime
+# (see Fhir:: services + Api::V1::ReferralsController).
+gem "fhir_models", "~> 5.0"
 
 # HosAlivio UI
 gem "tailwindcss-rails"

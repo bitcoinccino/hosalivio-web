@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_30_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_01_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -340,19 +340,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_130000) do
     t.datetime "converted_at"
     t.uuid "converted_patient_id"
     t.datetime "created_at", null: false
+    t.datetime "desired_date"
     t.string "diagnosis"
     t.string "dob"
     t.string "email"
+    t.string "external_mrn"
+    t.string "external_referral_id"
     t.string "first_name"
     t.boolean "is_general", default: false, null: false
     t.string "last_name"
     t.text "question"
+    t.text "raw_fhir_payload"
+    t.text "reason_for_referral"
+    t.datetime "referral_date"
+    t.string "referring_provider"
+    t.string "requested_service"
     t.string "requester_role"
     t.string "routed_to_role", default: "admissions", null: false
     t.string "source_prompt", default: "capture", null: false
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.string "urgency"
     t.string "zip"
+    t.index ["agency_id", "external_referral_id"], name: "index_inquiries_on_agency_and_external_referral_id"
     t.index ["agency_id", "status"], name: "index_inquiries_on_agency_id_and_status"
     t.index ["agency_id"], name: "index_inquiries_on_agency_id"
     t.index ["claimed_by_id"], name: "index_inquiries_on_claimed_by_id"
