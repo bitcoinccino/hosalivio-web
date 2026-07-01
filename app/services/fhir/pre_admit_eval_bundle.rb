@@ -35,9 +35,10 @@ module Fhir
       conditions   = condition_resources
       observations = observation_resources
       consents     = consent_resources
+      medications  = medication_request_resources
 
       entries = []
-      entries << bundle_entry(:composition, composition(conditions, observations, consents))
+      entries << bundle_entry(:composition, composition(conditions, observations, consents, medications))
       entries << bundle_entry(:patient, patient_resource)
       entries << bundle_entry(:organization, organization_resource)
       entries << bundle_entry(:encounter, encounter_resource)
@@ -45,6 +46,7 @@ module Fhir
       conditions.each   { |c| entries << bundle_entry_raw(c[:url], c[:resource]) }
       observations.each { |o| entries << bundle_entry_raw(o[:url], o[:resource]) }
       consents.each     { |c| entries << bundle_entry_raw(c[:url], c[:resource]) }
+      medications.each  { |m| entries << bundle_entry_raw(m[:url], m[:resource]) }
       entries << bundle_entry(:provenance, provenance_resource) if certified?
 
       {
@@ -59,7 +61,7 @@ module Fhir
     private
 
     # ── Composition (the document's cover sheet) ──────────────────────
-    def composition(conditions, observations, consents)
+    def composition(conditions, observations, consents, medications)
       sections = []
       if conditions.any?
         sections << section("Terminal diagnosis", conditions.map { |c| ref(c[:url]) })
@@ -69,6 +71,9 @@ module Fhir
       end
       if consents.any?
         sections << section("Consents and elections", consents.map { |c| ref(c[:url]) })
+      end
+      if medications.any?
+        sections << section("Comfort-kit medication orders", medications.map { |m| ref(m[:url]) })
       end
 
       {
@@ -228,6 +233,64 @@ module Fhir
         policyRule:   { text: policy_text }
       }
       { url: "urn:uuid:#{SecureRandom.uuid}", resource: resource }
+    end
+
+    # ── MedicationRequest (comfort-kit standing orders) ───────────────
+    # Route abbreviation → readable label (SNOMED route codes deliberately not
+    # fabricated; CodeableConcept.text is valid FHIR).
+    ROUTE_LABELS = {
+      "po"  => "by mouth (PO)",  "sl"  => "sublingual (SL)", "sc"  => "subcutaneous (SC)",
+      "iv"  => "intravenous (IV)", "im" => "intramuscular (IM)", "pr" => "rectal (PR)",
+      "top" => "topical",        "neb" => "nebulized",       "other" => "other route"
+    }.freeze
+
+    # active → active; hold → on-hold; dc → stopped; draft → draft.
+    MED_STATUS = { "active" => "active", "hold" => "on-hold", "dc" => "stopped", "draft" => "draft" }.freeze
+
+    def medication_request_resources
+      @eval.comfort_kit_orders.map do |order|
+        { url: "urn:uuid:#{SecureRandom.uuid}", resource: medication_request(order) }
+      end
+    end
+
+    def medication_request(order)
+      {
+        resourceType:              "MedicationRequest",
+        status:                    MED_STATUS.fetch(order.status.to_s, "unknown"),
+        # A comfort-kit item stays a "proposal" until an MD authorizes it (active).
+        intent:                    order.order_draft? ? "proposal" : "order",
+        medicationCodeableConcept: { text: order.drug_name },
+        subject:                   ref(@url[:patient]),
+        encounter:                 ref(@url[:encounter]),
+        authoredOn:                order.start_date&.iso8601,
+        dosageInstruction:         [ dosage_instruction(order) ]
+      }.compact
+    end
+
+    def dosage_instruction(order)
+      dosage = {
+        text:   dosage_text(order),
+        timing: { code: { text: order.frequency } },
+        route:  { text: ROUTE_LABELS.fetch(order.route.to_s, order.route.to_s) }
+      }
+      # asNeeded[x] is a choice: a coded indication implies PRN; otherwise the flag.
+      if order.prn_indication.present?
+        dosage[:asNeededCodeableConcept] = { text: order.prn_indication }
+      else
+        dosage[:asNeededBoolean] = order.prn
+      end
+      dosage
+    end
+
+    def dosage_text(order)
+      [
+        order.dose,
+        ROUTE_LABELS.fetch(order.route.to_s, order.route.to_s),
+        order.frequency,
+        (order.prn ? "PRN" : nil),
+        (order.prn_indication.present? ? "for #{order.prn_indication}" : nil),
+        order.instructions.presence
+      ].compact.join(" ")
     end
 
     # ── Provenance (the certification signature) ──────────────────────
