@@ -101,6 +101,39 @@ module Fhir
       ENV.delete("EMR_PAYLOAD_FORMAT")
     end
 
+    test "comfort-kit orders become MedicationRequests in their own section" do
+      in_tenant(@agency) do
+        MedicationOrder.create!(agency: @agency, patient: @patient, prescribed_by: @rn,
+          pre_admit_eval: @eval, drug_name: "Morphine", dose: "5 mg", frequency: "q2h", route: :sl,
+          start_date: Date.current, status: :draft, comfort_kit: true, prn: true,
+          prn_indication: "pain or dyspnea")
+        # A non-comfort-kit order on the same eval must NOT appear.
+        MedicationOrder.create!(agency: @agency, patient: @patient, prescribed_by: @rn,
+          pre_admit_eval: @eval, drug_name: "Ibuprofen", dose: "200 mg", frequency: "daily", route: :po,
+          start_date: Date.current, status: :active, comfort_kit: false)
+      end
+
+      b    = bundle
+      meds = all_resources(b, "MedicationRequest")
+      assert_equal 1, meds.length, "only comfort-kit orders are included"
+
+      mr = meds.first
+      assert_equal "Morphine", mr[:medicationCodeableConcept][:text]
+      assert_equal "draft",    mr[:status]
+      assert_equal "proposal", mr[:intent], "an unauthorized comfort-kit item is a proposal"
+
+      dosage = mr[:dosageInstruction].first
+      assert_equal "pain or dyspnea", dosage[:asNeededCodeableConcept][:text]
+      assert_match(/sublingual/, dosage[:route][:text])
+      assert_includes dosage[:text], "5 mg"
+
+      # The Composition gets a comfort-kit section whose reference resolves.
+      urls    = b[:entry].map { |e| e[:fullUrl] }
+      section = b[:entry].first[:resource][:section].find { |s| s[:title] == "Comfort-kit medication orders" }
+      assert section, "comfort-kit section present"
+      assert_includes urls, section[:entry].first[:reference], "section reference resolves to an entry"
+    end
+
     private
 
     def resource_of(bundle, type)
