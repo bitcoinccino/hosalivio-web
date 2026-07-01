@@ -25,6 +25,9 @@ Rails.application.routes.draw do
       end
       resources :pharmacy_deliveries, only: [ :show, :update ]
       resources :dme_orders,          only: [ :show, :update ]
+
+      # Inbound FHIR R4 referral Bundle → Inquiry (partner EMR, token-authed)
+      resources :referrals, only: [ :create ]
       resources :notes, only: [ :show ] do
         post :mark_read, on: :member
       end
