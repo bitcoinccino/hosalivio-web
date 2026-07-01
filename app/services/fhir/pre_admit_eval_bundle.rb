@@ -259,12 +259,22 @@ module Fhir
         status:                    MED_STATUS.fetch(order.status.to_s, "unknown"),
         # A comfort-kit item stays a "proposal" until an MD authorizes it (active).
         intent:                    order.order_draft? ? "proposal" : "order",
-        medicationCodeableConcept: { text: order.drug_name },
+        medicationCodeableConcept: medication_codeable_concept(order),
         subject:                   ref(@url[:patient]),
         encounter:                 ref(@url[:encounter]),
         authoredOn:                order.start_date&.iso8601,
         dosageInstruction:         [ dosage_instruction(order) ]
       }.compact
+    end
+
+    # RxNorm ingredient coding when we recognize the drug; always keep the raw
+    # name as text so nothing is lost when we don't.
+    def medication_codeable_concept(order)
+      cc = { text: order.drug_name }
+      if (rx = Coding::RxNorm.lookup(order.drug_name))
+        cc[:coding] = [ { system: Coding::RxNorm::SYSTEM, code: rx.rxcui, display: rx.name } ]
+      end
+      cc
     end
 
     def dosage_instruction(order)
@@ -279,7 +289,33 @@ module Fhir
       else
         dosage[:asNeededBoolean] = order.prn
       end
+      # Structured dose only when the string is a clean single value+unit; ranges,
+      # concentrations ("20 mg/mL") and "1%" stay text-only in dosage[:text].
+      if (dq = structured_dose(order.dose))
+        dosage[:doseAndRate] = [ {
+          type:         { coding: [ { system: "http://terminology.hl7.org/CodeSystem/dose-rate-type", code: "ordered", display: "Ordered" } ] },
+          doseQuantity: dq
+        } ]
+      end
       dosage
+    end
+
+    # Whole-string "<number> <unit>" only. Returns a UCUM-coded quantity or nil.
+    DOSE_RE = /\A(\d+(?:\.\d+)?)\s*(mg|mcg|g|ml|l|units?|tabs?|tablets?)\z/i
+    UCUM = {
+      "mg" => [ "mg", "mg" ], "mcg" => [ "mcg", "ug" ], "g" => [ "g", "g" ],
+      "ml" => [ "mL", "mL" ], "l" => [ "L", "L" ],
+      "unit" => [ "unit", "{unit}" ], "units" => [ "unit", "{unit}" ],
+      "tab" => [ "tablet", "{tbl}" ], "tabs" => [ "tablet", "{tbl}" ],
+      "tablet" => [ "tablet", "{tbl}" ], "tablets" => [ "tablet", "{tbl}" ]
+    }.freeze
+
+    def structured_dose(dose)
+      m = DOSE_RE.match(dose.to_s.strip)
+      return nil unless m
+      unit, code = UCUM[m[2].downcase]
+      value = m[1].include?(".") ? m[1].to_f : m[1].to_i
+      { value: value, unit: unit, system: "http://unitsofmeasure.org", code: code }
     end
 
     def dosage_text(order)

@@ -104,9 +104,13 @@ module Fhir
     test "comfort-kit orders become MedicationRequests in their own section" do
       in_tenant(@agency) do
         MedicationOrder.create!(agency: @agency, patient: @patient, prescribed_by: @rn,
-          pre_admit_eval: @eval, drug_name: "Morphine", dose: "5 mg", frequency: "q2h", route: :sl,
+          pre_admit_eval: @eval, drug_name: "Roxanol (morphine concentrate)", dose: "5 mg", frequency: "q2h", route: :sl,
           start_date: Date.current, status: :draft, comfort_kit: true, prn: true,
           prn_indication: "pain or dyspnea")
+        MedicationOrder.create!(agency: @agency, patient: @patient, prescribed_by: @rn,
+          pre_admit_eval: @eval, drug_name: "Atropine 1% Ophthalmic Solution", dose: "1% ophthalmic solution",
+          frequency: "q1h", route: :sl, start_date: Date.current, status: :draft, comfort_kit: true,
+          prn: true, prn_indication: "terminal secretions")
         # A non-comfort-kit order on the same eval must NOT appear.
         MedicationOrder.create!(agency: @agency, patient: @patient, prescribed_by: @rn,
           pre_admit_eval: @eval, drug_name: "Ibuprofen", dose: "200 mg", frequency: "daily", route: :po,
@@ -115,23 +119,38 @@ module Fhir
 
       b    = bundle
       meds = all_resources(b, "MedicationRequest")
-      assert_equal 1, meds.length, "only comfort-kit orders are included"
+      assert_equal 2, meds.length, "only comfort-kit orders are included"
 
-      mr = meds.first
-      assert_equal "Morphine", mr[:medicationCodeableConcept][:text]
-      assert_equal "draft",    mr[:status]
-      assert_equal "proposal", mr[:intent], "an unauthorized comfort-kit item is a proposal"
+      morphine = meds.find { |m| m[:medicationCodeableConcept][:text].include?("morphine") }
+      assert_equal "draft",    morphine[:status]
+      assert_equal "proposal", morphine[:intent], "an unauthorized comfort-kit item is a proposal"
 
-      dosage = mr[:dosageInstruction].first
+      # RxNorm ingredient coding, raw name kept as text.
+      coding = morphine[:medicationCodeableConcept][:coding].first
+      assert_equal "http://www.nlm.nih.gov/research/umls/rxnorm", coding[:system]
+      assert_equal "7052", coding[:code]
+      assert_equal "Morphine", coding[:display]
+
+      dosage = morphine[:dosageInstruction].first
       assert_equal "pain or dyspnea", dosage[:asNeededCodeableConcept][:text]
       assert_match(/sublingual/, dosage[:route][:text])
-      assert_includes dosage[:text], "5 mg"
+      # Structured, UCUM-coded dose.
+      dq = dosage[:doseAndRate].first[:doseQuantity]
+      assert_equal 5, dq[:value]
+      assert_equal "mg", dq[:unit]
+      assert_equal "mg", dq[:code]
+      assert_equal "http://unitsofmeasure.org", dq[:system]
 
-      # The Composition gets a comfort-kit section whose reference resolves.
+      # Atropine is coded but its "1% ophthalmic solution" dose stays text-only.
+      atropine = meds.find { |m| m[:medicationCodeableConcept][:text].include?("Atropine") }
+      assert_equal "1223", atropine[:medicationCodeableConcept][:coding].first[:code]
+      assert_nil atropine[:dosageInstruction].first[:doseAndRate], "non-numeric dose is not structured"
+
+      # The Composition gets a comfort-kit section whose references resolve.
       urls    = b[:entry].map { |e| e[:fullUrl] }
       section = b[:entry].first[:resource][:section].find { |s| s[:title] == "Comfort-kit medication orders" }
       assert section, "comfort-kit section present"
-      assert_includes urls, section[:entry].first[:reference], "section reference resolves to an entry"
+      section[:entry].each { |e| assert_includes urls, e[:reference], "section reference resolves to an entry" }
     end
 
     private
