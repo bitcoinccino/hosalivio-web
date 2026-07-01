@@ -75,6 +75,10 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+
+  # HL7 FHIR R4 models + StructureDefinition validation. Used to assert our
+  # generated FHIR bundles conform to the base spec (see Fhir:: services).
+  gem "fhir_models", "~> 5.0"
 end
 
 # ============================================================================
