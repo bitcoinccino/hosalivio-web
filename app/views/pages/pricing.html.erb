@@ -94,7 +94,9 @@
             "Two-way Telegram / WhatsApp / SMS routing",
             "Pre-admit eval JSON in CMS-compliant phrasing",
             "NOE 5-day clock auto-tracker, no extra fee",
-            "EMR integration with HCHB / Netsmart / WellSky / MatrixCare",
+            "Bidirectional HL7 FHIR R4 EMR sync, schema-validated",
+            "Inbound hospital e-referrals routed straight to triage",
+            "Evals export as coded FHIR (ICD-10 + RxNorm)",
             "Priority partner-success support"
           ].each do |feature| %>
             <li class="flex items-start gap-2">
@@ -178,7 +180,8 @@
               ["Setup fee",        "$3,000 (one-time)",      "$5,000 (one-time)",      "Custom (often waived)"],
               ["Annual prepay",    "15% off base",           "15% off seats",          "Negotiated"],
               ["NOE 5-day defense","Included",               "Included",               "Included"],
-              ["EMR integration",  "Included",               "Included",               "Included + custom APIs"],
+              ["EMR interoperability", "HL7 FHIR R4",         "FHIR R4, two-way",       "FHIR R4 + custom APIs"],
+              ["Inbound e-referrals",  "Included",            "Included",               "Included"],
               ["SLA",              "Standard",               "Priority",               "Dedicated"]
             ] %>
             <% rows.each_with_index do |row, idx| %>
@@ -212,7 +215,7 @@
           { icon: "ri-bank-card-line", title: "Annual prepay reduces friction.",
             body: "15% off the base fee for paying upfront annually. Your CFO gets a clean budget line; your monthly statement focuses only on the variable admission volume. No re-sell at renewal." },
           { icon: "ri-tools-line", title: "White-glove migration, not a free trial.",
-            body: "The one-time setup fee covers EMR API sync, a 60-minute Train-the-Trainer session for your DON, and a clean import of the past 3 months of patient history. This isn't a demo; we move you." }
+            body: "The one-time setup fee covers standards-based HL7 FHIR R4 EMR sync (both directions), a 60-minute Train-the-Trainer session for your DON, and a clean import of the past 3 months of patient history. This isn't a demo; we move you." }
         ].each do |b| %>
           <div class="rounded-2xl bg-white border border-[#EFECE6] p-5">
             <div class="w-10 h-10 rounded-full bg-[#FBF9F5] border border-[#EFECE6] text-[#D97757] flex items-center justify-center mb-3">
@@ -245,7 +248,9 @@
           ["Do you take a percentage of NOE revenue?",
            "No. Auditing 'this NOE was filed on time because of HosAlivio' is a counterfactual mess. We bake NOE protection into the admission fee instead and stay aligned with your billing team, not adversarial to it."],
           ["What does the migration fee actually buy?",
-           "API sync with your existing EMR (HCHB / Netsmart / WellSky / MatrixCare), a 60-minute Train-the-Trainer session for your DON or Clinical Supervisor, and a clean import of the past 3 months of patient history so your team doesn't start with an empty chart."],
+           "A standards-based HL7 FHIR R4 sync with your existing EMR (works with any FHIR-capable system, e.g. HCHB, Netsmart, WellSky, MatrixCare), a 60-minute Train-the-Trainer session for your DON or Clinical Supervisor, and a clean import of the past 3 months of patient history so your team doesn't start with an empty chart."],
+          ["Will it work with our EMR?",
+           "If your EMR speaks HL7 FHIR R4 (the majors do), yes. Certified admission evals export as schema-validated FHIR documents — ICD-10-coded conditions, RxNorm-coded comfort-kit meds, the MD's signature as a Provenance record — and inbound hospital referrals arrive as FHIR ServiceRequests that drop straight into your coordinator's triage queue and page the on-call team. It's standards-based, so we're not locked to any one vendor's proprietary API."],
           ["Can the setup fee be waived?",
            "We waive it for the first three partners in any new territory and occasionally as a closing incentive. Beyond that, charging it signals that this is an infrastructure upgrade, not a free trial, and our partners actually invest in the integration."]
         ].each_with_index do |(q, a), i| %>
