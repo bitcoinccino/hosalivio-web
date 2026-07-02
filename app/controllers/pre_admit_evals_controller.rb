@@ -1,7 +1,15 @@
 class PreAdmitEvalsController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_clinician!
-  before_action :set_eval
+  before_action :set_patient, only: :index
+  before_action :set_eval,    except: :index
+
+  # A patient's admission-eval history, newest first.
+  def index
+    @evals = ActsAsTenant.with_tenant(current_user.agency) do
+      @patient.pre_admit_evals.order(created_at: :desc).to_a
+    end
+  end
 
   def show
     # Read-only view for clinicians; routes to edit for drafts/final
@@ -351,6 +359,12 @@ class PreAdmitEvalsController < ApplicationController
   def set_eval
     ActsAsTenant.with_tenant(current_user.agency) do
       @eval = PreAdmitEval.includes(:patient, :evaluator).find(params[:id])
+    end
+  end
+
+  def set_patient
+    ActsAsTenant.with_tenant(current_user.agency) do
+      @patient = Patient.find(params[:patient_id])
     end
   end
 

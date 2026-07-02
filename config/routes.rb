@@ -150,6 +150,9 @@ Rails.application.routes.draw do
       post :authorize
     end
   end
+  # A patient's admission-eval history.
+  get "patients/:patient_id/admissions", to: "pre_admit_evals#index", as: :patient_admissions
+
   # Clinician thumbs-up / thumbs-down on AI-authored notes
   post "notes/:note_id/feedback", to: "note_feedbacks#create", as: :note_feedback
 
