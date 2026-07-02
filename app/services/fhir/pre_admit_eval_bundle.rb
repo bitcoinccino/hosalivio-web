@@ -93,10 +93,12 @@ module Fhir
       }.compact
     end
 
-    # draft → preliminary; final/certified/noe_filed → final; revoked → entered-in-error
+    # Only a clinician-certified eval is "final". An RN-submitted (final) or
+    # still-open (draft) eval is "preliminary" until the MD certifies; a revoked
+    # eval is "entered-in-error".
     def composition_status
       return "entered-in-error" if @eval.status_revoked?
-      @eval.status_draft? ? "preliminary" : "final"
+      (@eval.status_certified? || @eval.status_noe_filed?) ? "final" : "preliminary"
     end
 
     # ── Patient ───────────────────────────────────────────────────────

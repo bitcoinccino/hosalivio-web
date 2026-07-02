@@ -102,6 +102,14 @@ module Fhir
       assert prov[:signature].first[:when].present?
     end
 
+    test "an RN-finalized but uncertified eval is still a preliminary Composition" do
+      in_tenant(@agency) { @eval.update!(status: :final, certified_at: nil) }
+      b = bundle
+      assert_equal "preliminary", b[:entry].first[:resource][:status], "not MD-certified yet"
+      assert_nil resource_of(b, "Provenance"), "no signature until certified"
+      assert_equal "provisional", resource_of(b, "Condition")[:verificationStatus][:coding].first[:code]
+    end
+
     test "a draft eval is a preliminary Composition with no Provenance" do
       in_tenant(@agency) { @eval.update!(status: :draft, certified_at: nil) }
       b = bundle
