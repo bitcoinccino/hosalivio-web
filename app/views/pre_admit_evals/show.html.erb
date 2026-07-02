@@ -228,6 +228,15 @@
                     </div>
                   <% end %>
                 <% end %>
+                <%# Export the FHIR document — any clinician, once the eval is
+                    finalized. Works with no gateway credentials. %>
+                <% unless @eval.status_draft? %>
+                  <%= link_to export_fhir_pre_admit_eval_path(@eval),
+                        data: { action: "menu#close" },
+                        class: "w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" do %>
+                    <i class="ri-download-2-line text-[#6B665F]"></i> Export FHIR (ICD-10 + RxNorm)
+                  <% end %>
+                <% end %>
                 <% if turns.any? %>
                   <button type="button" data-action="menu#close dialog#open"
                           class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">

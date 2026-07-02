@@ -189,6 +189,24 @@ class PreAdmitEvalsController < ApplicationController
     end
   end
 
+  # GET — download the eval as a schema-valid FHIR R4 document bundle. Any
+  # clinician can export once the eval is out of draft ("after the note"). Needs
+  # no external credentials, so it works today; complements the gateway-gated
+  # auto-sync (the nurse hands the bundle to / uploads it into their EMR).
+  def export_fhir
+    if @eval.status_draft?
+      redirect_to(pre_admit_eval_path(@eval), alert: "Finalize the eval before exporting to the EMR.") and return
+    end
+
+    bundle = ActsAsTenant.with_tenant(@eval.agency) { @eval.compile_fhir_bundle }
+    Rails.logger.info("[pre_admit_evals#export_fhir] eval=#{@eval.id} by=#{current_user.id} roles=#{current_user.role_names.join('/')}")
+
+    send_data JSON.pretty_generate(bundle),
+              filename:    "pre-admit-eval-#{@eval.id}.fhir.json",
+              type:        "application/fhir+json",
+              disposition: "attachment"
+  end
+
   def certify
     unless current_user.role_names.include?("md")
       redirect_to(pre_admit_eval_path(@eval), alert: "Only the MD can sign certification.") and return
