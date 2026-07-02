@@ -18,48 +18,8 @@
       No admission evals on file for this patient yet.
     </div>
   <% else %>
-    <%
-      pill = {
-        "draft"     => [ "#EFECE6", "#6B665F" ],
-        "final"     => [ "#EAF0F7", "#2B4A7A" ],
-        "certified" => [ "#E6F0EE", "#2F6F4E" ],
-        "noe_filed" => [ "#E6F0EE", "#2F6F4E" ],
-        "revoked"   => [ "#FFF3EC", "#C1403A" ]
-      }
-    %>
     <ul class="space-y-2">
-      <% @evals.each do |e| %>
-        <% bg, fg = pill[e.status.to_s] || [ "#EFECE6", "#6B665F" ] %>
-        <li>
-          <%= link_to pre_admit_eval_path(e),
-                class: "block rounded-2xl border border-[#EFECE6] bg-white p-4 hover:bg-[#FBF9F5] transition" do %>
-            <div class="flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-[14px] text-[#1D1C1A] font-medium truncate">
-                  <%= e.primary_icd10_description.presence || e.primary_icd10.presence || "Diagnosis pending" %>
-                </div>
-                <div class="text-[12px] text-[#6B665F] mt-0.5 truncate">
-                  <%= (e.evaluated_at || e.created_at)&.strftime("%b %-d, %Y") %><%
-                    %><%= " · #{e.evaluator_name}" if e.evaluator_name.present? %><%
-                    %><%= " · #{e.primary_icd10}" if e.primary_icd10.present? %>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <% if e.status_certified? && e.noe_deadline_at.present? %>
-                  <span class="text-[10px] font-mono <%= e.noe_overdue? ? 'text-[#C1403A] font-bold' : 'text-[#6B665F]' %>">
-                    NOE <%= e.noe_overdue? ? "overdue" : "#{e.days_until_noe_deadline}d" %>
-                  </span>
-                <% end %>
-                <span class="text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
-                      style="background: <%= bg %>; color: <%= fg %>;">
-                  <%= e.status.to_s.tr("_", " ") %>
-                </span>
-                <i class="ri-arrow-right-s-line text-[#6B665F]"></i>
-              </div>
-            </div>
-          <% end %>
-        </li>
-      <% end %>
+      <%= render partial: "eval_row", collection: @evals, as: :record, locals: { show_patient: false } %>
     </ul>
   <% end %>
 </div>

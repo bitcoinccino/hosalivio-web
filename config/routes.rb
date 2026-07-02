@@ -152,6 +152,8 @@ Rails.application.routes.draw do
   end
   # A patient's admission-eval history.
   get "patients/:patient_id/admissions", to: "pre_admit_evals#index", as: :patient_admissions
+  # Cross-patient admissions worklist.
+  get "admissions", to: "pre_admit_evals#queue", as: :admissions_queue
 
   # Clinician thumbs-up / thumbs-down on AI-authored notes
   post "notes/:note_id/feedback", to: "note_feedbacks#create", as: :note_feedback

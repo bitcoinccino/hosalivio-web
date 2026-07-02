@@ -57,11 +57,19 @@
           <h2 class="text-xl font-serif font-bold text-[#1D1C1A]"><%= greet %>, <%= current_user.full_name.to_s.split.first %>.</h2>
           <div class="text-xs text-[#6B665F] mt-0.5"><%= Date.current.strftime("%A, %B %-d") %> · <%= role&.tr("_", " ")&.upcase %> at <%= @agency&.name %></div>
         </div>
-        <% if @my_license_status == :expired || @my_license_status == :expiring %>
-          <div class="text-[11px] px-3 py-1.5 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A]">
-            <i class="ri-shield-cross-line"></i> License <%= @my_license_status == :expired ? "EXPIRED" : "expires soon" %>
-          </div>
-        <% end %>
+        <div class="flex items-center gap-3">
+          <% if (current_user.role_names & %w[rn md don admissions admin]).any? %>
+            <%= link_to admissions_queue_path,
+                  class: "text-[11px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] inline-flex items-center gap-1.5 font-medium transition" do %>
+              <i class="ri-folder-history-line"></i> Admissions queue
+            <% end %>
+          <% end %>
+          <% if @my_license_status == :expired || @my_license_status == :expiring %>
+            <div class="text-[11px] px-3 py-1.5 rounded-full bg-[#FFF3EC] border border-[#D97757] text-[#C1403A]">
+              <i class="ri-shield-cross-line"></i> License <%= @my_license_status == :expired ? "EXPIRED" : "expires soon" %>
+            </div>
+          <% end %>
+        </div>
       </div>
     </header>
 

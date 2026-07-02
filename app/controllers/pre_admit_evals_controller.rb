@@ -2,12 +2,24 @@ class PreAdmitEvalsController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_clinician!
   before_action :set_patient, only: :index
-  before_action :set_eval,    except: :index
+  before_action :set_eval,    except: [ :index, :queue ]
 
   # A patient's admission-eval history, newest first.
   def index
     @evals = ActsAsTenant.with_tenant(current_user.agency) do
       @patient.pre_admit_evals.order(created_at: :desc).to_a
+    end
+  end
+
+  # Cross-patient admissions worklist: in-flight evals grouped by stage,
+  # NOE-critical ones ordered by their deadline.
+  def queue
+    ActsAsTenant.with_tenant(current_user.agency) do
+      base          = PreAdmitEval.where(agency: current_user.agency).includes(:patient)
+      @drafts       = base.where(status: :draft).order(created_at: :desc).to_a
+      @awaiting_md  = base.where(status: :final).order(created_at: :desc).to_a
+      @awaiting_noe = base.where(status: :certified).order(:noe_deadline_at).to_a
+      @completed    = base.where(status: [ :noe_filed, :revoked ]).order(updated_at: :desc).limit(15).to_a
     end
   end
 
