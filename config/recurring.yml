@@ -25,6 +25,9 @@ production:
   cms_hospice_lcd_refresh:
     class: CmsHospiceLcdRefreshJob
     schedule: every day at 3am
+  noe_deadline_sweep:
+    class: NoeDeadlineSweepJob
+    schedule: every 6 hours
 
 development:
   visit_reminder_24h:

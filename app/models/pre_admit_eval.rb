@@ -57,7 +57,7 @@ class PreAdmitEval < ApplicationRecord
   # We use evaluated_at as a proxy for election date; operationally these match.
   NOE_WINDOW_DAYS = 5
 
-  before_validation :stamp_noe_deadline,  on: :create
+  before_save       :stamp_noe_deadline
   before_save       :sync_summary_from_json
 
   # Convenience timestamps for the UI
@@ -258,8 +258,14 @@ class PreAdmitEval < ApplicationRecord
 
   private
 
+  # Anchor the 5-day NOE clock to the evaluation date. Kept live while the eval
+  # is still a draft (so a corrected evaluated_at moves the deadline with it),
+  # then frozen once submitted out of draft — the regulatory date must not drift
+  # post-facto. Always stamped at least once (even for evals created directly in
+  # a non-draft state) so the sweep never sees a nil deadline.
   def stamp_noe_deadline
-    self.noe_deadline_at ||= (evaluated_at || Time.current) + NOE_WINDOW_DAYS.days
+    return unless noe_deadline_at.nil? || status_draft?
+    self.noe_deadline_at = (evaluated_at || Time.current) + NOE_WINDOW_DAYS.days
   end
 
   # Pull primary_icd10 + description + LCD flag out of the JSON each save
