@@ -142,6 +142,7 @@ Rails.application.routes.draw do
       post :save_dme
       post :request_changes
       post :retry_sync
+      get  :export_fhir
     end
     # Emergency comfort-kit order set: intake nurse reviews & saves drafts (show/
     # create), MD authorizes + signs (authorize).
