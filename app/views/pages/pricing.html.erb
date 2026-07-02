@@ -97,6 +97,7 @@
             "Bidirectional HL7 FHIR R4 EMR sync, schema-validated",
             "Inbound hospital e-referrals routed straight to triage",
             "Evals export as coded FHIR (ICD-10 + RxNorm)",
+            "Source-verified codes: CMS coverage, RxNorm, NPPES NPI",
             "Priority partner-success support"
           ].each do |feature| %>
             <li class="flex items-start gap-2">
@@ -251,6 +252,8 @@
            "A standards-based HL7 FHIR R4 sync with your existing EMR (works with any FHIR-capable system, e.g. HCHB, Netsmart, WellSky, MatrixCare), a 60-minute Train-the-Trainer session for your DON or Clinical Supervisor, and a clean import of the past 3 months of patient history so your team doesn't start with an empty chart."],
           ["Will it work with our EMR?",
            "If your EMR speaks HL7 FHIR R4 (the majors do), yes. Certified admission evals export as schema-validated FHIR documents — ICD-10-coded conditions, RxNorm-coded comfort-kit meds, the MD's signature as a Provenance record — and inbound hospital referrals arrive as FHIR ServiceRequests that drop straight into your coordinator's triage queue and page the on-call team. It's standards-based, so we're not locked to any one vendor's proprietary API."],
+          ["How do you make sure the codes are right?",
+           "We check them against the source instead of trusting a best guess. Every eval runs a live CMS hospice-coverage (LCD) check on the diagnosis; provider NPIs validate against the CMS NPPES registry; and medications code against NLM RxNorm. Registry validation for NPIs and drugs is switched on during setup. It's the difference between a code that looks right and one that's verified at the source."],
           ["Can the setup fee be waived?",
            "We waive it for the first three partners in any new territory and occasionally as a closing incentive. Beyond that, charging it signals that this is an infrastructure upgrade, not a free trial, and our partners actually invest in the integration."]
         ].each_with_index do |(q, a), i| %>
