@@ -1,0 +1,43 @@
+<%# One admission-eval row. Locals: record (a PreAdmitEval), show_patient (bool).
+    In the cross-patient queue the patient name leads; in a patient's own list
+    the diagnosis leads. %>
+<%
+  pill = {
+    "draft"     => [ "#EFECE6", "#6B665F" ],
+    "final"     => [ "#EAF0F7", "#2B4A7A" ],
+    "certified" => [ "#E6F0EE", "#2F6F4E" ],
+    "noe_filed" => [ "#E6F0EE", "#2F6F4E" ],
+    "revoked"   => [ "#FFF3EC", "#C1403A" ]
+  }
+  bg, fg = pill[record.status.to_s] || [ "#EFECE6", "#6B665F" ]
+  dx     = record.primary_icd10_description.presence || record.primary_icd10.presence || "Diagnosis pending"
+  title  = show_patient ? (record.patient&.full_name.presence || "Unknown patient") : dx
+  subs   = []
+  subs << dx if show_patient
+  subs << (record.evaluated_at || record.created_at)&.strftime("%b %-d, %Y")
+  subs << record.evaluator_name if !show_patient && record.evaluator_name.present?
+  subs << record.primary_icd10  if !show_patient && record.primary_icd10.present?
+%>
+<li>
+  <%= link_to pre_admit_eval_path(record),
+        class: "block rounded-2xl border border-[#EFECE6] bg-white p-4 hover:bg-[#FBF9F5] transition" do %>
+    <div class="flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="text-[14px] text-[#1D1C1A] font-medium truncate"><%= title %></div>
+        <div class="text-[12px] text-[#6B665F] mt-0.5 truncate"><%= subs.compact.join(" · ") %></div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <% if record.status_certified? && record.noe_deadline_at.present? %>
+          <span class="text-[10px] font-mono <%= record.noe_overdue? ? 'text-[#C1403A] font-bold' : 'text-[#6B665F]' %>">
+            NOE <%= record.noe_overdue? ? "overdue" : "#{record.days_until_noe_deadline}d" %>
+          </span>
+        <% end %>
+        <span class="text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
+              style="background: <%= bg %>; color: <%= fg %>;">
+          <%= record.status.to_s.tr("_", " ") %>
+        </span>
+        <i class="ri-arrow-right-s-line text-[#6B665F]"></i>
+      </div>
+    </div>
+  <% end %>
+</li>
