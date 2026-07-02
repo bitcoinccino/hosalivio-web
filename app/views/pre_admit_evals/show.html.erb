@@ -816,73 +816,81 @@
           <% end %>
 
           <% if editable %>
-            <dialog data-dialog-target="el" data-action="click->dialog#backdrop" class="no-print m-auto w-[92vw] max-w-lg rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
-              <div class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden">
-                <div class="flex items-center justify-between px-5 py-3 border-b border-[#EFECE6] bg-[#FBF9F5]">
+            <dialog data-dialog-target="el" data-action="click->dialog#backdrop" class="no-print m-auto w-[92vw] max-w-xl rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
+              <div class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between px-5 py-3 border-b border-[#EFECE6] bg-[#FBF9F5] sticky top-0">
                   <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Edit safety &amp; functional status</div>
                   <button type="button" data-action="click->dialog#close" class="w-7 h-7 rounded-full text-[#6B665F] hover:bg-white inline-flex items-center justify-center" aria-label="Close"><i class="ri-close-line"></i></button>
                 </div>
-                <%= form_with url: pre_admit_eval_path(@eval), method: :patch, class: "p-5 space-y-3" do %>
+                <%
+                  group  = "text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2 flex items-center gap-1.5"
+                  mobility_options = ["Independent ambulation", "Ambulatory with assist", "Uses walker/cane", "Bed-to-chair with assist", "Chairfast", "Bedbound", "Unable to assess"]
+                  ad_options       = ["DNR", "DNI", "DNR / DNI", "Full code", "Comfort care only", "POLST on file", "No advance directive on file", "Needs review"]
+                  fall_options     = ["No fall history", "Fall within last 90 days", "High fall risk"]
+                %>
+                <%= form_with url: pre_admit_eval_path(@eval), method: :patch, class: "p-5 space-y-4" do %>
                   <input type="hidden" name="submit_action" value="save">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
+
+                  <%# ── Mobility & ADL ─────────────────────────── %>
+                  <section>
+                    <div class="<%= group %>">🦽 Mobility &amp; ADL dependencies</div>
+                    <div class="mb-3">
                       <label class="<%= modal_label %>">Mobility</label>
-                      <% mobility_options = ["Independent ambulation", "Ambulatory with assist", "Uses walker/cane", "Bed-to-chair with assist", "Chairfast", "Bedbound", "Unable to assess"] %>
-                      <% mobility_value = fd["mobility"].to_s %>
-                      <% mobility_custom = mobility_value.presence unless mobility_options.include?(mobility_value) %>
-                      <select name="pre_admit_eval[functional_decline][mobility]" class="<%= modal_input %>">
-                        <option value="">Select mobility…</option>
-                        <% mobility_options.each do |m| %><option value="<%= m %>" <%= "selected" if mobility_value == m %>><%= m %></option><% end %>
-                        <% if mobility_custom.present? %><option value="<%= mobility_custom %>" selected><%= mobility_custom.truncate(70) %> · HosAlivio</option><% end %>
-                      </select>
+                      <%= render "segmented", name: "pre_admit_eval[functional_decline][mobility]", value: fd["mobility"], options: mobility_options %>
                     </div>
-                    <div>
-                      <label class="<%= modal_label %>">Advance directives</label>
-                      <% ad_options = ["DNR", "DNI", "DNR / DNI", "Full code", "Comfort care only", "POLST on file", "No advance directive on file", "Needs review"] %>
-                      <% ad_value = gen["advance_directives"].to_s %>
-                      <% ad_custom = ad_value.presence unless ad_options.include?(ad_value) %>
-                      <select name="pre_admit_eval[general][advance_directives]" class="<%= modal_input %>">
-                        <option value="">Select directive…</option>
-                        <% ad_options.each do |d| %><option value="<%= d %>" <%= "selected" if ad_value == d %>><%= d %></option><% end %>
-                        <% if ad_custom.present? %><option value="<%= ad_custom %>" selected><%= ad_custom %></option><% end %>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="<%= modal_label %>">Fall history</label>
-                      <input type="text" name="pre_admit_eval[functional_decline][fall_history]" value="<%= fd["fall_history"] %>" class="<%= modal_input %>">
-                    </div>
-                    <div>
-                      <label class="<%= modal_label %>">Spiritual / bereavement risk</label>
-                      <select name="pre_admit_eval[general][spiritual_bereavement_risk]" class="<%= modal_input %>">
-                        <option value="">— Unselected —</option>
-                        <% %w[Low Moderate High].each do |r| %><option value="<%= r %>" <%= "selected" if gen["spiritual_bereavement_risk"] == r %>><%= r %></option><% end %>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label class="<%= modal_label %>">Recent functional changes</label>
-                    <textarea name="pre_admit_eval[functional_decline][recent_functional_changes]" rows="2" class="<%= modal_input %>"><%= fd["recent_functional_changes"] %></textarea>
-                  </div>
-                  <div>
-                    <label class="<%= modal_label %>">ADL dependencies</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div class="rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3 space-y-2">
                       <% %w[bathing dressing feeding toileting transferring].each do |task| %>
-                        <div>
-                          <div class="text-[9px] uppercase tracking-widest text-[#6B665F] mb-0.5"><%= task.titleize %></div>
-                          <select name="pre_admit_eval[functional_decline][adl_dependencies][<%= task %>]" class="<%= modal_input %> !px-2 !py-1 text-[12px]">
-                            <% ["", "Independent", "Assist", "Dependent"].each do |opt| %><option value="<%= opt %>" <%= "selected" if adl[task].to_s == opt %>><%= opt.presence || "—" %></option><% end %>
-                          </select>
+                        <div class="flex items-center justify-between gap-3">
+                          <span class="text-[12px] text-[#1D1C1A] w-24 flex-shrink-0"><%= task.titleize %></span>
+                          <%= render "segmented", name: "pre_admit_eval[functional_decline][adl_dependencies][#{task}]", value: adl[task], options: ["Independent", "Assist", "Dependent"] %>
                         </div>
                       <% end %>
                     </div>
-                  </div>
-                  <div>
-                    <label class="<%= modal_label %>">General notes</label>
-                    <textarea name="pre_admit_eval[general][notes]" rows="2" class="<%= modal_input %>"><%= gen["notes"] %></textarea>
-                  </div>
+                  </section>
+
+                  <%# ── Safety, risk & compliance flags ────────── %>
+                  <section>
+                    <div class="<%= group %>">⚠️ Safety, risk &amp; compliance</div>
+                    <div class="space-y-3">
+                      <div>
+                        <label class="<%= modal_label %>">Advance directives</label>
+                        <%= render "segmented", name: "pre_admit_eval[general][advance_directives]", value: gen["advance_directives"], options: ad_options %>
+                      </div>
+                      <div>
+                        <label class="<%= modal_label %>">Fall history / risk</label>
+                        <%= render "segmented", name: "pre_admit_eval[functional_decline][fall_history]", value: fd["fall_history"], options: fall_options %>
+                      </div>
+                      <div>
+                        <label class="<%= modal_label %>">Spiritual / bereavement risk</label>
+                        <%= render "segmented", name: "pre_admit_eval[general][spiritual_bereavement_risk]", value: gen["spiritual_bereavement_risk"], options: %w[Low Moderate High] %>
+                      </div>
+                    </div>
+                  </section>
+
+                  <%# ── Clinical narratives (char-counted) ─────── %>
+                  <section>
+                    <div class="<%= group %>">✍️ Clinical narrative</div>
+                    <div class="space-y-3">
+                      <div data-controller="char-counter" data-char-counter-max-value="500">
+                        <label class="<%= modal_label %>">Recent functional changes</label>
+                        <textarea name="pre_admit_eval[functional_decline][recent_functional_changes]" rows="3" maxlength="500"
+                                  data-char-counter-target="field" data-action="input->char-counter#update"
+                                  class="<%= modal_input %>"><%= fd["recent_functional_changes"] %></textarea>
+                        <div class="text-right text-[10px] text-[#6B665F] mt-0.5"><span data-char-counter-target="count">0/500</span></div>
+                      </div>
+                      <div data-controller="char-counter" data-char-counter-max-value="500">
+                        <label class="<%= modal_label %>">General notes</label>
+                        <textarea name="pre_admit_eval[general][notes]" rows="2" maxlength="500"
+                                  data-char-counter-target="field" data-action="input->char-counter#update"
+                                  class="<%= modal_input %>"><%= gen["notes"] %></textarea>
+                        <div class="text-right text-[10px] text-[#6B665F] mt-0.5"><span data-char-counter-target="count">0/500</span></div>
+                      </div>
+                    </div>
+                  </section>
+
                   <div class="flex items-center justify-end gap-2 pt-1">
                     <button type="button" data-action="click->dialog#close" class="text-[12px] px-3 py-1.5 text-[#6B665F] hover:text-[#1D1C1A]">Cancel</button>
-                    <button type="submit" class="inline-flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#233c63] text-white font-medium"><i class="ri-save-line"></i> Save</button>
+                    <button type="submit" class="inline-flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#233c63] text-white font-medium"><i class="ri-save-line"></i> Save changes</button>
                   </div>
                 <% end %>
               </div>
