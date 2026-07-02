@@ -1,12 +1,15 @@
-<%# Segmented single-select. Locals: name, value, options (Array<String>).
+<%# Segmented single-select. Locals: name, value, options.
+    Each option is either a String (value == label) or a {value:, label:} Hash.
     Submits `name` via a hidden input; a value matching no option is preserved
     (the Stimulus controller just leaves every button unhighlighted). %>
 <div data-controller="segmented" class="flex flex-wrap gap-1.5">
   <input type="hidden" name="<%= name %>" value="<%= value %>" data-segmented-target="input">
   <% Array(options).each do |opt| %>
-    <button type="button" data-segmented-target="option" data-value="<%= opt %>" data-action="segmented#select"
+    <% opt_value = opt.is_a?(Hash) ? opt[:value] : opt %>
+    <% opt_label = opt.is_a?(Hash) ? opt[:label] : opt %>
+    <button type="button" data-segmented-target="option" data-value="<%= opt_value %>" data-action="segmented#select"
             class="px-2.5 py-1 rounded-full border text-[11px] font-medium bg-white text-[#1D1C1A] border-[#D9D5CD] hover:bg-[#F0F4FA] transition">
-      <%= opt %>
+      <%= opt_label %>
     </button>
   <% end %>
 </div>
