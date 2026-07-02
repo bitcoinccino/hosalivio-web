@@ -7,20 +7,31 @@
   <%# Headline: the overdue NOE count, always visible. When >0 these are
       re-escalated to the DON + admin every day by NoeDeadlineSweepJob. %>
   <% overdue_count = overdue_noes.size %>
-  <div class="rounded-2xl px-5 py-3 flex items-center justify-between gap-3 <%= overdue_count.positive? ? 'bg-[#C1403A] text-white' : 'bg-[#E6F0EE] text-[#2F6F4E] border border-[#2F6F4E]' %>">
-    <div class="flex items-center gap-2 min-w-0">
-      <i class="<%= overdue_count.positive? ? 'ri-alarm-warning-fill' : 'ri-shield-check-line' %> text-lg"></i>
-      <span class="font-bold text-[14px] tracking-wide">
-        <%= overdue_count.positive? ? "#{overdue_count} NOE#{'s' unless overdue_count == 1} overdue" : "No overdue NOEs" %>
+  <% if overdue_count.positive? %>
+    <%# One overdue → jump to the eval; several → the overdue list below. %>
+    <%= link_to (overdue_count == 1 ? pre_admit_eval_path(overdue_noes.first) : "#noe-overdue"),
+          class: "rounded-2xl px-5 py-3 flex items-center justify-between gap-3 bg-[#C1403A] text-white hover:opacity-90 transition" do %>
+      <div class="flex items-center gap-2 min-w-0">
+        <i class="ri-alarm-warning-fill text-lg"></i>
+        <span class="font-bold text-[14px] tracking-wide"><%= overdue_count %> NOE<%= 's' unless overdue_count == 1 %> overdue</span>
+      </div>
+      <span class="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-right opacity-90">
+        Escalated daily to DON + admin
+        <i class="ri-arrow-right-line text-[13px]"></i>
       </span>
+    <% end %>
+  <% else %>
+    <div class="rounded-2xl px-5 py-3 flex items-center justify-between gap-3 bg-[#E6F0EE] text-[#2F6F4E] border border-[#2F6F4E]">
+      <div class="flex items-center gap-2 min-w-0">
+        <i class="ri-shield-check-line text-lg"></i>
+        <span class="font-bold text-[14px] tracking-wide">No overdue NOEs</span>
+      </div>
+      <span class="text-[10px] uppercase tracking-widest text-right">5-day clock clear</span>
     </div>
-    <span class="text-[10px] uppercase tracking-widest text-right <%= overdue_count.positive? ? 'opacity-90' : '' %>">
-      <%= overdue_count.positive? ? "Escalated daily to DON + admin" : "5-day clock clear" %>
-    </span>
-  </div>
+  <% end %>
 
   <% if overdue_noes.any? %>
-    <section class="rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
+    <section id="noe-overdue" class="rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden scroll-mt-4">
       <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
         <i class="ri-alarm-warning-fill"></i>
         <span class="font-bold tracking-wider text-[12px]">NOE OVERDUE — FILE IMMEDIATELY (<%= overdue_noes.size %>)</span>
