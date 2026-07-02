@@ -194,6 +194,7 @@ class InquiriesController < ApplicationController
       requester_role:  i.requester_role,
       external_mrn:        i.external_mrn,
       referring_provider:  i.referring_provider,
+      referring_provider_npi: i.referring_provider_npi,
       requested_service:   i.requested_service,
       reason_for_referral: i.reason_for_referral,
       urgency:             i.urgency,

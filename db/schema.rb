@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_01_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_01_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -354,6 +354,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_140000) do
     t.text "reason_for_referral"
     t.datetime "referral_date"
     t.string "referring_provider"
+    t.string "referring_provider_npi"
     t.string "requested_service"
     t.string "requester_role"
     t.string "routed_to_role", default: "admissions", null: false

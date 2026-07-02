@@ -76,6 +76,25 @@ module Fhir
       assert i.status_new_lead?
     end
 
+    test "captures an NPI the referral already carries on the requester" do
+      practitioner = {
+        "resourceType" => "Practitioner", "id" => "org-1",
+        "identifier" => [ { "system" => "http://hl7.org/fhir/sid/us-npi", "value" => "1679567796" } ],
+        "name" => [ { "family" => "Smith", "given" => [ "John" ] } ]
+      }
+      # requester resolves to urn:uuid:org-1 (see service_request default)
+      r = ingest(bundle([ practitioner, patient, service_request ]))
+      assert r.ok?
+      assert_equal "1679567796", r.inquiry.referring_provider_npi
+    end
+
+    test "leaves the NPI nil when none is carried and NPPES is dormant (test env)" do
+      # org has no NPI identifier; live NPPES lookup is off in test → nil, no stall.
+      r = ingest(bundle([ org, patient, service_request ]))
+      assert r.ok?
+      assert_nil r.inquiry.referring_provider_npi
+    end
+
     test "dedupes a re-sent referral by external_referral_id" do
       first = ingest(bundle([ org, patient, service_request ]))
       assert first.ok?
