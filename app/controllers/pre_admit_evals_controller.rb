@@ -198,7 +198,27 @@ class PreAdmitEvalsController < ApplicationController
       redirect_to(pre_admit_eval_path(@eval), alert: "Finalize the eval before exporting to the EMR.") and return
     end
 
-    bundle = ActsAsTenant.with_tenant(@eval.agency) { @eval.compile_fhir_bundle }
+    bundle = ActsAsTenant.with_tenant(@eval.agency) do
+      b = @eval.compile_fhir_bundle
+      # Audit the PHI export in the same trail as convert/certify.
+      AgentEvent.create!(
+        agency:           @eval.agency,
+        agent_id:         current_user.role_names.first.presence || "clinician",
+        agent_session_id: "export-#{current_user.id.to_s[0, 8]}",
+        action:           "eval_fhir_exported",
+        subject:          @eval,
+        change_set: {
+          exported_by:      current_user.full_name,
+          exported_by_role: current_user.role_names.join("/"),
+          format:           "application/fhir+json",
+          eval_status:      @eval.status,
+          patient_id:       @eval.patient_id,
+          resource_count:   Array(b[:entry]).size
+        },
+        happened_at: Time.current
+      )
+      b
+    end
     Rails.logger.info("[pre_admit_evals#export_fhir] eval=#{@eval.id} by=#{current_user.id} roles=#{current_user.role_names.join('/')}")
 
     send_data JSON.pretty_generate(bundle),
