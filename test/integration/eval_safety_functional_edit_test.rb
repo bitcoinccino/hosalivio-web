@@ -67,4 +67,16 @@ class EvalSafetyFunctionalEditTest < ActionDispatch::IntegrationTest
     assert_equal "declining",  @eval.general_comments["narrative_summary"]
     assert_equal "clearly eligible", @eval.final_review_section["hospice_eligibility_statement"]
   end
+
+  test "DME toggle-card selections and notes persist through save_dme" do
+    sign_in @rn
+    post save_dme_pre_admit_eval_path(@eval), params: {
+      dme_needs: [ "Hospital bed", "Oxygen concentrator" ],
+      dme_notes: "Deliver before discharge."
+    }
+    @eval.reload
+    assert_includes Array(@eval.general["dme_needs"]), "Hospital bed"
+    assert_includes Array(@eval.general["dme_needs"]), "Oxygen concentrator"
+    assert_equal "Deliver before discharge.", @eval.general["dme_notes"]
+  end
 end
