@@ -82,6 +82,7 @@ module Fhir
         diagnosis:           diagnosis_bucket(condition),
         requester_role:      requester_role(related),
         referring_provider:  referring_provider(service),
+        referring_provider_npi: referring_provider_npi(patient, service),
         requested_service:   requested_service(service),
         reason_for_referral: reason_for_referral(service, condition),
         urgency:             urgency(service),
@@ -185,6 +186,35 @@ module Fhir
         n = Array(resource[:name]).first || {}
         n[:text].to_s.strip.presence ||
           [ Array(n[:given]).join(" "), n[:family] ].map(&:presence).compact.join(" ").strip.presence
+      end
+    end
+
+    # Validated NPI for the referring provider: prefer one the bundle already
+    # carries on the requester's identifier; else resolve via NPPES (dormant-safe
+    # — returns nil unless Coding::Npi is enabled and finds a single match).
+    def referring_provider_npi(patient, service)
+      return nil unless service
+      resource = resolve_reference(service.dig(:requester, :reference))
+      return nil if resource.nil?
+
+      npi_from_identifier(resource) || nppes_npi(resource, postal_code(patient).presence)
+    end
+
+    def npi_from_identifier(resource)
+      Array(resource[:identifier])
+        .find { |i| i[:system].to_s.downcase.include?("npi") }
+        &.dig(:value).to_s.strip.presence
+    end
+
+    def nppes_npi(resource, postal)
+      case resource[:resourceType]
+      when "Organization"
+        name = resource[:name].to_s.strip.presence
+        name && Coding::Npi.lookup(organization_name: name, postal_code: postal)&.npi
+      when "Practitioner", "PractitionerRole"
+        n = Array(resource[:name]).first || {}
+        last = n[:family].to_s.strip.presence
+        last && Coding::Npi.lookup(first_name: Array(n[:given]).first, last_name: last, postal_code: postal)&.npi
       end
     end
 
