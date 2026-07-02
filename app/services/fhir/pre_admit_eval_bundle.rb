@@ -216,21 +216,39 @@ module Fhir
     end
 
     # ── Consent (CMS election of benefits + patient rights) ───────────
+    CONSENTSCOPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/consentscope".freeze
+    PARTICIPATION_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ParticipationType".freeze
+
+    # Two consents, differentiated by the official consentscope value set (no
+    # standard "hospice election" category code exists, so we do NOT invent one;
+    # both keep the generic LOINC 59284-0 category). Each carries a provision.actor
+    # linking the electing patient to THIS hospice Organization — the machine-
+    # readable "electing this agency" signal.
+    CONSENT_SPECS = {
+      election: { scope: "treatment",      scope_display: "Treatment",       policy: "Medicare Hospice Election of Benefits" },
+      rights:   { scope: "patient-privacy", scope_display: "Privacy Consent", policy: "Patient Rights reviewed" }
+    }.freeze
+
     def consent_resources
       out = []
-      out << consent("Medicare Hospice Election of Benefits") if @eval.election_signed?
-      out << consent("Patient Rights reviewed")               if @eval.patient_rights_reviewed?
+      out << consent(:election) if @eval.election_signed?
+      out << consent(:rights)   if @eval.patient_rights_reviewed?
       out
     end
 
-    def consent(policy_text)
+    def consent(type)
+      spec = CONSENT_SPECS.fetch(type)
       resource = {
         resourceType: "Consent",
         status:       "active",
-        scope:        { coding: [ { system: "http://terminology.hl7.org/CodeSystem/consentscope", code: "treatment", display: "Treatment" } ] },
+        scope:        { coding: [ { system: CONSENTSCOPE_SYSTEM, code: spec[:scope], display: spec[:scope_display] } ] },
         category:     [ { coding: [ { system: LOINC_SYSTEM, code: "59284-0", display: "Consent Document" } ] } ],
         patient:      ref(@url[:patient]),
-        policyRule:   { text: policy_text }
+        policyRule:   { text: spec[:policy] },
+        provision:    { actor: [ {
+          role:      { coding: [ { system: PARTICIPATION_SYSTEM, code: "PRF", display: "performer" } ] },
+          reference: ref(@url[:organization])
+        } ] }
       }
       { url: "urn:uuid:#{SecureRandom.uuid}", resource: resource }
     end

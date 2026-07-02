@@ -75,6 +75,26 @@ module Fhir
       assert_equal 2, all_resources(b, "Consent").length
     end
 
+    test "consents differentiate election vs rights by scope and link the electing agency" do
+      b        = bundle
+      consents = all_resources(b, "Consent")
+      assert_equal 2, consents.length
+
+      by_policy = consents.index_by { |c| c[:policyRule][:text] }
+      election  = by_policy["Medicare Hospice Election of Benefits"]
+      rights    = by_policy["Patient Rights reviewed"]
+      assert_equal "treatment",       election[:scope][:coding].first[:code]
+      assert_equal "patient-privacy", rights[:scope][:coding].first[:code]
+
+      # Both provision.actor references resolve to the Organization entry.
+      org_url = b[:entry].find { |e| e[:resource][:resourceType] == "Organization" }[:fullUrl]
+      consents.each do |c|
+        actor = c[:provision][:actor].first
+        assert_equal org_url, actor[:reference][:reference], "actor links the hospice agency"
+        assert_equal "PRF",   actor[:role][:coding].first[:code]
+      end
+    end
+
     test "a certified eval carries a Provenance signature targeting the Composition" do
       b    = bundle
       prov = resource_of(b, "Provenance")
