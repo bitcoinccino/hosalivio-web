@@ -32,6 +32,17 @@ class PreAdmitEvalExportTest < ActionDispatch::IntegrationTest
     assert_equal "C34.90", condition.dig("code", "coding", 0, "code")
   end
 
+  test "exporting writes an AgentEvent audit record" do
+    sign_in @rn
+    assert_difference -> { in_tenant(@agency) { AgentEvent.where(action: "eval_fhir_exported").count } }, 1 do
+      get export_fhir_pre_admit_eval_path(@eval)
+    end
+    ev = in_tenant(@agency) { AgentEvent.where(action: "eval_fhir_exported").last }
+    assert_equal @eval.id,   ev.subject_id
+    assert_equal "Reggie RN", ev.change_set["exported_by"]
+    assert_equal "rn",        ev.change_set["exported_by_role"]
+  end
+
   test "a draft eval cannot be exported yet" do
     in_tenant(@agency) { @eval.update_column(:status, PreAdmitEval.statuses[:draft]) }
     sign_in @rn
