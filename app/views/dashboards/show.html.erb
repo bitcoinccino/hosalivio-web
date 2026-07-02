@@ -86,6 +86,9 @@
         </div>
       </div>
       <div class="flex items-center gap-3">
+        <%= link_to admissions_queue_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] font-medium transition" do %>
+          <i class="ri-folder-history-line"></i> Admissions queue
+        <% end %>
         <% if (current_user.role_names & %w[admin don admissions]).any? %>
           <%= link_to new_patient_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
             <i class="ri-user-add-line"></i> New patient
