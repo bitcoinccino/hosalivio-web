@@ -8,12 +8,14 @@ module Coding
     SYSTEM = "http://www.nlm.nih.gov/research/umls/rxnorm".freeze
 
     # Keyed by generic + brand keywords that appear in an order's drug_name.
+    # Every RXCUI below was verified against NLM RxNav (rxnav.nlm.nih.gov) —
+    # e.g. bisacodyl is 1596, NOT 1594.
     INGREDIENTS = [
       { rxcui: "161",  name: "Acetaminophen",    match: %w[acetaminophen tylenol] },
       { rxcui: "6470", name: "Lorazepam",        match: %w[lorazepam ativan] },
       { rxcui: "1223", name: "Atropine",         match: %w[atropine] },
       { rxcui: "8704", name: "Prochlorperazine", match: %w[prochlorperazine compazine] },
-      { rxcui: "1594", name: "Bisacodyl",        match: %w[bisacodyl dulcolax] },
+      { rxcui: "1596", name: "Bisacodyl",        match: %w[bisacodyl dulcolax] },
       { rxcui: "7052", name: "Morphine",         match: %w[morphine roxanol] }
     ].freeze
 

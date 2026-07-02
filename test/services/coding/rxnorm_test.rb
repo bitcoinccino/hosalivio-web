@@ -7,6 +7,8 @@ module Coding
       assert_equal "6470", Coding::RxNorm.lookup("Ativan (lorazepam) Tablets").rxcui
       assert_equal "8704", Coding::RxNorm.lookup("Compazine (prochlorperazine) Suppositories").rxcui
       assert_equal "1223", Coding::RxNorm.lookup("Atropine 1% Ophthalmic Solution").rxcui
+      assert_equal "1596", Coding::RxNorm.lookup("Dulcolax (bisacodyl) Suppositories").rxcui, "bisacodyl is RXCUI 1596 per RxNav (not 1594)"
+      assert_equal "161",  Coding::RxNorm.lookup("Acetaminophen Suppositories").rxcui
       assert_equal "Morphine", Coding::RxNorm.lookup("morphine sulfate").name
     end
 
