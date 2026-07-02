@@ -498,12 +498,14 @@
                   <i class="ri-sparkling-2-line mt-0.5"></i>
                   <span>HosAlivio drafted these from the visit. Review and edit, then save to confirm them as your own.</span>
                 </div>
-                <%= render "counted_textarea", name: "pre_admit_eval[final_review][hospice_eligibility_statement]", value: fr["hospice_eligibility_statement"], label: "Hospice eligibility statement", rows: 3 %>
+                <%= render "counted_textarea", name: "pre_admit_eval[final_review][hospice_eligibility_statement]", value: fr["hospice_eligibility_statement"], label: "Hospice eligibility statement", rows: 3,
+                      placeholder: "e.g. Meets hospice eligibility for end-stage COPD — PPS 40%, resting dyspnea, dependent in 3+ ADLs, documented decline over 3 months." %>
                 <div>
                   <label class="<%= modal_label %>">Prognosis estimate</label>
-                  <input type="text" name="pre_admit_eval[final_review][prognosis_estimate]" value="<%= fr["prognosis_estimate"] %>" class="<%= modal_input %>">
+                  <input type="text" name="pre_admit_eval[final_review][prognosis_estimate]" value="<%= fr["prognosis_estimate"] %>" placeholder="e.g. Less than 6 months" class="<%= modal_input %>">
                 </div>
-                <%= render "counted_textarea", name: "pre_admit_eval[final_review][rn_recommendation]", value: fr["rn_recommendation"], label: "RN recommendation", rows: 3 %>
+                <%= render "counted_textarea", name: "pre_admit_eval[final_review][rn_recommendation]", value: fr["rn_recommendation"], label: "RN recommendation", rows: 3,
+                      placeholder: "e.g. Recommend admission to routine home hospice with a comfort-focused plan of care." %>
                 <div class="flex items-center justify-end gap-2 pt-1">
                   <button type="button" data-action="click->dialog#close" class="text-[12px] px-3 py-1.5 text-[#6B665F] hover:text-[#1D1C1A]">Cancel</button>
                   <button type="submit" class="inline-flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#233c63] text-white font-medium"><i class="ri-save-line"></i> Save</button>
@@ -560,8 +562,10 @@
                     <label class="<%= modal_label %>">Chief complaint</label>
                     <input type="text" name="pre_admit_eval[general_comments][chief_complaint]" value="<%= gc["chief_complaint"] %>" class="<%= modal_input %>">
                   </div>
-                  <%= render "counted_textarea", name: "pre_admit_eval[general_comments][history_of_present_illness]", value: gc["history_of_present_illness"], label: "History of present illness", rows: 3 %>
-                  <%= render "counted_textarea", name: "pre_admit_eval[general_comments][narrative_summary]", value: gc["narrative_summary"], label: "Narrative summary", rows: 3 %>
+                  <%= render "counted_textarea", name: "pre_admit_eval[general_comments][history_of_present_illness]", value: gc["history_of_present_illness"], label: "History of present illness", rows: 3,
+                        placeholder: "e.g. 78yo with worsening dyspnea and fatigue over the past month; two ED visits, now largely bedbound." %>
+                  <%= render "counted_textarea", name: "pre_admit_eval[general_comments][narrative_summary]", value: gc["narrative_summary"], label: "Narrative summary", rows: 3,
+                        placeholder: "e.g. Brief summary of the admission interview — clinical picture, caregiver situation, and goals of care." %>
                   <div>
                     <label class="<%= modal_label %>">Family / caregiver status</label>
                     <%= render "segmented", name: "pre_admit_eval[general_comments][family_caregiver_status]", value: gc["family_caregiver_status"],
@@ -739,7 +743,8 @@
                 <%= render "counted_textarea", name: "pre_admit_eval[diagnosis][lcd_criteria_met]", value: Array(dx["lcd_criteria_met"]).join(", "),
                       label: "LCD criteria met", rows: 2, placeholder: "PPS ≤ 70%, Resting dyspnea, Dependence in 3+ ADLs",
                       hint: "Separate with commas · one required to route to MD" %>
-                <%= render "counted_textarea", name: "pre_admit_eval[medicare_lcd_criteria][supporting_documentation]", value: lcd["supporting_documentation"], label: "LCD supporting documentation", rows: 2 %>
+                <%= render "counted_textarea", name: "pre_admit_eval[medicare_lcd_criteria][supporting_documentation]", value: lcd["supporting_documentation"], label: "LCD supporting documentation", rows: 2,
+                      placeholder: "Cite the specific symptoms or decline from the narrative that support the LCD criteria." %>
                 <div class="grid grid-cols-3 gap-3">
                   <div>
                     <label class="<%= modal_label %>">PPS score</label>
@@ -755,7 +760,8 @@
                           options: [ { value: "clinician", label: "Clinician" }, { value: "calculated", label: "Calculated" } ] %>
                   </div>
                 </div>
-                <%= render "counted_textarea", name: "pre_admit_eval[functional_decline][pps][justification]", value: pps_h["justification"], label: "Why this PPS fits", rows: 2 %>
+                <%= render "counted_textarea", name: "pre_admit_eval[functional_decline][pps][justification]", value: pps_h["justification"], label: "Why this PPS fits", rows: 2,
+                      placeholder: "e.g. Mostly bedbound, needs total assist with ADLs, unable to do self-care — consistent with PPS 40%." %>
                 <div class="flex items-center justify-end gap-2 pt-1">
                   <button type="button" data-action="click->dialog#close" class="text-[12px] px-3 py-1.5 text-[#6B665F] hover:text-[#1D1C1A]">Cancel</button>
                   <button type="submit" class="inline-flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#233c63] text-white font-medium"><i class="ri-save-line"></i> Save</button>
@@ -854,6 +860,7 @@
                       <div data-controller="char-counter" data-char-counter-max-value="500">
                         <label class="<%= modal_label %>">Recent functional changes</label>
                         <textarea name="pre_admit_eval[functional_decline][recent_functional_changes]" rows="3" maxlength="500"
+                                  placeholder="e.g. New exertional dyspnea and dizziness on stairs this week; now needs assist to transfer."
                                   data-char-counter-target="field" data-action="input->char-counter#update"
                                   class="<%= modal_input %>"><%= fd["recent_functional_changes"] %></textarea>
                         <div class="text-right text-[10px] text-[#6B665F] mt-0.5"><span data-char-counter-target="count">0/500</span></div>
@@ -861,6 +868,7 @@
                       <div data-controller="char-counter" data-char-counter-max-value="500">
                         <label class="<%= modal_label %>">General notes</label>
                         <textarea name="pre_admit_eval[general][notes]" rows="2" maxlength="500"
+                                  placeholder="Any additional safety or environment observations…"
                                   data-char-counter-target="field" data-action="input->char-counter#update"
                                   class="<%= modal_input %>"><%= gen["notes"] %></textarea>
                         <div class="text-right text-[10px] text-[#6B665F] mt-0.5"><span data-char-counter-target="count">0/500</span></div>
