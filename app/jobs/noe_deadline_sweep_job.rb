@@ -72,8 +72,16 @@ class NoeDeadlineSweepJob < ApplicationJob
         .joins(:roles).where(roles: { name: role_names }).distinct
   end
 
+  # Imminent (48h) is once-and-done to avoid clogging the insurance inbox.
+  # Overdue re-nudges DAILY until the NOE is filed — a compounding billing
+  # clawback is too dangerous to alert on only once (a single buried SMS during
+  # an emergency shouldn't mean permanent silence). Scoping the existence check
+  # to today expires the idempotency shield at midnight, so the first sweep each
+  # calendar day re-escalates.
   def already_alerted?(eval_rec, kind, user)
-    Notification.where(kind: kind, linked_type: "PreAdmitEval", linked_id: eval_rec.id, user_id: user.id).exists?
+    scope = Notification.where(kind: kind, linked_type: "PreAdmitEval", linked_id: eval_rec.id, user_id: user.id)
+    scope = scope.where("created_at >= ?", Date.current.beginning_of_day) if kind == KIND_OVERDUE
+    scope.exists?
   end
 
   def title_for(kind, eval_rec)

@@ -50,6 +50,25 @@ class NoeDeadlineSweepJobTest < ActiveSupport::TestCase
     end
   end
 
+  test "overdue re-alerts on a new calendar day until filed" do
+    certified_eval(deadline: 1.hour.ago)
+    NoeDeadlineSweepJob.perform_now
+    # Age today's escalations into yesterday, then sweep again.
+    in_tenant(@agency) { Notification.where(kind: NoeDeadlineSweepJob::KIND_OVERDUE).update_all(created_at: 1.day.ago) }
+    assert_difference -> { in_tenant(@agency) { Notification.where(kind: NoeDeadlineSweepJob::KIND_OVERDUE).count } }, 2 do
+      NoeDeadlineSweepJob.perform_now
+    end
+  end
+
+  test "imminent stays once-and-done even across days" do
+    certified_eval(deadline: 1.5.days.from_now)
+    NoeDeadlineSweepJob.perform_now
+    in_tenant(@agency) { Notification.where(kind: NoeDeadlineSweepJob::KIND_IMMINENT).update_all(created_at: 1.day.ago) }
+    assert_no_difference -> { in_tenant(@agency) { Notification.where(kind: NoeDeadlineSweepJob::KIND_IMMINENT).count } } do
+      NoeDeadlineSweepJob.perform_now
+    end
+  end
+
   test "leaves a healthy eval and an already-filed eval alone" do
     certified_eval(deadline: 10.days.from_now)                       # comfortably ahead
     filed = certified_eval(deadline: 1.hour.ago)                     # overdue but...
