@@ -498,18 +498,12 @@
                   <i class="ri-sparkling-2-line mt-0.5"></i>
                   <span>HosAlivio drafted these from the visit. Review and edit, then save to confirm them as your own.</span>
                 </div>
-                <div>
-                  <label class="<%= modal_label %>">Hospice eligibility statement</label>
-                  <textarea name="pre_admit_eval[final_review][hospice_eligibility_statement]" rows="3" class="<%= modal_input %>"><%= fr["hospice_eligibility_statement"] %></textarea>
-                </div>
+                <%= render "counted_textarea", name: "pre_admit_eval[final_review][hospice_eligibility_statement]", value: fr["hospice_eligibility_statement"], label: "Hospice eligibility statement", rows: 3 %>
                 <div>
                   <label class="<%= modal_label %>">Prognosis estimate</label>
                   <input type="text" name="pre_admit_eval[final_review][prognosis_estimate]" value="<%= fr["prognosis_estimate"] %>" class="<%= modal_input %>">
                 </div>
-                <div>
-                  <label class="<%= modal_label %>">RN recommendation</label>
-                  <textarea name="pre_admit_eval[final_review][rn_recommendation]" rows="3" class="<%= modal_input %>"><%= fr["rn_recommendation"] %></textarea>
-                </div>
+                <%= render "counted_textarea", name: "pre_admit_eval[final_review][rn_recommendation]", value: fr["rn_recommendation"], label: "RN recommendation", rows: 3 %>
                 <div class="flex items-center justify-end gap-2 pt-1">
                   <button type="button" data-action="click->dialog#close" class="text-[12px] px-3 py-1.5 text-[#6B665F] hover:text-[#1D1C1A]">Cancel</button>
                   <button type="submit" class="inline-flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#233c63] text-white font-medium"><i class="ri-save-line"></i> Save</button>
@@ -566,17 +560,12 @@
                     <label class="<%= modal_label %>">Chief complaint</label>
                     <input type="text" name="pre_admit_eval[general_comments][chief_complaint]" value="<%= gc["chief_complaint"] %>" class="<%= modal_input %>">
                   </div>
-                  <div>
-                    <label class="<%= modal_label %>">History of present illness</label>
-                    <textarea name="pre_admit_eval[general_comments][history_of_present_illness]" rows="3" class="<%= modal_input %>"><%= gc["history_of_present_illness"] %></textarea>
-                  </div>
-                  <div>
-                    <label class="<%= modal_label %>">Narrative summary</label>
-                    <textarea name="pre_admit_eval[general_comments][narrative_summary]" rows="3" class="<%= modal_input %>"><%= gc["narrative_summary"] %></textarea>
-                  </div>
+                  <%= render "counted_textarea", name: "pre_admit_eval[general_comments][history_of_present_illness]", value: gc["history_of_present_illness"], label: "History of present illness", rows: 3 %>
+                  <%= render "counted_textarea", name: "pre_admit_eval[general_comments][narrative_summary]", value: gc["narrative_summary"], label: "Narrative summary", rows: 3 %>
                   <div>
                     <label class="<%= modal_label %>">Family / caregiver status</label>
-                    <input type="text" name="pre_admit_eval[general_comments][family_caregiver_status]" value="<%= gc["family_caregiver_status"] %>" class="<%= modal_input %>">
+                    <%= render "segmented", name: "pre_admit_eval[general_comments][family_caregiver_status]", value: gc["family_caregiver_status"],
+                          options: ["Supportive", "Family present", "Caregiver available", "Lives alone", "No caregiver identified", "Caregiver strained", "Needs social work follow-up"] %>
                   </div>
                   <div>
                     <label class="<%= modal_label %>">Immediate safety risks</label>
@@ -747,35 +736,26 @@
                     <input type="text" name="pre_admit_eval[diagnosis][primary_terminal_diagnosis][icd10]" value="<%= pdx["icd10"] %>" class="<%= modal_input %> font-mono uppercase">
                   </div>
                 </div>
-                <div>
-                  <label class="<%= modal_label %>">LCD criteria met</label>
-                  <textarea name="pre_admit_eval[diagnosis][lcd_criteria_met]" rows="2" placeholder="PPS ≤ 70%, Resting dyspnea, Dependence in 3+ ADLs" class="<%= modal_input %>"><%= Array(dx["lcd_criteria_met"]).join(", ") %></textarea>
-                  <p class="text-[10px] text-[#6B665F] mt-1">Separate with commas. At least one is required to route to MD.</p>
-                </div>
-                <div>
-                  <label class="<%= modal_label %>">LCD supporting documentation</label>
-                  <textarea name="pre_admit_eval[medicare_lcd_criteria][supporting_documentation]" rows="2" class="<%= modal_input %>"><%= lcd["supporting_documentation"] %></textarea>
-                </div>
+                <%= render "counted_textarea", name: "pre_admit_eval[diagnosis][lcd_criteria_met]", value: Array(dx["lcd_criteria_met"]).join(", "),
+                      label: "LCD criteria met", rows: 2, placeholder: "PPS ≤ 70%, Resting dyspnea, Dependence in 3+ ADLs",
+                      hint: "Separate with commas · one required to route to MD" %>
+                <%= render "counted_textarea", name: "pre_admit_eval[medicare_lcd_criteria][supporting_documentation]", value: lcd["supporting_documentation"], label: "LCD supporting documentation", rows: 2 %>
                 <div class="grid grid-cols-3 gap-3">
                   <div>
                     <label class="<%= modal_label %>">PPS score</label>
                     <input type="number" min="10" max="100" step="10" name="pre_admit_eval[functional_decline][pps][score]" value="<%= pps_h["score"] %>" class="<%= modal_input %> font-mono">
                   </div>
                   <div>
-                    <label class="<%= modal_label %>">Source</label>
-                    <select name="pre_admit_eval[functional_decline][pps][source]" class="<%= modal_input %>">
-                      <% %w[clinician calculated].each do |s| %><option value="<%= s %>" <%= "selected" if pps_h["source"] == s %>><%= s.titleize %></option><% end %>
-                    </select>
-                  </div>
-                  <div>
                     <label class="<%= modal_label %>">KPS</label>
                     <input type="number" min="10" max="100" step="10" name="pre_admit_eval[functional_decline][kps]" value="<%= fd["kps"] %>" class="<%= modal_input %> font-mono">
                   </div>
-                  <div class="col-span-3">
-                    <label class="<%= modal_label %>">Why this PPS fits</label>
-                    <textarea name="pre_admit_eval[functional_decline][pps][justification]" rows="2" class="<%= modal_input %>"><%= pps_h["justification"] %></textarea>
+                  <div>
+                    <label class="<%= modal_label %>">PPS source</label>
+                    <%= render "segmented", name: "pre_admit_eval[functional_decline][pps][source]", value: pps_h["source"],
+                          options: [ { value: "clinician", label: "Clinician" }, { value: "calculated", label: "Calculated" } ] %>
                   </div>
                 </div>
+                <%= render "counted_textarea", name: "pre_admit_eval[functional_decline][pps][justification]", value: pps_h["justification"], label: "Why this PPS fits", rows: 2 %>
                 <div class="flex items-center justify-end gap-2 pt-1">
                   <button type="button" data-action="click->dialog#close" class="text-[12px] px-3 py-1.5 text-[#6B665F] hover:text-[#1D1C1A]">Cancel</button>
                   <button type="submit" class="inline-flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded-full bg-[#2B4A7A] hover:bg-[#233c63] text-white font-medium"><i class="ri-save-line"></i> Save</button>

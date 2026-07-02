@@ -45,4 +45,26 @@ class EvalSafetyFunctionalEditTest < ActionDispatch::IntegrationTest
     assert_equal "DNR",             gen["advance_directives"]
     assert_equal "Moderate",        gen["spiritual_bereavement_risk"]
   end
+
+  test "diagnosis, key-findings and summary modal fields persist through update" do
+    sign_in @rn
+    patch pre_admit_eval_path(@eval), params: {
+      submit_action: "save",
+      pre_admit_eval: {
+        diagnosis: { primary_terminal_diagnosis: { description: "Lung cancer", icd10: "C34.90" }, lcd_criteria_met: "PPS <= 70%, dyspnea" },
+        medicare_lcd_criteria: { supporting_documentation: "Documented decline." },
+        functional_decline: { pps: { score: "40", source: "clinician", justification: "bedbound most of day" }, kps: "40" },
+        general_comments: { history_of_present_illness: "worsening", narrative_summary: "declining", family_caregiver_status: "Lives alone" },
+        final_review: { hospice_eligibility_statement: "clearly eligible", rn_recommendation: "admit" }
+      }
+    }
+
+    @eval.reload
+    assert_equal "C34.90",     @eval.diagnosis_section.dig("primary_terminal_diagnosis", "icd10")
+    assert_equal "clinician",  @eval.functional_decline.dig("pps", "source")
+    assert_equal "bedbound most of day", @eval.functional_decline.dig("pps", "justification")
+    assert_equal "Lives alone", @eval.general_comments["family_caregiver_status"]
+    assert_equal "declining",  @eval.general_comments["narrative_summary"]
+    assert_equal "clearly eligible", @eval.final_review_section["hospice_eligibility_statement"]
+  end
 end
