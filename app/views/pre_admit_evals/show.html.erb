@@ -894,11 +894,15 @@
       <%= render layout: "pre_admit_evals/card", locals: { title: "DME / equipment needs", icon: "ri-tools-line text-[#6B665F]", open: true, badge: dme_badge } do %>
         <% if editable %>
           <%= form_with url: save_dme_pre_admit_eval_path(@eval), method: :post, class: "space-y-3" do %>
+            <%# Multi-select toggle cards — pure CSS (has-/peer-checked), so the
+                whole card lights up when selected. Recommendation text preserved. %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <% dme_options(@eval).each do |opt| %>
-                <label class="flex items-start gap-2 rounded-xl border px-3 py-2 cursor-pointer transition <%= opt[:recommended] ? "border-[#2B4A7A] bg-[#F0F4FA]" : "border-[#EFECE6] bg-[#FBF9F5] hover:bg-white" %>">
-                  <input type="checkbox" name="dme_needs[]" value="<%= opt[:label] %>" <%= "checked" if opt[:selected] %>
-                         class="mt-0.5 w-4 h-4 rounded border-[#D9D5CD] text-[#2F6F4E] focus:ring-0">
+                <label class="flex items-start gap-2 rounded-xl border px-3 py-2 cursor-pointer transition border-[#EFECE6] bg-[#FBF9F5] hover:bg-white has-[:checked]:border-[#2B4A7A] has-[:checked]:bg-[#F0F4FA]">
+                  <input type="checkbox" name="dme_needs[]" value="<%= opt[:label] %>" <%= "checked" if opt[:selected] %> class="peer sr-only">
+                  <span class="mt-0.5 w-4 h-4 rounded border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-transparent peer-checked:bg-[#2B4A7A] peer-checked:border-[#2B4A7A] peer-checked:text-white">
+                    <i class="ri-check-line text-[11px]"></i>
+                  </span>
                   <span class="min-w-0">
                     <span class="text-[13px] text-[#1D1C1A] font-medium"><%= opt[:label] %></span>
                     <% if opt[:recommended] %>
@@ -908,11 +912,8 @@
                 </label>
               <% end %>
             </div>
-            <div>
-              <label class="block text-[10px] uppercase tracking-widest text-[#6B665F] mb-1">Additional notes</label>
-              <textarea name="dme_notes" rows="2" placeholder="Delivery instructions, sizing, who to coordinate with…"
-                        class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-white focus:border-[#2B4A7A] focus:outline-none text-[13px]"><%= gen["dme_notes"] %></textarea>
-            </div>
+            <%= render "counted_textarea", name: "dme_notes", value: gen["dme_notes"], label: "Additional notes", rows: 2,
+                  placeholder: "Delivery instructions, sizing, who to coordinate with…" %>
             <button type="submit" class="inline-flex items-center gap-1.5 text-[12px] px-4 py-2 rounded-full bg-[#2B4A7A] hover:bg-[#233c63] text-white font-medium">
               <i class="ri-save-line"></i> Save equipment needs
             </button>
