@@ -143,6 +143,15 @@
           </span>
         <% end %>
 
+        <%# Visible export action (also in the ⋯ menu). Any clinician, once finalized. %>
+        <% unless @eval.status_draft? %>
+          <%= link_to export_fhir_pre_admit_eval_path(@eval),
+                class: "no-print inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] transition",
+                title: "Download this eval as a FHIR R4 document (ICD-10 + RxNorm)" do %>
+            <i class="ri-download-2-line"></i> Export FHIR
+          <% end %>
+        <% end %>
+
       </div>
     </div>
 
