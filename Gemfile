@@ -103,3 +103,5 @@ gem "fhir_models", "~> 5.0"
 
 # HosAlivio UI
 gem "tailwindcss-rails"
+
+gem "pdf-reader", "~> 2.14"

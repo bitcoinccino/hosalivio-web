@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_03_030152) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_03_205342) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -278,6 +278,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_030152) do
     t.index ["agency_id", "patient_id", "status"], name: "index_dme_orders_on_agency_id_and_patient_id_and_status"
     t.index ["agency_id"], name: "index_dme_orders_on_agency_id"
     t.index ["patient_id"], name: "index_dme_orders_on_patient_id"
+  end
+
+  create_table "document_texts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.datetime "created_at", null: false
+    t.text "pages_json"
+    t.uuid "patient_document_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id"], name: "index_document_texts_on_agency_id"
+    t.index ["patient_document_id"], name: "index_document_texts_on_document", unique: true
+    t.index ["patient_document_id"], name: "index_document_texts_on_patient_document_id"
   end
 
   create_table "emr_sync_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -782,6 +794,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_030152) do
   add_foreign_key "consent_forms", "patients"
   add_foreign_key "dme_orders", "agencies"
   add_foreign_key "dme_orders", "patients"
+  add_foreign_key "document_texts", "agencies"
+  add_foreign_key "document_texts", "patient_documents"
   add_foreign_key "emr_sync_logs", "agencies"
   add_foreign_key "emr_sync_logs", "pre_admit_evals"
   add_foreign_key "eval_revision_requests", "pre_admit_evals"
