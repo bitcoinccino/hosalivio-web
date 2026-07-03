@@ -1,76 +1,132 @@
 <% content_for :title, "Documents · #{@patient.full_name}" %>
-<div class="min-h-screen bg-[#FBF9F5] py-8 px-6">
+<%
+  # Grouped kind options — built only from the real KIND_LABELS so nothing here
+  # can submit a value the model doesn't know. proxy/financial etc. don't exist.
+  kind_groups = [
+    ["Consents",   [["Election of Benefits", "election_of_benefits"], ["Patient Rights", "patient_rights"]]],
+    ["Directives", [["DNR", "dnr"], ["POLST", "polst"], ["Advance Directive", "advance_directive"]]],
+    ["Other",      [["Other", "other"]]]
+  ]
+  # Badge palette per kind (app colors, [bg, fg]).
+  kind_badge = ->(kind) do
+    case kind
+    when "election_of_benefits", "patient_rights" then ["#E6F0EA", "#2F6F4E"]
+    when "dnr"                                     then ["#FBEAE8", "#C1403A"]
+    when "polst", "advance_directive"             then ["#F3ECDD", "#8C6A2F"]
+    else                                                ["#F0F0EE", "#6B665F"]
+    end
+  end
+  input = "w-full text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]"
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-4 sm:px-6">
   <div class="max-w-3xl mx-auto">
     <a href="<%= patient_path(@patient) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to chart
     </a>
 
-    <div class="mb-1">
-      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Patient documents</div>
-      <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= @patient.full_name %></h1>
-      <div class="text-[12px] text-[#6B665F] mt-0.5">MRN <%= @patient.mrn %> · signed forms, paperwork, photos</div>
+    <div class="flex items-start justify-between gap-3 flex-wrap mb-1">
+      <div>
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Patient documents</div>
+        <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= @patient.full_name %></h1>
+        <div class="text-[12px] text-[#6B665F] mt-0.5">
+          <% if @patient.mrn.present? %>MRN <%= @patient.mrn %> · <% end %>signed forms, paperwork, photos
+        </div>
+      </div>
+      <span class="text-[10px] text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-2.5 py-1 whitespace-nowrap">
+        <i class="ri-lock-line text-[#2F6F4E]"></i> Clinicians only · 25 MB max
+      </span>
     </div>
 
     <%# ── Upload ─────────────────────────────────────────────── %>
     <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 shadow-sm mt-5">
       <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Upload a document</div>
-      <%= form_with url: patient_documents_path(@patient), method: :post, multipart: true, data: { turbo: false }, class: "space-y-3" do %>
-        <input type="file" name="patient_document[file]" required
-               accept=".pdf,.png,.jpg,.jpeg,.heic,.webp,application/pdf,image/*"
-               class="block w-full text-[13px] text-[#1D1C1A] file:mr-3 file:px-3 file:py-1.5 file:rounded-full file:border-0 file:bg-[#FBF9F5] file:text-[#D97757] file:font-medium hover:file:bg-[#EFECE6]">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <input type="text" name="patient_document[title]" maxlength="200" placeholder="Title (optional — defaults to filename)"
-                 class="flex-1 text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
-          <select name="patient_document[kind]"
-                  class="text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
-            <option value="">Type…</option>
-            <% PatientDocument::KIND_LABELS.each do |k, label| %>
-              <option value="<%= k %>"><%= label %></option>
-            <% end %>
-          </select>
-          <button type="submit" class="inline-flex items-center justify-center gap-1 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-5 py-2 text-[13px] font-medium whitespace-nowrap">
-            <i class="ri-upload-2-line"></i> Upload
-          </button>
+
+      <% if @document&.errors&.any? %>
+        <div class="rounded-lg bg-[#FFF3EC] border border-[#C1403A] px-3 py-2 text-[12px] text-[#C1403A] mb-3">
+          <%= @document.errors.full_messages.to_sentence %>
         </div>
-        <div class="text-[11px] text-[#9A938A]">PDF or image, up to 25&nbsp;MB.</div>
+      <% end %>
+
+      <%= form_with url: patient_documents_path(@patient), method: :post, multipart: true, data: { turbo: false }, class: "space-y-3" do %>
+        <%# Drag-and-drop zone wrapping a hidden file input (file-dropzone controller). %>
+        <div data-controller="file-dropzone"
+             data-action="dragover->file-dropzone#dragOver dragleave->file-dropzone#dragLeave drop->file-dropzone#drop click->file-dropzone#browse"
+             data-file-dropzone-target="zone"
+             class="border-2 border-dashed border-[#D9D5CD] rounded-xl px-4 py-6 text-center cursor-pointer hover:border-[#D97757] hover:bg-[#FBF3EE]/50 transition">
+          <input type="file" name="patient_document[file]"
+                 accept=".pdf,.png,.jpg,.jpeg,.heic,.webp,application/pdf,image/*"
+                 class="hidden"
+                 data-file-dropzone-target="input"
+                 data-action="change->file-dropzone#selected">
+          <i class="ri-upload-cloud-2-line text-[26px] text-[#D97757]"></i>
+          <p class="text-[13px] text-[#1D1C1A] mt-1.5">
+            <span class="hidden sm:inline">Drag &amp; drop a file here, or </span><span class="text-[#D97757] font-medium underline">browse</span>
+          </p>
+          <p data-file-dropzone-target="label" class="text-[12px] text-[#2F6F4E] font-medium mt-1 break-all"></p>
+          <p class="text-[11px] text-[#9A938A] mt-1">PDF or image · up to 25&nbsp;MB</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+          <input type="text" name="patient_document[title]" maxlength="200"
+                 placeholder="Title (optional — defaults to the filename)" class="<%= input %>">
+          <select name="patient_document[kind]" class="<%= input %> sm:w-52">
+            <option value="">Document type…</option>
+            <%= grouped_options_for_select(kind_groups) %>
+          </select>
+        </div>
+
+        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white px-6 py-2.5 text-[13px] font-medium">
+          <i class="ri-upload-2-line"></i> Upload document
+        </button>
       <% end %>
     </div>
 
     <%# ── List ───────────────────────────────────────────────── %>
-    <div class="mt-5 space-y-2">
+    <div class="flex items-center justify-between mt-6 mb-2 px-1">
+      <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">On file</div>
+      <span class="text-[11px] text-[#6B665F]"><%= @documents.size %> document<%= "s" unless @documents.size == 1 %></span>
+    </div>
+
+    <div class="space-y-2">
       <% if @documents.empty? %>
         <div class="rounded-2xl border border-dashed border-[#D9D5CD] bg-white p-8 text-center text-[13px] text-[#6B665F]">
           No documents uploaded yet.
         </div>
       <% else %>
         <% @documents.each do |doc| %>
-          <div class="rounded-xl border border-[#EFECE6] bg-white p-4 flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-[#FBF9F5] text-[#2B4A7A] flex items-center justify-center flex-shrink-0">
-              <i class="<%= doc.image? ? "ri-image-line" : "ri-file-pdf-2-line" %> text-lg"></i>
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="text-[13px] text-[#1D1C1A] font-medium truncate">
-                <%= doc.title %>
-                <% if doc.kind_label.present? %><span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#F0F4FA] text-[#2B4A7A] ml-1"><%= doc.kind_label %></span><% end %>
+          <% bg, fg = kind_badge.call(doc.kind) %>
+          <div class="rounded-xl border border-[#EFECE6] bg-white p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div class="flex items-start gap-3 min-w-0 flex-1">
+              <div class="w-9 h-9 rounded-lg bg-[#FBF9F5] text-[#2B4A7A] flex items-center justify-center flex-shrink-0">
+                <i class="<%= doc.image? ? "ri-image-line" : "ri-file-pdf-2-line" %> text-lg"></i>
               </div>
-              <div class="text-[11px] text-[#6B665F] mt-0.5">
-                <%= doc.created_at.strftime("%b %-d, %Y · %-l:%M %p") %>
-                <% if doc.uploaded_by %> · <%= doc.uploaded_by.full_name %><% end %>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-[13px] text-[#1D1C1A] font-medium break-all"><%= doc.title %></span>
+                  <% if doc.kind_label.present? %>
+                    <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded font-bold" style="background: <%= bg %>; color: <%= fg %>;"><%= doc.kind_label %></span>
+                  <% end %>
+                </div>
+                <div class="text-[11px] text-[#6B665F] mt-0.5">
+                  <%= doc.created_at.strftime("%b %-d, %Y · %-l:%M %p") %><% if doc.uploaded_by %> · <%= doc.uploaded_by.full_name %><% end %>
+                </div>
               </div>
             </div>
-            <% if doc.file.attached? %>
-              <%= link_to rails_blob_path(doc.file, disposition: "attachment"),
-                    class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] hover:bg-[#FBF9F5] text-[#1D1C1A] flex-shrink-0" do %>
-                <i class="ri-download-2-line"></i> Download
+            <div class="flex items-center gap-2 flex-shrink-0 sm:justify-end pl-12 sm:pl-0">
+              <% if doc.file.attached? %>
+                <%= link_to rails_blob_path(doc.file, disposition: "attachment"),
+                      class: "inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] hover:bg-[#FBF9F5] text-[#1D1C1A]" do %>
+                  <i class="ri-download-2-line"></i> Download
+                <% end %>
               <% end %>
-            <% end %>
-            <%= button_to patient_document_path(@patient, doc), method: :delete,
-                  form: { class: "inline-block" },
-                  data: { turbo_confirm: "Remove \"#{doc.title}\"? This can't be undone." },
-                  class: "text-[#C1403A] hover:bg-[#FFF3EC] rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0",
-                  title: "Remove" do %>
-              <i class="ri-delete-bin-line"></i>
-            <% end %>
+              <%= button_to patient_document_path(@patient, doc), method: :delete,
+                    form: { class: "inline-block" },
+                    data: { turbo_confirm: "Remove \"#{doc.title}\"? This can't be undone." },
+                    class: "text-[#C1403A] hover:bg-[#FFF3EC] rounded-full w-8 h-8 flex items-center justify-center",
+                    title: "Remove" do %>
+                <i class="ri-delete-bin-line"></i>
+              <% end %>
+            </div>
           </div>
         <% end %>
       <% end %>
