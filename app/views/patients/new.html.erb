@@ -70,10 +70,10 @@
 
         <%# On desktop every panel shows at once as a balanced 3-column masonry;
             below lg the patient-form wizard hides all but the current step. %>
-        <div class="lg:columns-3 lg:gap-6">
+        <div class="lg:grid lg:grid-cols-3 lg:gap-5 lg:items-start">
 
         <%# ══ STEP 1 · Identity & Contact ═══════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 lg:block lg:break-inside-avoid lg:mb-6">
+        <div data-patient-form-target="panel" class="space-y-6 lg:block">
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-user-3-line text-[#D97757]"></i> Identity</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -177,7 +177,7 @@
         </div>
 
         <%# ══ STEP 2 · Caregiver & Support ══════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block lg:break-inside-avoid lg:mb-6">
+        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block">
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-parent-line text-[#8C6A2F]"></i> Primary caregiver</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -228,7 +228,7 @@
         </div>
 
         <%# ══ STEP 3 · Clinical & Insurance ═════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block lg:break-inside-avoid lg:mb-6">
+        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block">
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-stethoscope-line text-[#2B4A7A]"></i> Diagnosis</div>
 
@@ -287,7 +287,7 @@
         </div>
 
         <%# ══ STEP 4 · Providers & coverage ═════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block lg:break-inside-avoid lg:mb-6">
+        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block">
           <%# Billing / residence contact vs. actual site of care %>
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-map-pin-user-line text-[#2F6F4E]"></i> Care locations</div>
@@ -355,7 +355,7 @@
           </section>
         </div>
 
-        </div><%# /lg:columns-3 %>
+        </div><%# /lg:grid %>
 
         <%# ── Navigation · mobile wizard (below lg) ───────────── %>
         <div class="pt-5 mt-5 border-t border-[#EFECE6] flex items-center justify-between gap-2 lg:hidden">
