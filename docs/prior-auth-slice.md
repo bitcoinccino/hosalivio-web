@@ -130,27 +130,38 @@ Nothing final until the reviewer signs off.
 
 ## 5. Data model
 
-Mirror the app's UUID + tenant + real-FK pattern.
+Mirror the app's UUID + real-FK pattern. Per-review records are tenant-scoped;
+**policies are not** (see the decision note).
+
+> **Decision (implemented):** `coverage_policies` / `policy_criteria` are **global
+> reference data** (no `acts_as_tenant`, no `agency_id`), like `Icd10Code` —
+> Medicare LCDs/NCDs are shared, not per-tenant. This supersedes the original
+> agency-scoped sketch below. Commercial, per-agency policies can add an
+> **optional** `agency_id` later (null = shared Medicare). `PriorAuthReview`
+> stays tenant-scoped.
 
 ```ruby
-# Policy definitions (seed one real Medicare LCD/NCD by hand for slice 1).
+# Policy definitions — GLOBAL reference (no agency). Seed one real Medicare
+# LCD/NCD by hand for slice 1 (db/seeds_prior_auth.rb seeds L34538).
 create_table :coverage_policies, id: :uuid, default: -> { "gen_random_uuid()" } do |t|
-  t.references :agency, type: :uuid, null: false, foreign_key: true   # acts_as_tenant
-  t.string  :payer,        null: false, default: "medicare"
-  t.string  :source_type,  null: false                                 # "lcd" | "ncd"
-  t.string  :document_id                                               # e.g. "L38319"
-  t.string  :title
+  t.string  :payer,           null: false, default: "medicare"
+  t.string  :source_type,     null: false, default: "lcd"           # "lcd" | "ncd"
+  t.string  :document_id                                             # e.g. "L34538"
+  t.string  :title,           null: false
   t.string  :url
-  t.boolean :active, null: false, default: true
+  t.string  :procedure_hcpcs, array: true, null: false, default: [] # HCPCS this policy governs
+  t.boolean :active,          null: false, default: true
   t.timestamps
 end
 
+# NB: PolicyCriterion pins self.table_name = "policy_criteria" (Rails would
+# otherwise infer "policy_criterions").
 create_table :policy_criteria, id: :uuid, default: -> { "gen_random_uuid()" } do |t|
   t.references :coverage_policy, type: :uuid, null: false, foreign_key: true
   t.integer :position, null: false, default: 0
-  t.string  :label,       null: false                                  # "≥3 epidural steroid injections"
+  t.string  :label,       null: false                                  # "PPS ≤ 70%"
   t.text    :description
-  t.string  :keywords, array: true, default: []                        # retrieval anchors
+  t.string  :keywords, array: true, null: false, default: []           # retrieval anchors
   t.string  :evidence_type                                             # count | date_window | score | text
   t.timestamps
 end
@@ -218,7 +229,9 @@ bolt-on.
 
 ## 8. Open questions
 
-- Which single LCD/NCD to seed first (pick one with clean, countable criteria)?
+- ~~Which single LCD/NCD to seed first?~~ **Resolved:** L34538 (Hospice
+  Determining Terminal Status) seeded as data in `db/seeds_prior_auth.rb` — real
+  policy, real criteria; wording still needs SME verification vs. the live LCD.
 - Fuzzy-match threshold for Stage 3 v2 (paraphrase tolerance vs. false-positive risk)?
 - Enable OCR (Claude-vision extension of `HosalivioBrain`) in slice 2, or require
   digital submissions?

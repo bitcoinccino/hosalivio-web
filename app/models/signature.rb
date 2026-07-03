@@ -34,7 +34,8 @@ class Signature < ApplicationRecord
     "drawn_inline_by_representative"   => "Representative signed in person",
     "registered_signature"             => "Registered signature",
     "drawn_inline"                     => "Drawn inline",
-    "comfort_kit_authorize"            => "Comfort kit authorization"
+    "comfort_kit_authorize"            => "Comfort kit authorization",
+    "prior_auth_signoff"               => "Prior-auth sign-off"
   }.freeze
 
   def verification_label
