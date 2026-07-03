@@ -18,7 +18,39 @@ class LookupsController < ApplicationController
     render json: payload
   end
 
+  # GET /lookups/physician?name=Jane+Smith&state=FL&zip=33139
+  # Resolves an attending physician to a single unambiguous NPI via NPPES.
+  # Dormant unless NPI_LIVE_LOOKUP is set (Coding::Npi returns nil otherwise),
+  # so this simply reports { found: false } when the connector is off.
+  def physician
+    first, last = split_name(params[:name])
+    return render(json: { found: false }) if last.blank?
+
+    result = Coding::Npi.lookup(
+      first_name:  first,
+      last_name:   last,
+      state:       params[:state].to_s.strip.presence,
+      postal_code: params[:zip].to_s.gsub(/\D/, "").first(5).presence
+    )
+    return render(json: { found: false }) unless result
+
+    render json: { found: true, npi: result.npi, name: result.name,
+                   credential: result.credential, taxonomy: result.taxonomy }
+  end
+
   private
+
+  # "Dr. Jane A. Smith, MD" -> ["Jane A.", "Smith"]. Strips a courtesy prefix and
+  # a trailing credential suffix; the last remaining token is the surname.
+  def split_name(raw)
+    cleaned = raw.to_s.strip
+    cleaned = cleaned.sub(/\A(dr\.?|doctor|mr\.?|mrs\.?|ms\.?)\s+/i, "")
+    cleaned = cleaned.sub(/,.*\z/, "")
+    parts = cleaned.split(/\s+/).reject(&:blank?)
+    return [ nil, nil ]         if parts.empty?
+    return [ nil, parts.first ] if parts.size == 1
+    [ parts[0..-2].join(" "), parts.last ]
+  end
 
   # The branch that should serve this ZIP, within the signed-in user's agency.
   def suggested_branch(zip)

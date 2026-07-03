@@ -35,20 +35,23 @@ export default class extends Controller {
                     "recordButton", "recordIcon", "pauseButton", "stopButton",
                     "consentPanel", "typePickerPanel", "interviewPanel", "stage",
                     "langButton", "langFlag", "langLabel", "langMenu", "syncLangCheckbox",
-                    "speakerPills", "soloButton",
+                    "speakerPills",
                     "asrBadge", "asrDot", "asrMode",
-                    "asrToast", "asrToastText"]
+                    "asrToast", "asrToastText",
+                    "generatingOverlay", "generatingMessage"]
   static values = {
-    updateUrl:        String,
-    editUrl:          String,
-    discardUrl:       String,
-    csrf:             String,
-    lang:             { type: String, default: "en-US" },
-    langCode:         { type: String, default: "en" },
-    needsTypePicker:  { type: Boolean, default: false },
-    suggestedType:    { type: String, default: "" },
-    patientId:        { type: String, default: "" },
-    speakerRoster:    { type: Array,  default: [] }
+    updateUrl:          String,
+    editUrl:            String,
+    discardUrl:         String,
+    csrf:               String,
+    lang:               { type: String, default: "en-US" },
+    langCode:           { type: String, default: "en" },
+    needsTypePicker:    { type: Boolean, default: false },
+    suggestedType:      { type: String, default: "" },
+    patientId:          { type: String, default: "" },
+    speakerRoster:      { type: Array,  default: [] },
+    generatingMessages: { type: Array,  default: [] },
+    generatingInterval: { type: Number, default: 1400 }
   }
 
   connect() {
@@ -156,6 +159,8 @@ export default class extends Controller {
       body: fd
     }).then(() => {
       if (this.hasInterviewPanelTarget) this.interviewPanelTarget.classList.add("hidden")
+      // "Just me" = solo dictation: turn off speaker tagging up front.
+      if (who === "solo" && !this._solo) this.toggleSolo()
       this._revealStage()
     }).catch((err) => {
       console.error("[voice-visit] interviewee PATCH failed:", err)
@@ -468,12 +473,6 @@ export default class extends Controller {
   // doesn't get tagged either.
   toggleSolo() {
     this._solo = !this._solo
-    if (this.hasSoloButtonTarget) {
-      this.soloButtonTarget.classList.toggle("bg-[#D97757]", this._solo)
-      this.soloButtonTarget.classList.toggle("text-white",   this._solo)
-      this.soloButtonTarget.classList.toggle("bg-white/10",  !this._solo)
-      this.soloButtonTarget.classList.toggle("text-white/90", !this._solo)
-    }
     if (this._solo && this._finalText) {
       this._finalText = this._finalText.replace(/\[(?:Patient|RN|Speaker \d+):\]\s*/gi, "").replace(/\n+/g, " ").trim()
       this._renderTranscript()
@@ -545,6 +544,9 @@ export default class extends Controller {
     // PATCH audio + transcript, otherwise the visit becomes
     // "non-empty" and the server-side discard refuses to destroy.
     if (this._cancelling) return
+    // Show the "processing your recording" overlay for the whole upload +
+    // navigation to the edit page (where the eval + intake are generated).
+    this._showGenerating()
     const type = this._recorder.mimeType || "audio/webm"
     const ext  = type.includes("ogg") ? "ogg" : (type.includes("mp4") ? "m4a" : "webm")
     const blob = new Blob(this._audioChunks, { type })
@@ -581,12 +583,38 @@ export default class extends Controller {
       window.location.href = `${this.editUrlValue}?just_recorded=1`
     }).catch((err) => {
       console.error("[voice-visit] upload failed:", err)
+      this._hideGenerating()
       this._setStatus("Upload failed; tap to retry")
       this._listening = false
       this._paintIdle()
     })
 
     this._teardownStream()
+  }
+
+  // ── "Processing your recording" overlay ──────────────────────────
+  // Shown from Stop until the browser navigates to the edit page (which
+  // generates the eval + stages intake). The cycling messages are indicative
+  // feedback; they advance on a timer and hold on the last one.
+  _showGenerating() {
+    if (!this.hasGeneratingOverlayTarget) return
+    this.generatingOverlayTarget.classList.remove("hidden")
+    this.generatingOverlayTarget.classList.add("flex")
+
+    const msgs = this.generatingMessagesValue.length ? this.generatingMessagesValue : ["Processing…"]
+    let i = 0
+    if (this.hasGeneratingMessageTarget) this.generatingMessageTarget.textContent = msgs[0]
+    this._genTimer = setInterval(() => {
+      i = Math.min(i + 1, msgs.length - 1)
+      if (this.hasGeneratingMessageTarget) this.generatingMessageTarget.textContent = msgs[i]
+    }, this.generatingIntervalValue)
+  }
+
+  _hideGenerating() {
+    if (this._genTimer) { clearInterval(this._genTimer); this._genTimer = null }
+    if (!this.hasGeneratingOverlayTarget) return
+    this.generatingOverlayTarget.classList.add("hidden")
+    this.generatingOverlayTarget.classList.remove("flex")
   }
 
   // ── Live waveform via AnalyserNode + canvas ──────────────────────

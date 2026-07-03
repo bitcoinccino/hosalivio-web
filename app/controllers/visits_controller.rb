@@ -1,9 +1,12 @@
 class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :redirect_family_users
-  before_action :set_visit, only: [ :show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary ]
+  before_action :set_visit, only: [ :show, :edit, :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary, :apply_intake_suggestions, :dismiss_intake_suggestions ]
   before_action :authorize_visit_scheduler!, only: [ :new, :create ]
-  before_action :authorize_visit_writer!,    only: [ :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary ]
+  before_action :authorize_visit_writer!,    only: [ :update, :destroy, :begin, :finish, :record, :discard, :route_to_md, :sign_note, :regenerate_summary, :apply_intake_suggestions, :dismiss_intake_suggestions ]
+
+  # Staged intake keys that map to Patient columns rather than the intake blob.
+  INTAKE_PATIENT_COLUMNS = %w[ code_status caregiver_relationship veteran_status ].freeze
 
   # GET /visits/new?user_id=&scheduled_at=
   def new
@@ -221,6 +224,8 @@ class VisitsController < ApplicationController
         patient:       @visit.patient
       )
       eval_rec.update!(raw_json: result.json)
+      # Intake suggestions are staged in the post-record step
+      # (prepare_recorded_admission_visit), not here — see that method.
       # MD routing is now an explicit second step (Route to MD button
       # on the visit edit page). Lets the RN review the polished
       # narrative + extracted eval JSON before shipping it to the
@@ -230,6 +235,56 @@ class VisitsController < ApplicationController
     end
 
     redirect_to edit_visit_path(@visit), status: :see_other
+  end
+
+  # POST /visits/:id/apply_intake_suggestions — RN accepts some/all of the
+  # intake fields the admission narrative surfaced. Writes the accepted values
+  # into the patient (blanks-only, defensively re-checked), then clears the
+  # staging blob. params[:fields] is the list of accepted field keys.
+  def apply_intake_suggestions
+    ActsAsTenant.with_tenant(current_user.agency) do
+      staged   = @visit.suggested_intake
+      accepted = Array(params[:fields]).map(&:to_s) & staged.keys
+      patient  = @visit.patient
+      applied  = []
+      intake_updates = {}
+
+      accepted.each do |key|
+        value = staged[key].to_s.strip
+        next if value.blank?
+        if Patient::INTAKE_KEYS.include?(key)
+          next if patient.intake[key].present?          # blanks-only, re-checked
+          intake_updates[key] = value
+          applied << key
+        elsif INTAKE_PATIENT_COLUMNS.include?(key)
+          next unless column_blank?(patient, key)        # blanks-only, re-checked
+          patient.public_send("#{key}=", value)
+          applied << key
+        end
+      end
+
+      patient.intake = patient.intake.merge(intake_updates) if intake_updates.any?
+      patient.save! if applied.any?
+      @visit.update!(suggested_intake: nil)
+
+      if applied.any?
+        AgentEvent.create!(
+          agency: @visit.agency, agent_id: "hosalivio_brain", action: "apply_intake",
+          subject: @visit, happened_at: Time.current, change_set: { fields: applied }
+        )
+        flash[:notice] = "Added #{applied.size} field#{'s' if applied.size != 1} to #{patient.full_name}'s intake."
+      else
+        flash[:notice] = "No intake fields applied."
+      end
+    end
+    redirect_to edit_visit_path(@visit), status: :see_other
+  end
+
+  # POST /visits/:id/dismiss_intake_suggestions — RN discards the staged intake
+  # suggestions without applying any.
+  def dismiss_intake_suggestions
+    ActsAsTenant.with_tenant(current_user.agency) { @visit.update!(suggested_intake: nil) }
+    redirect_to edit_visit_path(@visit), status: :see_other, notice: "Intake suggestions dismissed."
   end
 
   # POST /visits/:id/route_to_md — explicit step the RN takes after
@@ -706,6 +761,11 @@ class VisitsController < ApplicationController
     preserve_and_polish_recorded_narrative
     eval_rec = ensure_pre_admit_eval_for(@visit)
     sync_visit_narrative_to_eval(eval_rec)
+    # The same recording also surfaces intake fields — stage them here (once,
+    # right after recording) so the eval and the intake suggestions are both
+    # generated in this post-record step. Guarded so a manual re-load with the
+    # just_recorded hint doesn't resurface already-reviewed suggestions.
+    stage_intake_suggestions(@visit) if @visit.suggested_intake.blank?
   rescue => e
     Rails.logger.warn("[VisitsController#prepare_recorded_admission_visit] #{e.class}: #{e.message}")
   end
@@ -808,6 +868,34 @@ class VisitsController < ApplicationController
       .reject(&:blank?)
       .uniq
       .join("\n\nRaw transcript:\n")
+  end
+
+  # Stage the intake fields the admission narrative surfaced for RN review.
+  # Blanks-only (enforced by the extractor). Best-effort: a failure here never
+  # blocks finishing the visit.
+  def stage_intake_suggestions(visit)
+    suggestions = Intake::NarrativeExtractor.call(
+      narrative: narrative_for_eval(visit), patient: visit.patient
+    )
+    return if suggestions.blank?
+
+    visit.update!(suggested_intake: suggestions)
+    AgentEvent.create!(
+      agency:      visit.agency,
+      agent_id:    "hosalivio_brain",
+      action:      "suggest_intake",
+      subject:     visit,
+      happened_at: Time.current,
+      change_set:  { fields: suggestions.keys }
+    )
+  rescue => e
+    Rails.logger.warn("[Intake::NarrativeExtractor] staging failed: #{e.class}: #{e.message}")
+  end
+
+  # Blanks-only check for a staged Patient *column*. code_status defaults to
+  # full_code, so "blank" there means still on that default.
+  def column_blank?(patient, key)
+    key == "code_status" ? patient.code_status.to_s == "full_code" : patient.public_send(key).blank?
   end
 
   def set_visit

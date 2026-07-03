@@ -1,71 +1,42 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Drives the 3-step admissions form: step navigation, live age from DOB,
+// Drives the admissions form's stacked collapsible sections: live age from DOB,
 // "same phone as patient" copy, ZIP -> city/state autofill + suggested branch,
-// dynamic reveal of religion / veteran detail, and code-status color coding.
+// dynamic reveal of religion / veteran detail, code-status color coding, and
+// expand/collapse-all of the <details> sections.
 export default class extends Controller {
   static targets = [
-    "panel", "tab", "backBtn", "nextBtn", "submitBtn",
+    "section",
     "dob", "age",
     "patientPhone", "caregiverPhone",
     "zip", "city", "state", "branchHint", "branchId",
     "codeStatus", "religionReveal", "veteranReveal"
   ]
-  static values = { zipUrl: String, step: { type: Number, default: 0 } }
+  static values = { zipUrl: String }
 
   connect() {
-    this._show(this.stepValue)
     this.updateAge()
     this.colorCodeStatus()
     this.toggleReligion()
     this.toggleVeteran()
+    // A required field inside a *closed* <details> can't be focused for native
+    // validation ("not focusable" error). Open the offending section first.
+    // `invalid` doesn't bubble, so listen in the capture phase.
+    this._reveal = this._reveal.bind(this)
+    this.element.addEventListener("invalid", this._reveal, true)
   }
 
-  // ---- Stepper ------------------------------------------------------------
-  next() {
-    if (!this._validatePanel(this.stepValue)) return
-    this._show(Math.min(this.stepValue + 1, this.panelTargets.length - 1))
+  disconnect() {
+    this.element.removeEventListener("invalid", this._reveal, true)
   }
 
-  back() {
-    this._show(Math.max(this.stepValue - 1, 0))
-  }
+  // ---- Collapsible sections ----------------------------------------------
+  expandAll()   { this.sectionTargets.forEach((s) => (s.open = true)) }
+  collapseAll() { this.sectionTargets.forEach((s) => (s.open = false)) }
 
-  goTo(event) {
-    const target = Number(event.currentTarget.dataset.stepIndex)
-    // Only allow jumping backward freely; forward jumps validate the current panel.
-    if (target > this.stepValue && !this._validatePanel(this.stepValue)) return
-    this._show(target)
-  }
-
-  _show(index) {
-    this.stepValue = index
-    this.panelTargets.forEach((panel, i) => panel.classList.toggle("hidden", i !== index))
-    this.tabTargets.forEach((tab, i) => {
-      const done = i < index, current = i === index
-      tab.dataset.state = current ? "current" : done ? "done" : "todo"
-    })
-    const last = index === this.panelTargets.length - 1
-    // Toggle via inline style, not the `hidden` class: these buttons also carry
-    // `inline-flex`, which is emitted after `.hidden` in the Tailwind build and
-    // would override it. Inline style wins regardless of stylesheet order.
-    if (this.hasBackBtnTarget)   this.backBtnTarget.classList.toggle("invisible", index === 0)
-    if (this.hasNextBtnTarget)   this.nextBtnTarget.style.display   = last ? "none" : ""
-    if (this.hasSubmitBtnTarget) this.submitBtnTarget.style.display = last ? "" : "none"
-    this.element.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
-
-  _validatePanel(index) {
-    const panel = this.panelTargets[index]
-    if (!panel) return true
-    const fields = panel.querySelectorAll("input, select, textarea")
-    for (const field of fields) {
-      if (!field.checkValidity()) {
-        field.reportValidity()
-        return false
-      }
-    }
-    return true
+  _reveal(event) {
+    const details = event.target.closest("details")
+    if (details) details.open = true
   }
 
   // ---- Live age from DOB --------------------------------------------------

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_02_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_03_030152) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -720,6 +720,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_120000) do
     t.integer "discipline", null: false
     t.datetime "ended_at"
     t.string "facility_name"
+    t.text "intake_suggestions"
     t.string "interviewee"
     t.string "interviewee_label"
     t.text "narrative"

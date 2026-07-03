@@ -16,17 +16,32 @@
   religion_opts = ["Catholic", "Baptist", "Methodist", "Lutheran", "Presbyterian", "Pentecostal", "Episcopalian",
                    "Christian (other)", "Jewish", "Muslim", "Hindu", "Buddhist", "Jehovah's Witness",
                    "Latter-day Saint", "Seventh-day Adventist", "None", "Other"]
-  steps       = ["Identity & Contact", "Caregiver & Support", "Clinical & Insurance", "Providers & coverage"]
   marital_opts   = ["Single", "Married", "Partnered", "Widowed", "Divorced", "Separated", "Unknown"]
   race_opts      = ["White", "Black or African American", "Asian", "American Indian / Alaska Native", "Native Hawaiian / Pacific Islander", "Other", "Declined"]
   ethnicity_opts = ["Hispanic or Latino", "Not Hispanic or Latino", "Declined"]
+  living_opts    = ["Private home", "Assisted living facility", "Skilled nursing facility", "Group home / board & care",
+                    "Living with family", "Independent living community", "Long-term care facility", "Homeless / unstable housing", "Other"]
+  consent_lang_opts = lang_labels.values   # English, Spanish, Haitian Creole, Portuguese, Other
+  referral_type_opts = ["Hospital transfer", "Physician direct referral", "Community / self referral",
+                        "Skilled nursing facility transfer", "Assisted living placement", "Home health transfer"]
   yesno          = [ { value: "yes", label: "Yes" }, { value: "no", label: "No" } ]
   payor_opts     = [ { value: "unverified", label: "Unverified" }, { value: "active", label: "Active" }, { value: "pending", label: "Pending" }, { value: "none", label: "None" } ]
   ik             = ->(key) { @patient.intake[key] }   # intake blob reader
   editing        = @patient.persisted?
+
+  # Collapsible-section chrome. Native <details>/<summary> gives free toggling;
+  # sections stack in a single column. Identity is open by default (it carries
+  # the required fields); on edit everything opens so pre-filled data is visible.
+  # No overflow-hidden on the card: it would clip the ICD autocomplete dropdown
+  # (an absolutely-positioned panel). The summary rounds its own corners instead
+  # so its hover background still respects the card's rounded border.
+  det  = "group border border-[#EFECE6] rounded-xl bg-white"
+  summ = "flex items-center justify-between gap-2 px-4 py-3 cursor-pointer list-none select-none rounded-xl group-open:rounded-b-none hover:bg-[#FBF9F5] [&::-webkit-details-marker]:hidden"
+  body = "px-4 pb-4 pt-3 space-y-3 border-t border-[#EFECE6]"
+  chev = "ri-arrow-down-s-line text-[#6B665F] text-lg transition-transform group-open:rotate-180"
 %>
 <div class="min-h-screen bg-[#FBF9F5] py-8 px-4 md:px-10">
-  <div class="max-w-2xl lg:max-w-6xl mx-auto">
+  <div class="max-w-3xl mx-auto">
     <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to dashboard
     </a>
@@ -34,30 +49,18 @@
     <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm overflow-hidden"
          data-controller="patient-form"
          data-patient-form-zip-url-value="<%= "/lookups/zip" %>">
-      <div class="px-6 py-4 border-b border-[#EFECE6]">
-        <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Admissions</div>
-        <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= editing ? "Patient intake" : "Register a patient" %></h1>
-        <p class="text-[12px] text-[#6B665F] mt-1"><%= editing ? "Update this patient's intake details. Fill in what you have — nothing here is required." : "An MRN is assigned automatically. Only name and date of birth are required — fill in the rest as you have it." %></p>
-      </div>
-
-      <%# ── Stepper ─────────────────────────────────────────── %>
-      <div class="sticky top-0 z-10 bg-white/95 backdrop-blur px-6 py-3 border-b border-[#EFECE6] lg:hidden">
-        <div class="flex items-center gap-2">
-          <% steps.each_with_index do |title, i| %>
-            <button type="button" data-patient-form-target="tab" data-step-index="<%= i %>"
-                    data-action="patient-form#goTo" data-state="<%= i.zero? ? "current" : "todo" %>"
-                    class="group flex items-center gap-2 flex-1 text-left">
-              <span class="w-6 h-6 shrink-0 rounded-full grid place-items-center text-[12px] font-semibold
-                           data-[state=current]:bg-[#D97757] data-[state=current]:text-white
-                           data-[state=done]:bg-[#2F6F4E] data-[state=done]:text-white
-                           data-[state=todo]:bg-[#EFECE6] data-[state=todo]:text-[#6B665F]"
-                    data-state="<%= i.zero? ? "current" : "todo" %>">
-                <%= i + 1 %>
-              </span>
-              <span class="hidden sm:block text-[12px] font-medium text-[#6B665F] group-data-[state=current]:text-[#1D1C1A]"><%= title %></span>
-              <% unless i == steps.length - 1 %><span class="flex-1 h-px bg-[#EFECE6] hidden sm:block"></span><% end %>
-            </button>
-          <% end %>
+      <div class="px-6 py-4 border-b border-[#EFECE6] flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Admissions</div>
+          <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= editing ? "Patient intake" : "Register a patient" %></h1>
+          <p class="text-[12px] text-[#6B665F] mt-1"><%= editing ? "Update this patient's intake details. Fill in what you have — nothing here is required." : "An MRN is assigned automatically. Only name and date of birth are required — fill in the rest as you have it." %></p>
+        </div>
+        <%# Expand / collapse every section at once. %>
+        <div class="flex items-center gap-1 text-[11px] shrink-0">
+          <button type="button" data-action="patient-form#expandAll"
+                  class="px-2.5 py-1 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:bg-[#FBF9F5]">Expand all</button>
+          <button type="button" data-action="patient-form#collapseAll"
+                  class="px-2.5 py-1 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:bg-[#FBF9F5]">Collapse all</button>
         </div>
       </div>
 
@@ -68,18 +71,19 @@
           </div>
         <% end %>
 
-        <%# On desktop every panel shows at once as a balanced 3-column masonry;
-            below lg the patient-form wizard hides all but the current step. %>
-        <div class="lg:grid lg:grid-cols-3 lg:gap-5 lg:items-start">
+        <div class="space-y-3">
 
-        <%# ══ STEP 1 · Identity & Contact ═══════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 lg:block">
-          <section class="space-y-3">
-            <div class="<%= section %>"><i class="ri-user-3-line text-[#D97757]"></i> Identity</div>
+        <%# ── Identity ─────────────────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" open>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-user-3-line text-[#D97757]"></i> Identity</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <%= f.label :first_name, "First name", class: label %>
-                <%= f.text_field :first_name, required: true, autofocus: true, placeholder: "e.g. Maria", class: input %>
+                <%= f.text_field :first_name, required: true, placeholder: "e.g. Maria", class: input %>
               </div>
               <div>
                 <%= f.label :last_name, "Last name", class: label %>
@@ -110,13 +114,13 @@
               </div>
               <div>
                 <%= f.label :gender, "Gender identity", class: label %>
-                <%= f.select :gender, ["Female", "Male", "Other"], { include_blank: "—" }, class: input %>
+                <%= f.select :gender, ["Female", "Male", "Other"], { include_blank: "Select…" }, class: input %>
               </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               <div>
                 <%= f.label :preferred_language, "Preferred language", class: label %>
-                <%= f.select :preferred_language, Patient::SUPPORTED_LANGUAGES.map { |k| [lang_labels[k] || k.titleize, k] }, { include_blank: "—" }, class: input %>
+                <%= f.select :preferred_language, Patient::SUPPORTED_LANGUAGES.map { |k| [lang_labels[k] || k.titleize, k] }, { include_blank: "Select…" }, class: input %>
               </div>
               <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] text-[13px] text-[#1D1C1A] cursor-pointer">
                 <%= f.check_box :interpreter_needed, class: "rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]" %>
@@ -126,31 +130,37 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label class="<%= label %>">Marital status</label>
-                <%= select_tag "patient[intake][marital_status]", options_for_select(marital_opts, ik.("marital_status")), include_blank: "—", class: input %>
+                <%= select_tag "patient[intake][marital_status]", options_for_select(marital_opts, ik.("marital_status")), include_blank: "Select…", class: input %>
               </div>
               <div>
                 <label class="<%= label %>">Race</label>
-                <%= select_tag "patient[intake][race]", options_for_select(race_opts, ik.("race")), include_blank: "—", class: input %>
+                <%= select_tag "patient[intake][race]", options_for_select(race_opts, ik.("race")), include_blank: "Select…", class: input %>
               </div>
               <div>
                 <label class="<%= label %>">Ethnicity</label>
-                <%= select_tag "patient[intake][ethnicity]", options_for_select(ethnicity_opts, ik.("ethnicity")), include_blank: "—", class: input %>
+                <%= select_tag "patient[intake][ethnicity]", options_for_select(ethnicity_opts, ik.("ethnicity")), include_blank: "Select…", class: input %>
               </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="<%= label %>">Living arrangements</label>
-                <%= text_field_tag "patient[intake][living_arrangements]", ik.("living_arrangements"), placeholder: "e.g. Private home, Assisted living", class: input %>
+                <%= select_tag "patient[intake][living_arrangements]", options_for_select(living_opts, ik.("living_arrangements")), include_blank: "Select…", class: input %>
               </div>
               <div>
                 <label class="<%= label %>">Consent language</label>
-                <%= text_field_tag "patient[intake][consent_language]", ik.("consent_language"), placeholder: "e.g. English", class: input %>
+                <%= select_tag "patient[intake][consent_language]", options_for_select(consent_lang_opts, ik.("consent_language")), include_blank: "Select…", class: input %>
               </div>
             </div>
-          </section>
+          </div>
+        </details>
 
-          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
-            <div class="<%= section %>"><i class="ri-map-pin-line text-[#2F6F4E]"></i> Contact &amp; address</div>
+        <%# ── Contact & address ────────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-map-pin-line text-[#2F6F4E]"></i> Contact &amp; address</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <%= f.label :phone, "Phone", class: label %>
@@ -173,65 +183,16 @@
               </div>
             </div>
             <%= f.hidden_field :branch_id, data: { patient_form_target: "branchId" } %>
-          </section>
-        </div>
+          </div>
+        </details>
 
-        <%# ══ STEP 2 · Caregiver & Support ══════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block">
-          <section class="space-y-3">
-            <div class="<%= section %>"><i class="ri-parent-line text-[#8C6A2F]"></i> Primary caregiver</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><%= f.label :caregiver_name, "Name", class: label %><%= f.text_field :caregiver_name, placeholder: "e.g. John Gonzalez", class: input %></div>
-              <div>
-                <%= f.label :caregiver_relationship, "Relationship", class: label %>
-                <%= f.select :caregiver_relationship, rel_opts, { include_blank: "—" }, class: input %>
-              </div>
-            </div>
-            <div>
-              <%= f.label :caregiver_phone, "Phone", class: label %>
-              <%= f.telephone_field :caregiver_phone, placeholder: "(305) 555-0188", class: input, data: { patient_form_target: "caregiverPhone" } %>
-              <label class="mt-1.5 inline-flex items-center gap-2 text-[12px] text-[#6B665F] cursor-pointer">
-                <input type="checkbox" data-action="change->patient-form#toggleSamePhone"
-                       class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]">
-                Same phone as patient
-              </label>
-            </div>
-          </section>
-
-          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
-            <div class="<%= section %>"><i class="ri-heart-3-line text-[#7A4A8C]"></i> Personal &amp; spiritual</div>
-
-            <label class="inline-flex items-center gap-2 text-[13px] text-[#1D1C1A] cursor-pointer">
-              <input type="checkbox" data-action="change->patient-form#toggleReligion"
-                     class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]"
-                     <%= "checked" if @patient.religion.present? %>>
-              Record a spiritual or religious preference
-            </label>
-            <div data-patient-form-target="religionReveal" class="<%= "hidden" if @patient.religion.blank? %>">
-              <%= f.label :religion, "Religion / spiritual preference", class: label %>
-              <%= f.text_field :religion, placeholder: "Select or type…", list: "religion_options", class: input %>
-              <datalist id="religion_options"><% religion_opts.each do |o| %><option value="<%= o %>"></option><% end %></datalist>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <%= f.label :veteran_status, "Veteran status", class: label %>
-                <%= f.select :veteran_status, vet_opts, { include_blank: "—" }, class: input,
-                      data: { action: "change->patient-form#toggleVeteran" } %>
-              </div>
-              <div data-patient-form-target="veteranReveal" class="<%= "hidden" unless @patient.veteran_status.to_s.match?(/veteran/i) && !@patient.veteran_status.to_s.match?(/not a/i) %>">
-                <%= f.label :veteran_branch, "Branch of service", class: label %>
-                <%= f.select :veteran_branch, svc_opts, { include_blank: "—" }, class: input %>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <%# ══ STEP 3 · Clinical & Insurance ═════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block">
-          <section class="space-y-3">
-            <div class="<%= section %>"><i class="ri-stethoscope-line text-[#2B4A7A]"></i> Diagnosis</div>
-
+        <%# ── Diagnosis ────────────────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-stethoscope-line text-[#2B4A7A]"></i> Diagnosis</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
             <%# Primary diagnosis — predictive ICD-10 lookup, single value %>
             <div data-controller="icd-autocomplete" data-icd-autocomplete-url-value="<%= icd10_lookup_path %>"
                  data-icd-autocomplete-mode-value="single" class="relative">
@@ -256,10 +217,16 @@
               <div data-icd-autocomplete-target="results" data-action="click->icd-autocomplete#choose"
                    class="hidden absolute z-20 left-0 right-0 mt-1 max-h-64 overflow-auto rounded-lg border border-[#E2DED7] bg-white shadow-lg"></div>
             </div>
-          </section>
+          </div>
+        </details>
 
-          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
-            <div class="<%= section %>"><i class="ri-shield-cross-line text-[#C1403A]"></i> Code status &amp; election</div>
+        <%# ── Code status & election ───────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-shield-cross-line text-[#C1403A]"></i> Code status &amp; election</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <%= f.label :code_status, "Code status", class: label %>
@@ -273,24 +240,107 @@
               </div>
               <div>
                 <%= f.label :benefit_period, "Benefit period", class: label %>
-                <%= f.select :benefit_period, Patient.benefit_periods.keys.map { |k| [bp_labels[k], k] }, { include_blank: "—" },
+                <%= f.select :benefit_period, Patient.benefit_periods.keys.map { |k| [bp_labels[k], k] }, { include_blank: "Select…" },
                       class: input, title: bp_tips[@patient.benefit_period] || "Hospice election period" %>
                 <p class="text-[11px] text-[#6B665F] mt-1">Defaults to the initial 90-day election period.</p>
               </div>
             </div>
-          </section>
-
-          <div class="rounded-lg bg-[#FBF9F5] border border-[#EFECE6] px-3 py-2 text-[11px] text-[#6B665F] flex items-start gap-2">
-            <i class="ri-information-line text-[#2B4A7A] mt-0.5"></i>
-            <span>The case-managing RN is assigned automatically when you schedule this patient's admission visit — no need to set it here.</span>
+            <div class="rounded-lg bg-[#FBF9F5] border border-[#EFECE6] px-3 py-2 text-[11px] text-[#6B665F] flex items-start gap-2">
+              <i class="ri-information-line text-[#2B4A7A] mt-0.5"></i>
+              <span>The case-managing RN is assigned automatically when you schedule this patient's admission visit — no need to set it here.</span>
+            </div>
           </div>
-        </div>
+        </details>
 
-        <%# ══ STEP 4 · Providers & coverage ═════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block">
-          <%# Billing / residence contact vs. actual site of care %>
-          <section class="space-y-3">
-            <div class="<%= section %>"><i class="ri-map-pin-user-line text-[#2F6F4E]"></i> Care locations</div>
+        <%# ── Primary caregiver ────────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-parent-line text-[#8C6A2F]"></i> Primary caregiver</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><%= f.label :caregiver_name, "Name", class: label %><%= f.text_field :caregiver_name, placeholder: "e.g. John Gonzalez", class: input %></div>
+              <div>
+                <%= f.label :caregiver_relationship, "Relationship", class: label %>
+                <%= f.select :caregiver_relationship, rel_opts, { include_blank: "Select…" }, class: input %>
+              </div>
+            </div>
+            <div>
+              <%= f.label :caregiver_phone, "Phone", class: label %>
+              <%= f.telephone_field :caregiver_phone, placeholder: "(305) 555-0188", class: input, data: { patient_form_target: "caregiverPhone" } %>
+              <label class="mt-1.5 inline-flex items-center gap-2 text-[12px] text-[#6B665F] cursor-pointer">
+                <input type="checkbox" data-action="change->patient-form#toggleSamePhone"
+                       class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]">
+                Same phone as patient
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <%# ── Attending physician ──────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-user-heart-line text-[#2B4A7A]"></i> Attending physician</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>" data-controller="physician-lookup"
+               data-physician-lookup-url-value="<%= physician_lookup_path %>">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="<%= label %>">Name</label>
+                <%= text_field_tag "patient[intake][attending_physician_name]", ik.("attending_physician_name"),
+                      placeholder: "Dr. … — tab out to resolve NPI", class: input, autocomplete: "off",
+                      data: { physician_lookup_target: "name", action: "blur->physician-lookup#resolve" } %>
+                <p class="text-[11px] mt-1" data-physician-lookup-target="status"></p>
+              </div>
+              <div>
+                <label class="<%= label %>">NPI</label>
+                <%= text_field_tag "patient[intake][attending_physician_npi]", ik.("attending_physician_npi"),
+                      placeholder: "10-digit NPI", class: "#{input} font-mono",
+                      data: { physician_lookup_target: "npi" } %>
+              </div>
+              <div><label class="<%= label %>">Phone</label><%= text_field_tag "patient[intake][attending_physician_phone]", ik.("attending_physician_phone"), placeholder: "Office phone", class: input %></div>
+              <div><label class="<%= label %>">Practice address</label><%= text_field_tag "patient[intake][attending_physician_address]", ik.("attending_physician_address"), placeholder: "Clinic address", class: input %></div>
+            </div>
+          </div>
+        </details>
+
+        <%# ── Insurance verification ───────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-shield-check-line text-[#2F6F4E]"></i> Insurance verification</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
+            <p class="text-[11px] text-[#6B665F] flex items-center gap-1.5">
+              <i class="ri-refresh-line text-[#2B4A7A]"></i> Verification status and policy IDs sync to the coordination queue.
+            </p>
+            <%# One card per payor: verification status (segmented) + policy / ID number. %>
+            <% [["medicare", "Medicare"], ["medicaid", "Medicaid"], ["commercial", "Commercial"]].each do |payor, lbl| %>
+              <div class="rounded-lg border border-[#EFECE6] bg-[#FBF9F5] p-3 space-y-2.5">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                  <span class="text-[13px] font-medium text-[#1D1C1A]"><%= lbl %></span>
+                  <%= render "pre_admit_evals/segmented", name: "patient[intake][insurance_#{payor}_status]", value: ik.("insurance_#{payor}_status"), options: payor_opts %>
+                </div>
+                <div class="flex items-center gap-2 pt-2 border-t border-dashed border-[#E2DED7]">
+                  <label class="text-[10px] uppercase tracking-widest text-[#6B665F] font-medium w-16 flex-shrink-0" for="intake_insurance_<%= payor %>_policy">Policy #</label>
+                  <%= text_field_tag "patient[intake][insurance_#{payor}_policy]", ik.("insurance_#{payor}_policy"),
+                        id: "intake_insurance_#{payor}_policy", placeholder: "Policy / ID number",
+                        class: "flex-1 px-2.5 py-1.5 rounded-lg border border-[#D9D5CD] bg-white focus:border-[#D97757] focus:outline-none text-[13px] font-mono uppercase tracking-wide" %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </details>
+
+        <%# ── Care locations ───────────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-map-pin-user-line text-[#2F6F4E]"></i> Care locations</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
             <div class="rounded-lg border border-[#EFECE6] bg-[#FBF9F5] p-3 space-y-2">
               <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Billing / residence contact</div>
               <%= text_field_tag "patient[intake][billing_contact_name]",    ik.("billing_contact_name"),    placeholder: "Contact name (e.g. daughter)", class: input %>
@@ -303,84 +353,99 @@
               <%= text_field_tag "patient[intake][site_of_care_address]", ik.("site_of_care_address"), placeholder: "Physical address", class: input %>
               <%= text_field_tag "patient[intake][site_of_care_phone]",   ik.("site_of_care_phone"),   placeholder: "Floor / nursing-station phone", class: input %>
             </div>
-          </section>
-
-          <%# Attending physician %>
-          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
-            <div class="<%= section %>"><i class="ri-user-heart-line text-[#2B4A7A]"></i> Attending physician</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label class="<%= label %>">Name</label><%= text_field_tag "patient[intake][attending_physician_name]", ik.("attending_physician_name"), placeholder: "Dr. …", class: input %></div>
-              <div><label class="<%= label %>">NPI</label><%= text_field_tag "patient[intake][attending_physician_npi]", ik.("attending_physician_npi"), placeholder: "10-digit NPI", class: "#{input} font-mono" %></div>
-              <div><label class="<%= label %>">Phone</label><%= text_field_tag "patient[intake][attending_physician_phone]", ik.("attending_physician_phone"), placeholder: "Office phone", class: input %></div>
-              <div><label class="<%= label %>">Practice address</label><%= text_field_tag "patient[intake][attending_physician_address]", ik.("attending_physician_address"), placeholder: "Clinic address", class: input %></div>
-            </div>
-          </section>
-
-          <%# Veteran flags %>
-          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
-            <div class="<%= section %>"><i class="ri-medal-line text-[#8C6A2F]"></i> Veteran details</div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div><label class="<%= label %>">Active duty?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_active_duty]", value: ik.("veteran_active_duty"), options: yesno %></div>
-              <div><label class="<%= label %>">VA eligible?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_va_eligible]", value: ik.("veteran_va_eligible"), options: yesno %></div>
-              <div><label class="<%= label %>">Active VA benefits?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_va_benefits]", value: ik.("veteran_va_benefits"), options: yesno %></div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label class="<%= label %>">Service period 1</label><%= text_field_tag "patient[intake][veteran_service_period_1]", ik.("veteran_service_period_1"), placeholder: "e.g. Vietnam", class: input %></div>
-              <div><label class="<%= label %>">Service period 2</label><%= text_field_tag "patient[intake][veteran_service_period_2]", ik.("veteran_service_period_2"), placeholder: "Optional", class: input %></div>
-            </div>
-          </section>
-
-          <%# Referral source %>
-          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
-            <div class="<%= section %>"><i class="ri-inbox-archive-line text-[#7A4A8C]"></i> Referral source</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label class="<%= label %>">Source name</label><%= text_field_tag "patient[intake][referral_source_name]", ik.("referral_source_name"), placeholder: "Referring institution", class: input %></div>
-              <div><label class="<%= label %>">Intake type</label><%= text_field_tag "patient[intake][referral_intake_type]", ik.("referral_intake_type"), placeholder: "e.g. hospital transfer", class: input %></div>
-              <div><label class="<%= label %>">Referral phone</label><%= text_field_tag "patient[intake][referral_phone]", ik.("referral_phone"), placeholder: "Callback phone", class: input %></div>
-              <div><label class="<%= label %>">Received at</label><%= text_field_tag "patient[intake][referral_received_at]", ik.("referral_received_at"), placeholder: "Date / time received", class: input %></div>
-            </div>
-          </section>
-
-          <%# Insurance verification (Kendra syncs from these) %>
-          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
-            <div class="<%= section %>"><i class="ri-shield-check-line text-[#2F6F4E]"></i> Insurance verification</div>
-            <div class="space-y-2">
-              <% [["insurance_medicare_status", "Medicare"], ["insurance_medicaid_status", "Medicaid"], ["insurance_commercial_status", "Commercial"]].each do |key, lbl| %>
-                <div class="flex items-center justify-between gap-3">
-                  <span class="text-[13px] text-[#1D1C1A] w-24 flex-shrink-0"><%= lbl %></span>
-                  <%= render "pre_admit_evals/segmented", name: "patient[intake][#{key}]", value: ik.(key), options: payor_opts %>
-                </div>
-              <% end %>
-            </div>
-          </section>
-        </div>
-
-        </div><%# /lg:grid %>
-
-        <%# ── Navigation · mobile wizard (below lg) ───────────── %>
-        <div class="pt-5 mt-5 border-t border-[#EFECE6] flex items-center justify-between gap-2 lg:hidden">
-          <button type="button" data-patient-form-target="backBtn" data-action="patient-form#back"
-                  class="invisible inline-flex items-center gap-1 text-[13px] text-[#6B665F] hover:text-[#1D1C1A] px-3 py-2">
-            <i class="ri-arrow-left-line"></i> Back
-          </button>
-          <div class="flex items-center gap-3 sm:gap-5">
-            <%= link_to "Cancel", dashboard_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A] px-2 py-2" %>
-            <button type="button" data-patient-form-target="nextBtn" data-action="patient-form#next"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c56647] text-white text-sm font-medium cursor-pointer">
-              Continue <i class="ri-arrow-right-line"></i>
-            </button>
-            <%= f.submit(editing ? "Save intake" : "Register patient",
-                  data: { patient_form_target: "submitBtn" },
-                  style: "display:none",
-                  class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer") %>
           </div>
-        </div>
+        </details>
 
-        <%# ── Actions · desktop (all sections visible, lg+) ───── %>
-        <div class="hidden lg:flex pt-5 mt-5 border-t border-[#EFECE6] items-center justify-end gap-4">
-          <%= link_to "Cancel", dashboard_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
-          <%= f.submit(editing ? "Save intake" : "Register patient",
-                class: "inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer") %>
+        <%# ── Referral source ──────────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-inbox-archive-line text-[#7A4A8C]"></i> Referral source</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="<%= label %>">Source name</label><%= text_field_tag "patient[intake][referral_source_name]", ik.("referral_source_name"), placeholder: "Referring institution (e.g. Baptist Hospital ER)", class: input %></div>
+              <div>
+                <label class="<%= label %>">Intake type</label>
+                <%# type-or-pick: standardizes the common paths but stays open for custom entries %>
+                <%= text_field_tag "patient[intake][referral_intake_type]", ik.("referral_intake_type"),
+                      list: "referral_intake_types", placeholder: "Select or type…", autocomplete: "off", class: input %>
+                <datalist id="referral_intake_types"><% referral_type_opts.each do |o| %><option value="<%= o %>"></option><% end %></datalist>
+              </div>
+              <div><label class="<%= label %>">Referral phone</label><%= telephone_field_tag "patient[intake][referral_phone]", ik.("referral_phone"), placeholder: "(305) 555-0199", class: input %></div>
+              <div>
+                <label class="<%= label %>">Received at</label>
+                <%# native local date/time picker — avoids MM/DD ambiguity in the timestamp %>
+                <%= datetime_local_field_tag "patient[intake][referral_received_at]", ik.("referral_received_at"), class: input %>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <%# ── Personal & spiritual ─────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-heart-3-line text-[#7A4A8C]"></i> Personal &amp; spiritual</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
+            <label class="inline-flex items-center gap-2 text-[13px] text-[#1D1C1A] cursor-pointer">
+              <input type="checkbox" data-action="change->patient-form#toggleReligion"
+                     class="rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]"
+                     <%= "checked" if @patient.religion.present? %>>
+              Record a spiritual or religious preference
+            </label>
+            <div data-patient-form-target="religionReveal" class="<%= "hidden" if @patient.religion.blank? %>">
+              <%= f.label :religion, "Religion / spiritual preference", class: label %>
+              <%# `| existing` keeps a previously free-typed value from being dropped on save. %>
+              <%= f.select :religion, (religion_opts | Array(@patient.religion.presence)), { include_blank: "Select…" }, class: input %>
+            </div>
+          </div>
+        </details>
+
+        <%# ── Veteran details ──────────────────────────────────── %>
+        <details class="<%= det %>" data-patient-form-target="section" <%= "open" if editing %>>
+          <summary class="<%= summ %>">
+            <span class="<%= section %>"><i class="ri-medal-line text-[#8C6A2F]"></i> Veteran details</span>
+            <i class="<%= chev %>"></i>
+          </summary>
+          <div class="<%= body %>">
+            <%# Master gate: Veteran status. The VA sub-matrix below stays hidden
+                (patient-form#toggleVeteran) unless this indicates a veteran or spouse. %>
+            <div>
+              <%= f.label :veteran_status, "Veteran status", class: label %>
+              <%= f.select :veteran_status, vet_opts, { include_blank: "Select…" }, class: input,
+                    data: { action: "change->patient-form#toggleVeteran" } %>
+            </div>
+            <div data-patient-form-target="veteranReveal" class="space-y-3 pt-1 <%= "hidden" unless @patient.veteran_status.to_s.match?(/veteran/i) && !@patient.veteran_status.to_s.match?(/not a/i) %>">
+              <div>
+                <%= f.label :veteran_branch, "Branch of service", class: label %>
+                <%= f.select :veteran_branch, svc_opts, { include_blank: "Select…" }, class: input %>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label class="<%= label %>">Active duty?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_active_duty]", value: ik.("veteran_active_duty"), options: yesno %></div>
+                <div><label class="<%= label %>">VA eligible?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_va_eligible]", value: ik.("veteran_va_eligible"), options: yesno %></div>
+                <div><label class="<%= label %>">Active VA benefits?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_va_benefits]", value: ik.("veteran_va_benefits"), options: yesno %></div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label class="<%= label %>">Service period 1</label><%= text_field_tag "patient[intake][veteran_service_period_1]", ik.("veteran_service_period_1"), placeholder: "e.g. Vietnam", class: input %></div>
+                <div><label class="<%= label %>">Service period 2</label><%= text_field_tag "patient[intake][veteran_service_period_2]", ik.("veteran_service_period_2"), placeholder: "Optional", class: input %></div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        </div><%# /section stack %>
+
+        <%# ── Actions ──────────────────────────────────────────── %>
+        <div class="pt-5 mt-6 border-t border-[#EFECE6] flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+          <%= link_to "Cancel", dashboard_path,
+                class: "inline-flex items-center justify-center px-5 py-2 rounded-full border border-[#D9D5CD] text-[13px] font-medium text-[#6B665F] hover:bg-[#FBF9F5] hover:text-[#1D1C1A] w-full sm:w-auto" %>
+          <%= button_tag type: "submit",
+                class: "inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer w-full sm:w-auto" do %>
+            <i class="ri-<%= editing ? "save-3-line" : "user-add-line" %>"></i>
+            <%= editing ? "Save intake" : "Register patient" %>
+          <% end %>
         </div>
       <% end %>
     </div>

@@ -19,9 +19,12 @@ class PatientDocument < ApplicationRecord
   KIND_LABELS = {
     "election_of_benefits" => "Election of Benefits",
     "patient_rights"       => "Patient Rights",
+    "general_consent"      => "General Consent",
+    "proxy_poa"            => "Proxy / POA",
     "dnr"                  => "DNR",
     "polst"                => "POLST",
     "advance_directive"    => "Advance Directive",
+    "financial_agreement"  => "Financial Agreement",
     "other"                => "Other"
   }.freeze
 

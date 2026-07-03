@@ -17,6 +17,7 @@ class PatientIntakeTest < ActionDispatch::IntegrationTest
             marital_status: "Widowed", race: "White",
             attending_physician_name: "Dr. Smith", attending_physician_npi: "1578671483",
             veteran_active_duty: "no", insurance_medicare_status: "active",
+            insurance_medicare_policy: "1EG4-TE5-MK73",
             billing_contact_name: "Daughter", not_a_real_key: "x"
           }
         }
@@ -28,6 +29,7 @@ class PatientIntakeTest < ActionDispatch::IntegrationTest
     assert_equal "Widowed",   p.intake["marital_status"]
     assert_equal "Dr. Smith", p.intake["attending_physician_name"]
     assert_equal "active",    p.intake["insurance_medicare_status"]
+    assert_equal "1EG4-TE5-MK73", p.intake["insurance_medicare_policy"]
     assert_not p.intake.key?("not_a_real_key"), "the allowlist drops unknown keys"
   end
 
@@ -51,6 +53,20 @@ class PatientIntakeTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "Patient intake", response.body
     assert_select "form"
+  end
+
+  test "the physician NPI lookup is dormant in test and returns found:false without erroring" do
+    sign_in @coord
+    get physician_lookup_path, params: { name: "Dr. Jane A. Smith, MD", state: "FL", zip: "33139" }
+    assert_response :success
+    assert_equal false, response.parsed_body["found"]
+  end
+
+  test "the physician NPI lookup reports found:false when no surname is given" do
+    sign_in @coord
+    get physician_lookup_path, params: { name: "" }
+    assert_response :success
+    assert_equal false, response.parsed_body["found"]
   end
 
   test "a non-registrar clinician is blocked from the intake form" do
