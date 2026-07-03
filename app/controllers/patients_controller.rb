@@ -17,9 +17,30 @@ class PatientsController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @patient = Patient.new(patient_params)
       @patient.agency = current_user.agency
+      @patient.intake = intake_params
       if @patient.save
         redirect_to patient_path(@patient), status: :see_other,
           notice: "#{@patient.full_name} registered (MRN #{@patient.mrn}). Schedule their admission visit next."
+      else
+        flash.now[:alert] = @patient.errors.full_messages.to_sentence
+        render :new, status: :unprocessable_entity
+      end
+    end
+  end
+
+  def edit
+    ActsAsTenant.with_tenant(current_user.agency) { @patient = Patient.find(params[:id]) }
+    render :new   # the registration view doubles as the edit form (model-driven)
+  end
+
+  def update
+    ActsAsTenant.with_tenant(current_user.agency) do
+      @patient = Patient.find(params[:id])
+      @patient.assign_attributes(patient_params)
+      @patient.intake = @patient.intake.merge(intake_params)
+      if @patient.save
+        redirect_to patient_path(@patient), status: :see_other,
+          notice: "#{@patient.full_name}'s intake updated."
       else
         flash.now[:alert] = @patient.errors.full_messages.to_sentence
         render :new, status: :unprocessable_entity
@@ -120,5 +141,12 @@ class PatientsController < ApplicationController
       :caregiver_name, :caregiver_phone, :caregiver_relationship,
       :status, :code_status, :benefit_period
     )
+  end
+
+  # The loose intake blob fields (see Patient::INTAKE_KEYS). Nested under
+  # patient[intake][...]; the model allowlists + stringifies on assignment.
+  def intake_params
+    raw = params.dig(:patient, :intake)
+    raw.blank? ? {} : raw.permit(*Patient::INTAKE_KEYS).to_h
   end
 end

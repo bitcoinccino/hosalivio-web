@@ -50,6 +50,35 @@ class Patient < ApplicationRecord
   encrypts :preferred_name
   encrypts :pronouns
   encrypts :religion
+  encrypts :intake_extras   # encrypted JSON blob of the loose intake fields
+
+  # --- Intake blob (loose demographic/admin fields captured at admission) ---
+  # Held as encrypted JSON rather than 30 columns. Read via #intake (a hash);
+  # write via #intake= (allowlisted + stringified).
+  INTAKE_KEYS = %w[
+    marital_status race ethnicity living_arrangements availability_of_assistance
+    care_level assigned_team consent_language
+    attending_physician_name attending_physician_npi attending_physician_phone attending_physician_address
+    billing_contact_name billing_contact_address billing_contact_phone
+    site_of_care_name site_of_care_address site_of_care_phone
+    veteran_active_duty veteran_va_eligible veteran_va_benefits veteran_service_period_1 veteran_service_period_2
+    referral_source_name referral_intake_type referral_phone referral_received_at
+    insurance_medicare_status insurance_medicaid_status insurance_commercial_status
+  ].freeze
+
+  # Not memoized: reads straight off intake_extras so it always reflects the
+  # column (survives reload / concurrent writes).
+  def intake
+    JSON.parse(intake_extras.presence || "{}")
+  rescue JSON::ParserError
+    {}
+  end
+
+  def intake=(hash)
+    cleaned = (hash || {}).to_h.stringify_keys.slice(*INTAKE_KEYS)
+                         .transform_values { |v| v.to_s.strip.presence }.compact
+    self.intake_extras = cleaned.to_json
+  end
 
   # --- Enums ---------------------------------------------------------------
   enum :benefit_period, { bp1_90: 0, bp2_90: 1, bp3_60n: 2 }, validate: { allow_nil: true }
