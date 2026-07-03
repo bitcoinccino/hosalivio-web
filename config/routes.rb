@@ -163,6 +163,12 @@ Rails.application.routes.draw do
   # Coordination queue: inbound leads + new registrations, side by side.
   get "coordination", to: "coordination#index", as: :coordination
 
+  # Prior-authorization review (new vertical — see docs/prior-auth-slice.md).
+  # Reviewer opens the grounded per-criterion determination and signs off.
+  resources :prior_auth_reviews, only: [ :show ] do
+    member { post :sign_off }
+  end
+
   # Clinician thumbs-up / thumbs-down on AI-authored notes
   post "notes/:note_id/feedback", to: "note_feedbacks#create", as: :note_feedback
 
