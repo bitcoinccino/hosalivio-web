@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_03_205342) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_03_210641) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -260,6 +260,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_205342) do
     t.index ["patient_id"], name: "index_consent_forms_on_patient_id"
     t.index ["signed_at"], name: "index_consent_forms_on_signed_at"
     t.index ["witnessed_by_id"], name: "index_consent_forms_on_witnessed_by_id"
+  end
+
+  create_table "coverage_policies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "document_id"
+    t.string "payer", default: "medicare", null: false
+    t.string "procedure_hcpcs", default: [], null: false, array: true
+    t.string "source_type", default: "lcd", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.index ["document_id"], name: "index_coverage_policies_on_document_id"
   end
 
   create_table "dme_orders", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -603,6 +616,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_205342) do
     t.index ["patient_id"], name: "index_pharmacy_deliveries_on_patient_id"
   end
 
+  create_table "policy_criteria", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "coverage_policy_id", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "evidence_type"
+    t.string "keywords", default: [], null: false, array: true
+    t.string "label", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["coverage_policy_id", "position"], name: "index_policy_criteria_on_coverage_policy_id_and_position"
+    t.index ["coverage_policy_id"], name: "index_policy_criteria_on_coverage_policy_id"
+  end
+
   create_table "pre_admit_evals", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "agency_id", null: false
     t.datetime "certified_at"
@@ -834,6 +860,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_205342) do
   add_foreign_key "pharmacy_deliveries", "medication_orders"
   add_foreign_key "pharmacy_deliveries", "patients"
   add_foreign_key "pharmacy_deliveries", "users", column: "confirmed_by_id"
+  add_foreign_key "policy_criteria", "coverage_policies"
   add_foreign_key "pre_admit_evals", "agencies"
   add_foreign_key "pre_admit_evals", "patients"
   add_foreign_key "pre_admit_evals", "users", column: "certified_by_id"
