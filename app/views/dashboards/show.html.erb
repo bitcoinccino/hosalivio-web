@@ -86,6 +86,9 @@
         </div>
       </div>
       <div class="flex items-center gap-3">
+        <%= link_to coordination_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
+          <i class="ri-inbox-line"></i> Coordination
+        <% end %>
         <%= link_to admissions_queue_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] font-medium transition" do %>
           <i class="ri-folder-history-line"></i> Admissions queue
         <% end %>
