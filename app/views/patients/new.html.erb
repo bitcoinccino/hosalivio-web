@@ -26,7 +26,7 @@
   editing        = @patient.persisted?
 %>
 <div class="min-h-screen bg-[#FBF9F5] py-8 px-4 md:px-10">
-  <div class="max-w-2xl mx-auto">
+  <div class="max-w-2xl lg:max-w-6xl mx-auto">
     <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
       <i class="ri-arrow-left-line"></i> Back to dashboard
     </a>
@@ -41,7 +41,7 @@
       </div>
 
       <%# ── Stepper ─────────────────────────────────────────── %>
-      <div class="sticky top-0 z-10 bg-white/95 backdrop-blur px-6 py-3 border-b border-[#EFECE6]">
+      <div class="sticky top-0 z-10 bg-white/95 backdrop-blur px-6 py-3 border-b border-[#EFECE6] lg:hidden">
         <div class="flex items-center gap-2">
           <% steps.each_with_index do |title, i| %>
             <button type="button" data-patient-form-target="tab" data-step-index="<%= i %>"
@@ -68,8 +68,12 @@
           </div>
         <% end %>
 
+        <%# On desktop every panel shows at once as a balanced 3-column masonry;
+            below lg the patient-form wizard hides all but the current step. %>
+        <div class="lg:columns-3 lg:gap-6">
+
         <%# ══ STEP 1 · Identity & Contact ═══════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6">
+        <div data-patient-form-target="panel" class="space-y-6 lg:block lg:break-inside-avoid lg:mb-6">
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-user-3-line text-[#D97757]"></i> Identity</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -173,7 +177,7 @@
         </div>
 
         <%# ══ STEP 2 · Caregiver & Support ══════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden">
+        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block lg:break-inside-avoid lg:mb-6">
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-parent-line text-[#8C6A2F]"></i> Primary caregiver</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -224,7 +228,7 @@
         </div>
 
         <%# ══ STEP 3 · Clinical & Insurance ═════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden">
+        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block lg:break-inside-avoid lg:mb-6">
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-stethoscope-line text-[#2B4A7A]"></i> Diagnosis</div>
 
@@ -283,7 +287,7 @@
         </div>
 
         <%# ══ STEP 4 · Providers & coverage ═════════════════════ %>
-        <div data-patient-form-target="panel" class="space-y-6 hidden">
+        <div data-patient-form-target="panel" class="space-y-6 hidden lg:block lg:break-inside-avoid lg:mb-6">
           <%# Billing / residence contact vs. actual site of care %>
           <section class="space-y-3">
             <div class="<%= section %>"><i class="ri-map-pin-user-line text-[#2F6F4E]"></i> Care locations</div>
@@ -351,8 +355,10 @@
           </section>
         </div>
 
-        <%# ── Navigation ─────────────────────────────────────── %>
-        <div class="pt-5 mt-5 border-t border-[#EFECE6] flex items-center justify-between gap-2">
+        </div><%# /lg:columns-3 %>
+
+        <%# ── Navigation · mobile wizard (below lg) ───────────── %>
+        <div class="pt-5 mt-5 border-t border-[#EFECE6] flex items-center justify-between gap-2 lg:hidden">
           <button type="button" data-patient-form-target="backBtn" data-action="patient-form#back"
                   class="invisible inline-flex items-center gap-1 text-[13px] text-[#6B665F] hover:text-[#1D1C1A] px-3 py-2">
             <i class="ri-arrow-left-line"></i> Back
@@ -368,6 +374,13 @@
                   style: "display:none",
                   class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer") %>
           </div>
+        </div>
+
+        <%# ── Actions · desktop (all sections visible, lg+) ───── %>
+        <div class="hidden lg:flex pt-5 mt-5 border-t border-[#EFECE6] items-center justify-end gap-4">
+          <%= link_to "Cancel", dashboard_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+          <%= f.submit(editing ? "Save intake" : "Register patient",
+                class: "inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer") %>
         </div>
       <% end %>
     </div>
