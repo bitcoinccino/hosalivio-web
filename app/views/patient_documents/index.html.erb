@@ -3,17 +3,31 @@
   # Grouped kind options — built only from the real KIND_LABELS so nothing here
   # can submit a value the model doesn't know. proxy/financial etc. don't exist.
   kind_groups = [
-    ["Consents",   [["Election of Benefits", "election_of_benefits"], ["Patient Rights", "patient_rights"]]],
-    ["Directives", [["DNR", "dnr"], ["POLST", "polst"], ["Advance Directive", "advance_directive"]]],
-    ["Other",      [["Other", "other"]]]
+    ["Patient Consents", [
+      ["Consent: Hospice Election of Benefits",   "election_of_benefits"],
+      ["Consent: Patient Rights Acknowledgment",  "patient_rights"],
+      ["Consent: General Medical Release",        "general_consent"]
+    ]],
+    ["Legal Directives & Proxies", [
+      ["Proxy / Power of Attorney (POA)", "proxy_poa"],
+      ["DNR Directive",                   "dnr"],
+      ["POLST Form",                      "polst"],
+      ["Advance Directive",               "advance_directive"]
+    ]],
+    ["Financial & Operational", [
+      ["Financial Agreement / Billing", "financial_agreement"],
+      ["Other / Miscellaneous",         "other"]
+    ]]
   ]
   # Badge palette per kind (app colors, [bg, fg]).
   kind_badge = ->(kind) do
     case kind
-    when "election_of_benefits", "patient_rights" then ["#E6F0EA", "#2F6F4E"]
-    when "dnr"                                     then ["#FBEAE8", "#C1403A"]
-    when "polst", "advance_directive"             then ["#F3ECDD", "#8C6A2F"]
-    else                                                ["#F0F0EE", "#6B665F"]
+    when "election_of_benefits", "patient_rights", "general_consent" then ["#E6F0EA", "#2F6F4E"]
+    when "proxy_poa"                                                  then ["#FBEEE0", "#B4692A"]
+    when "dnr"                                                        then ["#FBEAE8", "#C1403A"]
+    when "polst", "advance_directive"                                then ["#F3ECDD", "#8C6A2F"]
+    when "financial_agreement"                                       then ["#F0F4FA", "#2B4A7A"]
+    else                                                                  ["#F0F0EE", "#6B665F"]
     end
   end
   input = "w-full text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]"
