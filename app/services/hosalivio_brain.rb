@@ -676,6 +676,56 @@ class HosalivioBrain
     k.to_s.length > 10 && !k.to_s.match?(/(your[_-]?api[_-]?key|placeholder)/i)
   end
 
+  # Generic JSON completion over the provider chain (claude → openai →
+  # openrouter). Returns a parsed Ruby object (Hash/Array) or nil — nil when no
+  # key is set (dormant in test/CI) or on any failure. Callers must tolerate nil.
+  def self.complete_json(system:, user:, max_tokens: 1500)
+    raw =
+      if valid_key?(ENV["ANTHROPIC_API_KEY"])
+        claude_json(system: system, user: user, max_tokens: max_tokens)
+      elsif valid_key?(ENV["OPENAI_API_KEY"])
+        oai_chat(provider: :openai, system: system, user: user, max_tokens: max_tokens, json: true)
+      elsif valid_key?(ENV["OPENROUTER_API_KEY"])
+        oai_chat(provider: :openrouter, system: system, user: user, max_tokens: max_tokens, json: true)
+      end
+    extract_json(raw)
+  rescue => e
+    Rails.logger.warn("[HosalivioBrain.complete_json] #{e.class}: #{e.message}")
+    nil
+  end
+
+  # Claude messages call returning the raw text (Claude has no response_format —
+  # JSON is prompted; extract_json tolerates fences / preamble).
+  def self.claude_json(system:, user:, max_tokens: 1500)
+    uri = URI(CLAUDE_URL)
+    req = Net::HTTP::Post.new(uri)
+    req["content-type"]      = "application/json"
+    req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
+    req["anthropic-version"] = CLAUDE_VERSION
+    req.body = { model: CLAUDE_MODEL, max_tokens: max_tokens, system: system,
+                 messages: [ { role: "user", content: user } ] }.to_json
+    resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: 45) { |h| h.request(req) }
+    return nil unless resp.code.to_i == 200
+    JSON.parse(resp.body).dig("content", 0, "text").to_s
+  end
+
+  # Lenient JSON extraction: parse as-is, else pull the first {...} / [...] block
+  # out of fenced or prose-wrapped model output. Returns Hash/Array or nil. Pure.
+  def self.extract_json(text)
+    s = text.to_s.strip
+    return nil if s.empty?
+    s = s.sub(/\A```(?:json)?\s*/mi, "").sub(/\s*```\z/m, "").strip
+    JSON.parse(s)
+  rescue JSON::ParserError
+    if (m = s.match(/(\{.*\}|\[.*\])/m))
+      begin
+        JSON.parse(m[1])
+      rescue JSON::ParserError
+        nil
+      end
+    end
+  end
+
   # ── Shared parsing + prompts ───────────────────────────────────────
 
   def parse(text)
