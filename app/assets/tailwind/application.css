@@ -12,3 +12,43 @@
   animation: voice-wave 1.2s infinite ease-in-out;
   transform-origin: center;
 }
+
+/* ── Native <dialog> modals — one mobile-friendly shell for all of them ──
+   These rules are intentionally un-layered (they sit after `@import
+   "tailwindcss"`), so they override the inline Tailwind utility classes on
+   each <dialog> (m-auto, w-[92vw], rounded-2xl, …) without needing !important
+   or higher specificity. Applies to every eval / chat / family modal at once.
+
+   Desktop: centered card, but capped in height with an internal scroll so a
+   tall form can never clip off the top of the viewport (the old bug).
+   Mobile:  a bottom sheet — full-width, docked to the bottom edge, rounded
+   only at the top, with a gentle slide-up. */
+dialog[open] {
+  max-height: 92vh;
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 640px) {
+  @keyframes sheet-up {
+    from { transform: translateY(100%); opacity: 0.4; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  dialog[open] {
+    width: 100%;
+    max-width: 100%;
+    margin: auto 0 0 0;          /* dock to the bottom of the viewport */
+    max-height: 90dvh;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    animation: sheet-up 0.22s ease-out;
+  }
+  /* Square off the bottom of the visible card so it sits flush with the edge. */
+  dialog[open] > * {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
