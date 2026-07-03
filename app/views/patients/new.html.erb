@@ -16,7 +16,14 @@
   religion_opts = ["Catholic", "Baptist", "Methodist", "Lutheran", "Presbyterian", "Pentecostal", "Episcopalian",
                    "Christian (other)", "Jewish", "Muslim", "Hindu", "Buddhist", "Jehovah's Witness",
                    "Latter-day Saint", "Seventh-day Adventist", "None", "Other"]
-  steps       = ["Identity & Contact", "Caregiver & Support", "Clinical & Insurance"]
+  steps       = ["Identity & Contact", "Caregiver & Support", "Clinical & Insurance", "Providers & coverage"]
+  marital_opts   = ["Single", "Married", "Partnered", "Widowed", "Divorced", "Separated", "Unknown"]
+  race_opts      = ["White", "Black or African American", "Asian", "American Indian / Alaska Native", "Native Hawaiian / Pacific Islander", "Other", "Declined"]
+  ethnicity_opts = ["Hispanic or Latino", "Not Hispanic or Latino", "Declined"]
+  yesno          = [ { value: "yes", label: "Yes" }, { value: "no", label: "No" } ]
+  payor_opts     = [ { value: "unverified", label: "Unverified" }, { value: "active", label: "Active" }, { value: "pending", label: "Pending" }, { value: "none", label: "None" } ]
+  ik             = ->(key) { @patient.intake[key] }   # intake blob reader
+  editing        = @patient.persisted?
 %>
 <div class="min-h-screen bg-[#FBF9F5] py-8 px-4 md:px-10">
   <div class="max-w-2xl mx-auto">
@@ -29,8 +36,8 @@
          data-patient-form-zip-url-value="<%= "/lookups/zip" %>">
       <div class="px-6 py-4 border-b border-[#EFECE6]">
         <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Admissions</div>
-        <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight">Register a patient</h1>
-        <p class="text-[12px] text-[#6B665F] mt-1">An MRN is assigned automatically. Only name and date of birth are required — fill in the rest as you have it.</p>
+        <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= editing ? "Patient intake" : "Register a patient" %></h1>
+        <p class="text-[12px] text-[#6B665F] mt-1"><%= editing ? "Update this patient's intake details. Fill in what you have — nothing here is required." : "An MRN is assigned automatically. Only name and date of birth are required — fill in the rest as you have it." %></p>
       </div>
 
       <%# ── Stepper ─────────────────────────────────────────── %>
@@ -54,7 +61,7 @@
         </div>
       </div>
 
-      <%= form_with model: @patient, url: patients_path, method: :post, html: { class: "p-6" } do |f| %>
+      <%= form_with model: @patient, html: { class: "p-6" } do |f| %>
         <% if @patient.errors.any? %>
           <div class="rounded-lg bg-[#FFF3EC] border border-[#C1403A] px-3 py-2 text-[12px] text-[#C1403A] mb-4">
             <%= @patient.errors.full_messages.to_sentence %>
@@ -111,6 +118,30 @@
                 <%= f.check_box :interpreter_needed, class: "rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]" %>
                 Interpreter needed
               </label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="<%= label %>">Marital status</label>
+                <%= select_tag "patient[intake][marital_status]", options_for_select(marital_opts, ik.("marital_status")), include_blank: "—", class: input %>
+              </div>
+              <div>
+                <label class="<%= label %>">Race</label>
+                <%= select_tag "patient[intake][race]", options_for_select(race_opts, ik.("race")), include_blank: "—", class: input %>
+              </div>
+              <div>
+                <label class="<%= label %>">Ethnicity</label>
+                <%= select_tag "patient[intake][ethnicity]", options_for_select(ethnicity_opts, ik.("ethnicity")), include_blank: "—", class: input %>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="<%= label %>">Living arrangements</label>
+                <%= text_field_tag "patient[intake][living_arrangements]", ik.("living_arrangements"), placeholder: "e.g. Private home, Assisted living", class: input %>
+              </div>
+              <div>
+                <label class="<%= label %>">Consent language</label>
+                <%= text_field_tag "patient[intake][consent_language]", ik.("consent_language"), placeholder: "e.g. English", class: input %>
+              </div>
             </div>
           </section>
 
@@ -251,6 +282,75 @@
           </div>
         </div>
 
+        <%# ══ STEP 4 · Providers & coverage ═════════════════════ %>
+        <div data-patient-form-target="panel" class="space-y-6 hidden">
+          <%# Billing / residence contact vs. actual site of care %>
+          <section class="space-y-3">
+            <div class="<%= section %>"><i class="ri-map-pin-user-line text-[#2F6F4E]"></i> Care locations</div>
+            <div class="rounded-lg border border-[#EFECE6] bg-[#FBF9F5] p-3 space-y-2">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Billing / residence contact</div>
+              <%= text_field_tag "patient[intake][billing_contact_name]",    ik.("billing_contact_name"),    placeholder: "Contact name (e.g. daughter)", class: input %>
+              <%= text_field_tag "patient[intake][billing_contact_address]", ik.("billing_contact_address"), placeholder: "Street, city, state, ZIP", class: input %>
+              <%= text_field_tag "patient[intake][billing_contact_phone]",   ik.("billing_contact_phone"),   placeholder: "Phone", class: input %>
+            </div>
+            <div class="rounded-lg border border-[#EFECE6] bg-[#FBF9F5] p-3 space-y-2">
+              <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Actual site of care</div>
+              <%= text_field_tag "patient[intake][site_of_care_name]",    ik.("site_of_care_name"),    placeholder: "Facility / unit (e.g. inpatient room)", class: input %>
+              <%= text_field_tag "patient[intake][site_of_care_address]", ik.("site_of_care_address"), placeholder: "Physical address", class: input %>
+              <%= text_field_tag "patient[intake][site_of_care_phone]",   ik.("site_of_care_phone"),   placeholder: "Floor / nursing-station phone", class: input %>
+            </div>
+          </section>
+
+          <%# Attending physician %>
+          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
+            <div class="<%= section %>"><i class="ri-user-heart-line text-[#2B4A7A]"></i> Attending physician</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="<%= label %>">Name</label><%= text_field_tag "patient[intake][attending_physician_name]", ik.("attending_physician_name"), placeholder: "Dr. …", class: input %></div>
+              <div><label class="<%= label %>">NPI</label><%= text_field_tag "patient[intake][attending_physician_npi]", ik.("attending_physician_npi"), placeholder: "10-digit NPI", class: "#{input} font-mono" %></div>
+              <div><label class="<%= label %>">Phone</label><%= text_field_tag "patient[intake][attending_physician_phone]", ik.("attending_physician_phone"), placeholder: "Office phone", class: input %></div>
+              <div><label class="<%= label %>">Practice address</label><%= text_field_tag "patient[intake][attending_physician_address]", ik.("attending_physician_address"), placeholder: "Clinic address", class: input %></div>
+            </div>
+          </section>
+
+          <%# Veteran flags %>
+          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
+            <div class="<%= section %>"><i class="ri-medal-line text-[#8C6A2F]"></i> Veteran details</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div><label class="<%= label %>">Active duty?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_active_duty]", value: ik.("veteran_active_duty"), options: yesno %></div>
+              <div><label class="<%= label %>">VA eligible?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_va_eligible]", value: ik.("veteran_va_eligible"), options: yesno %></div>
+              <div><label class="<%= label %>">Active VA benefits?</label><%= render "pre_admit_evals/segmented", name: "patient[intake][veteran_va_benefits]", value: ik.("veteran_va_benefits"), options: yesno %></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="<%= label %>">Service period 1</label><%= text_field_tag "patient[intake][veteran_service_period_1]", ik.("veteran_service_period_1"), placeholder: "e.g. Vietnam", class: input %></div>
+              <div><label class="<%= label %>">Service period 2</label><%= text_field_tag "patient[intake][veteran_service_period_2]", ik.("veteran_service_period_2"), placeholder: "Optional", class: input %></div>
+            </div>
+          </section>
+
+          <%# Referral source %>
+          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
+            <div class="<%= section %>"><i class="ri-inbox-archive-line text-[#7A4A8C]"></i> Referral source</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="<%= label %>">Source name</label><%= text_field_tag "patient[intake][referral_source_name]", ik.("referral_source_name"), placeholder: "Referring institution", class: input %></div>
+              <div><label class="<%= label %>">Intake type</label><%= text_field_tag "patient[intake][referral_intake_type]", ik.("referral_intake_type"), placeholder: "e.g. hospital transfer", class: input %></div>
+              <div><label class="<%= label %>">Referral phone</label><%= text_field_tag "patient[intake][referral_phone]", ik.("referral_phone"), placeholder: "Callback phone", class: input %></div>
+              <div><label class="<%= label %>">Received at</label><%= text_field_tag "patient[intake][referral_received_at]", ik.("referral_received_at"), placeholder: "Date / time received", class: input %></div>
+            </div>
+          </section>
+
+          <%# Insurance verification (Kendra syncs from these) %>
+          <section class="space-y-3 pt-5 border-t border-[#EFECE6]">
+            <div class="<%= section %>"><i class="ri-shield-check-line text-[#2F6F4E]"></i> Insurance verification</div>
+            <div class="space-y-2">
+              <% [["insurance_medicare_status", "Medicare"], ["insurance_medicaid_status", "Medicaid"], ["insurance_commercial_status", "Commercial"]].each do |key, lbl| %>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-[13px] text-[#1D1C1A] w-24 flex-shrink-0"><%= lbl %></span>
+                  <%= render "pre_admit_evals/segmented", name: "patient[intake][#{key}]", value: ik.(key), options: payor_opts %>
+                </div>
+              <% end %>
+            </div>
+          </section>
+        </div>
+
         <%# ── Navigation ─────────────────────────────────────── %>
         <div class="pt-5 mt-5 border-t border-[#EFECE6] flex items-center justify-between gap-2">
           <button type="button" data-patient-form-target="backBtn" data-action="patient-form#back"
@@ -263,10 +363,10 @@
                     class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c56647] text-white text-sm font-medium cursor-pointer">
               Continue <i class="ri-arrow-right-line"></i>
             </button>
-            <%= f.submit "Register patient",
+            <%= f.submit(editing ? "Save intake" : "Register patient",
                   data: { patient_form_target: "submitBtn" },
                   style: "display:none",
-                  class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer" %>
+                  class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white text-sm font-medium cursor-pointer") %>
           </div>
         </div>
       <% end %>

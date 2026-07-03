@@ -70,7 +70,7 @@ Rails.application.routes.draw do
   # Patient registration (admin/DON/admissions) + per-patient nested resources.
   # Defined before the patients/:id show route so /patients/new isn't
   # swallowed by the :id segment.
-  resources :patients, only: [ :new, :create ] do
+  resources :patients, only: [ :new, :create, :edit ] do
     member do
       patch :reassign_rn      # legacy single-RN reassign (kept for back-compat)
       patch :reassign_member  # admin/DON/admissions: assign admission RN / primary RN / LPN
@@ -93,6 +93,7 @@ Rails.application.routes.draw do
   get "lookups/icd10",   to: "lookups#icd10", as: :icd10_lookup
   get "lookups/zip/:zip", to: "lookups#zip",  as: :zip_lookup, constraints: { zip: /\d{5}/ }
   get "patients/:id",      to: "patient_chats#show", as: :patient
+  patch "patients/:id",    to: "patients#update"   # intake edit (reuses patient_path)
   get "patients/:id/chat", to: "patient_chats#show", as: :patient_chat  # alias
   # Live right-rail refresh — fetched by the chart when its ActionCable
   # channel signals a clinical-context change (vitals, visits, meds, eval…).
