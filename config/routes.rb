@@ -92,6 +92,9 @@ Rails.application.routes.draw do
   # ZIP -> city/state/county with suggested branch). Global reference data.
   get "lookups/icd10",   to: "lookups#icd10", as: :icd10_lookup
   get "lookups/zip/:zip", to: "lookups#zip",  as: :zip_lookup, constraints: { zip: /\d{5}/ }
+  # Attending-physician NPI resolve (Coding::Npi / NPPES). Dormant unless
+  # NPI_LIVE_LOOKUP is set; returns { found: false } otherwise.
+  get "lookups/physician", to: "lookups#physician", as: :physician_lookup
   get "patients/:id",      to: "patient_chats#show", as: :patient
   patch "patients/:id",    to: "patients#update"   # intake edit (reuses patient_path)
   get "patients/:id/chat", to: "patient_chats#show", as: :patient_chat  # alias
@@ -112,6 +115,8 @@ Rails.application.routes.draw do
       post :sync_to_eval
       post :discard
       post :route_to_md
+      post :apply_intake_suggestions
+      post :dismiss_intake_suggestions
       post :sign_note
       post :regenerate_summary
     end

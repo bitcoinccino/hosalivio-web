@@ -64,6 +64,7 @@ class Patient < ApplicationRecord
     veteran_active_duty veteran_va_eligible veteran_va_benefits veteran_service_period_1 veteran_service_period_2
     referral_source_name referral_intake_type referral_phone referral_received_at
     insurance_medicare_status insurance_medicaid_status insurance_commercial_status
+    insurance_medicare_policy insurance_medicaid_policy insurance_commercial_policy
   ].freeze
 
   # Not memoized: reads straight off intake_extras so it always reflects the

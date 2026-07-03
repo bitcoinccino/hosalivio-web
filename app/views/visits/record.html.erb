@@ -42,7 +42,28 @@
        fam = User.where(patient_id: @visit.patient_id, family_access: true).order(:full_name).limit(2)
        fam.each { |f| speaker_roster << f.full_name.to_s.split.first if f.full_name.present? }
      %>
-     data-voice-visit-speaker-roster-value="<%= speaker_roster.compact.uniq.to_json %>">
+     data-voice-visit-speaker-roster-value="<%= speaker_roster.compact.uniq.to_json %>"
+     data-voice-visit-generating-messages-value="<%= [ "Saving the recording…", "Polishing the note…", "Generating the pre-admit eval…", "Reading intake details…", "Almost there…" ].to_json %>">
+
+  <%# Generation overlay — shown after Stop while the recording is uploaded and
+      the eval + intake are generated on the way to the review page. Torn down
+      when the browser navigates to the edit page. %>
+  <div data-voice-visit-target="generatingOverlay"
+       class="hidden fixed inset-0 z-50 bg-[#1D1C1A]/80 backdrop-blur-sm items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-[#EFECE6] max-w-sm w-full p-8 text-center space-y-5">
+      <div class="flex justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#F0E6DF] border-t-[#D97757]"></div>
+      </div>
+      <div class="space-y-1.5">
+        <h3 class="text-[11px] font-bold uppercase tracking-widest text-[#1D1C1A]">Processing your recording</h3>
+        <p class="text-[13px] text-[#2F6F4E] font-medium min-h-[2.5rem] flex items-center justify-center"
+           data-voice-visit-target="generatingMessage">Saving the recording…</p>
+      </div>
+      <p class="text-[11px] text-[#6B665F] leading-normal">
+        HosAlivio is turning your dictation into the pre-admit eval and pulling out intake details. Please keep this page open.
+      </p>
+    </div>
+  </div>
 
   <%# Top bar: patient name + cancel link %>
   <header class="flex items-center justify-between px-6 py-5">
@@ -153,7 +174,7 @@
       <div class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
         <i class="ri-group-line text-[#D97757] text-[28px]"></i>
       </div>
-      <h2 class="font-serif text-[24px] leading-tight">Who are you interviewing?</h2>
+      <h2 class="font-serif text-[24px] leading-tight">Who's giving the information?</h2>
       <p class="text-[13px] text-white/60 mt-2">We label the transcript and chart with the source.</p>
 
       <%
@@ -164,6 +185,7 @@
       %>
       <div class="mt-6 space-y-3 text-left">
         <% [
+          { who: "solo",    label: "Just me",            sub: "Dictating my own assessment — no speaker tags",           icon: "ri-user-voice-line" },
           { who: "patient", label: "The patient",        sub: "#{patient_first} is the primary source",                 icon: "ri-user-3-line" },
           { who: "family",  label: "The family",         sub: "A family member or caregiver is speaking for the patient", icon: "ri-parent-line" },
           { who: "both",    label: "Patient and family", sub: "Both are present and contributing",                       icon: "ri-group-line" }
@@ -306,17 +328,6 @@
         </button>
       </div>
 
-      <%# Solo dictation toggle — when on, the live transcript renders
-          without speaker tags (single continuous narrative). RN flips
-          this on for "driving home, narrating alone" cases. %>
-      <button type="button"
-              data-action="click->voice-visit#toggleSolo"
-              data-voice-visit-target="soloButton"
-              title="Solo dictation (no speaker tags)"
-              class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-[12px] text-white/90 inline-flex items-center gap-1.5 transition active:scale-95">
-        <i class="ri-user-voice-line text-[#D97757]"></i> Solo
-      </button>
-
       <div class="relative">
         <button type="button"
                 data-action="click->voice-visit#toggleLangMenu"
@@ -368,7 +379,7 @@
           + final results. Copy stays mode-agnostic because the
           speaker-tag pills only appear in Web Speech fallback —
           Deepgram auto-tags via diarization. %>
-      <span class="text-white/40 not-italic">Recording the full visit. Your words and the patient's words will appear here as you speak.</span>
+      <span class="text-white/40 not-italic">Your words will appear here as you speak.</span>
     </div>
 
     <div class="text-[11px] text-white/40 text-center">

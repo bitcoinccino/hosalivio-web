@@ -5,6 +5,22 @@ class Visit < ApplicationRecord
   include BroadcastsPatientContext
 
   encrypts :narrative
+  # Intake fields the admission-visit narrative surfaced, staged for the RN to
+  # review and accept into the patient record (see Intake::NarrativeExtractor).
+  # Encrypted JSON string blob — same treatment as the narrative it derives from.
+  encrypts :intake_suggestions
+
+  # Parsed staged suggestions: { "field" => "suggested value" }. Empty when none.
+  def suggested_intake
+    JSON.parse(intake_suggestions.presence || "{}")
+  rescue JSON::ParserError
+    {}
+  end
+
+  # Assign a hash of suggestions (or nil/{} to clear the staging blob).
+  def suggested_intake=(hash)
+    self.intake_suggestions = hash.presence && hash.to_json
+  end
 
   # Optional bedside audio capture — raw recording of the visit for the
   # chart (patient breath sounds, family voice, exact phrasing of goals
@@ -94,8 +110,8 @@ class Visit < ApplicationRecord
   end
 
   # Who the RN interviewed during the visit (captured in the record wizard).
-  INTERVIEWEE_LABELS = { "patient" => "the patient", "family" => "the family",
-                         "both" => "patient and family" }.freeze
+  INTERVIEWEE_LABELS = { "solo" => "solo dictation", "patient" => "the patient",
+                         "family" => "the family", "both" => "patient and family" }.freeze
   def interviewee_display
     INTERVIEWEE_LABELS[interviewee.to_s] || interviewee.presence
   end
