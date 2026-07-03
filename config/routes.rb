@@ -165,7 +165,7 @@ Rails.application.routes.draw do
 
   # Prior-authorization review (new vertical — see docs/prior-auth-slice.md).
   # Reviewer opens the grounded per-criterion determination and signs off.
-  resources :prior_auth_reviews, only: [ :show ] do
+  resources :prior_auth_reviews, only: [ :new, :create, :show ] do
     member { post :sign_off }
   end
 

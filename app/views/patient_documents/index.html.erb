@@ -46,9 +46,17 @@
           <% if @patient.mrn.present? %>MRN <%= @patient.mrn %> · <% end %>signed forms, paperwork, photos
         </div>
       </div>
-      <span class="text-[10px] text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-2.5 py-1 whitespace-nowrap">
-        <i class="ri-lock-line text-[#2F6F4E]"></i> Clinicians only · 25 MB max
-      </span>
+      <div class="flex items-center gap-2 flex-wrap">
+        <% if (current_user.role_names & %w[admin don insurance billing]).any? %>
+          <%= link_to new_prior_auth_review_path(patient_id: @patient.id),
+                class: "text-[11px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] inline-flex items-center gap-1.5 font-medium whitespace-nowrap" do %>
+            <i class="ri-scales-3-line"></i> Prior-auth review
+          <% end %>
+        <% end %>
+        <span class="text-[10px] text-[#6B665F] bg-white border border-[#EFECE6] rounded-full px-2.5 py-1 whitespace-nowrap">
+          <i class="ri-lock-line text-[#2F6F4E]"></i> Clinicians only · 25 MB max
+        </span>
+      </div>
     </div>
 
     <%# ── Upload ─────────────────────────────────────────────── %>
