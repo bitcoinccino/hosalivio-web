@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_03_210641) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_03_213811) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -273,6 +273,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_210641) do
     t.datetime "updated_at", null: false
     t.string "url"
     t.index ["document_id"], name: "index_coverage_policies_on_document_id"
+  end
+
+  create_table "criterion_results", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "evidence_json"
+    t.uuid "policy_criterion_id", null: false
+    t.uuid "prior_auth_review_id", null: false
+    t.text "rationale"
+    t.datetime "updated_at", null: false
+    t.integer "verdict", default: 0, null: false
+    t.boolean "verified", default: false, null: false
+    t.index ["policy_criterion_id"], name: "index_criterion_results_on_policy_criterion_id"
+    t.index ["prior_auth_review_id"], name: "index_criterion_results_on_prior_auth_review_id"
   end
 
   create_table "dme_orders", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -662,6 +675,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_210641) do
     t.index ["visit_id"], name: "index_pre_admit_evals_on_visit_id"
   end
 
+  create_table "prior_auth_reviews", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.uuid "coverage_policy_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "patient_id", null: false
+    t.string "procedure_hcpcs"
+    t.string "provider_npi"
+    t.integer "recommendation", default: 0, null: false
+    t.text "recommendation_note"
+    t.uuid "reviewed_by_id"
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id"], name: "index_prior_auth_reviews_on_agency_id"
+    t.index ["coverage_policy_id"], name: "index_prior_auth_reviews_on_coverage_policy_id"
+    t.index ["patient_id"], name: "index_prior_auth_reviews_on_patient_id"
+    t.index ["reviewed_by_id"], name: "index_prior_auth_reviews_on_reviewed_by_id"
+  end
+
   create_table "roles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "label", null: false
@@ -818,6 +849,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_210641) do
   add_foreign_key "cc_vitals_records", "cc_interval_charts"
   add_foreign_key "consent_forms", "agencies"
   add_foreign_key "consent_forms", "patients"
+  add_foreign_key "criterion_results", "policy_criteria", column: "policy_criterion_id"
+  add_foreign_key "criterion_results", "prior_auth_reviews"
   add_foreign_key "dme_orders", "agencies"
   add_foreign_key "dme_orders", "patients"
   add_foreign_key "document_texts", "agencies"
@@ -866,6 +899,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_210641) do
   add_foreign_key "pre_admit_evals", "users", column: "certified_by_id"
   add_foreign_key "pre_admit_evals", "users", column: "evaluator_id"
   add_foreign_key "pre_admit_evals", "visits"
+  add_foreign_key "prior_auth_reviews", "agencies"
+  add_foreign_key "prior_auth_reviews", "coverage_policies"
+  add_foreign_key "prior_auth_reviews", "patients"
+  add_foreign_key "prior_auth_reviews", "users", column: "reviewed_by_id"
   add_foreign_key "signatures", "users"
   add_foreign_key "user_roles", "agencies"
   add_foreign_key "user_roles", "roles"
