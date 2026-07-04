@@ -67,6 +67,10 @@ Rails.application.routes.draw do
   # Internal dashboards (auth required — gated in DashboardsController)
   get "dashboard", to: "dashboards#show", as: :dashboard
 
+  # Agency-level "Ask HosAlivio" — manager oversight questions, answered
+  # ephemerally into a turbo-frame on the Mission Stage dashboard.
+  post "assistant/ask", to: "admin_assistant#ask", as: :admin_assistant_ask
+
   # Patient registration (admin/DON/admissions) + per-patient nested resources.
   # Defined before the patients/:id show route so /patients/new isn't
   # swallowed by the :id segment.
