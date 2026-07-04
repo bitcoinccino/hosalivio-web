@@ -386,15 +386,68 @@
         <% end %>
       </div>
 
+      <%#
+        Chronological, day-grouped stream (oldest → newest, newest at the
+        bottom, like the patient chat). Everything before the latest day
+        collapses behind a "Show earlier messages" toggle; the latest day
+        stays open and is where live events append. Date-divider pills mark
+        each day; the current day's divider is tagged data-today-divider so
+        the live WebSocket insert can find (or create) it.
+      %>
       <div id="event-feed" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
         <% if @stories.empty? %>
-          <div class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
+          <div data-feed-empty class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
             <p class="max-w-xs">No agent activity yet. This stream updates live as your team and HosAlivio work across every patient.</p>
           </div>
         <% else %>
-          <% @stories.each do |story| %>
-            <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+          <%
+            tz          = Time.zone
+            stories_asc = @stories.sort_by { |s| s.event.happened_at }
+            latest_date = stories_asc.last.event.happened_at.in_time_zone(tz).to_date
+            earlier, recent = stories_asc.partition { |s| s.event.happened_at.in_time_zone(tz).to_date < latest_date }
+          %>
+
+          <%# Everything before the latest day, hidden until expanded. %>
+          <% if earlier.any? %>
+            <details class="group/earlier peer/earlier">
+              <summary class="list-none cursor-pointer flex items-center justify-center [&::-webkit-details-marker]:hidden">
+                <span class="inline-flex items-center gap-1 px-3 py-1 text-[11px] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full hover:bg-[#EFECE6] transition">
+                  <i class="ri-arrow-up-s-line group-open/earlier:rotate-180 transition-transform"></i>
+                  <span class="group-open/earlier:hidden">Show earlier messages</span>
+                  <span class="hidden group-open/earlier:inline">Back to recent activity</span>
+                </span>
+              </summary>
+              <div class="space-y-4 mt-4">
+                <% last_date = nil %>
+                <% earlier.each do |story| %>
+                  <% d = story.event.happened_at.in_time_zone(tz).to_date %>
+                  <% if d != last_date %>
+                    <div class="flex items-center justify-center pt-2 pb-1">
+                      <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
+                    </div>
+                    <% last_date = d %>
+                  <% end %>
+                  <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+                <% end %>
+              </div>
+            </details>
           <% end %>
+
+          <%# The latest day — live events append here. Hidden while the
+              earlier section is expanded (peer-open) for a focused history. %>
+          <div data-feed-recent class="space-y-4 peer-open/earlier:hidden">
+            <% last_date = nil %>
+            <% recent.each do |story| %>
+              <% d = story.event.happened_at.in_time_zone(tz).to_date %>
+              <% if d != last_date %>
+                <div class="flex items-center justify-center pt-2 pb-1" <%= "data-today-divider" if d == Date.current %>>
+                  <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
+                </div>
+                <% last_date = d %>
+              <% end %>
+              <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+            <% end %>
+          </div>
         <% end %>
       </div>
     </aside>
@@ -431,6 +484,34 @@
       const statusEl = document.getElementById("cable-status");
       const feedEl   = document.getElementById("event-feed");
       const agencyId = "<%= @agency.id %>";
+
+      // --- Live-feed helpers: append newest at the bottom, under a "Today" pill ---
+      function recentContainer() {
+        let el = feedEl.querySelector("[data-feed-recent]");
+        if (!el) {
+          const empty = feedEl.querySelector("[data-feed-empty]");
+          if (empty) empty.remove();
+          el = document.createElement("div");
+          el.className = "space-y-4 peer-open/earlier:hidden";
+          el.setAttribute("data-feed-recent", "");
+          feedEl.appendChild(el);
+        }
+        return el;
+      }
+      function ensureTodayDivider(recentEl) {
+        let div = recentEl.querySelector("[data-today-divider]");
+        if (div) return div;
+        div = document.createElement("div");
+        div.className = "flex items-center justify-center pt-2 pb-1";
+        div.setAttribute("data-today-divider", "");
+        div.innerHTML = `<div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">Today</div>`;
+        recentEl.appendChild(div);
+        return div;
+      }
+      const nearBottom = () => (feedEl.scrollHeight - feedEl.scrollTop - feedEl.clientHeight) < 140;
+
+      // Open scrolled to the newest activity.
+      feedEl.scrollTop = feedEl.scrollHeight;
 
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       const ws = new WebSocket(`${proto}//${location.host}/cable`);
@@ -557,7 +638,11 @@
             </div>
           </div>
         `;
-        feedEl.insertBefore(row, feedEl.firstChild);
+        const recentEl = recentContainer();
+        ensureTodayDivider(recentEl);
+        const stick = nearBottom();
+        recentEl.appendChild(row);
+        if (stick) feedEl.scrollTop = feedEl.scrollHeight;
         if (!isCrisis) {
           setTimeout(() => {
             const bubble = row.querySelector("[data-bubble]");

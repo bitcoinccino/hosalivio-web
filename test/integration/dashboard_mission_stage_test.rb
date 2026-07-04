@@ -28,4 +28,24 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Activity", response.body
     assert_match "Stage", response.body
   end
+
+  test "the activity feed groups by day with a Show earlier messages toggle" do
+    agency = create_agency
+    admin  = create_user(agency: agency, full_name: "Ada Admin", roles: %w[admin])
+
+    in_tenant(agency) do
+      AgentEvent.create!(agency: agency, agent_id: "admissions", action: "create", subject_type: "Patient", happened_at: 3.days.ago)
+      AgentEvent.create!(agency: agency, agent_id: "admissions", action: "create", subject_type: "Patient", happened_at: Time.current)
+    end
+
+    sign_in admin
+    get dashboard_path
+
+    assert_response :success
+    # Older-than-today activity collapses behind the toggle...
+    assert_match "Show earlier messages", response.body
+    # ...and the latest day is tagged so live inserts can find it.
+    assert_match "data-today-divider", response.body
+    assert_match "Today", response.body
+  end
 end
