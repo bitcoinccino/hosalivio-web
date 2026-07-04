@@ -21,7 +21,7 @@ export default class extends Controller {
     this.formTarget.setAttribute("action", el.dataset.channelUrl)
     this.formTarget.removeAttribute("data-turbo-frame")   // real navigation → land in the channel
     this.inputTarget.name = "body"
-    this.inputTarget.placeholder = `Message #${slug}…`
+    this.inputTarget.placeholder = `Message #${slug} — @ to tag a teammate…`
 
     this.chipLabelTarget.textContent = `# ${slug}`
     this.chipTarget.classList.remove("hidden")

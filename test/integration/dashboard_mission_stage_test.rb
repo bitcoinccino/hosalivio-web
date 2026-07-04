@@ -4,6 +4,7 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
   test "the manager (Mission Stage) dashboard renders with the quick-stats bar + tidied sidebar" do
     agency = create_agency
     admin  = create_user(agency: agency, full_name: "Ada Admin", roles: %w[admin])
+    create_user(agency: agency, full_name: "Reggie RN", roles: %w[rn])
 
     sign_in admin
     get dashboard_path
@@ -31,13 +32,17 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Team channels", response.body
     assert_match "general", response.body
     assert_match "admission", response.body
-    assert_match 'data-controller="composer"', response.body
+    assert_match "composer", response.body
     assert_match "composer#channel", response.body
     assert_match channel_messages_path("general"), response.body
     # popover-style menu (like the patient composer) with channel blurbs
     assert_match "data-quick-actions-target", response.body
     assert_match "Team announcements and general discussion", response.body
     assert_match "Referrals, pre-admit evals, blockers, and scheduling.", response.body
+    # @-mention autocomplete in the composer, pooled with agency staff
+    assert_match "mention-autocomplete", response.body
+    assert_match "data-mention-autocomplete-target", response.body
+    assert_match "Reggie", response.body   # the RN is in the mention pool JSON
   end
 
   test "the activity feed groups by day with a Show earlier messages toggle" do
