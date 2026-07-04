@@ -14,6 +14,9 @@ class BranchesFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match 'data-controller="tag-input"', response.body
     assert_match "32801", response.body
+    # collapsible accordion sections + friendlier Active switch
+    assert_match "<details", response.body
+    assert_match "Active branch", response.body
   end
 
   test "updating ZIP tags via array params stores a clean array" do

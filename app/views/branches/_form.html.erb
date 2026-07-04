@@ -27,10 +27,15 @@
   ]
   input_cls = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
   label_cls = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
-  section_cls = "pt-5 border-t border-[#EFECE6]"
-  section_header = "text-[11px] uppercase tracking-[0.18em] text-[#6B665F] font-bold mb-3"
+
+  # Collapsible section (accordion) styles.
+  det_cls  = "group rounded-xl border border-[#EFECE6] bg-white overflow-hidden"
+  summ_cls = "flex items-center justify-between px-4 py-3 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-[#FBF9F5]"
+  sumttl   = "flex items-center gap-2 text-[12px] uppercase tracking-[0.15em] text-[#6B665F] font-bold"
+  chev     = "ri-arrow-down-s-line text-lg text-[#6B665F] group-open:rotate-180 transition-transform"
+  body_cls = "px-4 pb-4 pt-1 space-y-3"
 %>
-<%= form_with(model: @branch, local: true, html: { class: "space-y-5" }) do |f| %>
+<%= form_with(model: @branch, local: true, html: { class: "space-y-4" }) do |f| %>
   <% if flash[:alert].present? %>
     <div class="px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm">
       <i class="ri-error-warning-line mr-1"></i><%= flash[:alert] %>
@@ -38,9 +43,12 @@
   <% end %>
 
   <!-- 1. Identity -->
-  <section>
-    <div class="<%= section_header %>"><i class="ri-building-2-line"></i> Identity</div>
-    <div class="space-y-3">
+  <details class="<%= det_cls %>" open>
+    <summary class="<%= summ_cls %>">
+      <span class="<%= sumttl %>"><i class="ri-building-2-line"></i> Identity</span>
+      <i class="<%= chev %>"></i>
+    </summary>
+    <div class="<%= body_cls %>">
       <div class="grid grid-cols-3 gap-3">
         <div class="col-span-2">
           <%= f.label :name, "Branch name", class: label_cls %>
@@ -84,12 +92,15 @@
         </div>
       </div>
     </div>
-  </section>
+  </details>
 
   <!-- 2. Regulatory -->
-  <section class="<%= section_cls %>">
-    <div class="<%= section_header %>"><i class="ri-shield-check-line"></i> Regulatory & Compliance</div>
-    <div class="space-y-3">
+  <details class="<%= det_cls %>">
+    <summary class="<%= summ_cls %>">
+      <span class="<%= sumttl %>"><i class="ri-shield-check-line"></i> Regulatory &amp; Compliance</span>
+      <i class="<%= chev %>"></i>
+    </summary>
+    <div class="<%= body_cls %>">
       <div class="grid grid-cols-2 gap-3">
         <div>
           <%= f.label :npi, "NPI (10 digits)", class: label_cls %>
@@ -111,12 +122,15 @@
         </div>
       </div>
     </div>
-  </section>
+  </details>
 
   <!-- 3. Operational & Routing -->
-  <section class="<%= section_cls %>">
-    <div class="<%= section_header %>"><i class="ri-route-line"></i> Operational & Routing</div>
-    <div class="space-y-3">
+  <details class="<%= det_cls %>">
+    <summary class="<%= summ_cls %>">
+      <span class="<%= sumttl %>"><i class="ri-route-line"></i> Operational &amp; Routing</span>
+      <i class="<%= chev %>"></i>
+    </summary>
+    <div class="<%= body_cls %>">
       <div class="grid grid-cols-2 gap-3">
         <div>
           <%= f.label :timezone, class: label_cls %>
@@ -149,39 +163,58 @@
         <div class="text-[10px] text-[#6B665F] mt-1">Add one county per tag. Used alongside ZIPs to route inquiries to this branch.</div>
       </div>
     </div>
-  </section>
+  </details>
 
   <!-- 4. Leadership -->
-  <section class="<%= section_cls %>">
-    <div class="<%= section_header %>"><i class="ri-user-star-line"></i> Leadership</div>
-    <div class="grid grid-cols-2 gap-3">
-      <div>
-        <%= f.label :manager_id, "Administrator / branch manager", class: label_cls %>
-        <%= f.select :manager_id, manager_options, { include_blank: "— none —" }, class: input_cls %>
-      </div>
-      <div>
-        <%= f.label :medical_director_id, "Medical Director (MD)", class: label_cls %>
-        <%= f.select :medical_director_id, md_options, { include_blank: "— none —" }, class: input_cls %>
-      </div>
-      <div>
-        <%= f.label :director_of_nursing_id, "Director of Nursing (DON)", class: label_cls %>
-        <%= f.select :director_of_nursing_id, don_options, { include_blank: "— none —" }, class: input_cls %>
-      </div>
-      <div>
-        <%= f.label :clinical_supervisor_id, "Clinical supervisor", class: label_cls %>
-        <%= f.select :clinical_supervisor_id, supervisor_options, { include_blank: "— none —" }, class: input_cls %>
+  <details class="<%= det_cls %>">
+    <summary class="<%= summ_cls %>">
+      <span class="<%= sumttl %>"><i class="ri-user-star-line"></i> Leadership</span>
+      <i class="<%= chev %>"></i>
+    </summary>
+    <div class="<%= body_cls %>">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <%= f.label :manager_id, "Administrator / branch manager", class: label_cls %>
+          <%= f.select :manager_id, manager_options, { include_blank: "— none —" }, class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :medical_director_id, "Medical Director (MD)", class: label_cls %>
+          <%= f.select :medical_director_id, md_options, { include_blank: "— none —" }, class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :director_of_nursing_id, "Director of Nursing (DON)", class: label_cls %>
+          <%= f.select :director_of_nursing_id, don_options, { include_blank: "— none —" }, class: input_cls %>
+        </div>
+        <div>
+          <%= f.label :clinical_supervisor_id, "Clinical supervisor", class: label_cls %>
+          <%= f.select :clinical_supervisor_id, supervisor_options, { include_blank: "— none —" }, class: input_cls %>
+        </div>
       </div>
     </div>
-  </section>
+  </details>
 
-  <div class="pt-4 border-t border-[#EFECE6] flex items-center justify-between">
-    <label class="inline-flex items-center gap-2 text-[13px] text-[#1D1C1A]">
-      <%= f.check_box :active %> Active
+  <!-- Actions -->
+  <div class="pt-4 border-t border-[#EFECE6] flex items-center justify-between gap-3 flex-wrap">
+    <%# Active — a switch with a short explanation. %>
+    <label class="inline-flex items-center gap-3 cursor-pointer">
+      <span class="relative inline-flex items-center">
+        <%= f.check_box :active, class: "peer sr-only" %>
+        <span class="w-10 h-6 rounded-full bg-[#D9D5CD] peer-checked:bg-[#2F6F4E] peer-focus-visible:ring-2 peer-focus-visible:ring-[#D97757] transition"></span>
+        <span class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4"></span>
+      </span>
+      <span>
+        <span class="block text-[13px] font-medium text-[#1D1C1A]">Active branch</span>
+        <span class="block text-[11px] text-[#6B665F]">Inactive branches are hidden from routing and new admissions.</span>
+      </span>
     </label>
+
     <div class="flex items-center gap-2">
-      <%= link_to "Cancel", branches_path, class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
+      <%= link_to branches_path,
+            class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:bg-[#EFECE6] hover:text-[#1D1C1A] text-sm font-medium transition" do %>
+        <i class="ri-close-line"></i> Cancel
+      <% end %>
       <%= f.submit (@branch.persisted? ? "Save changes" : "Create branch"),
-            class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
+            class: "inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium cursor-pointer" %>
     </div>
   </div>
 <% end %>
