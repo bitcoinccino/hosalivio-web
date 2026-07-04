@@ -17,9 +17,11 @@ class ChannelMessagesController < ApplicationController
                            alert: "You can read ##{channel.slug} but only its team can post."
       end
 
-      if body.present?
+      if body.present? || params[:audio].present?
         parent = params[:parent_id].present? ? channel.channel_messages.roots.find_by(id: params[:parent_id]) : nil
-        channel.channel_messages.create!(agency: current_user.agency, user: current_user, body: body, parent: parent)
+        message = channel.channel_messages.new(agency: current_user.agency, user: current_user, body: body, parent: parent)
+        message.audio.attach(params[:audio]) if params[:audio].present?
+        message.save!
       end
       redirect_to back, status: :see_other,
                   notice: (from_dashboard ? "Posted to ##{channel.slug}." : nil)

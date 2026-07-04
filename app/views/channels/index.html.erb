@@ -99,22 +99,40 @@
         <%# ── Composer / read-only notice ────────────────────── %>
         <div class="border-t border-[#EFECE6] p-3 bg-[#FBF9F5]">
           <% if @can_post %>
-            <div data-controller="mention-autocomplete" data-mention-autocomplete-items-value="<%= @mentionables.to_json %>">
+            <div data-controller="mention-autocomplete channel-recorder"
+                 data-mention-autocomplete-items-value="<%= @mentionables.to_json %>"
+                 data-channel-recorder-post-url-value="<%= channel_messages_path(@channel) %>">
               <div class="relative">
                 <%# @-mention autocomplete dropdown (opens above the input). %>
                 <div data-mention-autocomplete-target="menu"
                      class="hidden absolute bottom-full left-0 mb-2 w-72 max-h-64 overflow-y-auto rounded-2xl border border-[#EFECE6] bg-white shadow-lg py-1 z-50"></div>
                 <%= form_with url: channel_messages_path(@channel), method: :post, data: { turbo: false } do %>
-                  <div class="flex items-center gap-3 bg-white rounded-3xl pl-4 pr-2 py-2 border border-[#EFECE6] shadow-sm">
-                    <input type="text" name="body" autocomplete="off" data-mention-autocomplete-target="input"
+                  <div class="flex items-center gap-2 bg-white rounded-3xl pl-4 pr-2 py-2 border border-[#EFECE6] shadow-sm">
+                    <input type="text" name="body" autocomplete="off"
+                           data-mention-autocomplete-target="input" data-channel-recorder-target="input"
                            placeholder="Message #<%= @channel.slug %> — @ to tag a teammate…"
                            class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
+                    <button type="button" data-action="channel-recorder#toggleMic" data-channel-recorder-target="micButton"
+                            title="Dictate (voice typing)"
+                            class="flex-shrink-0 w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] flex items-center justify-center transition data-[on=true]:bg-[#D97757] data-[on=true]:text-white">
+                      <i class="ri-mic-line text-lg"></i>
+                    </button>
+                    <button type="button" data-action="channel-recorder#toggleRecord" data-channel-recorder-target="recordButton"
+                            title="Record a voice note"
+                            class="flex-shrink-0 w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] flex items-center justify-center transition data-[on=true]:bg-[#C1403A] data-[on=true]:text-white">
+                      <i class="ri-voiceprint-line text-lg"></i>
+                    </button>
                     <button type="submit" title="Send"
                             class="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-sm active:scale-95 transition">
                       <i class="ri-send-plane-fill text-[16px]"></i>
                     </button>
                   </div>
                 <% end %>
+                <div data-channel-recorder-target="status" class="hidden mt-1.5 px-2 text-[11px] text-[#C1403A] flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-[#C1403A] animate-pulse"></span>
+                  Recording… tap the voiceprint again to send, or
+                  <button type="button" data-action="channel-recorder#cancel" class="underline hover:text-[#1D1C1A]">cancel</button>
+                </div>
               </div>
             </div>
           <% else %>

@@ -1,4 +1,5 @@
 require "test_helper"
+require "stringio"
 
 class ChannelMessageTest < ActiveSupport::TestCase
   setup do
@@ -31,6 +32,21 @@ class ChannelMessageTest < ActiveSupport::TestCase
     reply = in_tenant(@agency) { @general.channel_messages.create!(agency: @agency, user: @reggie, body: "a reply", parent: root) }
     nested = in_tenant(@agency) { @general.channel_messages.new(agency: @agency, user: @author, body: "nope", parent: reply) }
     assert_not nested.valid?
+  end
+
+  test "a voice note may have a blank body when audio is attached" do
+    in_tenant(@agency) do
+      msg = @general.channel_messages.new(agency: @agency, user: @author, body: "")
+      msg.audio.attach(io: StringIO.new("fake-audio"), filename: "v.webm", content_type: "audio/webm")
+      assert msg.valid?, msg.errors.full_messages.to_sentence
+    end
+  end
+
+  test "a message with neither body nor audio is invalid" do
+    in_tenant(@agency) do
+      msg = @general.channel_messages.new(agency: @agency, user: @author, body: "")
+      assert_not msg.valid?
+    end
   end
 
   test "no self-mention and unknown handles are ignored" do
