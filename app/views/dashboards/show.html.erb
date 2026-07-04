@@ -394,6 +394,23 @@
         each day; the current day's divider is tagged data-today-divider so
         the live WebSocket insert can find (or create) it.
       %>
+      <%# Lane filter chips — split the stream by type (Admissions / Clinical / Family / Ops). %>
+      <% if @stories.any? %>
+        <% lane_counts = @stories.group_by { |s| activity_category(s.event) }.transform_values(&:size) %>
+        <div class="px-4 py-2 border-b border-[#EFECE6] flex items-center gap-1.5 flex-wrap flex-shrink-0">
+          <button type="button" data-lane-chip="all" data-on="true"
+                  class="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white data-[on=true]:border-[#1D1C1A]">
+            All <span class="font-mono opacity-70"><%= @stories.size %></span>
+          </button>
+          <% MissionStageHelper::ACTIVITY_LANES.each do |key, label, color| %>
+            <button type="button" data-lane-chip="<%= key %>" data-on="false"
+                    class="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white data-[on=true]:border-[#1D1C1A]">
+              <span class="w-1.5 h-1.5 rounded-full" style="background: <%= color %>;"></span><%= label %> <span class="font-mono opacity-70"><%= lane_counts[key] || 0 %></span>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+
       <div id="event-feed" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
         <% if @stories.empty? %>
           <div data-feed-empty class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
@@ -407,14 +424,14 @@
             earlier, recent = stories_asc.partition { |s| s.event.happened_at.in_time_zone(tz).to_date < latest_date }
           %>
 
-          <%# Everything before the latest day, hidden until expanded. %>
+          <%# Everything before the latest day, collapsed until expanded. %>
           <% if earlier.any? %>
-            <details class="group/earlier peer/earlier">
-              <summary class="list-none cursor-pointer flex items-center justify-center [&::-webkit-details-marker]:hidden">
+            <details class="group/earlier" data-earlier>
+              <summary data-earlier-summary class="list-none cursor-pointer flex items-center justify-center [&::-webkit-details-marker]:hidden">
                 <span class="inline-flex items-center gap-1 px-3 py-1 text-[11px] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full hover:bg-[#EFECE6] transition">
                   <i class="ri-arrow-up-s-line group-open/earlier:rotate-180 transition-transform"></i>
                   <span class="group-open/earlier:hidden">Show earlier messages</span>
-                  <span class="hidden group-open/earlier:inline">Back to recent activity</span>
+                  <span class="hidden group-open/earlier:inline">Hide earlier messages</span>
                 </span>
               </summary>
               <div class="space-y-4 mt-4">
@@ -422,7 +439,7 @@
                 <% earlier.each do |story| %>
                   <% d = story.event.happened_at.in_time_zone(tz).to_date %>
                   <% if d != last_date %>
-                    <div class="flex items-center justify-center pt-2 pb-1">
+                    <div data-day-pill class="flex items-center justify-center pt-2 pb-1">
                       <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
                     </div>
                     <% last_date = d %>
@@ -433,14 +450,13 @@
             </details>
           <% end %>
 
-          <%# The latest day — live events append here. Hidden while the
-              earlier section is expanded (peer-open) for a focused history. %>
-          <div data-feed-recent class="space-y-4 peer-open/earlier:hidden">
+          <%# The latest day — live events append here. %>
+          <div data-feed-recent class="space-y-4">
             <% last_date = nil %>
             <% recent.each do |story| %>
               <% d = story.event.happened_at.in_time_zone(tz).to_date %>
               <% if d != last_date %>
-                <div class="flex items-center justify-center pt-2 pb-1" <%= "data-today-divider" if d == Date.current %>>
+                <div data-day-pill class="flex items-center justify-center pt-2 pb-1" <%= "data-today-divider" if d == Date.current %>>
                   <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
                 </div>
                 <% last_date = d %>
@@ -504,11 +520,45 @@
         div = document.createElement("div");
         div.className = "flex items-center justify-center pt-2 pb-1";
         div.setAttribute("data-today-divider", "");
+        div.setAttribute("data-day-pill", "");
         div.innerHTML = `<div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">Today</div>`;
+        if (activeLane !== "all") div.classList.add("hidden");
         recentEl.appendChild(div);
         return div;
       }
       const nearBottom = () => (feedEl.scrollHeight - feedEl.scrollTop - feedEl.clientHeight) < 140;
+
+      // --- Lane (type-category) filtering — mirrors MissionStageHelper#activity_category ---
+      const LANE_COLOR = { admissions: "#2B4A7A", clinical: "#2F6F4E", family: "#D97757", ops: "#6B665F" };
+      const LANE_LABEL = { admissions: "Admissions", clinical: "Clinical", family: "Family", ops: "Ops" };
+      function categorize(p) {
+        const r = p.agent_id, s = p.subject_type, a = p.event;
+        if (r === "admissions") return "admissions";
+        if (s === "Inquiry" || (s === "Patient" && a === "create")) return "admissions";
+        if (r === "family" || r === "front_door_inbound") return "family";
+        if (["pharmacy", "dme", "insurance", "billing", "don", "system"].includes(r)) return "ops";
+        if (["rn", "md", "aide", "social_worker", "chaplain"].includes(r)) return "clinical";
+        return "ops";
+      }
+      let activeLane = "all";
+      const laneChips = Array.from(document.querySelectorAll("[data-lane-chip]"));
+      const matchesLane = (cat) => activeLane === "all" || cat === activeLane;
+      function applyLane(lane) {
+        activeLane = lane;
+        laneChips.forEach((c) => { c.dataset.on = (c.dataset.laneChip === lane) ? "true" : "false"; });
+        feedEl.querySelectorAll("[data-story]").forEach((el) => {
+          el.classList.toggle("hidden", !matchesLane(el.dataset.category));
+        });
+        // A specific lane spans all of history: reveal the earlier group and
+        // drop the per-day pills so it reads as one filtered list.
+        const filtering = lane !== "all";
+        feedEl.querySelectorAll("[data-day-pill]").forEach((el) => el.classList.toggle("hidden", filtering));
+        const earlier = feedEl.querySelector("[data-earlier]");
+        const summary = feedEl.querySelector("[data-earlier-summary]");
+        if (earlier) earlier.open = filtering;
+        if (summary) summary.classList.toggle("hidden", filtering);
+      }
+      laneChips.forEach((c) => c.addEventListener("click", () => applyLane(c.dataset.laneChip)));
 
       // Open scrolled to the newest activity.
       feedEl.scrollTop = feedEl.scrollHeight;
@@ -600,6 +650,10 @@
         const persona = PERSONA[p.agent_id] || { name: p.agent_id, title: "", initials: (p.agent_id||"?")[0].toUpperCase(), color: "#6B665F" };
         const phrase  = narrate(p);
         const isCrisis = p.urgency === "crisis";
+        const cat      = categorize(p);
+        const catColor = LANE_COLOR[cat] || "#6B665F";
+        const catLabel = LANE_LABEL[cat] || "Ops";
+        const catTag   = `<span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold" style="color: ${catColor};"><span class="w-1.5 h-1.5 rounded-full" style="background: ${catColor};"></span>${catLabel}</span>`;
 
         const patientLink = p.patient_id && p.patient_name
           ? `<a href="/patients/${p.patient_id}" class="font-medium text-[#D97757] hover:underline">${p.patient_name}</a>`
@@ -624,6 +678,8 @@
 
         const row = document.createElement("div");
         row.className = "flex items-start gap-2.5";
+        row.setAttribute("data-story", "");
+        row.setAttribute("data-category", cat);
         row.innerHTML = `
           <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
                style="background: ${persona.color};" title="${persona.name} · ${persona.title}">${persona.initials}</div>
@@ -632,17 +688,19 @@
               <div class="text-[13px] leading-snug text-[#3A3936]">${headlineHtml}</div>
             </div>
             <div class="mt-1 ml-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+              ${catTag}
               <time class="font-mono">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
               ${crisisPill}
               ${p.patient_mrn ? `<span class="font-mono">· ${p.patient_mrn}</span>` : ""}
             </div>
           </div>
         `;
+        if (!matchesLane(cat)) row.classList.add("hidden");
         const recentEl = recentContainer();
         ensureTodayDivider(recentEl);
         const stick = nearBottom();
         recentEl.appendChild(row);
-        if (stick) feedEl.scrollTop = feedEl.scrollHeight;
+        if (stick && matchesLane(cat)) feedEl.scrollTop = feedEl.scrollHeight;
         if (!isCrisis) {
           setTimeout(() => {
             const bubble = row.querySelector("[data-bubble]");

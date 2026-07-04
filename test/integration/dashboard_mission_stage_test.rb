@@ -47,5 +47,10 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     # ...and the latest day is tagged so live inserts can find it.
     assert_match "data-today-divider", response.body
     assert_match "Today", response.body
+    # type-category lanes: filter chips + per-bubble category tag
+    assert_match "data-lane-chip", response.body
+    assert_match "Admissions", response.body
+    assert_match "Clinical", response.body
+    assert_match 'data-category="admissions"', response.body
   end
 end

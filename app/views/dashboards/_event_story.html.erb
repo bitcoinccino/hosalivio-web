@@ -6,6 +6,9 @@
   pulses  = local_assigns.fetch(:unresolved_note_ids, []).include?(ev.subject_id)
   is_crisis = story.urgency_crisis?
 
+  category = activity_category(ev)
+  _cat_key, cat_label, cat_color = activity_lane_meta(category)
+
   # Left-aligned chat bubble, matching the patient-chat feed. Crisis /
   # unresolved rows get the alert tint; everything else the calm sand bubble.
   bubble = [ "inline-block max-w-full rounded-2xl rounded-tl-sm border px-3.5 py-2.5" ]
@@ -17,7 +20,7 @@
   end
 %>
 
-<div class="flex items-start gap-2.5">
+<div data-story data-category="<%= category %>" class="flex items-start gap-2.5">
   <!-- Avatar -->
   <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
        style="background: <%= persona[:color] %>;" title="<%= persona[:name] %> · <%= persona[:title] %>">
@@ -41,6 +44,9 @@
 
     <!-- Meta row -->
     <div class="mt-1 ml-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+      <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold" style="color: <%= cat_color %>;">
+        <span class="w-1.5 h-1.5 rounded-full" style="background: <%= cat_color %>;"></span><%= cat_label %>
+      </span>
       <time datetime="<%= ev.happened_at.iso8601 %>" class="font-mono">
         <%= ev.happened_at.strftime("%-l:%M %p") %>
       </time>
