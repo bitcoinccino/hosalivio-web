@@ -2,6 +2,8 @@
 # family users are redirected. The default channels are provisioned lazily so
 # every agency always has #General + #Admission.
 class ChannelsController < ApplicationController
+  include MentionablePool
+
   before_action :authenticate_user!
   before_action :authorize_staff!
 
@@ -36,6 +38,7 @@ class ChannelsController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @messages = @channel.channel_messages.includes(:user).last(100)
       @can_post = @channel.postable_by?(current_user)
+      @mentionables = build_mentionables(current_user.agency, current_user)
     end
   end
 
