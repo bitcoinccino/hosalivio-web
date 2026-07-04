@@ -42,4 +42,10 @@ class ChannelsFlowTest < ActionDispatch::IntegrationTest
       post channel_messages_path("general"), params: { body: "morning, team" }
     end
   end
+
+  test "posting from the dashboard returns to the dashboard, not the channel" do
+    sign_in @rn
+    post channel_messages_path("general"), params: { body: "quick note", return_to: "dashboard" }
+    assert_redirected_to dashboard_path
+  end
 end
