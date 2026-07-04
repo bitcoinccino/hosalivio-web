@@ -10,7 +10,7 @@ import { Controller } from "@hotwired/stimulus"
 // Picking a channel in the "+" modal calls channel(); the × on the mode
 // chip (or a fresh load) calls ask().
 export default class extends Controller {
-  static targets = ["form", "input", "chip", "chipLabel", "hint"]
+  static targets = ["form", "input", "chip", "chipLabel", "hint", "quickAsks"]
   static values = { askUrl: String, askPlaceholder: String }
 
   channel(event) {
@@ -26,6 +26,8 @@ export default class extends Controller {
     this.chipLabelTarget.textContent = `# ${slug}`
     this.chipTarget.classList.remove("hidden")
     if (this.hasHintTarget) this.hintTarget.classList.add("hidden")
+    // Oversight quick-asks are Ask-HosAlivio shortcuts — irrelevant here.
+    if (this.hasQuickAsksTarget) this.quickAsksTarget.classList.add("hidden")
 
     const dlg = el.closest("dialog")
     if (dlg && dlg.open) dlg.close()
@@ -42,6 +44,7 @@ export default class extends Controller {
 
     this.chipTarget.classList.add("hidden")
     if (this.hasHintTarget) this.hintTarget.classList.remove("hidden")
+    if (this.hasQuickAsksTarget) this.quickAsksTarget.classList.remove("hidden")
     this.inputTarget.focus()
   }
 }
