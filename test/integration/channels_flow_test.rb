@@ -43,6 +43,20 @@ class ChannelsFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the channel view renders message bubbles and a mention composer" do
+    in_tenant(@agency) do
+      Channel.find_by(slug: "general").channel_messages.create!(agency: @agency, user: @rn, body: "morning @Andy")
+    end
+    sign_in @rn
+    get channel_path("general")
+
+    assert_response :success
+    assert_match "data-channel-message-id", response.body      # bubble wrapper
+    assert_match "Reggie RN", response.body                    # author name in bubble
+    assert_match "mention-autocomplete", response.body         # composer autocomplete
+    assert_match "data-mention-autocomplete-target", response.body
+  end
+
   test "posting from the dashboard returns to the dashboard, not the channel" do
     sign_in @rn
     post channel_messages_path("general"), params: { body: "quick note", return_to: "dashboard" }

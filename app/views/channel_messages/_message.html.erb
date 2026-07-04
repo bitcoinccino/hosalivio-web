@@ -1,7 +1,30 @@
-<div class="px-4 py-2 hover:bg-[#FBF9F5]">
-  <div class="flex items-baseline gap-2 flex-wrap">
-    <span class="text-[13px] font-medium text-[#1D1C1A]"><%= message.user&.full_name.presence || "Someone" %></span>
-    <span class="text-[10px] text-[#9A938A]"><%= message.created_at.strftime("%b %-d · %-l:%M %p") %></span>
+<%# One team-channel message, rendered as a left-aligned chat bubble to match
+    the patient/RN chat. Local: message. %>
+<%
+  author = message.user
+  role   = author ? team_primary_role(author) : nil
+  color  = team_role_color(role)
+%>
+<div data-channel-message-id="<%= message.id %>" class="flex items-start gap-2.5 px-4 py-2 hover:bg-[#FBF9F5]">
+  <!-- Avatar -->
+  <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+       style="background: <%= color %>;" title="<%= author&.full_name %>">
+    <%= author ? team_avatar_initials(author) : "?" %>
   </div>
-  <div class="text-[13px] text-[#1D1C1A] whitespace-pre-wrap break-words mt-0.5"><%= message.body %></div>
+
+  <div class="min-w-0 flex-1">
+    <!-- Name + role + time -->
+    <div class="flex items-baseline gap-2 flex-wrap">
+      <span class="text-[13px] font-semibold text-[#1D1C1A]"><%= author&.full_name.presence || "Someone" %></span>
+      <% if role %>
+        <span class="text-[10px] uppercase tracking-wider" style="color: <%= color %>;"><%= team_role_label(role) %></span>
+      <% end %>
+      <span class="text-[10px] text-[#9A938A] font-mono"><%= message.created_at.strftime("%b %-d · %-l:%M %p") %></span>
+    </div>
+
+    <!-- Bubble -->
+    <div class="mt-1 inline-block max-w-full rounded-2xl rounded-tl-sm border border-[#CADCEC] bg-[#E9F1FB] px-3.5 py-2">
+      <div class="text-[13px] leading-snug text-[#1D1C1A] whitespace-pre-wrap break-words"><%= team_format_body(message.body) %></div>
+    </div>
+  </div>
 </div>
