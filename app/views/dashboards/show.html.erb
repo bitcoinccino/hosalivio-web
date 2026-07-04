@@ -333,10 +333,24 @@
         </div>
       </div>
 
-      <!-- Input Bar — "Ask HosAlivio" composer (managers only) -->
+      <!-- Input Bar — composer (Ask HosAlivio ⇄ team chat) (managers only) -->
       <% if is_manager %>
-        <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]">
-          <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" } do %>
+        <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]"
+             data-controller="composer"
+             data-composer-ask-url-value="<%= admin_assistant_ask_path %>"
+             data-composer-ask-placeholder-value="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…">
+
+          <%# Team-chat mode chip — hidden until a channel is picked. %>
+          <div data-composer-target="chip" class="hidden mb-2 flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1 rounded-full bg-[#EAF1F7] text-[#2B4A7A] border border-[#CADCEC]">
+              <i class="ri-chat-3-line"></i>
+              <span data-composer-target="chipLabel"># general</span>
+              <button type="button" data-action="composer#ask" title="Back to Ask HosAlivio" class="ml-1 hover:text-[#1D1C1A]"><i class="ri-close-line"></i></button>
+            </span>
+            <span class="text-[11px] text-[#6B665F]">Team-chat mode — your message posts to this channel.</span>
+          </div>
+
+          <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer", composer_target: "form" } do %>
             <div class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
               <%# "+" menu — opens the Team channels modal (moved here from the sidebar). %>
               <div class="relative flex-shrink-0" data-controller="dialog">
@@ -362,10 +376,21 @@
                         <div class="px-5 py-4 text-[12px] text-[#6B665F] italic">No channels yet.</div>
                       <% else %>
                         <% @channels.each do |c| %>
-                          <%= link_to channel_path(c), class: "flex items-center gap-2 px-5 py-2.5 hover:bg-[#FBF9F5] transition" do %>
-                            <span class="text-[#9A938A]">#</span>
-                            <span class="text-[14px] text-[#1D1C1A] font-medium"><%= c.slug %></span>
-                            <% unless c.postable_by?(current_user) %>
+                          <% if c.postable_by?(current_user) %>
+                            <%# Flip the composer into team-chat mode for this channel. %>
+                            <button type="button"
+                                    data-action="composer#channel"
+                                    data-channel-slug="<%= c.slug %>"
+                                    data-channel-url="<%= channel_messages_path(c) %>"
+                                    class="w-full flex items-center gap-2 px-5 py-2.5 hover:bg-[#FBF9F5] transition text-left">
+                              <span class="text-[#9A938A]">#</span>
+                              <span class="text-[14px] text-[#1D1C1A] font-medium"><%= c.slug %></span>
+                              <span class="ml-auto text-[10px] text-[#6B665F]">Post here</span>
+                            </button>
+                          <% else %>
+                            <%= link_to channel_path(c), class: "flex items-center gap-2 px-5 py-2.5 hover:bg-[#FBF9F5] transition" do %>
+                              <span class="text-[#9A938A]">#</span>
+                              <span class="text-[14px] text-[#1D1C1A] font-medium"><%= c.slug %></span>
                               <span class="ml-auto text-[10px] text-[#6B665F] inline-flex items-center gap-1"><i class="ri-lock-line"></i> read-only</span>
                             <% end %>
                           <% end %>
@@ -380,18 +405,18 @@
                   </div>
                 </dialog>
               </div>
-              <input type="text" name="q" autocomplete="off"
+              <input type="text" name="q" autocomplete="off" data-composer-target="input"
                      placeholder="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…"
                      class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
               <button type="submit"
-                      title="Ask HosAlivio"
+                      title="Send"
                       class="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-sm active:scale-95 transition">
                 <i class="ri-send-plane-fill text-[16px]"></i>
               </button>
             </div>
           <% end %>
 
-          <div class="mt-2 text-[11px] text-[#6B665F] text-center">
+          <div data-composer-target="hint" class="mt-2 text-[11px] text-[#6B665F] text-center">
             HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
           </div>
         </div>
