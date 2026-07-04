@@ -132,20 +132,21 @@
       </div>
       <div>
         <%= f.label :service_area_zips, "Service-area ZIP codes", class: label_cls %>
-        <%= f.text_area :service_area_zips,
-              value: Array(@branch.service_area_zips).join(", "),
-              rows: 2,
-              placeholder: "32801, 32802, 32803  (3-digit prefixes like 328 also match)",
-              class: input_cls %>
-        <div class="text-[10px] text-[#6B665F] mt-1">Comma or newline separated. Full 5-digit ZIPs or 3-digit prefixes. Admissions AI routes inquiries to the branch whose ZIPs match.</div>
+        <%= render "tag_field",
+              values:      Array(@branch.service_area_zips),
+              name:        "branch[service_area_zips][]",
+              placeholder: "Type a ZIP and press Enter…",
+              pattern:     '^\d{3}(\d{2})?$' %>
+        <div class="text-[10px] text-[#6B665F] mt-1">Add 5-digit ZIPs or 3-digit prefixes (e.g. 328). Admissions AI routes inquiries to the branch whose ZIPs match.</div>
       </div>
       <div>
         <%= f.label :service_area_counties, "Service-area counties", class: label_cls %>
-        <%= f.text_area :service_area_counties,
-              value: Array(@branch.service_area_counties).join(", "),
-              rows: 2,
-              placeholder: "Orange, Seminole, Osceola",
-              class: input_cls %>
+        <%= render "tag_field",
+              values:          Array(@branch.service_area_counties),
+              name:            "branch[service_area_counties][]",
+              placeholder:     "Type a county and press Enter…",
+              space_separated: false %>
+        <div class="text-[10px] text-[#6B665F] mt-1">Add one county per tag. Used alongside ZIPs to route inquiries to this branch.</div>
       </div>
     </div>
   </section>

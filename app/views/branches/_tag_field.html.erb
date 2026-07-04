@@ -1,0 +1,31 @@
+<%# Chip/tag input for an array field. Locals:
+      values:          the current array of tags
+      name:            the array param name, e.g. "branch[service_area_zips][]"
+      placeholder:     input placeholder
+      pattern:         (optional) JS regex string to validate each tag
+      space_separated: (optional, default true) split typed input on spaces too %>
+<%
+  space_separated = local_assigns.fetch(:space_separated, true)
+  pattern         = local_assigns.fetch(:pattern, nil)
+%>
+<div data-controller="tag-input"
+     data-tag-input-name-value="<%= name %>"
+     data-tag-input-space-separated-value="<%= space_separated %>"
+     <%= %(data-tag-input-pattern-value="#{pattern}") .html_safe if pattern %>
+     class="mt-1 flex flex-wrap items-center gap-1.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus-within:bg-white focus-within:border-[#D97757] px-2 py-1.5 transition">
+  <%# Hidden empty entry so clearing every tag still submits (→ normalized to []). %>
+  <input type="hidden" name="<%= name %>" value="">
+  <span data-tag-input-target="chips" class="contents">
+    <% Array(values).each do |v| %>
+      <span data-tag class="inline-flex items-center gap-1 bg-[#EFECE6] text-[#1D1C1A] text-[13px] rounded-full pl-3 pr-1.5 py-1">
+        <span><%= v %></span>
+        <button type="button" data-action="tag-input#remove" class="w-4 h-4 rounded-full hover:bg-[#D9D5CD] flex items-center justify-center text-[#6B665F] leading-none">×</button>
+        <input type="hidden" name="<%= name %>" value="<%= v %>">
+      </span>
+    <% end %>
+  </span>
+  <input type="text" data-tag-input-target="input"
+         data-action="keydown->tag-input#keydown paste->tag-input#paste blur->tag-input#blur"
+         autocomplete="off" placeholder="<%= placeholder %>"
+         class="flex-1 min-w-[8rem] border-0 bg-transparent focus:outline-none text-[14px] py-1">
+</div>
