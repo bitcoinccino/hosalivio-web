@@ -6,21 +6,32 @@
   pulses  = local_assigns.fetch(:unresolved_note_ids, []).include?(ev.subject_id)
   is_crisis = story.urgency_crisis?
 
-  row_classes = ["flex items-start gap-3 px-3 py-2.5 rounded-lg border border-transparent"]
-  row_classes << "border-[#D97757] bg-[#FFF3EC] animate-pulse" if pulses
+  category = activity_category(ev)
+  _cat_key, cat_label, cat_color = activity_lane_meta(category)
+
+  # Left-aligned chat bubble, matching the patient-chat feed. Crisis /
+  # unresolved rows get the alert tint; everything else the calm sand bubble.
+  bubble = [ "inline-block max-w-full rounded-2xl rounded-tl-sm border px-3.5 py-2.5" ]
+  if is_crisis || pulses
+    bubble << "border-[#D97757] bg-[#FFF3EC]"
+    bubble << "animate-pulse" if pulses
+  else
+    bubble << "border-[#EFECE6] bg-[#FBF9F5]"
+  end
 %>
 
-<div class="<%= row_classes.join(' ') %>">
+<div data-story data-category="<%= category %>" class="flex items-start gap-2.5">
   <!-- Avatar -->
-  <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+  <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
        style="background: <%= persona[:color] %>;" title="<%= persona[:name] %> · <%= persona[:title] %>">
     <%= persona[:initials] %>
   </div>
 
-  <div class="flex-1 min-w-0">
-    <!-- Headline -->
-    <div class="text-[13px] leading-tight">
-      <i class="<%= phrase[:icon] %> text-[#6B665F] mr-1"></i><span
+  <div class="min-w-0">
+    <!-- Message bubble -->
+    <div class="<%= bubble.join(' ') %>">
+      <div class="text-[13px] leading-snug text-[#3A3936]"><i
+        class="<%= phrase[:icon] %> text-[#6B665F] mr-1"></i><span
         class="font-bold text-[#1D1C1A]"><%= persona[:name] %></span><% if persona[:title].present? %><span
         class="text-[11px] text-[#6B665F]"> (<%= persona[:title] %>)</span><% end %> <span
         class="text-[#3A3936]"><%= phrase[:before] %></span><% if patient %> <a
@@ -28,10 +39,14 @@
         class="font-medium text-[#D97757] hover:underline"><%= patient.full_name %></a><%- end -%><%- if phrase[:after].present? && phrase[:after].start_with?("'") -%><span
         class="text-[#3A3936]"><%= phrase[:after] %></span><%- elsif phrase[:after].present? -%> <span
         class="text-[#3A3936]"><%= phrase[:after] %></span><%- end -%>
+      </div>
     </div>
 
     <!-- Meta row -->
-    <div class="mt-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+    <div class="mt-1 ml-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+      <span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold" style="color: <%= cat_color %>;">
+        <span class="w-1.5 h-1.5 rounded-full" style="background: <%= cat_color %>;"></span><%= cat_label %>
+      </span>
       <time datetime="<%= ev.happened_at.iso8601 %>" class="font-mono">
         <%= ev.happened_at.strftime("%-l:%M %p") %>
       </time>

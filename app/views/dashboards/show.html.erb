@@ -1,10 +1,12 @@
 <% content_for :title, "HosAlivio · Mission Stage" %>
 
-<div class="flex h-screen" data-controller="sidebar" data-sidebar-storage-key-value="dashboardSidebar">
-  <!-- Left rail -->
+<div class="flex h-screen" data-controller="sidebar mission-mobile" data-sidebar-storage-key-value="dashboardSidebar">
+  <!-- ─── Left rail: nav + Active Census ───────────────────────── -->
   <aside data-sidebar-target="sidebar" data-collapsed="false"
-         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
-    <div>
+         data-mission-mobile-target="tab" data-tab-name="census"
+         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200
+                hidden md:flex data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
+    <div class="flex-shrink-0">
       <div class="flex items-center justify-between group-data-[collapsed=true]/sb:justify-center">
         <div class="flex items-center gap-2 group-data-[collapsed=true]/sb:hidden">
           <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
@@ -29,11 +31,6 @@
           <i class="ri-calendar-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">Calendar</span>
         </a>
-        <a href="/channels" title="Team chat"
-           class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <i class="ri-chat-3-line"></i>
-          <span class="group-data-[collapsed=true]/sb:hidden">Team chat</span>
-        </a>
         <% unread_count = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
         <a href="/notifications" title="Notifications"
            class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0 relative">
@@ -46,6 +43,11 @@
         </a>
         <% manager_roles = %w[admin don admissions] %>
         <% if (current_user.role_names & manager_roles).any? %>
+          <a href="<%= admissions_queue_path %>" title="Admissions queue"
+             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+            <i class="ri-folder-history-line"></i>
+            <span class="group-data-[collapsed=true]/sb:hidden">Admissions queue</span>
+          </a>
           <a href="/branches" title="Branches"
              class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
             <i class="ri-map-pin-line"></i>
@@ -56,319 +58,474 @@
             <i class="ri-team-line"></i>
             <span class="group-data-[collapsed=true]/sb:hidden">Team</span>
           </a>
+          <%# De-emphasized: config link, not a daily-driver. %>
           <a href="<%= edit_agency_features_path %>" title="Agency features"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-            <i class="ri-toggle-line"></i>
-            <span class="group-data-[collapsed=true]/sb:hidden">Features</span>
+             class="flex items-center gap-2 px-3 py-2 text-[#9A938A] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+            <i class="ri-toggle-line text-[13px]"></i>
+            <span class="text-[12px] group-data-[collapsed=true]/sb:hidden">Features</span>
           </a>
         <% end %>
+        <div class="mt-3 mb-1 px-3 text-[10px] uppercase tracking-widest text-[#B9B3A9] font-bold group-data-[collapsed=true]/sb:hidden">Reports</div>
         <div title="IDG Review (soon)"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+             class="flex items-center gap-2 px-3 py-2 text-[#9A938A] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <i class="ri-group-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">IDG Review</span>
           <span class="text-[10px] ml-auto italic group-data-[collapsed=true]/sb:hidden">soon</span>
         </div>
         <div title="Census Report (soon)"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+             class="flex items-center gap-2 px-3 py-2 text-[#9A938A] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <i class="ri-file-list-3-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">Census Report</span>
           <span class="text-[10px] ml-auto italic group-data-[collapsed=true]/sb:hidden">soon</span>
         </div>
       </nav>
     </div>
-    <div class="mt-3">
+
+    <%# Active Census — a scrollable roster list, like the patient-chat left
+        rail. Fills the space between nav and the user menu. %>
+    <% if @agency %>
+      <div class="mt-6 flex-1 min-h-0 flex flex-col group-data-[collapsed=true]/sb:hidden">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Active Census</div>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D9D5CD] text-[#1D1C1A]"><%= (@active_patient_count || @patients.size) %></span>
+        </div>
+        <div class="flex-1 min-h-0 overflow-y-auto -mx-1 pr-1">
+          <% if @patients.empty? %>
+            <div class="px-1 text-[11px] text-[#6B665F] italic">No patients yet.</div>
+          <% else %>
+            <div class="space-y-0.5">
+              <% @patients.each do |p| %>
+                <a href="/patients/<%= p.id %>" class="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[#D9D5CD] transition">
+                  <div class="w-7 h-7 rounded-full bg-[#D9D5CD] text-[#6B665F] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[12px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
+                    <div class="text-[10px] text-[#6B665F] font-mono truncate"><%= p.mrn %> · <%= p.status %></div>
+                  </div>
+                  <% if p.dnr? || p.dnr_dni? %>
+                    <span class="text-[8px] font-bold px-1 py-0.5 rounded bg-[#C1403A] text-white tracking-wider flex-shrink-0"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+                  <% end %>
+                </a>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="mt-3 flex-shrink-0">
       <%= render "shared/user_menu", direction: :up %>
     </div>
   </aside>
 
-  <!-- Main -->
-  <main class="flex-1 flex flex-col overflow-hidden">
-    <header class="px-8 py-5 border-b border-[#EFECE6] bg-white flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div>
-          <h2 class="text-xl font-serif font-bold text-[#1D1C1A]">Mission Stage</h2>
-          <div class="text-xs text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
-        </div>
-      </div>
-      <div class="flex items-center gap-3">
-        <%= link_to coordination_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
-          <i class="ri-inbox-line"></i> Coordination
-        <% end %>
-        <%= link_to admissions_queue_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] font-medium transition" do %>
-          <i class="ri-folder-history-line"></i> Admissions queue
-        <% end %>
-        <% if (current_user.role_names & %w[admin don admissions]).any? %>
-          <%= link_to new_patient_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
-            <i class="ri-user-add-line"></i> New patient
-          <% end %>
-        <% end %>
-        <div id="cable-status" class="font-mono text-xs text-[#6B665F]">connecting…</div>
-      </div>
-    </header>
-
-    <div class="flex-1 flex flex-col overflow-hidden">
-      <div class="w-full max-w-[1400px] mx-auto flex-1 flex flex-col overflow-hidden px-4 md:px-8">
+  <!-- ─── Main Stage: banner + at-a-glance + Ask HosAlivio ──────── -->
+  <main data-mission-mobile-target="tab" data-tab-name="stage"
+        class="flex-1 flex flex-col min-w-0 overflow-hidden pb-14 md:pb-0">
     <% if @agency.nil? %>
       <div class="flex-1 flex items-center justify-center text-sm text-[#6B665F]">
         No agency yet — run <code class="font-mono text-[#1D1C1A]">bin/rails db:seed</code>.
       </div>
     <% else %>
-      <% manager_roles = %w[admin don admissions] %>
-      <% is_manager = (current_user.role_names & manager_roles).any? %>
+      <%
+        manager_roles = %w[admin don admissions]
+        is_manager    = (current_user.role_names & manager_roles).any?
+        noe_soon      = @noe_overdue.size + @noe_due_today.size
+        quick_stats = [
+          { label: "Active patients", value: @active_patient_count,        urgent: false },
+          { label: "Pending reviews", value: @pending_certifications.size, urgent: false },
+          { label: "Open blockers",   value: @open_blockers,               urgent: @open_blockers.to_i.positive? },
+          { label: "NOE deadlines",   value: noe_soon,                     urgent: @noe_overdue.any? }
+        ]
+      %>
 
-      <%# Agency-level "Ask HosAlivio" — oversight questions, answered ephemerally
-          into the turbo-frame below (never written to a patient's chart). %>
+      <!-- Banner -->
+      <header class="px-6 py-4 border-b border-[#EFECE6] bg-white">
+        <div class="flex items-center gap-4">
+          <!-- Icon -->
+          <div class="w-12 h-12 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+            <i class="ri-radar-line text-xl"></i>
+          </div>
+
+          <!-- Identity block -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="font-serif text-xl text-[#1D1C1A] truncate">Mission Stage</h2>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase truncate max-w-[200px]"><%= @agency.name %></span>
+            </div>
+            <div class="text-[12px] text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
+          </div>
+
+          <!-- Right-side stat chips (managers only; hidden on small screens) -->
+          <% if is_manager %>
+            <div class="hidden lg:flex items-center gap-2 flex-shrink-0">
+              <% quick_stats.each do |s| %>
+                <div class="px-3 py-1.5 rounded-xl text-center <%= s[:urgent] ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %>">
+                  <div class="text-[9px] uppercase tracking-widest <%= s[:urgent] ? 'text-[#C1403A] font-bold' : 'text-[#6B665F]' %>"><%= s[:label] %></div>
+                  <div class="text-lg font-serif leading-none mt-0.5 <%= s[:urgent] ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>"><%= s[:value] %></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Status line + quick links -->
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <div class="text-[11px] text-[#6B665F] flex items-center gap-1.5">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>Care Team ↔ HosAlivio · <span id="cable-status" class="font-mono">connecting…</span></span>
+          </div>
+          <div class="hidden sm:flex items-center gap-2">
+            <%= link_to coordination_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
+              <i class="ri-inbox-line"></i> Coordination
+            <% end %>
+            <%= link_to admissions_queue_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] font-medium transition" do %>
+              <i class="ri-folder-history-line"></i> Admissions queue
+            <% end %>
+            <% if is_manager %>
+              <%= link_to new_patient_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
+                <i class="ri-user-add-line"></i> New patient
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </header>
+
+      <!-- Pinned NOE-overdue strip (the agency's standing "open crisis") -->
+      <% if is_manager && @noe_overdue.any? %>
+        <div class="px-6 pt-4">
+          <div class="rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] overflow-hidden">
+            <div class="bg-[#C1403A] text-white px-4 py-2 flex items-center gap-2">
+              <i class="ri-pushpin-fill"></i>
+              <span class="font-bold tracking-wider text-[12px]">PINNED · NOE OVERDUE</span>
+              <span class="ml-auto text-[10px] opacity-80">Past the 5-day filing deadline — Medicare revenue at risk.</span>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3">
+              <i class="ri-alarm-warning-fill text-[#C1403A]"></i>
+              <div class="text-[13px] text-[#1D1C1A]">
+                <strong class="text-[#C1403A]"><%= @noe_overdue.size %></strong>
+                election<%= @noe_overdue.size == 1 ? "" : "s" %> awaiting NOE filing.
+              </div>
+              <a href="<%= admissions_queue_path %>" class="ml-auto text-[11px] text-[#C1403A] font-medium hover:underline whitespace-nowrap">Open queue →</a>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Stage body — Ask HosAlivio's answer lands here, plus at-a-glance -->
+      <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+        <%# Ephemeral answer renders here, like a reply in the feed. %>
+        <%= turbo_frame_tag "assistant-answer", class: "block empty:hidden" %>
+
+        <%
+          has_glance = @pending_certifications.any? || @noe_overdue.any? || @noe_due_today.any? ||
+                       @licenses_expired.to_i.positive? || @licenses_expiring.to_i.positive? ||
+                       @open_inquiries.any? || @mission_visits.any?
+        %>
+        <div class="max-w-2xl">
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">At a glance</div>
+          <% if has_glance %>
+            <div class="rounded-2xl border border-[#EFECE6] bg-white overflow-hidden divide-y divide-[#EFECE6]">
+              <!-- Awaiting MD certification -->
+              <% if @pending_certifications.any? %>
+                <details class="group" open>
+                  <%= acc_header("ri-stethoscope-line", "Awaiting MD Cert", @pending_certifications.size.to_s) %>
+                  <div class="px-5 pb-4 pt-2 text-[12px] text-[#6B665F] space-y-1">
+                    <% @pending_certifications.first(6).each do |pae| %>
+                      <div class="truncate">· <%= pae.patient.full_name %> — <%= pae.primary_icd10.presence || "dx pending" %></div>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- NOE deadlines -->
+              <% if @noe_overdue.any? || @noe_due_today.any? %>
+                <details class="group" <%= "open" if @noe_overdue.any? %>>
+                  <%= acc_header("ri-alarm-warning-line", "NOE Deadlines", (@noe_overdue.size + @noe_due_today.size).to_s) %>
+                  <div class="px-5 pb-4 pt-2 text-[12px] space-y-1.5">
+                    <% if @noe_overdue.any? %>
+                      <div class="text-[#C1403A] font-bold"><i class="ri-alarm-warning-fill"></i> <%= @noe_overdue.size %> overdue — file immediately</div>
+                    <% end %>
+                    <% @noe_due_today.first(6).each do |pae| %>
+                      <div class="text-[#6B665F] truncate">· <%= pae.patient.full_name %> — due <%= pae.noe_deadline_at&.strftime("%b %-d") %></div>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- Compliance risk -->
+              <% if @licenses_expired.to_i > 0 || @licenses_expiring.to_i > 0 %>
+                <details class="group">
+                  <%= acc_header("ri-shield-cross-line", "Compliance Risk", (@licenses_expired.to_i + @licenses_expiring.to_i).to_s) %>
+                  <div class="px-5 pb-4 pt-2 text-[12px] text-[#6B665F] space-y-1">
+                    <% if @licenses_expired.to_i > 0 %>
+                      <div><strong class="text-[#C1403A]"><%= @licenses_expired %></strong> license<%= @licenses_expired == 1 ? "" : "s" %> already expired</div>
+                    <% end %>
+                    <% if @licenses_expiring.to_i > 0 %>
+                      <div><strong class="text-[#D97757]"><%= @licenses_expiring %></strong> expiring within 60 days</div>
+                    <% end %>
+                    <a href="/team_members" class="inline-flex items-center gap-1 text-[11px] text-[#D97757] font-medium hover:underline mt-1">See who <i class="ri-arrow-right-line"></i></a>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- Landing-page inquiries -->
+              <% if @open_inquiries.any? %>
+                <details class="group">
+                  <%= acc_header("ri-inbox-unarchive-line", "New Inquiries", @open_inquiries.size.to_s) %>
+                  <div class="px-5 pb-4 pt-2 space-y-2.5">
+                    <% @open_inquiries.each do |inq| %>
+                      <div class="text-[12px]">
+                        <div class="text-[#1D1C1A] font-medium truncate">
+                          <%= inq.first_name.presence || "Anonymous" %>
+                          <span class="text-[10px] text-[#6B665F] font-mono">· ZIP <%= inq.zip_prefix %>xx</span>
+                        </div>
+                        <div class="text-[11px] text-[#6B665F] truncate"><%= inq.contact %></div>
+                        <div class="flex items-center gap-1.5 mt-1">
+                          <% if inq.status_new_lead? %>
+                            <%= button_to claim_inquiry_path(inq), class: "text-[10px] px-2.5 py-1 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b]" do %><i class="ri-hand-heart-line"></i> Claim<% end %>
+                          <% else %>
+                            <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %><i class="ri-user-add-line"></i> Convert<% end %>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- Visits · recent & upcoming -->
+              <% if @mission_visits.any? %>
+                <details class="group">
+                  <%= acc_header("ri-calendar-check-line", "Visits · Recent & Upcoming", @mission_visits.size.to_s) %>
+                  <div class="pb-2">
+                    <% @mission_visits.each do |v| %>
+                      <%
+                        if v.completed_visit?
+                          status_label, status_cls = "Completed", "bg-[#F0F7F2] text-[#2F6F4E]"
+                        elsif v.currently_in_progress?
+                          status_label, status_cls = "In progress", "bg-[#FFF3EC] text-[#D97757]"
+                        else
+                          status_label, status_cls = "Scheduled", "bg-[#F2EEE7] text-[#6B665F]"
+                        end
+                      %>
+                      <%= link_to patient_path(v.patient), class: "flex items-center gap-3 px-5 py-2 text-[12px] hover:bg-[#FBF9F5] transition" do %>
+                        <div class="w-14 flex-shrink-0 text-[10px] text-[#6B665F] font-mono leading-tight">
+                          <%= v.anchor_start&.strftime("%a %-d") %><br><%= v.anchor_start&.strftime("%-l:%M %p") %>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="text-[#1D1C1A] font-medium truncate"><%= v.patient&.full_name %></div>
+                          <div class="text-[10px] text-[#6B665F] truncate"><%= v.discipline.to_s.upcase %> · <%= v.visit_type_label %></div>
+                        </div>
+                        <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 <%= status_cls %>"><%= status_label %></span>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="rounded-2xl border border-[#EFECE6] bg-white p-6 text-center text-sm text-[#6B665F]">
+              <i class="ri-checkbox-circle-line text-[#2F6F4E] text-lg"></i>
+              <div class="mt-1">All clear — no pending certs, NOE deadlines, or open inquiries right now.</div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Input Bar — "Ask HosAlivio" composer (managers only) -->
       <% if is_manager %>
-        <section class="mx-6 mt-6">
-          <div class="rounded-2xl bg-white border border-[#EFECE6] p-4">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="w-6 h-6 rounded-full bg-[#FBF9F5] text-[#D97757] flex items-center justify-center"><i class="ri-sparkling-2-line text-[13px]"></i></span>
-              <div class="text-[12px] text-[#1D1C1A] font-medium">Ask HosAlivio</div>
-            </div>
-            <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" }, class: "flex gap-2" do %>
-              <input type="text" name="q" placeholder="e.g. show today's pending items"
-                     class="flex-1 text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
-              <button type="submit" class="rounded-full bg-[#D97757] hover:bg-[#c56647] text-white px-4 py-2 text-[13px] font-medium whitespace-nowrap">Ask</button>
-            <% end %>
-            <%= turbo_frame_tag "assistant-answer" %>
-          </div>
-        </section>
-      <% end %>
-
-      <% if is_manager && (@pending_certifications.any? || @pending_noe.any?) %>
-        <section class="mx-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <% if @pending_certifications.any? %>
-            <div class="rounded-2xl border border-[#2B4A7A] bg-[#F0F4FA] p-4">
-              <div class="flex items-center gap-2">
-                <i class="ri-stethoscope-line text-[#2B4A7A] text-lg"></i>
-                <div class="text-[11px] uppercase tracking-widest text-[#2B4A7A] font-bold">Awaiting MD certification</div>
-              </div>
-              <div class="text-[22px] font-serif text-[#1D1C1A] mt-1 leading-none"><%= @pending_certifications.size %></div>
-              <div class="text-[11px] text-[#6B665F] mt-1 space-y-0.5">
-                <% @pending_certifications.first(3).each do |pae| %>
-                  <div class="truncate">· <%= pae.patient.full_name %> — <%= pae.primary_icd10.presence || "dx pending" %></div>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-
-          <% if @noe_overdue.any? %>
-            <div class="rounded-2xl border-2 border-[#C1403A] bg-[#FFF3EC] p-4">
-              <div class="flex items-center gap-2">
-                <i class="ri-alarm-warning-fill text-[#C1403A] text-lg"></i>
-                <div class="text-[11px] uppercase tracking-widest text-[#C1403A] font-bold">NOE OVERDUE</div>
-              </div>
-              <div class="text-[22px] font-serif text-[#C1403A] mt-1 leading-none"><%= @noe_overdue.size %></div>
-              <div class="text-[11px] text-[#6B665F] mt-1">Past the 5-day filing deadline. Medicare revenue at risk.</div>
-            </div>
-          <% end %>
-
-          <% if @noe_due_today.any? %>
-            <div class="rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4">
-              <div class="flex items-center gap-2">
-                <i class="ri-time-line text-[#D97757] text-lg"></i>
-                <div class="text-[11px] uppercase tracking-widest text-[#D97757] font-bold">NOE due today / tomorrow</div>
-              </div>
-              <div class="text-[22px] font-serif text-[#1D1C1A] mt-1 leading-none"><%= @noe_due_today.size %></div>
-              <div class="text-[11px] text-[#6B665F] mt-1 space-y-0.5">
-                <% @noe_due_today.first(3).each do |pae| %>
-                  <div class="truncate">· <%= pae.patient.full_name %> — <%= pae.noe_deadline_at.strftime("%b %-d") %></div>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-        </section>
-      <% end %>
-
-      <% if is_manager && (@licenses_expired.to_i > 0 || @licenses_expiring.to_i > 0) %>
-        <section class="mx-6 mt-6">
-          <a href="/team_members" class="block rounded-2xl border border-[#D97757] bg-[#FFF3EC] p-4 hover:bg-[#FFEDE2] transition">
-            <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
-                <i class="ri-shield-cross-line text-lg"></i>
-              </div>
-              <div class="flex-1">
-                <div class="text-[11px] uppercase tracking-widest text-[#C1403A] font-bold">Compliance risk</div>
-                <div class="text-[14px] text-[#1D1C1A] mt-0.5">
-                  <% if @licenses_expired.to_i > 0 %>
-                    <strong class="text-[#C1403A]"><%= @licenses_expired %></strong> license<%= @licenses_expired == 1 ? "" : "s" %> already expired
-                  <% end %>
-                  <% if @licenses_expired.to_i > 0 && @licenses_expiring.to_i > 0 %> · <% end %>
-                  <% if @licenses_expiring.to_i > 0 %>
-                    <strong class="text-[#D97757]"><%= @licenses_expiring %></strong> expiring within 60 days
-                  <% end %>
-                </div>
-                <div class="text-[11px] text-[#6B665F] mt-0.5">Renewals block Medicare billing. Click to see who.</div>
-              </div>
-              <i class="ri-arrow-right-line text-[#6B665F]"></i>
-            </div>
-          </a>
-        </section>
-      <% end %>
-
-      <% if @open_inquiries.any? %>
-        <section class="mx-6 mt-6 rounded-2xl border border-[#EFECE6] bg-white overflow-hidden">
-          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
-            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-inbox-unarchive-line"></i> Landing-page inquiries</h3>
-            <span class="text-[10px] text-[#6B665F] font-mono"><%= @open_inquiries.size %> open</span>
-          </div>
-          <div class="divide-y divide-[#EFECE6]">
-            <% @open_inquiries.each do |inq| %>
-              <div class="flex items-center gap-3 px-5 py-3 text-[13px]">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white"
-                     style="background: <%= inq.is_general ? '#6B665F' : '#D97757' %>;">
-                  <i class="<%= inq.is_general ? 'ri-megaphone-line' : 'ri-send-plane-2-line' %>"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-[#1D1C1A] font-medium">
-                    <%= inq.first_name.presence || "Anonymous" %>
-                    <span class="text-[11px] text-[#6B665F] font-mono">· ZIP <%= inq.zip_prefix %>xx</span>
-                    <% unless inq.is_general %>
-                      <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFF3EC] text-[#D97757] ml-1">Targeted</span>
-                    <% end %>
-                    <% if inq.status_claimed? %>
-                      <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#F0F7F2] text-[#2F6F4E] ml-1">Claimed · <%= inq.claimed_by&.full_name&.split&.first %></span>
-                    <% end %>
-                  </div>
-                  <div class="text-[11px] text-[#6B665F] mt-0.5">
-                    <%= inq.contact %>
-                    <% if inq.question.present? %> · <span class="italic">"<%= truncate(inq.question, length: 90) %>"</span><% end %>
-                  </div>
-                </div>
-                <div class="flex items-center gap-1.5">
-                  <% if inq.status_new_lead? %>
-                    <%= button_to claim_inquiry_path(inq), class: "text-[11px] px-3 py-1 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b]" do %>
-                      <i class="ri-hand-heart-line"></i> Claim
-                    <% end %>
-                  <% elsif inq.status_claimed? %>
-                    <%= button_to mark_contacted_inquiry_path(inq), class: "text-[11px] px-3 py-1 rounded-full bg-[#2F6F4E] text-white hover:bg-[#265a3d]" do %>
-                      <i class="ri-phone-fill"></i> Contacted
-                    <% end %>
-                    <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %>
-                      <i class="ri-user-add-line"></i> Convert
-                    <% end %>
-                  <% else %>
-                    <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %>
-                      <i class="ri-user-add-line"></i> Convert
-                    <% end %>
-                  <% end %>
-                  <%= button_to dismiss_inquiry_path(inq), class: "text-[11px] px-2 py-1 rounded-full text-[#6B665F] hover:bg-[#EFECE6]" do %>
-                    <i class="ri-close-line"></i>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        </section>
-      <% end %>
-
-      <% if is_manager && @mission_visits.any? %>
-        <section class="mx-6 mt-6 rounded-2xl border border-[#EFECE6] bg-white overflow-hidden">
-          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
-            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]"><i class="ri-calendar-check-line"></i> Visits · recent &amp; upcoming</h3>
-            <span class="text-[10px] text-[#6B665F] font-mono"><%= @mission_visits.size %></span>
-          </div>
-          <div class="divide-y divide-[#EFECE6] max-h-72 overflow-y-auto">
-            <% @mission_visits.each do |v| %>
-              <%
-                if v.completed_visit?
-                  status_label, status_cls = "Completed", "bg-[#F0F7F2] text-[#2F6F4E]"
-                elsif v.currently_in_progress?
-                  status_label, status_cls = "In progress", "bg-[#FFF3EC] text-[#D97757]"
-                else
-                  status_label, status_cls = "Scheduled", "bg-[#F2EEE7] text-[#6B665F]"
-                end
-              %>
-              <%= link_to patient_path(v.patient), class: "flex items-center gap-3 px-5 py-2.5 text-[13px] hover:bg-[#FBF9F5] transition" do %>
-                <div class="w-16 flex-shrink-0 text-[11px] text-[#6B665F] font-mono leading-tight">
-                  <%= v.anchor_start&.strftime("%a %-d") %><br><%= v.anchor_start&.strftime("%-l:%M %p") %>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-[#1D1C1A] font-medium truncate"><%= v.patient&.full_name %></div>
-                  <div class="text-[11px] text-[#6B665F] truncate">
-                    <%= v.discipline.to_s.upcase %> · <%= v.visit_type_label %>
-                    <% if v.user %> · <%= v.user.full_name %><% end %>
-                  </div>
-                </div>
-                <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 <%= status_cls %>"><%= status_label %></span>
-              <% end %>
-            <% end %>
-          </div>
-        </section>
-      <% end %>
-
-      <div class="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden">
-        <!-- Census -->
-        <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col">
-          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
-            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Active Census</h3>
-            <span class="text-xs text-[#1D1C1A] font-mono"><%= @patients.size %></span>
-          </div>
-          <div class="flex-1 overflow-y-auto">
-            <% if @patients.empty? %>
-              <div class="p-6 text-sm text-[#6B665F]">No patients yet.</div>
-            <% else %>
-              <table class="w-full text-sm">
-                <thead class="bg-[#FBF9F5] text-[11px] uppercase tracking-widest text-[#6B665F]">
-                  <tr>
-                    <th class="text-left px-4 py-2 font-medium">MRN</th>
-                    <th class="text-left px-4 py-2 font-medium">Name</th>
-                    <th class="text-left px-4 py-2 font-medium">Status</th>
-                    <th class="text-left px-4 py-2 font-medium">Code</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @patients.each do |p| %>
-                    <tr class="border-t border-[#EFECE6] hover:bg-[#FBF9F5] transition">
-                      <td class="px-4 py-2 font-mono text-[#1D1C1A]"><%= p.mrn %></td>
-                      <td class="px-4 py-2">
-                        <a href="/patients/<%= p.id %>" class="text-[#D97757] hover:underline">
-                          <%= p.full_name %>
-                        </a>
-                      </td>
-                      <td class="px-4 py-2 text-[#6B665F]"><%= p.status %></td>
-                      <td class="px-4 py-2">
-                        <% if p.dnr? || p.dnr_dni? %>
-                          <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#C1403A] text-white tracking-wider"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
-                        <% else %>
-                          <span class="text-[10px] text-[#6B665F]"><%= p.code_status.to_s.upcase %></span>
+        <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]">
+          <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" } do %>
+            <div class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
+              <%# "+" menu — opens the Team channels modal (moved here from the sidebar). %>
+              <div class="relative flex-shrink-0" data-controller="dialog">
+                <button type="button" data-action="dialog#open" title="Team channels"
+                        class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+                  <i class="ri-add-line"></i>
+                </button>
+                <dialog data-dialog-target="el" data-action="click->dialog#backdrop"
+                        class="fixed inset-0 m-auto h-fit w-fit max-w-[90vw] max-h-[90vh] rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
+                  <div class="w-80 max-w-[90vw] bg-white rounded-2xl border border-[#EFECE6] shadow-xl overflow-hidden text-left">
+                    <div class="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-[#EFECE6]">
+                      <div class="flex items-center gap-2">
+                        <i class="ri-chat-3-line text-[#D97757]"></i>
+                        <h2 class="font-serif text-lg text-[#1D1C1A]">Team channels</h2>
+                      </div>
+                      <button type="button" data-action="dialog#close" title="Close"
+                              class="text-[#6B665F] hover:text-[#1D1C1A] w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#EFECE6] flex-shrink-0">
+                        <i class="ri-close-line"></i>
+                      </button>
+                    </div>
+                    <div class="py-2">
+                      <% if @channels.blank? %>
+                        <div class="px-5 py-4 text-[12px] text-[#6B665F] italic">No channels yet.</div>
+                      <% else %>
+                        <% @channels.each do |c| %>
+                          <%= link_to channel_path(c), class: "flex items-center gap-2 px-5 py-2.5 hover:bg-[#FBF9F5] transition" do %>
+                            <span class="text-[#9A938A]">#</span>
+                            <span class="text-[14px] text-[#1D1C1A] font-medium"><%= c.slug %></span>
+                            <% unless c.postable_by?(current_user) %>
+                              <span class="ml-auto text-[10px] text-[#6B665F] inline-flex items-center gap-1"><i class="ri-lock-line"></i> read-only</span>
+                            <% end %>
+                          <% end %>
                         <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            <% end %>
-          </div>
-        </section>
+                      <% end %>
+                    </div>
+                    <div class="px-5 py-3 border-t border-[#EFECE6]">
+                      <a href="/channels" class="inline-flex items-center gap-1 text-[12px] text-[#D97757] font-medium hover:underline">
+                        Open team chat <i class="ri-arrow-right-line"></i>
+                      </a>
+                    </div>
+                  </div>
+                </dialog>
+              </div>
+              <input type="text" name="q" autocomplete="off"
+                     placeholder="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…"
+                     class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
+              <button type="submit"
+                      title="Ask HosAlivio"
+                      class="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-sm active:scale-95 transition">
+                <i class="ri-send-plane-fill text-[16px]"></i>
+              </button>
+            </div>
+          <% end %>
 
-        <!-- Event feed -->
-        <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col">
-          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
-            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Agent Event Feed · live</h3>
-            <% open_crises = @unresolved_note_ids.size %>
-            <% if open_crises > 0 %>
-              <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider animate-pulse">
-                <i class="ri-alarm-warning-line"></i> <%= open_crises %> OPEN
-              </span>
-            <% end %>
+          <div class="mt-2 text-[11px] text-[#6B665F] text-center">
+            HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
           </div>
-
-          <div id="event-feed" class="flex-1 overflow-y-auto text-[12px] p-3 space-y-1.5">
-            <% if @stories.empty? %>
-              <div class="text-[#6B665F] p-2">No events yet. Waiting for agents…</div>
-            <% else %>
-              <% @stories.each do |story| %>
-                <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
-              <% end %>
-            <% end %>
-          </div>
-        </section>
-      </div>
+        </div>
+      <% end %>
     <% end %>
-      </div>
-    </div>
   </main>
+
+  <!-- ─── Right Rail: Live agent-activity feed ─────────────────── -->
+  <% if @agency %>
+    <aside data-mission-mobile-target="tab" data-tab-name="activity"
+           class="hidden md:flex w-96 bg-white border-l border-[#EFECE6] flex-col overflow-hidden
+                  data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
+      <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2F6F4E] opacity-70"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-[#2F6F4E]"></span>
+          </span>
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Live agent activity</h3>
+        </div>
+        <% open_crises = @unresolved_note_ids.size %>
+        <% if open_crises > 0 %>
+          <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider animate-pulse">
+            <i class="ri-alarm-warning-line"></i> <%= open_crises %> OPEN
+          </span>
+        <% end %>
+      </div>
+
+      <%#
+        Chronological, day-grouped stream (oldest → newest, newest at the
+        bottom, like the patient chat). Everything before the latest day
+        collapses behind a "Show earlier messages" toggle; the latest day
+        stays open and is where live events append. Date-divider pills mark
+        each day; the current day's divider is tagged data-today-divider so
+        the live WebSocket insert can find (or create) it.
+      %>
+      <%# Lane filter chips — split the stream by type (Admissions / Clinical / Family / Ops). %>
+      <% if @stories.any? %>
+        <% lane_counts = @stories.group_by { |s| activity_category(s.event) }.transform_values(&:size) %>
+        <div class="px-4 py-2 border-b border-[#EFECE6] flex items-center gap-1.5 flex-wrap flex-shrink-0">
+          <button type="button" data-lane-chip="all" data-on="true"
+                  class="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white data-[on=true]:border-[#1D1C1A]">
+            All <span class="font-mono opacity-70"><%= @stories.size %></span>
+          </button>
+          <% MissionStageHelper::ACTIVITY_LANES.each do |key, label, color| %>
+            <button type="button" data-lane-chip="<%= key %>" data-on="false"
+                    class="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white data-[on=true]:border-[#1D1C1A]">
+              <span class="w-1.5 h-1.5 rounded-full" style="background: <%= color %>;"></span><%= label %> <span class="font-mono opacity-70"><%= lane_counts[key] || 0 %></span>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+
+      <div id="event-feed" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        <% if @stories.empty? %>
+          <div data-feed-empty class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
+            <p class="max-w-xs">No agent activity yet. This stream updates live as your team and HosAlivio work across every patient.</p>
+          </div>
+        <% else %>
+          <%
+            tz          = Time.zone
+            stories_asc = @stories.sort_by { |s| s.event.happened_at }
+            latest_date = stories_asc.last.event.happened_at.in_time_zone(tz).to_date
+            earlier, recent = stories_asc.partition { |s| s.event.happened_at.in_time_zone(tz).to_date < latest_date }
+          %>
+
+          <%# Everything before the latest day, collapsed until expanded. %>
+          <% if earlier.any? %>
+            <details class="group/earlier" data-earlier>
+              <summary data-earlier-summary class="list-none cursor-pointer flex items-center justify-center [&::-webkit-details-marker]:hidden">
+                <span class="inline-flex items-center gap-1 px-3 py-1 text-[11px] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full hover:bg-[#EFECE6] transition">
+                  <i class="ri-arrow-up-s-line group-open/earlier:rotate-180 transition-transform"></i>
+                  <span class="group-open/earlier:hidden">Show earlier messages</span>
+                  <span class="hidden group-open/earlier:inline">Hide earlier messages</span>
+                </span>
+              </summary>
+              <div class="space-y-4 mt-4">
+                <% last_date = nil %>
+                <% earlier.each do |story| %>
+                  <% d = story.event.happened_at.in_time_zone(tz).to_date %>
+                  <% if d != last_date %>
+                    <div data-day-pill class="flex items-center justify-center pt-2 pb-1">
+                      <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
+                    </div>
+                    <% last_date = d %>
+                  <% end %>
+                  <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+                <% end %>
+              </div>
+            </details>
+          <% end %>
+
+          <%# The latest day — live events append here. %>
+          <div data-feed-recent class="space-y-4">
+            <% last_date = nil %>
+            <% recent.each do |story| %>
+              <% d = story.event.happened_at.in_time_zone(tz).to_date %>
+              <% if d != last_date %>
+                <div data-day-pill class="flex items-center justify-center pt-2 pb-1" <%= "data-today-divider" if d == Date.current %>>
+                  <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
+                </div>
+                <% last_date = d %>
+              <% end %>
+              <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </aside>
+  <% end %>
+
+  <!-- ─── Mobile bottom tab bar (below md) ──────────────────────── -->
+  <% if @agency %>
+    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch">
+      <%
+        mobile_tabs = [
+          { name: "census",   icon: "ri-team-line",     label: "Census" },
+          { name: "stage",    icon: "ri-radar-line",    label: "Stage" },
+          { name: "activity", icon: "ri-pulse-line",    label: "Activity" }
+        ]
+      %>
+      <% mobile_tabs.each do |t| %>
+        <button type="button"
+                data-action="click->mission-mobile#activate"
+                data-tab-name="<%= t[:name] %>"
+                data-mission-mobile-target="button"
+                data-mobile-active="<%= t[:name] == 'stage' ? 'true' : 'false' %>"
+                class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F] data-[mobile-active=true]:text-[#D97757] data-[mobile-active=true]:bg-[#FBF9F5] transition">
+          <i class="<%= t[:icon] %> text-lg"></i>
+          <span class="uppercase tracking-wider mt-0.5"><%= t[:label] %></span>
+        </button>
+      <% end %>
+    </nav>
+  <% end %>
 </div>
 
 <% if @agency %>
@@ -377,6 +534,68 @@
       const statusEl = document.getElementById("cable-status");
       const feedEl   = document.getElementById("event-feed");
       const agencyId = "<%= @agency.id %>";
+
+      // --- Live-feed helpers: append newest at the bottom, under a "Today" pill ---
+      function recentContainer() {
+        let el = feedEl.querySelector("[data-feed-recent]");
+        if (!el) {
+          const empty = feedEl.querySelector("[data-feed-empty]");
+          if (empty) empty.remove();
+          el = document.createElement("div");
+          el.className = "space-y-4 peer-open/earlier:hidden";
+          el.setAttribute("data-feed-recent", "");
+          feedEl.appendChild(el);
+        }
+        return el;
+      }
+      function ensureTodayDivider(recentEl) {
+        let div = recentEl.querySelector("[data-today-divider]");
+        if (div) return div;
+        div = document.createElement("div");
+        div.className = "flex items-center justify-center pt-2 pb-1";
+        div.setAttribute("data-today-divider", "");
+        div.setAttribute("data-day-pill", "");
+        div.innerHTML = `<div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">Today</div>`;
+        if (activeLane !== "all") div.classList.add("hidden");
+        recentEl.appendChild(div);
+        return div;
+      }
+      const nearBottom = () => (feedEl.scrollHeight - feedEl.scrollTop - feedEl.clientHeight) < 140;
+
+      // --- Lane (type-category) filtering — mirrors MissionStageHelper#activity_category ---
+      const LANE_COLOR = { admissions: "#2B4A7A", clinical: "#2F6F4E", family: "#D97757", ops: "#6B665F" };
+      const LANE_LABEL = { admissions: "Admissions", clinical: "Clinical", family: "Family", ops: "Ops" };
+      function categorize(p) {
+        const r = p.agent_id, s = p.subject_type, a = p.event;
+        if (r === "admissions") return "admissions";
+        if (s === "Inquiry" || (s === "Patient" && a === "create")) return "admissions";
+        if (r === "family" || r === "front_door_inbound") return "family";
+        if (["pharmacy", "dme", "insurance", "billing", "don", "system"].includes(r)) return "ops";
+        if (["rn", "md", "aide", "social_worker", "chaplain"].includes(r)) return "clinical";
+        return "ops";
+      }
+      let activeLane = "all";
+      const laneChips = Array.from(document.querySelectorAll("[data-lane-chip]"));
+      const matchesLane = (cat) => activeLane === "all" || cat === activeLane;
+      function applyLane(lane) {
+        activeLane = lane;
+        laneChips.forEach((c) => { c.dataset.on = (c.dataset.laneChip === lane) ? "true" : "false"; });
+        feedEl.querySelectorAll("[data-story]").forEach((el) => {
+          el.classList.toggle("hidden", !matchesLane(el.dataset.category));
+        });
+        // A specific lane spans all of history: reveal the earlier group and
+        // drop the per-day pills so it reads as one filtered list.
+        const filtering = lane !== "all";
+        feedEl.querySelectorAll("[data-day-pill]").forEach((el) => el.classList.toggle("hidden", filtering));
+        const earlier = feedEl.querySelector("[data-earlier]");
+        const summary = feedEl.querySelector("[data-earlier-summary]");
+        if (earlier) earlier.open = filtering;
+        if (summary) summary.classList.toggle("hidden", filtering);
+      }
+      laneChips.forEach((c) => c.addEventListener("click", () => applyLane(c.dataset.laneChip)));
+
+      // Open scrolled to the newest activity.
+      feedEl.scrollTop = feedEl.scrollHeight;
 
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       const ws = new WebSocket(`${proto}//${location.host}/cable`);
@@ -465,6 +684,10 @@
         const persona = PERSONA[p.agent_id] || { name: p.agent_id, title: "", initials: (p.agent_id||"?")[0].toUpperCase(), color: "#6B665F" };
         const phrase  = narrate(p);
         const isCrisis = p.urgency === "crisis";
+        const cat      = categorize(p);
+        const catColor = LANE_COLOR[cat] || "#6B665F";
+        const catLabel = LANE_LABEL[cat] || "Ops";
+        const catTag   = `<span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold" style="color: ${catColor};"><span class="w-1.5 h-1.5 rounded-full" style="background: ${catColor};"></span>${catLabel}</span>`;
 
         const patientLink = p.patient_id && p.patient_name
           ? `<a href="/patients/${p.patient_id}" class="font-medium text-[#D97757] hover:underline">${p.patient_name}</a>`
@@ -473,37 +696,51 @@
           ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
           : "";
 
-        const row = document.createElement("div");
-        const base = "flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all duration-700";
-        const highlight = isCrisis
+        const headlineHtml = (() => {
+          const titleSpan = persona.title ? `<span class="text-[11px] text-[#6B665F]"> (${persona.title})</span>` : "";
+          const afterHtml = phrase.after
+            ? (phrase.after.startsWith("'")
+                ? `<span class="text-[#3A3936]">${phrase.after}</span>`
+                : `<span class="text-[#3A3936]"> ${phrase.after}</span>`)
+            : "";
+          return `<i class="${phrase.icon} text-[#6B665F] mr-1"></i><span class="font-bold text-[#1D1C1A]">${persona.name}</span>${titleSpan} <span class="text-[#3A3936]">${phrase.before}</span>${patientLink ? " " + patientLink : ""}${afterHtml}`;
+        })();
+
+        const bubbleHighlight = isCrisis
           ? "border-[#D97757] bg-[#FFF3EC] animate-pulse"
           : "border-[#FFEB99] bg-[#FFFBEB]";
-        row.className = `${base} ${highlight}`;
+
+        const row = document.createElement("div");
+        row.className = "flex items-start gap-2.5";
+        row.setAttribute("data-story", "");
+        row.setAttribute("data-category", cat);
         row.innerHTML = `
-          <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+          <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
                style="background: ${persona.color};" title="${persona.name} · ${persona.title}">${persona.initials}</div>
-          <div class="flex-1 min-w-0">
-            <div class="text-[13px] leading-tight">${(() => {
-              const titleSpan = persona.title ? `<span class="text-[11px] text-[#6B665F]"> (${persona.title})</span>` : "";
-              const afterHtml = phrase.after
-                ? (phrase.after.startsWith("'")
-                    ? `<span class="text-[#3A3936]">${phrase.after}</span>`
-                    : `<span class="text-[#3A3936]"> ${phrase.after}</span>`)
-                : "";
-              return `<i class="${phrase.icon} text-[#6B665F] mr-1"></i><span class="font-bold text-[#1D1C1A]">${persona.name}</span>${titleSpan} <span class="text-[#3A3936]">${phrase.before}</span>${patientLink ? " " + patientLink : ""}${afterHtml}`;
-            })()}</div>
-            <div class="mt-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+          <div class="min-w-0">
+            <div data-bubble class="inline-block max-w-full rounded-2xl rounded-tl-sm border px-3.5 py-2.5 transition-all duration-700 ${bubbleHighlight}">
+              <div class="text-[13px] leading-snug text-[#3A3936]">${headlineHtml}</div>
+            </div>
+            <div class="mt-1 ml-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+              ${catTag}
               <time class="font-mono">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
               ${crisisPill}
               ${p.patient_mrn ? `<span class="font-mono">· ${p.patient_mrn}</span>` : ""}
             </div>
           </div>
         `;
-        feedEl.insertBefore(row, feedEl.firstChild);
+        if (!matchesLane(cat)) row.classList.add("hidden");
+        const recentEl = recentContainer();
+        ensureTodayDivider(recentEl);
+        const stick = nearBottom();
+        recentEl.appendChild(row);
+        if (stick && matchesLane(cat)) feedEl.scrollTop = feedEl.scrollHeight;
         if (!isCrisis) {
           setTimeout(() => {
-            row.classList.remove("border-[#FFEB99]", "bg-[#FFFBEB]");
-            row.classList.add("border-transparent");
+            const bubble = row.querySelector("[data-bubble]");
+            if (!bubble) return;
+            bubble.classList.remove("border-[#FFEB99]", "bg-[#FFFBEB]");
+            bubble.classList.add("border-[#EFECE6]", "bg-[#FBF9F5]");
           }, 1800);
         }
       };
