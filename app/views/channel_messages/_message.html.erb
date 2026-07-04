@@ -1,0 +1,7 @@
+<div class="px-4 py-2 hover:bg-[#FBF9F5]">
+  <div class="flex items-baseline gap-2 flex-wrap">
+    <span class="text-[13px] font-medium text-[#1D1C1A]"><%= message.user&.full_name.presence || "Someone" %></span>
+    <span class="text-[10px] text-[#9A938A]"><%= message.created_at.strftime("%b %-d · %-l:%M %p") %></span>
+  </div>
+  <div class="text-[13px] text-[#1D1C1A] whitespace-pre-wrap break-words mt-0.5"><%= message.body %></div>
+</div>

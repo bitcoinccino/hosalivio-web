@@ -67,6 +67,11 @@ Rails.application.routes.draw do
   # Internal dashboards (auth required — gated in DashboardsController)
   get "dashboard", to: "dashboards#show", as: :dashboard
 
+  # Team channels — agency-wide, non-patient team chat (#General, #Admission).
+  resources :channels, only: [ :index, :show ], param: :slug do
+    resources :messages, only: [ :create ], controller: "channel_messages"
+  end
+
   # Agency-level "Ask HosAlivio" — manager oversight questions, answered
   # ephemerally into a turbo-frame on the Mission Stage dashboard.
   post "assistant/ask", to: "admin_assistant#ask", as: :admin_assistant_ask

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_03_213811) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_04_013654) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -225,6 +225,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_213811) do
     t.datetime "updated_at", null: false
     t.index ["agency_id"], name: "index_cc_vitals_records_on_agency_id"
     t.index ["cc_interval_chart_id"], name: "index_cc_vitals_records_on_cc_interval_chart_id"
+  end
+
+  create_table "channel_messages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.text "body", null: false
+    t.uuid "channel_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["agency_id"], name: "index_channel_messages_on_agency_id"
+    t.index ["channel_id", "created_at"], name: "index_channel_messages_on_channel_id_and_created_at"
+    t.index ["channel_id"], name: "index_channel_messages_on_channel_id"
+    t.index ["user_id"], name: "index_channel_messages_on_user_id"
+  end
+
+  create_table "channels", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "agency_id", null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.string "post_roles", default: [], null: false, array: true
+    t.string "slug", null: false
+    t.boolean "system", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.index ["agency_id", "slug"], name: "index_channels_on_agency_id_and_slug", unique: true
+    t.index ["agency_id"], name: "index_channels_on_agency_id"
   end
 
   create_table "chat_feedbacks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -847,6 +874,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_213811) do
   add_foreign_key "cc_poc_interventions", "medication_orders"
   add_foreign_key "cc_vitals_records", "agencies"
   add_foreign_key "cc_vitals_records", "cc_interval_charts"
+  add_foreign_key "channel_messages", "agencies"
+  add_foreign_key "channel_messages", "channels"
+  add_foreign_key "channel_messages", "users"
+  add_foreign_key "channels", "agencies"
   add_foreign_key "consent_forms", "agencies"
   add_foreign_key "consent_forms", "patients"
   add_foreign_key "criterion_results", "policy_criteria", column: "policy_criterion_id"

@@ -29,6 +29,11 @@
           <i class="ri-calendar-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">Calendar</span>
         </a>
+        <a href="/channels" title="Team chat"
+           class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+          <i class="ri-chat-3-line"></i>
+          <span class="group-data-[collapsed=true]/sb:hidden">Team chat</span>
+        </a>
         <% unread_count = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
         <a href="/notifications" title="Notifications"
            class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0 relative">
