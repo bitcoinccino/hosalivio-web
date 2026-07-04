@@ -76,5 +76,7 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Admissions", response.body
     assert_match "Clinical", response.body
     assert_match 'data-category="admissions"', response.body
+    # category accent bar on the left edge (admissions = blue #2B4A7A)
+    assert_match "border-left-color: #2B4A7A", response.body
   end
 end

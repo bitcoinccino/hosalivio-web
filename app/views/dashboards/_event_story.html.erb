@@ -16,10 +16,11 @@
   subline  = patient ? "#{story.source_label} #{action}" : action
   initials = patient ? patient.full_name.to_s.split.map(&:first).first(2).join.upcase : persona[:initials]
 
-  row_class = [ "group/story flex items-start gap-2.5 rounded-xl px-2 py-1.5 -mx-2 transition" ]
+  # Category accent bar on the left edge (color-coded per lane).
+  row_class = [ "group/story flex items-start gap-2.5 rounded-lg border-l-[3px] pl-2.5 pr-2 py-1.5 -mx-2 transition" ]
   row_class << "hover:bg-[#FBF9F5]" if patient
   row_class << "bg-[#FFF3EC]"       if pulses
-  attrs = { "data-story": "", "data-category": category, class: row_class.join(" ") }
+  attrs = { "data-story": "", "data-category": category, class: row_class.join(" "), style: "border-left-color: #{cat_color};" }
   attrs[:href] = patient_path(patient) if patient
 %>
 <%= content_tag(patient ? :a : :div, attrs) do %>
