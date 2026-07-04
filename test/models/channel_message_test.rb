@@ -19,6 +19,20 @@ class ChannelMessageTest < ActiveSupport::TestCase
     assert_match "Ada Admin mentioned you in #general", note.title
   end
 
+  test "a reply threads under its root parent" do
+    root  = in_tenant(@agency) { @general.channel_messages.create!(agency: @agency, user: @author, body: "root msg") }
+    reply = in_tenant(@agency) { @general.channel_messages.create!(agency: @agency, user: @reggie, body: "a reply", parent: root) }
+    assert reply.reply?
+    assert_equal [ reply.id ], in_tenant(@agency) { root.replies.pluck(:id) }
+  end
+
+  test "threading is only one level deep" do
+    root  = in_tenant(@agency) { @general.channel_messages.create!(agency: @agency, user: @author, body: "root msg") }
+    reply = in_tenant(@agency) { @general.channel_messages.create!(agency: @agency, user: @reggie, body: "a reply", parent: root) }
+    nested = in_tenant(@agency) { @general.channel_messages.new(agency: @agency, user: @author, body: "nope", parent: reply) }
+    assert_not nested.valid?
+  end
+
   test "no self-mention and unknown handles are ignored" do
     assert_no_difference -> { in_tenant(@agency) { Notification.where(kind: "channel_mention").count } } do
       in_tenant(@agency) do

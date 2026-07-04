@@ -36,7 +36,9 @@ class ChannelsController < ApplicationController
 
   def load_messages
     ActsAsTenant.with_tenant(current_user.agency) do
-      @messages = @channel.channel_messages.includes(:user).last(100)
+      @messages = @channel.channel_messages.roots
+                          .includes(:user, replies: :user)
+                          .order(:created_at).last(100)
       @can_post = @channel.postable_by?(current_user)
       @mentionables = build_mentionables(current_user.agency, current_user)
     end

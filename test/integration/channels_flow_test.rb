@@ -57,6 +57,14 @@ class ChannelsFlowTest < ActionDispatch::IntegrationTest
     assert_match "data-mention-autocomplete-target", response.body
   end
 
+  test "replying from a channel threads under the parent message" do
+    sign_in @rn
+    root = in_tenant(@agency) { Channel.find_by(slug: "general").channel_messages.create!(agency: @agency, user: @rn, body: "root") }
+    assert_difference -> { in_tenant(@agency) { root.replies.count } }, 1 do
+      post channel_messages_path("general"), params: { body: "a threaded reply", parent_id: root.id }
+    end
+  end
+
   test "posting from the dashboard returns to the dashboard, not the channel" do
     sign_in @rn
     post channel_messages_path("general"), params: { body: "quick note", return_to: "dashboard" }
