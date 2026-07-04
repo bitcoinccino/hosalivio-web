@@ -333,65 +333,102 @@
         </div>
       </div>
 
-      <!-- Input Bar — "Ask HosAlivio" composer (managers only) -->
+      <!-- Input Bar — composer (Ask HosAlivio ⇄ team chat) (managers only) -->
       <% if is_manager %>
-        <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]">
-          <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" } do %>
+        <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]"
+             data-controller="composer"
+             data-composer-ask-url-value="<%= admin_assistant_ask_path %>"
+             data-composer-ask-placeholder-value="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…">
+
+          <%# Team-chat mode chip — hidden until a channel is picked. %>
+          <div data-composer-target="chip" class="hidden mb-2 flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1 rounded-full bg-[#EAF1F7] text-[#2B4A7A] border border-[#CADCEC]">
+              <i class="ri-chat-3-line"></i>
+              <span data-composer-target="chipLabel"># general</span>
+              <button type="button" data-action="composer#ask" title="Back to Ask HosAlivio" class="ml-1 hover:text-[#1D1C1A]"><i class="ri-close-line"></i></button>
+            </span>
+            <span class="text-[11px] text-[#6B665F]">Team-chat mode — your message posts to this channel.</span>
+          </div>
+
+          <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer", composer_target: "form" } do %>
             <div class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
-              <%# "+" menu — opens the Team channels modal (moved here from the sidebar). %>
-              <div class="relative flex-shrink-0" data-controller="dialog">
-                <button type="button" data-action="dialog#open" title="Team channels"
+              <%# "+" menu — a popover (same pattern as the patient composer's
+                  quick-actions dropdown), moved here from the sidebar. %>
+              <div class="relative flex-shrink-0" data-controller="quick-actions">
+                <button type="button" data-action="click->quick-actions#toggle" title="Team channels"
                         class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
                   <i class="ri-add-line"></i>
                 </button>
-                <dialog data-dialog-target="el" data-action="click->dialog#backdrop"
-                        class="fixed inset-0 m-auto h-fit w-fit max-w-[90vw] max-h-[90vh] rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
-                  <div class="w-80 max-w-[90vw] bg-white rounded-2xl border border-[#EFECE6] shadow-xl overflow-hidden text-left">
-                    <div class="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-[#EFECE6]">
-                      <div class="flex items-center gap-2">
-                        <i class="ri-chat-3-line text-[#D97757]"></i>
-                        <h2 class="font-serif text-lg text-[#1D1C1A]">Team channels</h2>
-                      </div>
-                      <button type="button" data-action="dialog#close" title="Close"
-                              class="text-[#6B665F] hover:text-[#1D1C1A] w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#EFECE6] flex-shrink-0">
-                        <i class="ri-close-line"></i>
-                      </button>
-                    </div>
-                    <div class="py-2">
-                      <% if @channels.blank? %>
-                        <div class="px-5 py-4 text-[12px] text-[#6B665F] italic">No channels yet.</div>
-                      <% else %>
-                        <% @channels.each do |c| %>
-                          <%= link_to channel_path(c), class: "flex items-center gap-2 px-5 py-2.5 hover:bg-[#FBF9F5] transition" do %>
-                            <span class="text-[#9A938A]">#</span>
-                            <span class="text-[14px] text-[#1D1C1A] font-medium"><%= c.slug %></span>
-                            <% unless c.postable_by?(current_user) %>
-                              <span class="ml-auto text-[10px] text-[#6B665F] inline-flex items-center gap-1"><i class="ri-lock-line"></i> read-only</span>
-                            <% end %>
+                <%
+                  channel_blurbs = {
+                    "general"   => "Team announcements and general discussion",
+                    "admission" => "Referrals, pre-admit evals, blockers, and scheduling."
+                  }
+                %>
+                <div data-quick-actions-target="panel"
+                     class="hidden absolute left-0 bottom-full mb-2 w-72 rounded-2xl bg-white border border-[#EFECE6] shadow-lg overflow-hidden z-50">
+                  <div class="px-4 py-2 border-b border-[#EFECE6]">
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Team channels</div>
+                    <div class="text-[12px] text-[#1D1C1A] mt-0.5">Post to a channel</div>
+                  </div>
+                  <div class="py-1">
+                    <% if @channels.blank? %>
+                      <div class="px-4 py-3 text-[12px] text-[#6B665F] italic">No channels yet.</div>
+                    <% else %>
+                      <% @channels.each do |c| %>
+                        <% blurb = channel_blurbs[c.slug] || "Team channel" %>
+                        <% if c.postable_by?(current_user) %>
+                          <%# Flip the composer into team-chat mode for this channel. %>
+                          <button type="button"
+                                  data-action="composer#channel quick-actions#close"
+                                  data-channel-slug="<%= c.slug %>"
+                                  data-channel-url="<%= channel_messages_path(c) %>"
+                                  class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[#FBF9F5] transition cursor-pointer">
+                            <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0 text-[#2B4A7A]">
+                              <i class="ri-hashtag"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                              <span class="block text-[13px] text-[#1D1C1A]"># <%= c.name %></span>
+                              <span class="block text-[11px] text-[#6B665F]"><%= blurb %></span>
+                            </span>
+                          </button>
+                        <% else %>
+                          <%= link_to channel_path(c), data: { action: "quick-actions#close" },
+                                class: "flex items-center gap-3 w-full px-4 py-2.5 hover:bg-[#FBF9F5] transition" do %>
+                            <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0 text-[#6B665F]">
+                              <i class="ri-hashtag"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                              <span class="flex items-center gap-2">
+                                <span class="block text-[13px] text-[#1D1C1A]"># <%= c.name %></span>
+                                <span class="text-[9px] uppercase tracking-wider text-[#6B665F] inline-flex items-center gap-1"><i class="ri-lock-line"></i> read-only</span>
+                              </span>
+                              <span class="block text-[11px] text-[#6B665F]"><%= blurb %></span>
+                            </span>
                           <% end %>
                         <% end %>
                       <% end %>
-                    </div>
-                    <div class="px-5 py-3 border-t border-[#EFECE6]">
-                      <a href="/channels" class="inline-flex items-center gap-1 text-[12px] text-[#D97757] font-medium hover:underline">
-                        Open team chat <i class="ri-arrow-right-line"></i>
-                      </a>
-                    </div>
+                    <% end %>
                   </div>
-                </dialog>
+                  <div class="px-4 py-2 border-t border-[#EFECE6]">
+                    <a href="/channels" class="inline-flex items-center gap-1 text-[12px] text-[#D97757] font-medium hover:underline">
+                      Open team chat <i class="ri-arrow-right-line"></i>
+                    </a>
+                  </div>
+                </div>
               </div>
-              <input type="text" name="q" autocomplete="off"
+              <input type="text" name="q" autocomplete="off" data-composer-target="input"
                      placeholder="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…"
                      class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
               <button type="submit"
-                      title="Ask HosAlivio"
+                      title="Send"
                       class="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-sm active:scale-95 transition">
                 <i class="ri-send-plane-fill text-[16px]"></i>
               </button>
             </div>
           <% end %>
 
-          <div class="mt-2 text-[11px] text-[#6B665F] text-center">
+          <div data-composer-target="hint" class="mt-2 text-[11px] text-[#6B665F] text-center">
             HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
           </div>
         </div>
