@@ -588,9 +588,25 @@
 
 <% if @agency %>
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    // Bound once for the tab's lifetime, and run on `turbo:load` — which fires
+    // on the initial load AND on every Turbo Drive visit. The old
+    // DOMContentLoaded hook only fired on a full page load, so reaching the
+    // Mission Stage via an in-app (Turbo) link left the socket unbuilt and the
+    // status stuck on "connecting…".
+    (function () {
+      if (window.__missionStageBound) return;
+      window.__missionStageBound = true;
+
+      function initMissionStage() {
       const statusEl = document.getElementById("cable-status");
       const feedEl   = document.getElementById("event-feed");
+      // Navigated away from the Mission Stage — tear down any live socket.
+      if (!statusEl || !feedEl) {
+        if (window.__missionStageWS) { try { window.__missionStageWS.close(); } catch (_) {} window.__missionStageWS = null; }
+        return;
+      }
+      // Re-entering — drop any stale socket from a previous visit.
+      if (window.__missionStageWS) { try { window.__missionStageWS.close(); } catch (_) {} window.__missionStageWS = null; }
       const agencyId = "<%= @agency.id %>";
 
       // --- Live-feed helpers: append newest at the bottom, under a "Today" pill ---
@@ -657,6 +673,7 @@
 
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       const ws = new WebSocket(`${proto}//${location.host}/cable`);
+      window.__missionStageWS = ws;
 
       ws.onopen  = () => {
         statusEl.textContent = "connected";
@@ -802,6 +819,9 @@
           }, 1800);
         }
       };
-    });
+      }  // end initMissionStage
+
+      document.addEventListener("turbo:load", initMissionStage);
+    })();
   </script>
 <% end %>
