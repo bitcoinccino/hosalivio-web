@@ -1,0 +1,64 @@
+<% content_for :title, "Team chat · ##{@channel&.slug}" %>
+<div class="min-h-screen bg-[#FBF9F5]">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to dashboard
+    </a>
+
+    <div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
+      <%# ── Channel list ─────────────────────────────────────── %>
+      <aside class="rounded-2xl bg-white border border-[#EFECE6] p-3 h-fit">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold px-1 mb-2">Channels</div>
+        <ul class="space-y-0.5">
+          <% @channels.each do |c| %>
+            <% active = (c.id == @channel&.id) %>
+            <li>
+              <%= link_to channel_path(c),
+                    class: "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[13px] #{active ? 'bg-[#F0F4FA] text-[#2B4A7A] font-medium' : 'text-[#1D1C1A] hover:bg-[#FBF9F5]'}" do %>
+                <span class="text-[#9A938A]">#</span><%= c.slug %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </aside>
+
+      <%# ── Selected channel ─────────────────────────────────── %>
+      <section class="rounded-2xl bg-white border border-[#EFECE6] flex flex-col overflow-hidden" style="height: 70vh;">
+        <div class="px-5 py-3 border-b border-[#EFECE6]">
+          <div class="text-[14px] font-serif text-[#1D1C1A]"># <%= @channel.name %></div>
+          <% if @channel.description.present? %>
+            <div class="text-[11px] text-[#6B665F] mt-0.5"><%= @channel.description %></div>
+          <% end %>
+        </div>
+
+        <%# Live-append new messages for anyone viewing this channel. %>
+        <%= turbo_stream_from [ @channel, :messages ] %>
+        <div class="flex-1 overflow-y-auto divide-y divide-[#F1EEE8]">
+          <div id="channel-<%= @channel.id %>-messages" class="divide-y divide-[#F1EEE8]">
+            <% @messages.each do |m| %>
+              <%= render "channel_messages/message", message: m %>
+            <% end %>
+          </div>
+          <% if @messages.empty? %>
+            <p class="px-5 py-8 text-center text-[13px] text-[#6B665F]">No messages yet. Start the conversation.</p>
+          <% end %>
+        </div>
+
+        <%# ── Composer / read-only notice ────────────────────── %>
+        <div class="border-t border-[#EFECE6] p-3">
+          <% if @can_post %>
+            <%= form_with url: channel_messages_path(@channel), method: :post, data: { turbo: false }, class: "flex gap-2" do %>
+              <input type="text" name="body" autocomplete="off" placeholder="Message #<%= @channel.slug %>…"
+                     class="flex-1 text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
+              <button type="submit" class="rounded-full bg-[#D97757] hover:bg-[#c56647] text-white px-4 py-2 text-[13px] font-medium whitespace-nowrap">Send</button>
+            <% end %>
+          <% else %>
+            <p class="text-[12px] text-[#6B665F] px-1 py-1 flex items-center gap-1.5">
+              <i class="ri-lock-line"></i> You can read #<%= @channel.slug %>, but only its team can post here.
+            </p>
+          <% end %>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
