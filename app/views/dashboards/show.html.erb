@@ -46,6 +46,11 @@
         </a>
         <% manager_roles = %w[admin don admissions] %>
         <% if (current_user.role_names & manager_roles).any? %>
+          <a href="<%= admissions_queue_path %>" title="Admissions queue"
+             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+            <i class="ri-folder-history-line"></i>
+            <span class="group-data-[collapsed=true]/sb:hidden">Admissions queue</span>
+          </a>
           <a href="/branches" title="Branches"
              class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
             <i class="ri-map-pin-line"></i>
@@ -62,14 +67,15 @@
             <span class="group-data-[collapsed=true]/sb:hidden">Features</span>
           </a>
         <% end %>
+        <div class="mt-3 mb-1 px-3 text-[10px] uppercase tracking-widest text-[#B9B3A9] font-bold group-data-[collapsed=true]/sb:hidden">Reports</div>
         <div title="IDG Review (soon)"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+             class="flex items-center gap-2 px-3 py-2 text-[#9A938A] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <i class="ri-group-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">IDG Review</span>
           <span class="text-[10px] ml-auto italic group-data-[collapsed=true]/sb:hidden">soon</span>
         </div>
         <div title="Census Report (soon)"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
+             class="flex items-center gap-2 px-3 py-2 text-[#9A938A] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <i class="ri-file-list-3-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">Census Report</span>
           <span class="text-[10px] ml-auto italic group-data-[collapsed=true]/sb:hidden">soon</span>
@@ -116,19 +122,41 @@
       <% manager_roles = %w[admin don admissions] %>
       <% is_manager = (current_user.role_names & manager_roles).any? %>
 
+      <%# Quick stats — an instant pulse of the agency. %>
+      <% if is_manager %>
+        <%
+          noe_soon = @noe_overdue.size + @noe_due_today.size
+          quick_stats = [
+            { label: "Active patients", value: @active_patient_count,        urgent: false },
+            { label: "Pending reviews", value: @pending_certifications.size, urgent: false },
+            { label: "Open blockers",   value: @open_blockers,               urgent: @open_blockers.to_i.positive? },
+            { label: "NOE deadlines",   value: noe_soon,                     urgent: @noe_overdue.any? }
+          ]
+        %>
+        <section class="mx-6 mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <% quick_stats.each do |s| %>
+            <div class="rounded-2xl border p-4 <%= s[:urgent] ? "border-[#C1403A] bg-[#FFF3EC]" : "border-[#EFECE6] bg-white" %>">
+              <div class="text-[10px] uppercase tracking-widest font-bold <%= s[:urgent] ? "text-[#C1403A]" : "text-[#6B665F]" %>"><%= s[:label] %></div>
+              <div class="text-[26px] font-serif leading-none mt-1 <%= s[:urgent] ? "text-[#C1403A]" : "text-[#1D1C1A]" %>"><%= s[:value] %></div>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
+
       <%# Agency-level "Ask HosAlivio" — oversight questions, answered ephemerally
           into the turbo-frame below (never written to a patient's chart). %>
       <% if is_manager %>
-        <section class="mx-6 mt-6">
+        <section class="mx-6 mt-4">
           <div class="rounded-2xl bg-white border border-[#EFECE6] p-4">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="w-6 h-6 rounded-full bg-[#FBF9F5] text-[#D97757] flex items-center justify-center"><i class="ri-sparkling-2-line text-[13px]"></i></span>
-              <div class="text-[12px] text-[#1D1C1A] font-medium">Ask HosAlivio</div>
+            <div class="flex items-center gap-2 mb-2.5">
+              <span class="w-7 h-7 rounded-full bg-[#FBF9F5] text-[#D97757] flex items-center justify-center"><i class="ri-sparkling-2-line text-[15px]"></i></span>
+              <div class="text-[13px] text-[#1D1C1A] font-semibold">Ask HosAlivio</div>
             </div>
             <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" }, class: "flex gap-2" do %>
-              <input type="text" name="q" placeholder="e.g. show today's pending items"
-                     class="flex-1 text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
-              <button type="submit" class="rounded-full bg-[#D97757] hover:bg-[#c56647] text-white px-4 py-2 text-[13px] font-medium whitespace-nowrap">Ask</button>
+              <input type="text" name="q" autocomplete="off"
+                     placeholder="Ask anything — e.g. today's priorities, patients needing attention, new referrals…"
+                     class="flex-1 text-[14px] rounded-xl border border-[#EFECE6] bg-white px-4 py-2.5 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
+              <button type="submit" class="rounded-full bg-[#D97757] hover:bg-[#c56647] text-white px-5 py-2.5 text-[13px] font-medium whitespace-nowrap">Ask</button>
             <% end %>
             <%= turbo_frame_tag "assistant-answer" %>
           </div>

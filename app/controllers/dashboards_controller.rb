@@ -45,6 +45,10 @@ class DashboardsController < ApplicationController
     @noe_overdue            = @pending_noe.select(&:noe_overdue?)
     @noe_due_today          = @pending_noe.select { |e| e.noe_deadline_at && e.noe_deadline_at.to_date <= Date.current + 1.day && !e.noe_overdue? }
 
+    # Quick-stat counts for the dashboard header.
+    @active_patient_count = Patient.where(agency: @agency, status: :active).count
+    @open_blockers        = (@pending_certifications.to_a + @pending_noe.to_a).count { |e| e.certification_blockers.present? }
+
     @unresolved_note_ids = Note.where(author_role: "family", urgency: :crisis, read_at: nil).pluck(:id)
 
     # Recent + upcoming visits across the agency (yesterday → next 7 days),
