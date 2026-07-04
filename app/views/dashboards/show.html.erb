@@ -350,12 +350,12 @@
                { label: "New referrals",            q: "new referrals",              icon: "ri-inbox-unarchive-line" },
                { label: "Daily report",             q: "daily report",               icon: "ri-file-list-3-line" }
              ] %>
-          <div class="mb-2 flex items-center gap-1.5 flex-wrap">
+          <div class="mb-2.5 flex items-center gap-2 flex-wrap">
             <% quick_asks.each do |a| %>
               <%= button_to admin_assistant_ask_path, params: { q: a[:q] }, method: :post,
                     form: { data: { turbo_frame: "assistant-answer" }, class: "inline-block" },
-                    class: "inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#EFECE6] hover:text-[#1D1C1A] transition" do %>
-                <i class="<%= a[:icon] %>"></i> <%= a[:label] %>
+                    class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#EFECE6] hover:text-[#1D1C1A] transition" do %>
+                <i class="<%= a[:icon] %> text-[15px]"></i> <%= a[:label] %>
               <% end %>
             <% end %>
           </div>
