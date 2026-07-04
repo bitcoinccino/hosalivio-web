@@ -222,9 +222,11 @@
                        @licenses_expired.to_i.positive? || @licenses_expiring.to_i.positive? ||
                        @open_inquiries.any? || @mission_visits.any?
         %>
-        <div class="max-w-2xl">
-          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">At a glance</div>
-          <% if has_glance %>
+        <%# Only surfaces when there's something to flag — otherwise the Stage
+            stays clean (the banner stats already say "all zero"). %>
+        <% if has_glance %>
+          <div class="max-w-2xl">
+            <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">At a glance</div>
             <div class="rounded-2xl border border-[#EFECE6] bg-white overflow-hidden divide-y divide-[#EFECE6]">
               <!-- Awaiting MD certification -->
               <% if @pending_certifications.any? %>
@@ -324,13 +326,8 @@
                 </details>
               <% end %>
             </div>
-          <% else %>
-            <div class="rounded-2xl border border-[#EFECE6] bg-white p-6 text-center text-sm text-[#6B665F]">
-              <i class="ri-checkbox-circle-line text-[#2F6F4E] text-lg"></i>
-              <div class="mt-1">All clear — no pending certs, NOE deadlines, or open inquiries right now.</div>
-            </div>
-          <% end %>
-        </div>
+          </div>
+        <% end %>
       </div>
 
       <!-- Input Bar — composer (Ask HosAlivio ⇄ team chat) (managers only) -->

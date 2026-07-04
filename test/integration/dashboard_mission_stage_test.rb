@@ -11,6 +11,8 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_match "Mission Stage", response.body
+    # nothing pending → the "At a glance" panel stays hidden (no empty-state filler)
+    assert_no_match(/At a glance/, response.body)
     # quick-stats bar
     assert_match "Active patients", response.body
     assert_match "Pending reviews", response.body
