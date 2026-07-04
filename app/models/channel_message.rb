@@ -10,7 +10,11 @@ class ChannelMessage < ApplicationRecord
   belongs_to :parent, class_name: "ChannelMessage", optional: true
   has_many   :replies, class_name: "ChannelMessage", foreign_key: :parent_id, dependent: :destroy, inverse_of: :parent
 
-  validates :body, presence: true, length: { maximum: 4000 }
+  has_one_attached :audio
+
+  validates :body, length: { maximum: 4000 }
+  # A message needs words, a voice note, or both — but never nothing.
+  validates :body, presence: true, unless: -> { audio.attached? }
   # One level of threading only — a reply can't itself be replied to.
   validate  :parent_is_root, if: -> { parent_id.present? }
 

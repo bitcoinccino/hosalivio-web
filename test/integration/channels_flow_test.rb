@@ -65,6 +65,18 @@ class ChannelsFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "posting a voice note attaches audio and renders a player" do
+    sign_in @rn
+    assert_difference -> { in_tenant(@agency) { ChannelMessage.count } }, 1 do
+      post channel_messages_path("general"), params: { body: "", audio: fixture_file_upload("voice.webm", "audio/webm") }
+    end
+    msg = in_tenant(@agency) { Channel.find_by(slug: "general").channel_messages.order(:created_at).last }
+    assert msg.audio.attached?
+
+    get channel_path("general")
+    assert_match "<audio", response.body
+  end
+
   test "posting from the dashboard returns to the dashboard, not the channel" do
     sign_in @rn
     post channel_messages_path("general"), params: { body: "quick note", return_to: "dashboard" }

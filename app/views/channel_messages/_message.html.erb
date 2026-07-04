@@ -26,7 +26,13 @@
 
     <!-- Bubble -->
     <div class="mt-1 inline-block max-w-full rounded-2xl rounded-tl-sm border border-[#CADCEC] bg-[#E9F1FB] px-3.5 py-2">
-      <div class="text-[13px] leading-snug text-[#1D1C1A] whitespace-pre-wrap break-words"><%= team_format_body(message.body) %></div>
+      <% if message.body.present? %>
+        <div class="text-[13px] leading-snug text-[#1D1C1A] whitespace-pre-wrap break-words"><%= team_format_body(message.body) %></div>
+      <% end %>
+      <% if message.audio.attached? %>
+        <audio src="<%= rails_blob_path(message.audio) %>" controls preload="none"
+               class="mt-1 w-full max-w-[260px] h-9"></audio>
+      <% end %>
     </div>
   </div>
 </div>
