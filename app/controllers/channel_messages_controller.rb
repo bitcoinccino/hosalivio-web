@@ -18,7 +18,8 @@ class ChannelMessagesController < ApplicationController
       end
 
       if body.present?
-        channel.channel_messages.create!(agency: current_user.agency, user: current_user, body: body)
+        parent = params[:parent_id].present? ? channel.channel_messages.roots.find_by(id: params[:parent_id]) : nil
+        channel.channel_messages.create!(agency: current_user.agency, user: current_user, body: body, parent: parent)
       end
       redirect_to back, status: :see_other,
                   notice: (from_dashboard ? "Posted to ##{channel.slug}." : nil)

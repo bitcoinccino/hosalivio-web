@@ -1,13 +1,15 @@
-<%# One team-channel message, rendered as a left-aligned chat bubble to match
-    the patient/RN chat. Local: message. %>
+<%# One team-channel message as a left-aligned chat bubble (matches patient/RN
+    chat). Locals: message, reply: (a threaded reply renders tighter/smaller). %>
 <%
-  author = message.user
-  role   = author ? team_primary_role(author) : nil
-  color  = team_role_color(role)
+  is_reply = local_assigns.fetch(:reply, false)
+  author   = message.user
+  role     = author ? team_primary_role(author) : nil
+  color    = team_role_color(role)
+  avatar   = is_reply ? "w-7 h-7 text-[10px]" : "w-9 h-9 text-[11px]"
 %>
-<div data-channel-message-id="<%= message.id %>" class="flex items-start gap-2.5 px-4 py-2 hover:bg-[#FBF9F5]">
+<div data-channel-message-id="<%= message.id %>" class="flex items-start gap-2.5 px-4 <%= is_reply ? 'py-1' : 'py-2' %> hover:bg-[#FBF9F5]">
   <!-- Avatar -->
-  <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+  <div class="flex-shrink-0 <%= avatar %> rounded-full flex items-center justify-center text-white font-medium"
        style="background: <%= color %>;" title="<%= author&.full_name %>">
     <%= author ? team_avatar_initials(author) : "?" %>
   </div>

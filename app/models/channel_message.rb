@@ -7,21 +7,44 @@ class ChannelMessage < ApplicationRecord
   belongs_to :agency
   belongs_to :channel
   belongs_to :user
+  belongs_to :parent, class_name: "ChannelMessage", optional: true
+  has_many   :replies, class_name: "ChannelMessage", foreign_key: :parent_id, dependent: :destroy, inverse_of: :parent
 
   validates :body, presence: true, length: { maximum: 4000 }
+  # One level of threading only — a reply can't itself be replied to.
+  validate  :parent_is_root, if: -> { parent_id.present? }
+
+  scope :roots, -> { where(parent_id: nil) }
 
   after_create_commit :broadcast_message
   after_create_commit :notify_mentioned_users
 
+  def reply? = parent_id.present?
+
   private
 
+  # Replies append into their parent's thread container; root messages append
+  # to the channel's main list. Both ride the channel's :messages stream.
   def broadcast_message
-    broadcast_append_to(
-      [ channel, :messages ],
-      target:  "channel-#{channel_id}-messages",
-      partial: "channel_messages/message",
-      locals:  { message: self }
-    )
+    if reply?
+      broadcast_append_to(
+        [ channel, :messages ],
+        target:  "channel-message-#{parent_id}-replies",
+        partial: "channel_messages/message",
+        locals:  { message: self, reply: true }
+      )
+    else
+      broadcast_append_to(
+        [ channel, :messages ],
+        target:  "channel-#{channel_id}-messages",
+        partial: "channel_messages/message",
+        locals:  { message: self }
+      )
+    end
+  end
+
+  def parent_is_root
+    errors.add(:parent, "cannot be a reply") if parent&.reply?
   end
 
   # Ping teammates tagged with @Firstname in the body. Handles are matched

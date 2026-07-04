@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_04_013654) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_04_150618) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -232,11 +232,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_013654) do
     t.text "body", null: false
     t.uuid "channel_id", null: false
     t.datetime "created_at", null: false
+    t.uuid "parent_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["agency_id"], name: "index_channel_messages_on_agency_id"
     t.index ["channel_id", "created_at"], name: "index_channel_messages_on_channel_id_and_created_at"
     t.index ["channel_id"], name: "index_channel_messages_on_channel_id"
+    t.index ["parent_id"], name: "index_channel_messages_on_parent_id"
     t.index ["user_id"], name: "index_channel_messages_on_user_id"
   end
 
@@ -875,6 +877,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_013654) do
   add_foreign_key "cc_vitals_records", "agencies"
   add_foreign_key "cc_vitals_records", "cc_interval_charts"
   add_foreign_key "channel_messages", "agencies"
+  add_foreign_key "channel_messages", "channel_messages", column: "parent_id"
   add_foreign_key "channel_messages", "channels"
   add_foreign_key "channel_messages", "users"
   add_foreign_key "channels", "agencies"
