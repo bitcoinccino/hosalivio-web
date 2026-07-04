@@ -1,0 +1,57 @@
+<%
+  input = "w-full text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]"
+  label = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+%>
+<%# Shared by the full page and the modal. turbo_frame: "_top" so the submit
+    breaks out of the modal frame: on success it navigates to the review; on a
+    validation error it falls back to the standalone page (same as invite-family). %>
+<p class="text-[12px] text-[#6B665F] mb-3 leading-snug">
+  HosAlivio drafts a recommendation with supporting quotes; a reviewer signs off before anything goes to the insurer.
+</p>
+<%= form_with url: prior_auth_reviews_path, method: :post, scope: :prior_auth_review,
+      data: { turbo_frame: "_top" }, class: "space-y-3" do %>
+  <div>
+    <label class="<%= label %>">Patient</label>
+    <select name="prior_auth_review[patient_id]" required class="<%= input %>">
+      <option value="">Select a patient…</option>
+      <% @patients.each do |p| %>
+        <option value="<%= p.id %>" <%= "selected" if @review.patient_id == p.id %>><%= p.full_name %><%= " · #{p.mrn}" if p.mrn.present? %></option>
+      <% end %>
+    </select>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div>
+      <label class="<%= label %>">Procedure (HCPCS Code)</label>
+      <%= text_field_tag "prior_auth_review[procedure_hcpcs]", @review.procedure_hcpcs, required: true,
+            placeholder: "e.g. Q5001", class: "#{input} font-mono uppercase" %>
+    </div>
+    <div>
+      <label class="<%= label %>">Provider NPI (optional)</label>
+      <%= text_field_tag "prior_auth_review[provider_npi]", @review.provider_npi,
+            placeholder: "10-digit NPI number", class: "#{input} font-mono" %>
+    </div>
+  </div>
+
+  <div>
+    <label class="<%= label %>">Supporting documents</label>
+    <div class="rounded-lg bg-[#FBF9F5] border border-[#EFECE6] px-3 py-2 text-[11px] text-[#6B665F] flex items-start gap-2">
+      <i class="ri-information-line text-[#2B4A7A] mt-0.5"></i>
+      <span>Evidence is automatically read from documents already on the patient's chart. You can add more under <strong>Documents</strong> if needed. <em class="not-italic text-[#8C6A2F]">(Scanned faxes aren't read automatically yet — digital PDFs only.)</em></span>
+    </div>
+  </div>
+
+  <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-2 pt-1">
+    <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white px-6 py-2.5 text-[13px] font-medium">
+      <i class="ri-sparkling-2-line"></i> Generate Review
+    </button>
+    <%# Non-destructive Cancel: closes the modal (→ back to chat) or returns to
+        the dashboard on the full page. No data is sent. %>
+    <% cancel = "w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 rounded-full text-[13px] text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#FBF9F5]" %>
+    <% if local_assigns.fetch(:cancel, :page) == :modal %>
+      <button type="button" data-action="click->modal#close" class="<%= cancel %>">Cancel</button>
+    <% else %>
+      <%= link_to "Cancel", dashboard_path, class: cancel %>
+    <% end %>
+  </div>
+<% end %>

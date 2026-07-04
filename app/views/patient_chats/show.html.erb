@@ -565,6 +565,10 @@
             </button>
             <%= render "patient_chats/quick_actions_dropdown" %>
 
+            <%# Target for the "Prior-auth review" quick-action modal (turbo-frame
+                + modal_controller). Empty until the link loads the form into it. %>
+            <%= turbo_frame_tag "pa-modal" %>
+
             <%# Invite-family modal. Opened by the "Invite family member"
                 quick-action (data-action="dialog#open"); shares this dialog
                 controller scope. Form posts normally; on success the create

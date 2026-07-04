@@ -1,57 +1,49 @@
-<% content_for :title, "Start prior-auth review" %>
-<%
-  input = "w-full text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]"
-%>
-<div class="min-h-screen bg-[#FBF9F5] py-8 px-4 sm:px-6">
-  <div class="max-w-lg mx-auto">
-    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
-      <i class="ri-arrow-left-line"></i> Back to dashboard
-    </a>
-
-    <div class="mb-1">
-      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Prior-authorization</div>
-      <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight">Start a review</h1>
-      <div class="text-[12px] text-[#6B665F] mt-0.5">Medicare only · public HCPCS codes</div>
+<% content_for :title, "Start a Prior Authorization Review" %>
+<% if turbo_frame_request? %>
+  <%# Opened from the quick-actions "Prior-auth review" link (data-turbo-frame).
+      modal_controller#close clears this frame on backdrop/X. %>
+  <%= turbo_frame_tag "pa-modal" do %>
+    <div class="fixed inset-0 z-50 bg-[#1D1C1A]/45 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-4 py-6 md:py-10"
+         data-controller="modal" data-action="click->modal#closeFromBackdrop">
+      <div class="w-full max-w-lg rounded-2xl bg-white border border-[#EFECE6] shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-[#EFECE6] bg-[#FBF9F5]">
+          <div>
+            <div class="text-[10px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Prior authorization</div>
+            <div class="font-serif text-[16px] text-[#1D1C1A] leading-tight">Start a Prior Authorization Review</div>
+          </div>
+          <button type="button" data-action="click->modal#close" aria-label="Close"
+                  class="w-8 h-8 rounded-full inline-flex items-center justify-center text-[#6B665F] hover:text-[#1D1C1A] hover:bg-white">
+            <i class="ri-close-line text-lg"></i>
+          </button>
+        </div>
+        <div class="p-5">
+          <% if flash[:alert].present? %>
+            <div class="rounded-lg bg-[#FFF3EC] border border-[#C1403A] px-3 py-2 text-[12px] text-[#C1403A] mb-3"><%= flash[:alert] %></div>
+          <% end %>
+          <%= render "form", cancel: :modal %>
+        </div>
+      </div>
     </div>
+  <% end %>
+<% else %>
+  <div class="min-h-screen bg-[#FBF9F5] py-8 px-4 sm:px-6">
+    <div class="max-w-lg mx-auto">
+      <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+        <i class="ri-arrow-left-line"></i> Back to dashboard
+      </a>
 
-    <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 shadow-sm mt-5">
-      <% if flash[:alert].present? %>
-        <div class="rounded-lg bg-[#FFF3EC] border border-[#C1403A] px-3 py-2 text-[12px] text-[#C1403A] mb-3"><%= flash[:alert] %></div>
-      <% end %>
+      <div class="mb-1">
+        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Prior authorization</div>
+        <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight">Start a Prior Authorization Review</h1>
+        <div class="text-[12px] text-[#6B665F] mt-0.5">Medicare only · public HCPCS codes</div>
+      </div>
 
-      <%= form_with url: prior_auth_reviews_path, method: :post, scope: :prior_auth_review, data: { turbo: false }, class: "space-y-3" do %>
-        <div>
-          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Patient</label>
-          <select name="prior_auth_review[patient_id]" required class="<%= input %>">
-            <option value="">Select a patient…</option>
-            <% @patients.each do |p| %>
-              <option value="<%= p.id %>" <%= "selected" if @review.patient_id == p.id %>><%= p.full_name %><%= " · #{p.mrn}" if p.mrn.present? %></option>
-            <% end %>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Procedure (HCPCS)</label>
-            <%= text_field_tag "prior_auth_review[procedure_hcpcs]", @review.procedure_hcpcs, required: true,
-                  placeholder: "e.g. Q5001", class: "#{input} font-mono uppercase" %>
-          </div>
-          <div>
-            <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Provider NPI</label>
-            <%= text_field_tag "prior_auth_review[provider_npi]", @review.provider_npi,
-                  placeholder: "10-digit NPI (optional)", class: "#{input} font-mono" %>
-          </div>
-        </div>
-
-        <div class="rounded-lg bg-[#FBF9F5] border border-[#EFECE6] px-3 py-2 text-[11px] text-[#6B665F] flex items-start gap-2">
-          <i class="ri-information-line text-[#2B4A7A] mt-0.5"></i>
-          <span>Evidence is read from the documents already on the patient's chart. Add the request + records under <strong>Documents</strong> first. Scanned faxes aren't read yet (digital PDFs only).</span>
-        </div>
-
-        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white px-6 py-2.5 text-[13px] font-medium">
-          <i class="ri-sparkling-2-line"></i> Generate review
-        </button>
-      <% end %>
+      <div class="rounded-2xl bg-white border border-[#EFECE6] p-5 shadow-sm mt-5">
+        <% if flash[:alert].present? %>
+          <div class="rounded-lg bg-[#FFF3EC] border border-[#C1403A] px-3 py-2 text-[12px] text-[#C1403A] mb-3"><%= flash[:alert] %></div>
+        <% end %>
+        <%= render "form" %>
+      </div>
     </div>
   </div>
-</div>
+<% end %>
