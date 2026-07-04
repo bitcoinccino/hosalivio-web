@@ -18,10 +18,10 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     # sidebar tidy
     assert_match "Admissions queue", response.body
     assert_match "Reports", response.body
-    # ask assistant still present
+    # ask assistant composer still present
     assert_match "Ask HosAlivio", response.body
-    # patient-chat-style live activity stream + census rail
-    assert_match "Live agent activity", response.body
-    assert_match "Active census", response.body
+    # patient-chat-style layout: banner status line + right-rail accordion
+    assert_match "Care Team", response.body        # banner status line
+    assert_match "Active Census", response.body    # right-rail accordion section
   end
 end
