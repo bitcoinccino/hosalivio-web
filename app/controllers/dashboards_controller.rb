@@ -49,6 +49,10 @@ class DashboardsController < ApplicationController
     @active_patient_count = Patient.where(agency: @agency, status: :active).count
     @open_blockers        = (@pending_certifications.to_a + @pending_noe.to_a).count { |e| e.certification_blockers.present? }
 
+    # Team channels for the composer's "+" menu (readable to this user).
+    Channel.ensure_defaults_for(@agency)
+    @channels = Channel.order(:position, :slug).select { |c| c.readable_by?(current_user) }
+
     @unresolved_note_ids = Note.where(author_role: "family", urgency: :crisis, read_at: nil).pluck(:id)
 
     # Recent + upcoming visits across the agency (yesterday → next 7 days),

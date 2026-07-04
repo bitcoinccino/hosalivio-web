@@ -31,11 +31,6 @@
           <i class="ri-calendar-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">Calendar</span>
         </a>
-        <a href="/channels" title="Team chat"
-           class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <i class="ri-chat-3-line"></i>
-          <span class="group-data-[collapsed=true]/sb:hidden">Team chat</span>
-        </a>
         <% unread_count = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
         <a href="/notifications" title="Notifications"
            class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0 relative">
@@ -342,10 +337,49 @@
       <% if is_manager %>
         <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]">
           <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" } do %>
-            <div class="flex items-center gap-3 bg-white rounded-3xl pl-4 pr-2 py-2 border border-[#EFECE6] shadow-sm">
-              <span class="flex-shrink-0 w-9 h-9 rounded-full bg-[#FBF9F5] text-[#D97757] flex items-center justify-center">
-                <i class="ri-sparkling-2-line text-lg"></i>
-              </span>
+            <div class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
+              <%# "+" menu — opens the Team channels modal (moved here from the sidebar). %>
+              <div class="relative flex-shrink-0" data-controller="dialog">
+                <button type="button" data-action="dialog#open" title="Team channels"
+                        class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
+                  <i class="ri-add-line"></i>
+                </button>
+                <dialog data-dialog-target="el" data-action="click->dialog#backdrop"
+                        class="fixed inset-0 m-auto h-fit w-fit max-w-[90vw] max-h-[90vh] rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
+                  <div class="w-80 max-w-[90vw] bg-white rounded-2xl border border-[#EFECE6] shadow-xl overflow-hidden text-left">
+                    <div class="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-[#EFECE6]">
+                      <div class="flex items-center gap-2">
+                        <i class="ri-chat-3-line text-[#D97757]"></i>
+                        <h2 class="font-serif text-lg text-[#1D1C1A]">Team channels</h2>
+                      </div>
+                      <button type="button" data-action="dialog#close" title="Close"
+                              class="text-[#6B665F] hover:text-[#1D1C1A] w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#EFECE6] flex-shrink-0">
+                        <i class="ri-close-line"></i>
+                      </button>
+                    </div>
+                    <div class="py-2">
+                      <% if @channels.blank? %>
+                        <div class="px-5 py-4 text-[12px] text-[#6B665F] italic">No channels yet.</div>
+                      <% else %>
+                        <% @channels.each do |c| %>
+                          <%= link_to channel_path(c), class: "flex items-center gap-2 px-5 py-2.5 hover:bg-[#FBF9F5] transition" do %>
+                            <span class="text-[#9A938A]">#</span>
+                            <span class="text-[14px] text-[#1D1C1A] font-medium"><%= c.slug %></span>
+                            <% unless c.postable_by?(current_user) %>
+                              <span class="ml-auto text-[10px] text-[#6B665F] inline-flex items-center gap-1"><i class="ri-lock-line"></i> read-only</span>
+                            <% end %>
+                          <% end %>
+                        <% end %>
+                      <% end %>
+                    </div>
+                    <div class="px-5 py-3 border-t border-[#EFECE6]">
+                      <a href="/channels" class="inline-flex items-center gap-1 text-[12px] text-[#D97757] font-medium hover:underline">
+                        Open team chat <i class="ri-arrow-right-line"></i>
+                      </a>
+                    </div>
+                  </div>
+                </dialog>
+              </div>
               <input type="text" name="q" autocomplete="off"
                      placeholder="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…"
                      class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">

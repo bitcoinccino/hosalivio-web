@@ -27,6 +27,10 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     # mobile bottom tab bar
     assert_match "Activity", response.body
     assert_match "Stage", response.body
+    # team chat moved into the composer's "+" modal
+    assert_match "Team channels", response.body
+    assert_match "general", response.body
+    assert_match "admission", response.body
   end
 
   test "the activity feed groups by day with a Show earlier messages toggle" do
