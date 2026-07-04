@@ -1,10 +1,12 @@
 <% content_for :title, "HosAlivio · Mission Stage" %>
 
-<div class="flex h-screen" data-controller="sidebar" data-sidebar-storage-key-value="dashboardSidebar">
-  <!-- Left rail -->
+<div class="flex h-screen" data-controller="sidebar mission-mobile" data-sidebar-storage-key-value="dashboardSidebar">
+  <!-- ─── Left rail: nav + Active Census ───────────────────────── -->
   <aside data-sidebar-target="sidebar" data-collapsed="false"
-         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
-    <div>
+         data-mission-mobile-target="tab" data-tab-name="census"
+         class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200
+                hidden md:flex data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
+    <div class="flex-shrink-0">
       <div class="flex items-center justify-between group-data-[collapsed=true]/sb:justify-center">
         <div class="flex items-center gap-2 group-data-[collapsed=true]/sb:hidden">
           <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
@@ -83,13 +85,48 @@
         </div>
       </nav>
     </div>
-    <div class="mt-3">
+
+    <%# Active Census — a scrollable roster list, like the patient-chat left
+        rail. Fills the space between nav and the user menu. %>
+    <% if @agency %>
+      <div class="mt-6 flex-1 min-h-0 flex flex-col group-data-[collapsed=true]/sb:hidden">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Active Census</div>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D9D5CD] text-[#1D1C1A]"><%= (@active_patient_count || @patients.size) %></span>
+        </div>
+        <div class="flex-1 min-h-0 overflow-y-auto -mx-1 pr-1">
+          <% if @patients.empty? %>
+            <div class="px-1 text-[11px] text-[#6B665F] italic">No patients yet.</div>
+          <% else %>
+            <div class="space-y-0.5">
+              <% @patients.each do |p| %>
+                <a href="/patients/<%= p.id %>" class="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[#D9D5CD] transition">
+                  <div class="w-7 h-7 rounded-full bg-[#D9D5CD] text-[#6B665F] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[12px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
+                    <div class="text-[10px] text-[#6B665F] font-mono truncate"><%= p.mrn %> · <%= p.status %></div>
+                  </div>
+                  <% if p.dnr? || p.dnr_dni? %>
+                    <span class="text-[8px] font-bold px-1 py-0.5 rounded bg-[#C1403A] text-white tracking-wider flex-shrink-0"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+                  <% end %>
+                </a>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="mt-3 flex-shrink-0">
       <%= render "shared/user_menu", direction: :up %>
     </div>
   </aside>
 
-  <!-- ─── Main Stage ────────────────────────────────────────────── -->
-  <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+  <!-- ─── Main Stage: banner + at-a-glance + Ask HosAlivio ──────── -->
+  <main data-mission-mobile-target="tab" data-tab-name="stage"
+        class="flex-1 flex flex-col min-w-0 overflow-hidden pb-14 md:pb-0">
     <% if @agency.nil? %>
       <div class="flex-1 flex items-center justify-center text-sm text-[#6B665F]">
         No agency yet — run <code class="font-mono text-[#1D1C1A]">bin/rails db:seed</code>.
@@ -180,26 +217,130 @@
         </div>
       <% end %>
 
-      <!-- Message Feed — the live agent-activity stream -->
-      <div id="event-feed" class="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-        <% if @stories.empty? %>
-          <div class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
-            <p class="max-w-xs">No agent activity yet. This stream updates live as your team and HosAlivio work across every patient.</p>
-          </div>
-        <% else %>
-          <% @stories.each do |story| %>
-            <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+      <!-- Stage body — Ask HosAlivio's answer lands here, plus at-a-glance -->
+      <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+        <%# Ephemeral answer renders here, like a reply in the feed. %>
+        <%= turbo_frame_tag "assistant-answer", class: "block empty:hidden" %>
+
+        <%
+          has_glance = @pending_certifications.any? || @noe_overdue.any? || @noe_due_today.any? ||
+                       @licenses_expired.to_i.positive? || @licenses_expiring.to_i.positive? ||
+                       @open_inquiries.any? || @mission_visits.any?
+        %>
+        <div class="max-w-2xl">
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">At a glance</div>
+          <% if has_glance %>
+            <div class="rounded-2xl border border-[#EFECE6] bg-white overflow-hidden divide-y divide-[#EFECE6]">
+              <!-- Awaiting MD certification -->
+              <% if @pending_certifications.any? %>
+                <details class="group" open>
+                  <%= acc_header("ri-stethoscope-line", "Awaiting MD Cert", @pending_certifications.size.to_s) %>
+                  <div class="px-5 pb-4 pt-2 text-[12px] text-[#6B665F] space-y-1">
+                    <% @pending_certifications.first(6).each do |pae| %>
+                      <div class="truncate">· <%= pae.patient.full_name %> — <%= pae.primary_icd10.presence || "dx pending" %></div>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- NOE deadlines -->
+              <% if @noe_overdue.any? || @noe_due_today.any? %>
+                <details class="group" <%= "open" if @noe_overdue.any? %>>
+                  <%= acc_header("ri-alarm-warning-line", "NOE Deadlines", (@noe_overdue.size + @noe_due_today.size).to_s) %>
+                  <div class="px-5 pb-4 pt-2 text-[12px] space-y-1.5">
+                    <% if @noe_overdue.any? %>
+                      <div class="text-[#C1403A] font-bold"><i class="ri-alarm-warning-fill"></i> <%= @noe_overdue.size %> overdue — file immediately</div>
+                    <% end %>
+                    <% @noe_due_today.first(6).each do |pae| %>
+                      <div class="text-[#6B665F] truncate">· <%= pae.patient.full_name %> — due <%= pae.noe_deadline_at&.strftime("%b %-d") %></div>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- Compliance risk -->
+              <% if @licenses_expired.to_i > 0 || @licenses_expiring.to_i > 0 %>
+                <details class="group">
+                  <%= acc_header("ri-shield-cross-line", "Compliance Risk", (@licenses_expired.to_i + @licenses_expiring.to_i).to_s) %>
+                  <div class="px-5 pb-4 pt-2 text-[12px] text-[#6B665F] space-y-1">
+                    <% if @licenses_expired.to_i > 0 %>
+                      <div><strong class="text-[#C1403A]"><%= @licenses_expired %></strong> license<%= @licenses_expired == 1 ? "" : "s" %> already expired</div>
+                    <% end %>
+                    <% if @licenses_expiring.to_i > 0 %>
+                      <div><strong class="text-[#D97757]"><%= @licenses_expiring %></strong> expiring within 60 days</div>
+                    <% end %>
+                    <a href="/team_members" class="inline-flex items-center gap-1 text-[11px] text-[#D97757] font-medium hover:underline mt-1">See who <i class="ri-arrow-right-line"></i></a>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- Landing-page inquiries -->
+              <% if @open_inquiries.any? %>
+                <details class="group">
+                  <%= acc_header("ri-inbox-unarchive-line", "New Inquiries", @open_inquiries.size.to_s) %>
+                  <div class="px-5 pb-4 pt-2 space-y-2.5">
+                    <% @open_inquiries.each do |inq| %>
+                      <div class="text-[12px]">
+                        <div class="text-[#1D1C1A] font-medium truncate">
+                          <%= inq.first_name.presence || "Anonymous" %>
+                          <span class="text-[10px] text-[#6B665F] font-mono">· ZIP <%= inq.zip_prefix %>xx</span>
+                        </div>
+                        <div class="text-[11px] text-[#6B665F] truncate"><%= inq.contact %></div>
+                        <div class="flex items-center gap-1.5 mt-1">
+                          <% if inq.status_new_lead? %>
+                            <%= button_to claim_inquiry_path(inq), class: "text-[10px] px-2.5 py-1 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b]" do %><i class="ri-hand-heart-line"></i> Claim<% end %>
+                          <% else %>
+                            <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %><i class="ri-user-add-line"></i> Convert<% end %>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+
+              <!-- Visits · recent & upcoming -->
+              <% if @mission_visits.any? %>
+                <details class="group">
+                  <%= acc_header("ri-calendar-check-line", "Visits · Recent & Upcoming", @mission_visits.size.to_s) %>
+                  <div class="pb-2">
+                    <% @mission_visits.each do |v| %>
+                      <%
+                        if v.completed_visit?
+                          status_label, status_cls = "Completed", "bg-[#F0F7F2] text-[#2F6F4E]"
+                        elsif v.currently_in_progress?
+                          status_label, status_cls = "In progress", "bg-[#FFF3EC] text-[#D97757]"
+                        else
+                          status_label, status_cls = "Scheduled", "bg-[#F2EEE7] text-[#6B665F]"
+                        end
+                      %>
+                      <%= link_to patient_path(v.patient), class: "flex items-center gap-3 px-5 py-2 text-[12px] hover:bg-[#FBF9F5] transition" do %>
+                        <div class="w-14 flex-shrink-0 text-[10px] text-[#6B665F] font-mono leading-tight">
+                          <%= v.anchor_start&.strftime("%a %-d") %><br><%= v.anchor_start&.strftime("%-l:%M %p") %>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="text-[#1D1C1A] font-medium truncate"><%= v.patient&.full_name %></div>
+                          <div class="text-[10px] text-[#6B665F] truncate"><%= v.discipline.to_s.upcase %> · <%= v.visit_type_label %></div>
+                        </div>
+                        <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 <%= status_cls %>"><%= status_label %></span>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="rounded-2xl border border-[#EFECE6] bg-white p-6 text-center text-sm text-[#6B665F]">
+              <i class="ri-checkbox-circle-line text-[#2F6F4E] text-lg"></i>
+              <div class="mt-1">All clear — no pending certs, NOE deadlines, or open inquiries right now.</div>
+            </div>
           <% end %>
-        <% end %>
+        </div>
       </div>
 
       <!-- Input Bar — "Ask HosAlivio" composer (managers only) -->
       <% if is_manager %>
         <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]">
-          <%# Ephemeral answer renders just above the composer, like a reply
-              in the chat feed. Hidden until it has content. Never persisted. %>
-          <%= turbo_frame_tag "assistant-answer", class: "block empty:hidden mb-2" %>
-
           <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" } do %>
             <div class="flex items-center gap-3 bg-white rounded-3xl pl-4 pr-2 py-2 border border-[#EFECE6] shadow-sm">
               <span class="flex-shrink-0 w-9 h-9 rounded-full bg-[#FBF9F5] text-[#D97757] flex items-center justify-center">
@@ -224,134 +365,63 @@
     <% end %>
   </main>
 
-  <!-- ─── Right Rail: At-a-Glance Accordion (admin) ─────────────── -->
-  <% if @agency && (current_user.role_names & %w[admin don admissions]).any? %>
-    <aside class="hidden md:flex w-80 bg-white border-l border-[#EFECE6] flex-col overflow-hidden">
-      <div class="flex-1 overflow-y-auto divide-y divide-[#EFECE6]">
-        <!-- Active census — open by default -->
-        <details class="group" open>
-          <%= acc_header("ri-team-line", "Active Census", @patients.size.to_s) %>
-          <div class="pb-2">
-            <% if @patients.empty? %>
-              <div class="px-5 py-4 text-xs text-[#6B665F] italic">No patients yet.</div>
-            <% else %>
-              <% @patients.each do |p| %>
-                <a href="/patients/<%= p.id %>" class="flex items-center gap-3 px-5 py-2 hover:bg-[#FBF9F5] transition">
-                  <div class="w-8 h-8 rounded-full bg-[#EFECE6] text-[#6B665F] text-[11px] font-bold flex items-center justify-center flex-shrink-0">
-                    <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="text-[13px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
-                    <div class="text-[11px] text-[#6B665F] font-mono truncate"><%= p.mrn %> · <%= p.status %></div>
-                  </div>
-                  <% if p.dnr? || p.dnr_dni? %>
-                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider flex-shrink-0"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
-                  <% end %>
-                </a>
-              <% end %>
-            <% end %>
+  <!-- ─── Right Rail: Live agent-activity feed ─────────────────── -->
+  <% if @agency %>
+    <aside data-mission-mobile-target="tab" data-tab-name="activity"
+           class="hidden md:flex w-96 bg-white border-l border-[#EFECE6] flex-col overflow-hidden
+                  data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
+      <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2F6F4E] opacity-70"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-[#2F6F4E]"></span>
+          </span>
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Live agent activity</h3>
+        </div>
+        <% open_crises = @unresolved_note_ids.size %>
+        <% if open_crises > 0 %>
+          <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider animate-pulse">
+            <i class="ri-alarm-warning-line"></i> <%= open_crises %> OPEN
+          </span>
+        <% end %>
+      </div>
+
+      <div id="event-feed" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        <% if @stories.empty? %>
+          <div class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
+            <p class="max-w-xs">No agent activity yet. This stream updates live as your team and HosAlivio work across every patient.</p>
           </div>
-        </details>
-
-        <!-- Awaiting MD certification -->
-        <% if @pending_certifications.any? %>
-          <details class="group" open>
-            <%= acc_header("ri-stethoscope-line", "Awaiting MD Cert", @pending_certifications.size.to_s) %>
-            <div class="px-5 pb-4 pt-2 text-[12px] text-[#6B665F] space-y-1">
-              <% @pending_certifications.first(6).each do |pae| %>
-                <div class="truncate">· <%= pae.patient.full_name %> — <%= pae.primary_icd10.presence || "dx pending" %></div>
-              <% end %>
-            </div>
-          </details>
-        <% end %>
-
-        <!-- NOE deadlines -->
-        <% if @noe_overdue.any? || @noe_due_today.any? %>
-          <details class="group" <%= "open" if @noe_overdue.any? %>>
-            <%= acc_header("ri-alarm-warning-line", "NOE Deadlines", (@noe_overdue.size + @noe_due_today.size).to_s) %>
-            <div class="px-5 pb-4 pt-2 text-[12px] space-y-1.5">
-              <% if @noe_overdue.any? %>
-                <div class="text-[#C1403A] font-bold"><i class="ri-alarm-warning-fill"></i> <%= @noe_overdue.size %> overdue — file immediately</div>
-              <% end %>
-              <% @noe_due_today.first(6).each do |pae| %>
-                <div class="text-[#6B665F] truncate">· <%= pae.patient.full_name %> — due <%= pae.noe_deadline_at&.strftime("%b %-d") %></div>
-              <% end %>
-            </div>
-          </details>
-        <% end %>
-
-        <!-- Compliance risk -->
-        <% if @licenses_expired.to_i > 0 || @licenses_expiring.to_i > 0 %>
-          <details class="group">
-            <%= acc_header("ri-shield-cross-line", "Compliance Risk", (@licenses_expired.to_i + @licenses_expiring.to_i).to_s) %>
-            <div class="px-5 pb-4 pt-2 text-[12px] text-[#6B665F] space-y-1">
-              <% if @licenses_expired.to_i > 0 %>
-                <div><strong class="text-[#C1403A]"><%= @licenses_expired %></strong> license<%= @licenses_expired == 1 ? "" : "s" %> already expired</div>
-              <% end %>
-              <% if @licenses_expiring.to_i > 0 %>
-                <div><strong class="text-[#D97757]"><%= @licenses_expiring %></strong> expiring within 60 days</div>
-              <% end %>
-              <a href="/team_members" class="inline-flex items-center gap-1 text-[11px] text-[#D97757] font-medium hover:underline mt-1">See who <i class="ri-arrow-right-line"></i></a>
-            </div>
-          </details>
-        <% end %>
-
-        <!-- Landing-page inquiries -->
-        <% if @open_inquiries.any? %>
-          <details class="group">
-            <%= acc_header("ri-inbox-unarchive-line", "New Inquiries", @open_inquiries.size.to_s) %>
-            <div class="px-5 pb-4 pt-2 space-y-2.5">
-              <% @open_inquiries.each do |inq| %>
-                <div class="text-[12px]">
-                  <div class="text-[#1D1C1A] font-medium truncate">
-                    <%= inq.first_name.presence || "Anonymous" %>
-                    <span class="text-[10px] text-[#6B665F] font-mono">· ZIP <%= inq.zip_prefix %>xx</span>
-                  </div>
-                  <div class="text-[11px] text-[#6B665F] truncate"><%= inq.contact %></div>
-                  <div class="flex items-center gap-1.5 mt-1">
-                    <% if inq.status_new_lead? %>
-                      <%= button_to claim_inquiry_path(inq), class: "text-[10px] px-2.5 py-1 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b]" do %><i class="ri-hand-heart-line"></i> Claim<% end %>
-                    <% else %>
-                      <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %><i class="ri-user-add-line"></i> Convert<% end %>
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          </details>
-        <% end %>
-
-        <!-- Visits · recent & upcoming -->
-        <% if @mission_visits.any? %>
-          <details class="group">
-            <%= acc_header("ri-calendar-check-line", "Visits · Recent & Upcoming", @mission_visits.size.to_s) %>
-            <div class="pb-2">
-              <% @mission_visits.each do |v| %>
-                <%
-                  if v.completed_visit?
-                    status_label, status_cls = "Completed", "bg-[#F0F7F2] text-[#2F6F4E]"
-                  elsif v.currently_in_progress?
-                    status_label, status_cls = "In progress", "bg-[#FFF3EC] text-[#D97757]"
-                  else
-                    status_label, status_cls = "Scheduled", "bg-[#F2EEE7] text-[#6B665F]"
-                  end
-                %>
-                <%= link_to patient_path(v.patient), class: "flex items-center gap-3 px-5 py-2 text-[12px] hover:bg-[#FBF9F5] transition" do %>
-                  <div class="w-14 flex-shrink-0 text-[10px] text-[#6B665F] font-mono leading-tight">
-                    <%= v.anchor_start&.strftime("%a %-d") %><br><%= v.anchor_start&.strftime("%-l:%M %p") %>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-[#1D1C1A] font-medium truncate"><%= v.patient&.full_name %></div>
-                    <div class="text-[10px] text-[#6B665F] truncate"><%= v.discipline.to_s.upcase %> · <%= v.visit_type_label %></div>
-                  </div>
-                  <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 <%= status_cls %>"><%= status_label %></span>
-                <% end %>
-              <% end %>
-            </div>
-          </details>
+        <% else %>
+          <% @stories.each do |story| %>
+            <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
+          <% end %>
         <% end %>
       </div>
     </aside>
+  <% end %>
+
+  <!-- ─── Mobile bottom tab bar (below md) ──────────────────────── -->
+  <% if @agency %>
+    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch">
+      <%
+        mobile_tabs = [
+          { name: "census",   icon: "ri-team-line",     label: "Census" },
+          { name: "stage",    icon: "ri-radar-line",    label: "Stage" },
+          { name: "activity", icon: "ri-pulse-line",    label: "Activity" }
+        ]
+      %>
+      <% mobile_tabs.each do |t| %>
+        <button type="button"
+                data-action="click->mission-mobile#activate"
+                data-tab-name="<%= t[:name] %>"
+                data-mission-mobile-target="button"
+                data-mobile-active="<%= t[:name] == 'stage' ? 'true' : 'false' %>"
+                class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F] data-[mobile-active=true]:text-[#D97757] data-[mobile-active=true]:bg-[#FBF9F5] transition">
+          <i class="<%= t[:icon] %> text-lg"></i>
+          <span class="uppercase tracking-wider mt-0.5"><%= t[:label] %></span>
+        </button>
+      <% end %>
+    </nav>
   <% end %>
 </div>
 

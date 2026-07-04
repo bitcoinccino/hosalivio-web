@@ -20,8 +20,12 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Reports", response.body
     # ask assistant composer still present
     assert_match "Ask HosAlivio", response.body
-    # patient-chat-style layout: banner status line + right-rail accordion
-    assert_match "Care Team", response.body        # banner status line
-    assert_match "Active Census", response.body    # right-rail accordion section
+    # patient-chat-style layout: banner status line, left census, right feed
+    assert_match "Care Team", response.body          # banner status line
+    assert_match "Active Census", response.body      # left-rail census list
+    assert_match "Live agent activity", response.body # right-rail feed header
+    # mobile bottom tab bar
+    assert_match "Activity", response.body
+    assert_match "Stage", response.body
   end
 end
