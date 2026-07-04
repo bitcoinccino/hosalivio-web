@@ -468,7 +468,7 @@
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2F6F4E] opacity-70"></span>
             <span class="relative inline-flex rounded-full h-2 w-2 bg-[#2F6F4E]"></span>
           </span>
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Live agent activity</h3>
+          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Live activity</h3>
         </div>
         <% open_crises = @unresolved_note_ids.size %>
         <% if open_crises > 0 %>
@@ -505,8 +505,9 @@
 
       <div id="event-feed" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
         <% if @stories.empty? %>
-          <div data-feed-empty class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
-            <p class="max-w-xs">No agent activity yet. This stream updates live as your team and HosAlivio work across every patient.</p>
+          <div data-feed-empty class="min-h-full flex flex-col items-center justify-center text-center text-sm text-[#6B665F]">
+            <i class="ri-checkbox-circle-line text-3xl text-[#2F6F4E] mb-2"></i>
+            <p class="max-w-xs">No recent activity — you're all caught up.</p>
           </div>
         <% else %>
           <%
@@ -750,6 +751,17 @@
         return { before: `${a}d a ${(s||"record").replace(/([A-Z])/g, " $1").trim().toLowerCase()} for`, after: "", icon: "ri-settings-3-line" };
       }
 
+      // --- Card helpers (mirror EventNarrator::Story#action_label / #source_label) ---
+      function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+      function initialsOf(name) { return (name || "").split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?"; }
+      function actionLabel(phrase) {
+        let before = (phrase.before || "").trim();
+        const after = (phrase.after || "").trim();
+        if (after.startsWith("'s")) return `${before} the${after.slice(2)}`.trim();
+        before = before.replace(/\s+(?:for|with|to|from|about|of|on)$/i, "");
+        return [before, after].filter(Boolean).join(" ").trim();
+      }
+
       ws.onmessage = (msg) => {
         const data = JSON.parse(msg.data);
         if (["ping", "welcome", "confirm_subscription"].includes(data.type)) return;
@@ -762,45 +774,31 @@
         const cat      = categorize(p);
         const catColor = LANE_COLOR[cat] || "#6B665F";
         const catLabel = LANE_LABEL[cat] || "Ops";
-        const catTag   = `<span class="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold" style="color: ${catColor};"><span class="w-1.5 h-1.5 rounded-full" style="background: ${catColor};"></span>${catLabel}</span>`;
-
-        const patientLink = p.patient_id && p.patient_name
-          ? `<a href="/patients/${p.patient_id}" class="font-medium text-[#D97757] hover:underline">${p.patient_name}</a>`
-          : "";
+        const source     = persona.title ? `${persona.name} (${persona.title})` : persona.name;
+        const action     = actionLabel(phrase);
+        const hasPatient = !!p.patient_id;
+        const headline   = hasPatient ? (p.patient_name || source) : source;
+        const initials   = hasPatient && p.patient_name ? initialsOf(p.patient_name) : (persona.initials || "?");
         const crisisPill = isCrisis
           ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
           : "";
+        const flash = isCrisis ? "bg-[#FFF3EC]" : "bg-[#FFFBEB]";
 
-        const headlineHtml = (() => {
-          const titleSpan = persona.title ? `<span class="text-[11px] text-[#6B665F]"> (${persona.title})</span>` : "";
-          const afterHtml = phrase.after
-            ? (phrase.after.startsWith("'")
-                ? `<span class="text-[#3A3936]">${phrase.after}</span>`
-                : `<span class="text-[#3A3936]"> ${phrase.after}</span>`)
-            : "";
-          return `<i class="${phrase.icon} text-[#6B665F] mr-1"></i><span class="font-bold text-[#1D1C1A]">${persona.name}</span>${titleSpan} <span class="text-[#3A3936]">${phrase.before}</span>${patientLink ? " " + patientLink : ""}${afterHtml}`;
-        })();
-
-        const bubbleHighlight = isCrisis
-          ? "border-[#D97757] bg-[#FFF3EC] animate-pulse"
-          : "border-[#FFEB99] bg-[#FFFBEB]";
-
-        const row = document.createElement("div");
-        row.className = "flex items-start gap-2.5";
+        const row = document.createElement(hasPatient ? "a" : "div");
+        row.className = `group/story flex items-start gap-2.5 rounded-xl px-2 py-1.5 -mx-2 transition ${hasPatient ? "hover:bg-[#FBF9F5]" : ""} ${flash}`;
         row.setAttribute("data-story", "");
         row.setAttribute("data-category", cat);
+        if (hasPatient) row.setAttribute("href", `/patients/${p.patient_id}`);
         row.innerHTML = `
-          <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
-               style="background: ${persona.color};" title="${persona.name} · ${persona.title}">${persona.initials}</div>
-          <div class="min-w-0">
-            <div data-bubble class="inline-block max-w-full rounded-2xl rounded-tl-sm border px-3.5 py-2.5 transition-all duration-700 ${bubbleHighlight}">
-              <div class="text-[13px] leading-snug text-[#3A3936]">${headlineHtml}</div>
-            </div>
-            <div class="mt-1 ml-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
-              ${catTag}
+          <span class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+                style="background: ${catColor};" title="${esc(catLabel)}">${esc(initials)}</span>
+          <div class="min-w-0 flex-1">
+            <div class="text-[13px] font-semibold text-[#1D1C1A] truncate ${hasPatient ? "group-hover/story:text-[#D97757]" : ""}">${esc(headline)}</div>
+            <div class="text-[12px] text-[#6B665F] leading-snug">${hasPatient ? esc(source) + " " : ""}${esc(action)}</div>
+            <div class="mt-0.5 flex items-center gap-2 text-[10px] text-[#9A938A]">
               <time class="font-mono">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
               ${crisisPill}
-              ${p.patient_mrn ? `<span class="font-mono">· ${p.patient_mrn}</span>` : ""}
+              ${p.patient_mrn ? `<span class="font-mono">· ${esc(p.patient_mrn)}</span>` : ""}
             </div>
           </div>
         `;
@@ -811,12 +809,7 @@
         recentEl.appendChild(row);
         if (stick && matchesLane(cat)) feedEl.scrollTop = feedEl.scrollHeight;
         if (!isCrisis) {
-          setTimeout(() => {
-            const bubble = row.querySelector("[data-bubble]");
-            if (!bubble) return;
-            bubble.classList.remove("border-[#FFEB99]", "bg-[#FFFBEB]");
-            bubble.classList.add("border-[#EFECE6]", "bg-[#FBF9F5]");
-          }, 1800);
+          setTimeout(() => { row.classList.remove("bg-[#FFFBEB]"); }, 1800);
         }
       };
       }  // end initMissionStage
