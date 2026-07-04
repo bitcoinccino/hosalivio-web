@@ -782,7 +782,8 @@
         const flash = isCrisis ? "bg-[#FFF3EC]" : "bg-[#FFFBEB]";
 
         const row = document.createElement(hasPatient ? "a" : "div");
-        row.className = `group/story flex items-start gap-2.5 rounded-xl px-2 py-1.5 -mx-2 transition ${hasPatient ? "hover:bg-[#FBF9F5]" : ""} ${flash}`;
+        row.className = `group/story flex items-start gap-2.5 rounded-lg border-l-[3px] pl-2.5 pr-2 py-1.5 -mx-2 transition ${hasPatient ? "hover:bg-[#FBF9F5]" : ""} ${flash}`;
+        row.style.borderLeftColor = catColor;
         row.setAttribute("data-story", "");
         row.setAttribute("data-category", cat);
         if (hasPatient) row.setAttribute("href", `/patients/${p.patient_id}`);
