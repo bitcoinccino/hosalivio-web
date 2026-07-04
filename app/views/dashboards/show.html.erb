@@ -336,7 +336,8 @@
       <!-- Input Bar — composer (Ask HosAlivio ⇄ team chat) (managers only) -->
       <% if is_manager %>
         <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]"
-             data-controller="composer"
+             data-controller="composer mention-autocomplete"
+             data-mention-autocomplete-items-value="<%= @mentionables.to_json %>"
              data-composer-ask-url-value="<%= admin_assistant_ask_path %>"
              data-composer-ask-placeholder-value="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…">
 
@@ -351,6 +352,10 @@
           </div>
 
           <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer", composer_target: "form" } do %>
+            <div class="relative">
+              <%# @-mention autocomplete dropdown (populated by JS, opens above the input). %>
+              <div data-mention-autocomplete-target="menu"
+                   class="hidden absolute bottom-full left-0 mb-2 w-72 max-h-64 overflow-y-auto rounded-2xl border border-[#EFECE6] bg-white shadow-lg py-1 z-50"></div>
             <div class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
               <%# "+" menu — a popover (same pattern as the patient composer's
                   quick-actions dropdown), moved here from the sidebar. %>
@@ -417,7 +422,8 @@
                   </div>
                 </div>
               </div>
-              <input type="text" name="q" autocomplete="off" data-composer-target="input"
+              <input type="text" name="q" autocomplete="off"
+                     data-composer-target="input" data-mention-autocomplete-target="input"
                      placeholder="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…"
                      class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
               <button type="submit"
@@ -425,6 +431,7 @@
                       class="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white shadow-sm active:scale-95 transition">
                 <i class="ri-send-plane-fill text-[16px]"></i>
               </button>
+            </div>
             </div>
           <% end %>
 

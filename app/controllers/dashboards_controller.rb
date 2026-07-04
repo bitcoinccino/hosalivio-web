@@ -5,6 +5,14 @@ class DashboardsController < ApplicationController
   MANAGER_ROLES = %w[admin don admissions].freeze
   CLINICAL_ROLES = %w[rn md social_worker chaplain aide dme pharmacy insurance billing].freeze
 
+  MENTION_ROLE_LABELS = {
+    "rn" => "RN", "lpn" => "LPN", "md" => "MD", "don" => "DON",
+    "social_worker" => "SW", "sw" => "SW", "chaplain" => "Chaplain",
+    "aide" => "Aide", "admissions" => "Admissions", "insurance" => "Insurance",
+    "billing" => "Billing", "admin" => "Admin", "pharmacy" => "Pharmacy", "dme" => "DME"
+  }.freeze
+  MENTION_ROLES = MENTION_ROLE_LABELS.keys.freeze
+
   def show
     @agency = current_user.agency || Agency.first
     if @agency.nil?
@@ -52,6 +60,9 @@ class DashboardsController < ApplicationController
     # Team channels for the composer's "+" menu (readable to this user).
     Channel.ensure_defaults_for(@agency)
     @channels = Channel.order(:position, :slug).select { |c| c.readable_by?(current_user) }
+
+    # @-mention pool for team-chat mode: active staff in this agency.
+    @mentionables = build_mentionables
 
     @unresolved_note_ids = Note.where(author_role: "family", urgency: :crisis, read_at: nil).pluck(:id)
 
@@ -186,6 +197,24 @@ class DashboardsController < ApplicationController
       # Placeholder buckets until the claims model lands
       @claims_pending = []
       @denials_pending = []
+    end
+  end
+
+  # The @-mention pool for team-chat mode: active, non-family staff in this
+  # agency (excluding the current user). Each entry: { handle, name, role }.
+  # Mirrors PatientChatsController#build_mentionables.
+  def build_mentionables
+    return [] if @agency.nil?
+
+    User.joins(user_roles: :role)
+        .where(agency: @agency, active: true, family_access: false)
+        .where(roles: { name: MENTION_ROLES })
+        .where.not(id: current_user.id)
+        .distinct.order(:full_name).limit(40).to_a.filter_map do |u|
+      first = u.full_name.to_s.split.first
+      next if first.blank?
+      role = (u.role_names & MENTION_ROLES).first
+      { handle: first, name: u.full_name, role: MENTION_ROLE_LABELS[role] || role.to_s.titleize }
     end
   end
 
