@@ -110,6 +110,26 @@
     <% else %>
       <% manager_roles = %w[admin don admissions] %>
       <% is_manager = (current_user.role_names & manager_roles).any? %>
+
+      <%# Agency-level "Ask HosAlivio" — oversight questions, answered ephemerally
+          into the turbo-frame below (never written to a patient's chart). %>
+      <% if is_manager %>
+        <section class="mx-6 mt-6">
+          <div class="rounded-2xl bg-white border border-[#EFECE6] p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-full bg-[#FBF9F5] text-[#D97757] flex items-center justify-center"><i class="ri-sparkling-2-line text-[13px]"></i></span>
+              <div class="text-[12px] text-[#1D1C1A] font-medium">Ask HosAlivio</div>
+            </div>
+            <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer" }, class: "flex gap-2" do %>
+              <input type="text" name="q" placeholder="e.g. show today's pending items"
+                     class="flex-1 text-[13px] rounded-lg border border-[#EFECE6] bg-white px-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
+              <button type="submit" class="rounded-full bg-[#D97757] hover:bg-[#c56647] text-white px-4 py-2 text-[13px] font-medium whitespace-nowrap">Ask</button>
+            <% end %>
+            <%= turbo_frame_tag "assistant-answer" %>
+          </div>
+        </section>
+      <% end %>
+
       <% if is_manager && (@pending_certifications.any? || @pending_noe.any?) %>
         <section class="mx-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
           <% if @pending_certifications.any? %>
