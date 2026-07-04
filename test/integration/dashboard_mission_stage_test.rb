@@ -26,7 +26,7 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     # patient-chat-style layout: banner status line, left census, right feed
     assert_match "Care Team", response.body          # banner status line
     assert_match "Active Census", response.body      # left-rail census list
-    assert_match "Live agent activity", response.body # right-rail feed header
+    assert_match "Live activity", response.body # right-rail feed header
     # mobile bottom tab bar
     assert_match "Activity", response.body
     assert_match "Stage", response.body

@@ -195,6 +195,28 @@ class EventNarrator
       end
     end
 
+    # A clean, patient-independent action phrase for the redesigned card
+    # subline — the patient is shown as the headline, not inline. Derived from
+    # #narrate so the two stay in sync. Mirrored by actionLabel() in the
+    # dashboards live-feed script.
+    def action_label
+      p = narrate
+      before = p[:before].to_s.strip
+      after  = p[:after].to_s.strip
+      if after.start_with?("'s")
+        "#{before} the#{after[2..]}".strip           # "…on" + "'s chart" → "…on the chart"
+      else
+        before = before.sub(/\s+(?:for|with|to|from|about|of|on)\z/i, "")
+        [ before, after ].reject(&:blank?).join(" ").strip
+      end
+    end
+
+    # "HosAlivio (Admissions)" / "Care Portal" / "Pascal (RN)".
+    def source_label
+      title = persona[:title].to_s
+      title.present? ? "#{persona[:name]} (#{title})" : persona[:name]
+    end
+
     # The patient this event is ABOUT (nullable).
     def patient
       pid =
