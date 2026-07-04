@@ -17,10 +17,14 @@
 
 class ClinicianDispatcher
   MENTION_RE = /@hosalivio\b/i
+  # HCPCS Level II code: one letter + 4 digits (e.g. Q5001, J1234, E0250).
+  HCPCS_RE   = /\b([A-Za-z]\d{4})\b/
 
   # Ordered keyword → intent map. First match wins. Loose matching on
   # purpose: clinicians type quickly and won't quote the menu.
   INTENT_MAP = [
+    [ /\b(?:start|run|begin|do|open|new|create|generate)\b[^.\n]{0,25}\bprior[\s-]?auth/i, :start_prior_auth ],
+    [ /\bprior[\s-]?auth(?:orization)?\b[^.\n]{0,25}\breview\b/i,                          :start_prior_auth ],
     [ /\b(comfort\s*kit|comfort-kit)\b/i,                       :pharmacy_comfort_kit ],
     [ /\b(refill|out\s*of|running\s*low|need\s*more)\b/i,       :pharmacy_refill ],
     [ /\b(chaplain|spiritual)\b/i,                              :chaplain_request ],
@@ -74,6 +78,8 @@ class ClinicianDispatcher
       d.send(:confirm_pending_relay, notify)
     when :cancel_relay
       d.send(:cancel_pending_relay)
+    when :start_prior_auth
+      d.send(:dispatch_prior_auth, ack: ack)
     when :pharmacy_comfort_kit, :pharmacy_refill
       d.send(:dispatch_pharmacy, intent, ack: ack)
     when :dme_order
@@ -543,6 +549,7 @@ class ClinicianDispatcher
       post_ack("I don't have a drafted message waiting, so there's nothing to send. Tell me what to pass along and to whom.")
       return Result.new(dispatched: false, reason: "no_pending_offer", intent: "confirm_relay")
     end
+    return confirm_prior_auth(payload)          if payload["kind"] == "prior_auth"
     return confirm_family_relay(payload, override) if payload["target"] == "family"
     role    = payload["role"].to_s
     target  = User.where(agency_id: @agency.id).find_by(id: payload["target_user_id"]) ||
@@ -565,12 +572,87 @@ class ClinicianDispatcher
   def cancel_pending_relay
     offer   = self.class.pending_relay_offer(@patient)
     payload = offer&.offer_payload
+    if payload && payload["kind"] == "prior_auth"
+      post_ack("Okay, I won't start that prior-auth review. Nothing was generated.")
+      return Result.new(dispatched: true, intent: "cancel_relay")
+    end
     if payload && (target = User.where(agency_id: @agency.id).find_by(id: payload["target_user_id"]))
       post_ack("Okay, I won't send that to #{target.full_name}. Nothing went out.")
     else
       post_ack("Okay, I won't send that. Nothing went out.")
     end
     Result.new(dispatched: true, intent: "cancel_relay")
+  end
+
+  # ── Prior-authorization review (offer → confirm, reusing the relay pattern) ──
+
+  # "@HosAlivio start a prior auth for Q5001". Reviewer-gated. If a HCPCS code is
+  # in the message, post a Send/Cancel offer; otherwise nudge with the form link.
+  def dispatch_prior_auth(ack: nil)
+    unless (@requester.role_names & PriorAuthReviewsController::REVIEWER_ROLES).any?
+      post_ack("Prior-auth reviews are handled by admin, DON, MD, insurance, or billing — ask one of them to start it for #{@patient.first_name}.")
+      return Result.new(dispatched: false, reason: "not_reviewer", intent: "start_prior_auth")
+    end
+
+    hcpcs = @note.body.to_s[HCPCS_RE, 1]&.upcase
+    if hcpcs
+      posted = post_prior_auth_offer(hcpcs)
+      Result.new(dispatched: posted, intent: "start_prior_auth_offer")
+    else
+      path = Rails.application.routes.url_helpers.new_prior_auth_review_path(patient_id: @patient.id)
+      post_ack("I can start a prior-authorization review — I just need the procedure code. Reply with it (e.g. \"@HosAlivio start a prior auth for Q5001\") or open the form: #{path}")
+      Result.new(dispatched: true, intent: "start_prior_auth_prompt")
+    end
+  end
+
+  # Drafted-but-unrun offer. Same offer-note shape as a relay (HOSALIVIO_OFFER
+  # prefix + base64 payload) so the chat renders Send/Cancel and confirm_relay
+  # routes back here via the "prior_auth" payload kind.
+  def post_prior_auth_offer(hcpcs)
+    payload = { "kind" => "prior_auth", "procedure_hcpcs" => hcpcs }
+    preview = "Want me to start a prior-authorization review for HCPCS #{hcpcs}? I'll read the documents on #{@patient.first_name}'s chart and draft a recommendation for your sign-off."
+    Note.create!(
+      agency:         @agency,
+      patient:        @patient,
+      parent_note:    reply_anchor,
+      author_role:    "admissions",
+      body:           "#{Note::HOSALIVIO_OFFER_PREFIX}#{Base64.strict_encode64(payload.to_json)}\n#{preview}",
+      urgency:        "normal",
+      source:         "system",
+      clinician_only: true
+    )
+    true
+  rescue ActiveRecord::RecordInvalid
+    false
+  end
+
+  # Confirmed: extract the chart's documents (Stage 0), run the pipeline via
+  # ReviewAssembler, and post a link to the generated review. Never raises.
+  def confirm_prior_auth(payload)
+    hcpcs = payload["procedure_hcpcs"].to_s
+    review = ActsAsTenant.with_tenant(@agency) do
+      next nil unless CoveragePolicy.for_hcpcs(hcpcs)
+      doc_texts = @patient.patient_documents.with_attached_file.map { |d| PriorAuth::DocumentExtractor.call(d) }
+      PriorAuth::ReviewAssembler.call(
+        patient:         @patient,
+        procedure_hcpcs: hcpcs,
+        provider_npi:    @patient.intake["attending_physician_npi"],
+        document_texts:  doc_texts
+      )
+    end
+
+    unless review
+      post_ack("There's no active Medicare policy for HCPCS #{hcpcs}, so I couldn't start the review — double-check the code?")
+      return Result.new(dispatched: false, reason: "no_policy", intent: "start_prior_auth")
+    end
+
+    path = Rails.application.routes.url_helpers.prior_auth_review_path(review)
+    post_ack("Prior-auth review ready for HCPCS #{hcpcs} — recommendation: #{review.recommendation.humanize}. Open it: #{path}")
+    Result.new(dispatched: true, intent: "start_prior_auth")
+  rescue => e
+    Rails.logger.warn("[ClinicianDispatcher#confirm_prior_auth] #{e.class}: #{e.message}")
+    post_ack("I hit a snag generating that review. You can start it from Quick actions → Prior-auth review.")
+    Result.new(dispatched: false, reason: "prior_auth_error", intent: "start_prior_auth")
   end
 
   # Draft-but-unsent offer to update the FAMILY. Clinician-only and top-level

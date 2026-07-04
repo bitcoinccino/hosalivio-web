@@ -6,15 +6,20 @@ class PriorAuthReviewsController < ApplicationController
   before_action :authorize_reviewer!
   before_action :set_review, only: [ :show, :sign_off ]
 
-  # Utilization-review-ish roles. No family; agency is enforced by the tenant scope.
-  REVIEWER_ROLES = %w[admin don insurance billing].freeze
+  # Utilization-review roles + MD (physician review). No family; agency is
+  # enforced by the tenant scope.
+  REVIEWER_ROLES = %w[admin don md insurance billing].freeze
 
   # Start a review: pick a patient + procedure. Evidence comes from the docs
   # already on the patient's chart.
   def new
     ActsAsTenant.with_tenant(current_user.agency) do
       @patients = Patient.order(:mrn)
-      @review   = PriorAuthReview.new(patient_id: params[:patient_id])
+      # Pre-fill the provider NPI from the patient's intake (attending physician),
+      # if we already have it — the reviewer can still override.
+      npi = params[:patient_id].present? &&
+            Patient.find_by(id: params[:patient_id])&.intake&.dig("attending_physician_npi")
+      @review = PriorAuthReview.new(patient_id: params[:patient_id], provider_npi: npi.presence)
     end
   end
 

@@ -12,11 +12,32 @@ class PriorAuthReviewCreateTest < ActionDispatch::IntegrationTest
     @policy.criteria.create!(label: ">= 3 ADLs",  position: 1)
   end
 
-  test "new renders the start form for a reviewer" do
+  test "new renders the full-page start form for a reviewer" do
     sign_in @reviewer
     get new_prior_auth_review_path(patient_id: @patient.id)
     assert_response :success
-    assert_match "Start a review", response.body
+    assert_match "Start a Prior Authorization Review", response.body
+    assert_match "Back to dashboard", response.body
+    assert_no_match(/data-controller="modal"/, response.body)
+  end
+
+  test "new pre-fills the provider NPI from the patient's intake attending physician" do
+    in_tenant(@agency) { @patient.update!(intake: { "attending_physician_npi" => "1578671483" }) }
+    sign_in @reviewer
+    get new_prior_auth_review_path(patient_id: @patient.id)
+    assert_response :success
+    assert_match "1578671483", response.body   # rendered into the NPI field value
+  end
+
+  test "new renders as a turbo-frame modal when requested from the quick action" do
+    sign_in @reviewer
+    get new_prior_auth_review_path(patient_id: @patient.id), headers: { "Turbo-Frame" => "pa-modal" }
+    assert_response :success
+    assert_match(/<turbo-frame[^>]*id="pa-modal"/, response.body)
+    assert_match(/data-controller="modal"/, response.body)
+    assert_match "Generate Review", response.body
+    assert_match(/data-action="click->modal#close"[^>]*>Cancel/, response.body)  # non-destructive Cancel
+    assert_no_match "Back to dashboard", response.body
   end
 
   test "create generates a review for a governed procedure and redirects to it" do

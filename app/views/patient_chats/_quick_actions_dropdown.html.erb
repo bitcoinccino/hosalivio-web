@@ -24,6 +24,12 @@
       kind: :link, href: patient_admissions_path(@patient),
       roles: %w[rn md sw social_worker don admissions admin]
     },
+    prior_auth: {
+      label: "Prior-auth review", sub: "Check medical necessity + draft a determination",
+      icon: "ri-scales-3-line", color: "#2B4A7A",
+      kind: :link, href: new_prior_auth_review_path(patient_id: @patient.id), frame: "pa-modal",
+      roles: PriorAuthReviewsController::REVIEWER_ROLES
+    },
     sign_pre_admit: {
       label: "Sign pending pre-admit", sub: "Certify the latest eval",
       icon: "ri-quill-pen-line", color: "#2F6F4E",
@@ -69,7 +75,9 @@
         <% end %>
       <% when :link %>
         <% next if a[:href].nil? %>
+        <%# frame: opens the target in a turbo-frame modal instead of navigating. %>
         <%= link_to a[:href],
+              data: (a[:frame] ? { turbo_frame: a[:frame], action: "quick-actions#close" } : {}),
               class: "flex items-center gap-3 w-full px-4 py-2.5 hover:bg-[#FBF9F5] transition" do %>
           <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0" style="color: <%= a[:color] %>;">
             <i class="<%= a[:icon] %>"></i>

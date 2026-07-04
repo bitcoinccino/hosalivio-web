@@ -47,6 +47,13 @@ class PriorAuthReviewFlowTest < ActionDispatch::IntegrationTest
     assert AgentEvent.exists?(subject: @review, action: "prior_auth_signoff")
   end
 
+  test "an MD can review" do
+    md = create_user(agency: @agency, full_name: "Dr. Mona MD", roles: %w[md])
+    sign_in md
+    get prior_auth_review_path(@review)
+    assert_response :success
+  end
+
   test "a non-reviewer clinician is blocked" do
     rn = create_user(agency: @agency, full_name: "Reggie RN", roles: %w[rn])
     sign_in rn
