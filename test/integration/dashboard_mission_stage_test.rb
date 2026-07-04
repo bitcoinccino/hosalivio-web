@@ -20,5 +20,8 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Reports", response.body
     # ask assistant still present
     assert_match "Ask HosAlivio", response.body
+    # patient-chat-style live activity stream + census rail
+    assert_match "Live agent activity", response.body
+    assert_match "Active census", response.body
   end
 end

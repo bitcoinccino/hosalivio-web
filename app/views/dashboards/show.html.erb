@@ -326,55 +326,20 @@
         </section>
       <% end %>
 
-      <div class="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden">
-        <!-- Census -->
-        <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col">
+      <%# The live-activity stage — modeled on the patient-chat layout: a
+          prominent chat-style stream of agency-wide agent activity as the main
+          column, with the active census as a compact right rail. %>
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 p-6 overflow-hidden">
+        <!-- Live agent activity — chat-style stream -->
+        <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
-            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Active Census</h3>
-            <span class="text-xs text-[#1D1C1A] font-mono"><%= @patients.size %></span>
-          </div>
-          <div class="flex-1 overflow-y-auto">
-            <% if @patients.empty? %>
-              <div class="p-6 text-sm text-[#6B665F]">No patients yet.</div>
-            <% else %>
-              <table class="w-full text-sm">
-                <thead class="bg-[#FBF9F5] text-[11px] uppercase tracking-widest text-[#6B665F]">
-                  <tr>
-                    <th class="text-left px-4 py-2 font-medium">MRN</th>
-                    <th class="text-left px-4 py-2 font-medium">Name</th>
-                    <th class="text-left px-4 py-2 font-medium">Status</th>
-                    <th class="text-left px-4 py-2 font-medium">Code</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @patients.each do |p| %>
-                    <tr class="border-t border-[#EFECE6] hover:bg-[#FBF9F5] transition">
-                      <td class="px-4 py-2 font-mono text-[#1D1C1A]"><%= p.mrn %></td>
-                      <td class="px-4 py-2">
-                        <a href="/patients/<%= p.id %>" class="text-[#D97757] hover:underline">
-                          <%= p.full_name %>
-                        </a>
-                      </td>
-                      <td class="px-4 py-2 text-[#6B665F]"><%= p.status %></td>
-                      <td class="px-4 py-2">
-                        <% if p.dnr? || p.dnr_dni? %>
-                          <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#C1403A] text-white tracking-wider"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
-                        <% else %>
-                          <span class="text-[10px] text-[#6B665F]"><%= p.code_status.to_s.upcase %></span>
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            <% end %>
-          </div>
-        </section>
-
-        <!-- Event feed -->
-        <section class="bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex flex-col">
-          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
-            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Agent Event Feed · live</h3>
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2F6F4E] opacity-70"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-[#2F6F4E]"></span>
+              </span>
+              <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Live agent activity</h3>
+            </div>
             <% open_crises = @unresolved_note_ids.size %>
             <% if open_crises > 0 %>
               <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider animate-pulse">
@@ -383,9 +348,11 @@
             <% end %>
           </div>
 
-          <div id="event-feed" class="flex-1 overflow-y-auto text-[12px] p-3 space-y-1.5">
+          <div id="event-feed" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
             <% if @stories.empty? %>
-              <div class="text-[#6B665F] p-2">No events yet. Waiting for agents…</div>
+              <div class="min-h-full flex items-center justify-center text-center text-sm text-[#6B665F]">
+                <p class="max-w-xs">No agent activity yet. This stream updates live as your team and HosAlivio work across every patient.</p>
+              </div>
             <% else %>
               <% @stories.each do |story| %>
                 <%= render "event_story", story: story, unresolved_note_ids: @unresolved_note_ids %>
@@ -393,6 +360,34 @@
             <% end %>
           </div>
         </section>
+
+        <!-- Right rail: active census at-a-glance -->
+        <aside class="hidden lg:flex bg-white rounded-2xl border border-[#EFECE6] overflow-hidden flex-col min-h-0">
+          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+            <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Active census</h3>
+            <span class="text-xs text-[#1D1C1A] font-mono"><%= @patients.size %></span>
+          </div>
+          <div class="flex-1 overflow-y-auto divide-y divide-[#EFECE6]">
+            <% if @patients.empty? %>
+              <div class="p-6 text-sm text-[#6B665F]">No patients yet.</div>
+            <% else %>
+              <% @patients.each do |p| %>
+                <a href="/patients/<%= p.id %>" class="flex items-center gap-3 px-4 py-2.5 hover:bg-[#FBF9F5] transition">
+                  <div class="w-8 h-8 rounded-full bg-[#EFECE6] text-[#6B665F] text-[11px] font-bold flex items-center justify-center flex-shrink-0">
+                    <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
+                    <div class="text-[11px] text-[#6B665F] font-mono truncate"><%= p.mrn %> · <%= p.status %></div>
+                  </div>
+                  <% if p.dnr? || p.dnr_dni? %>
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider flex-shrink-0"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+                  <% end %>
+                </a>
+              <% end %>
+            <% end %>
+          </div>
+        </aside>
       </div>
     <% end %>
       </div>
@@ -502,26 +497,30 @@
           ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
           : "";
 
-        const row = document.createElement("div");
-        const base = "flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-all duration-700";
-        const highlight = isCrisis
+        const headlineHtml = (() => {
+          const titleSpan = persona.title ? `<span class="text-[11px] text-[#6B665F]"> (${persona.title})</span>` : "";
+          const afterHtml = phrase.after
+            ? (phrase.after.startsWith("'")
+                ? `<span class="text-[#3A3936]">${phrase.after}</span>`
+                : `<span class="text-[#3A3936]"> ${phrase.after}</span>`)
+            : "";
+          return `<i class="${phrase.icon} text-[#6B665F] mr-1"></i><span class="font-bold text-[#1D1C1A]">${persona.name}</span>${titleSpan} <span class="text-[#3A3936]">${phrase.before}</span>${patientLink ? " " + patientLink : ""}${afterHtml}`;
+        })();
+
+        const bubbleHighlight = isCrisis
           ? "border-[#D97757] bg-[#FFF3EC] animate-pulse"
           : "border-[#FFEB99] bg-[#FFFBEB]";
-        row.className = `${base} ${highlight}`;
+
+        const row = document.createElement("div");
+        row.className = "flex items-start gap-2.5";
         row.innerHTML = `
-          <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+          <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
                style="background: ${persona.color};" title="${persona.name} · ${persona.title}">${persona.initials}</div>
-          <div class="flex-1 min-w-0">
-            <div class="text-[13px] leading-tight">${(() => {
-              const titleSpan = persona.title ? `<span class="text-[11px] text-[#6B665F]"> (${persona.title})</span>` : "";
-              const afterHtml = phrase.after
-                ? (phrase.after.startsWith("'")
-                    ? `<span class="text-[#3A3936]">${phrase.after}</span>`
-                    : `<span class="text-[#3A3936]"> ${phrase.after}</span>`)
-                : "";
-              return `<i class="${phrase.icon} text-[#6B665F] mr-1"></i><span class="font-bold text-[#1D1C1A]">${persona.name}</span>${titleSpan} <span class="text-[#3A3936]">${phrase.before}</span>${patientLink ? " " + patientLink : ""}${afterHtml}`;
-            })()}</div>
-            <div class="mt-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
+          <div class="min-w-0">
+            <div data-bubble class="inline-block max-w-full rounded-2xl rounded-tl-sm border px-3.5 py-2.5 transition-all duration-700 ${bubbleHighlight}">
+              <div class="text-[13px] leading-snug text-[#3A3936]">${headlineHtml}</div>
+            </div>
+            <div class="mt-1 ml-1 flex items-center gap-2 text-[10px] text-[#6B665F]">
               <time class="font-mono">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
               ${crisisPill}
               ${p.patient_mrn ? `<span class="font-mono">· ${p.patient_mrn}</span>` : ""}
@@ -531,8 +530,10 @@
         feedEl.insertBefore(row, feedEl.firstChild);
         if (!isCrisis) {
           setTimeout(() => {
-            row.classList.remove("border-[#FFEB99]", "bg-[#FFFBEB]");
-            row.classList.add("border-transparent");
+            const bubble = row.querySelector("[data-bubble]");
+            if (!bubble) return;
+            bubble.classList.remove("border-[#FFEB99]", "bg-[#FFFBEB]");
+            bubble.classList.add("border-[#EFECE6]", "bg-[#FBF9F5]");
           }, 1800);
         }
       };
