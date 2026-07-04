@@ -347,7 +347,7 @@
                { label: "New referrals",            q: "new referrals",              icon: "ri-inbox-unarchive-line" },
                { label: "Daily report",             q: "daily report",               icon: "ri-file-list-3-line" }
              ] %>
-          <div class="mb-2.5 flex items-center gap-2 flex-wrap">
+          <div data-composer-target="quickAsks" class="mb-2.5 flex items-center gap-2 flex-wrap">
             <% quick_asks.each do |a| %>
               <%= button_to admin_assistant_ask_path, params: { q: a[:q] }, method: :post,
                     form: { data: { turbo_frame: "assistant-answer" }, class: "inline-block" },
