@@ -14,6 +14,8 @@ module NotificationsHelper
       notification.linked_id ? pre_admit_eval_path(notification.linked_id) : notifications_path
     when "Patient"
       notification.linked_id ? patient_path(notification.linked_id) : notifications_path
+    when "ChannelMessage"
+      notification.linked&.channel ? channel_path(notification.linked.channel) : notifications_path
     else
       notifications_path
     end

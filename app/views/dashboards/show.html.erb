@@ -387,7 +387,7 @@
                           <button type="button"
                                   data-action="composer#channel quick-actions#close"
                                   data-channel-slug="<%= c.slug %>"
-                                  data-channel-url="<%= channel_messages_path(c) %>"
+                                  data-channel-url="<%= channel_messages_path(c, return_to: "dashboard") %>"
                                   class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[#FBF9F5] transition cursor-pointer">
                             <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0 text-[#2B4A7A]">
                               <i class="ri-hashtag"></i>
@@ -414,11 +414,6 @@
                         <% end %>
                       <% end %>
                     <% end %>
-                  </div>
-                  <div class="px-4 py-2 border-t border-[#EFECE6]">
-                    <a href="/channels" class="inline-flex items-center gap-1 text-[12px] text-[#D97757] font-medium hover:underline">
-                      Open team chat <i class="ri-arrow-right-line"></i>
-                    </a>
                   </div>
                 </div>
               </div>

@@ -8,7 +8,7 @@ class Notification < ApplicationRecord
   # Kinds that stay in-app only (bell + toast), never fanned out to an external
   # ping. For lower-stakes, non-time-critical nudges where an SMS/Telegram would
   # be noise. Enforced at the OutboundPings::Enqueuer chokepoint.
-  IN_APP_ONLY_KINDS = %w[relay_offer_pending].freeze
+  IN_APP_ONLY_KINDS = %w[relay_offer_pending channel_mention].freeze
 
   validates :kind, :title, presence: true
 
