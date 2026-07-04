@@ -25,11 +25,12 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
   test "the classifier routes each command to its answer title" do
     sign_in @admin
     {
-      "show today's priorities"         => "priority items",
-      "list patients needing attention" => "Patients needing attention",
-      "summarize compliance status"     => "Compliance status",
-      "show new referrals"              => "New referrals",
-      "generate daily report"           => "Daily report"
+      # exact phrases the dashboard quick-ask buttons submit
+      "today's priorities"           => "priority items",
+      "patients needing attention"   => "Patients needing attention",
+      "compliance status"            => "Compliance status",
+      "new referrals"                => "New referrals",
+      "daily report"                 => "Daily report"
     }.each do |query, title|
       post admin_assistant_ask_path, params: { q: query }
       assert_match title, response.body, "#{query.inspect} should route to #{title.inspect}"
