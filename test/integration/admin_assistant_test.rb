@@ -32,8 +32,8 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_match "priority items", response.body
     assert_match "NOE overdue", response.body
     assert_match "Maria Gonzalez", response.body
-    # HosAlivio delivers the report in her voice (lead line + persona icon)
-    assert_match "what I found", response.body
+    # HosAlivio delivers the report in her voice (single lead + persona icon)
+    assert_match "2 items", response.body
     assert_match "ri-sparkling-2-line", response.body
   end
 
@@ -42,7 +42,7 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     # No pending evals → compliance metrics are all zero.
     post admin_assistant_ask_path, params: { q: "compliance status" }, as: :turbo_stream
     assert_response :success
-    assert_match "current status — all clear", response.body
+    assert_match "all clear right now", response.body
     assert_no_match(/what I found/, response.body)   # zeros aren't "findings"
   end
 
@@ -57,7 +57,8 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
       "daily report"                 => "Daily report"
     }.each do |query, title|
       post admin_assistant_ask_path, params: { q: query }, as: :turbo_stream
-      assert_match title, response.body, "#{query.inspect} should route to #{title.inspect}"
+      # topic is folded into the lead (lowercased for findings reports), so match case-insensitively
+      assert_match(/#{Regexp.escape(title)}/i, response.body, "#{query.inspect} should route to #{title.inspect}")
     end
   end
 
