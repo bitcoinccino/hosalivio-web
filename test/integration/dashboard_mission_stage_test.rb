@@ -45,6 +45,9 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "mention-autocomplete", response.body
     assert_match "data-mention-autocomplete-target", response.body
     assert_match "Reggie", response.body   # the RN is in the mention pool JSON
+    # the chat thread + the submit listener that matches the real ask route
+    assert_match 'id="assistant-thread"', response.body
+    assert_match 'includes("/assistant/ask")', response.body
     # one-tap oversight quick-ask buttons above the composer (hidden in team-chat mode)
     assert_match 'data-composer-target="quickAsks"', response.body
     assert_match "Today&#39;s priorities", response.body

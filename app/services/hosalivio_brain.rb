@@ -677,18 +677,27 @@ class HosalivioBrain
   end
 
   # Generic PLAIN-TEXT completion over the provider chain (claude → openai →
-  # openrouter). Returns the answer string, or nil when no key is set (dormant
-  # in test/CI) or on any failure. Callers must tolerate nil.
+  # openrouter). Tries each provider that has a valid-looking key IN ORDER and
+  # returns the first non-blank answer — so a provider that's out of credit
+  # (returns nil / errors) is skipped instead of dead-ending the whole request.
+  # Returns nil when every provider is absent or fails. Callers must tolerate nil.
   def self.complete_text(system:, user:)
-    if valid_key?(ENV["ANTHROPIC_API_KEY"])
-      call_claude_plain(system: system, user: user)
-    elsif valid_key?(ENV["OPENAI_API_KEY"])
-      call_openai_plain(system: system, user: user)
-    elsif valid_key?(ENV["OPENROUTER_API_KEY"])
-      oai_chat(provider: :openrouter, system: system, user: user, max_tokens: 400, json: false)
+    providers = []
+    providers << :claude     if valid_key?(ENV["ANTHROPIC_API_KEY"])
+    providers << :openai     if valid_key?(ENV["OPENAI_API_KEY"])
+    providers << :openrouter if valid_key?(ENV["OPENROUTER_API_KEY"])
+
+    providers.each do |provider|
+      text =
+        case provider
+        when :claude     then call_claude_plain(system: system, user: user)
+        when :openai     then call_openai_plain(system: system, user: user)
+        when :openrouter then oai_chat(provider: :openrouter, system: system, user: user, max_tokens: 400, json: false)
+        end
+      return text if text.to_s.strip.present?
+    rescue => e
+      Rails.logger.warn("[HosalivioBrain.complete_text] #{provider} failed: #{e.class}: #{e.message}")
     end
-  rescue => e
-    Rails.logger.warn("[HosalivioBrain.complete_text] #{e.class}: #{e.message}")
     nil
   end
 

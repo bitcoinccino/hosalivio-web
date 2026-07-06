@@ -816,7 +816,7 @@
       document.addEventListener("turbo:load", initMissionStage);
 
       // --- Ask HosAlivio: optimistic question bubble + typing indicator ---
-      const isAskForm = (form) => form && String(form.action || "").includes("/admin_assistant/");
+      const isAskForm = (form) => form && String(form.action || "").includes("/assistant/ask");
       const askStageScroll = () => {
         const stage = document.getElementById("assistant-stage");
         if (stage) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
