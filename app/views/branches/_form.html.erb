@@ -70,7 +70,7 @@
       <div class="grid grid-cols-4 gap-3">
         <div class="col-span-2">
           <%= f.label :city, class: label_cls %>
-          <%= f.text_field :city, class: input_cls %>
+          <%= f.text_field :city, placeholder: "Orlando", class: input_cls %>
         </div>
         <div>
           <%= f.label :state, class: label_cls %>
@@ -78,17 +78,17 @@
         </div>
         <div>
           <%= f.label :zip, class: label_cls %>
-          <%= f.text_field :zip, class: input_cls %>
+          <%= f.text_field :zip, placeholder: "32801", class: input_cls %>
         </div>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <%= f.label :phone, "Main phone", class: label_cls %>
-          <%= f.telephone_field :phone, class: input_cls %>
+          <%= f.telephone_field :phone, placeholder: "(407) 555-0123", class: input_cls %>
         </div>
         <div>
           <%= f.label :after_hours_phone, "After-hours triage line", class: label_cls %>
-          <%= f.telephone_field :after_hours_phone, class: input_cls %>
+          <%= f.telephone_field :after_hours_phone, placeholder: "(407) 555-0199", class: input_cls %>
         </div>
       </div>
     </div>
@@ -118,7 +118,7 @@
         </div>
         <div>
           <%= f.label :state_license_number, "State license #", class: label_cls %>
-          <%= f.text_field :state_license_number, class: "#{input_cls} font-mono" %>
+          <%= f.text_field :state_license_number, placeholder: "e.g. 30211696", class: "#{input_cls} font-mono" %>
         </div>
       </div>
     </div>
