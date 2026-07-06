@@ -24,8 +24,11 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     end
 
     sign_in @admin
-    post admin_assistant_ask_path, params: { q: "show today's pending items" }
+    post admin_assistant_ask_path, params: { q: "show today's pending items" }, as: :turbo_stream
     assert_response :success
+    # chat exchange: the question appears as a bubble, then HosAlivio's answer
+    assert_match "assistant-thread", response.body
+    assert_match "show today", response.body                  # question bubble
     assert_match "priority items", response.body
     assert_match "NOE overdue", response.body
     assert_match "Maria Gonzalez", response.body
@@ -44,7 +47,7 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
       "new referrals"                => "New referrals",
       "daily report"                 => "Daily report"
     }.each do |query, title|
-      post admin_assistant_ask_path, params: { q: query }
+      post admin_assistant_ask_path, params: { q: query }, as: :turbo_stream
       assert_match title, response.body, "#{query.inspect} should route to #{title.inspect}"
     end
   end
@@ -52,7 +55,7 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
   test "a free-form question gets a natural-language answer from HosAlivio" do
     sign_in @admin
     stubbing_brain("Everything is quiet today — no overdue NOEs.") do
-      post admin_assistant_ask_path, params: { q: "hello, how are things looking?" }
+      post admin_assistant_ask_path, params: { q: "hello, how are things looking?" }, as: :turbo_stream
     end
     assert_response :success
     assert_match "no overdue NOEs", response.body
@@ -62,7 +65,7 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
   test "falls back to the command nudge when HosAlivio has no answer (no key)" do
     sign_in @admin
     stubbing_brain(nil) do
-      post admin_assistant_ask_path, params: { q: "book a flight to Miami" }
+      post admin_assistant_ask_path, params: { q: "book a flight to Miami" }, as: :turbo_stream
     end
     assert_response :success
     assert_match "I didn't catch that", response.body

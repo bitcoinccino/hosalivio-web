@@ -212,11 +212,8 @@
         </div>
       <% end %>
 
-      <!-- Stage body — Ask HosAlivio's answer lands here, plus at-a-glance -->
-      <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5">
-        <%# Ephemeral answer renders here, like a reply in the feed. %>
-        <%= turbo_frame_tag "assistant-answer", class: "block empty:hidden" %>
-
+      <!-- Stage body — the Ask HosAlivio conversation + at-a-glance -->
+      <div id="assistant-stage" class="flex-1 overflow-y-auto px-6 py-6 space-y-5">
         <%
           has_glance = @pending_certifications.any? || @noe_overdue.any? || @noe_due_today.any? ||
                        @licenses_expired.to_i.positive? || @licenses_expiring.to_i.positive? ||
@@ -328,6 +325,10 @@
             </div>
           </div>
         <% end %>
+
+        <%# Ask HosAlivio conversation — question + answer bubbles append here
+            during the session (ephemeral; cleared on reload). %>
+        <div id="assistant-thread" class="space-y-3 max-w-2xl"></div>
       </div>
 
       <!-- Input Bar — composer (Ask HosAlivio ⇄ team chat) (managers only) -->
@@ -350,7 +351,7 @@
           <div data-composer-target="quickAsks" class="mb-2.5 flex items-center gap-2 flex-wrap">
             <% quick_asks.each do |a| %>
               <%= button_to admin_assistant_ask_path, params: { q: a[:q] }, method: :post,
-                    form: { data: { turbo_frame: "assistant-answer" }, class: "inline-block" },
+                    form: { class: "inline-block" },
                     class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#EFECE6] hover:text-[#1D1C1A] transition" do %>
                 <i class="<%= a[:icon] %> text-[15px]"></i> <%= a[:label] %>
               <% end %>
@@ -367,7 +368,7 @@
             <span class="text-[11px] text-[#6B665F]">Team-chat mode — your message posts to this channel.</span>
           </div>
 
-          <%= form_with url: admin_assistant_ask_path, method: :post, data: { turbo_frame: "assistant-answer", composer_target: "form" } do %>
+          <%= form_with url: admin_assistant_ask_path, method: :post, data: { composer_target: "form" } do %>
             <div class="relative">
               <%# @-mention autocomplete dropdown (populated by JS, opens above the input). %>
               <div data-mention-autocomplete-target="menu"
@@ -813,6 +814,18 @@
       }  // end initMissionStage
 
       document.addEventListener("turbo:load", initMissionStage);
+
+      // After an Ask HosAlivio submit (composer or a quick-ask button), clear
+      // the composer input and scroll the stage to the newest bubble. Channel
+      // posts navigate away, so their action won't match this guard.
+      document.addEventListener("turbo:submit-end", (e) => {
+        const form = e.target;
+        if (!form || !String(form.action || "").includes("/admin_assistant/")) return;
+        const input = document.querySelector('input[data-composer-target="input"]');
+        if (input && input.name === "q") input.value = "";
+        const stage = document.getElementById("assistant-stage");
+        if (stage) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
+      });
     })();
   </script>
 <% end %>

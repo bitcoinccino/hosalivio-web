@@ -37,6 +37,11 @@ class AdminAssistantController < ApplicationController
         @answer = freeform_answer(@query)
       end
     end
+
+    respond_to do |format|
+      format.turbo_stream                              # appends bubbles to the thread
+      format.html { redirect_to dashboard_path }       # JS-off fallback
+    end
   end
 
   private
