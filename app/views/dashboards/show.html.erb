@@ -830,6 +830,7 @@
         const q = (form.querySelector('input[name="q"]')?.value || "").trim();
         const thread = document.getElementById("assistant-thread");
         if (!thread || !q) return;
+        window.__askStartedAt = Date.now();
 
         const question = document.createElement("div");
         question.className = "flex justify-end";
@@ -862,8 +863,25 @@
         if (!isAskForm(form)) return;
         const input = document.querySelector('input[data-composer-target="input"]');
         if (input && input.name === "q") input.value = "";
-        document.getElementById("assistant-typing")?.remove();
+        // On success the (delayed) turbo stream removes the typing bubble; only
+        // clean it up here if the request actually failed.
+        if (e.detail && e.detail.success === false) document.getElementById("assistant-typing")?.remove();
         askStageScroll();
+      });
+
+      // Keep the "thinking…" bubble visible for a beat even when the answer is
+      // instant (the deterministic reports), so HosAlivio always looks like
+      // she's working before she replies. Slow LLM answers aren't padded.
+      const MIN_THINK_MS = 800;
+      document.addEventListener("turbo:before-stream-render", (e) => {
+        const target = e.target.getAttribute && e.target.getAttribute("target");
+        if (target !== "assistant-thread" && target !== "assistant-typing") return;
+        const wait = Math.max(0, MIN_THINK_MS - (Date.now() - (window.__askStartedAt || 0)));
+        if (wait <= 0) return;
+        const defaultRender = e.detail.render;
+        e.detail.render = (streamElement) => new Promise((resolve) => {
+          setTimeout(async () => { await defaultRender(streamElement); askStageScroll(); resolve(); }, wait);
+        });
       });
     })();
   </script>
