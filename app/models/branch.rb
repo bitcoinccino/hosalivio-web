@@ -29,6 +29,7 @@ class Branch < ApplicationRecord
   # Medicare-enrolled. Format-only validation; uniqueness is enforced
   # at the agency level on the Agency model.
   validate  :triage_email_shape
+  validate  :service_area_zips_shape
 
   before_validation :normalize_arrays
   before_validation :nullify_blank_unique_ids
@@ -89,14 +90,22 @@ class Branch < ApplicationRecord
     self.ein = nil if ein.is_a?(String) && ein.strip.empty?
   end
 
+  # Accepts either an array (from the tag input) or a comma/newline string
+  # (legacy / pasted). Either way: trim, drop blanks, de-dupe.
   def split_listish(val)
-    return [] if val.blank?
-    return val if val.is_a?(Array)
-    val.to_s.split(/[,\n]/).map(&:strip).reject(&:blank?).uniq
+    items = val.is_a?(Array) ? val : val.to_s.split(/[,\n]/)
+    items.map { |v| v.to_s.strip }.reject(&:blank?).uniq
   end
 
   def triage_email_shape
     return if triage_email.blank?
     errors.add(:triage_email, "is not a valid email") unless triage_email =~ URI::MailTo::EMAIL_REGEXP
+  end
+
+  # Each service-area ZIP must be a 3-digit prefix or a full 5-digit ZIP.
+  def service_area_zips_shape
+    bad = Array(service_area_zips).reject { |z| z.to_s.match?(/\A\d{3}(?:\d{2})?\z/) }
+    return if bad.empty?
+    errors.add(:service_area_zips, "must be 3- or 5-digit ZIPs (bad: #{bad.join(', ')})")
   end
 end
