@@ -29,7 +29,7 @@ class AdminAssistantController < ApplicationController
         # — the numbers stay exact). HosAlivio still delivers it, in her voice.
         @title = Admin::Overview::COMMANDS[command]
         @items = Admin::Overview.run(command, current_user.agency)
-        @lead  = report_lead(@items)
+        @lead  = report_lead(command, @items)
       else
         # Anything else → HosAlivio answers in natural language, grounded in a
         # live agency snapshot. Falls back to the command nudge if there's no
@@ -52,14 +52,26 @@ class AdminAssistantController < ApplicationController
     nil
   end
 
+  # Reports that always emit a fixed set of metric lines (even all-zero) — a
+  # status snapshot, not a list of findings.
+  STATUS_COMMANDS = %w[compliance_status daily_report].freeze
+
   # HosAlivio's one-line framing over a deterministic report list.
-  def report_lead(items)
+  def report_lead(command, items)
     return "You're all caught up — nothing here right now." if items.empty?
 
-    urgent  = items.count(&:urgent)
-    summary = "#{items.size} #{'item'.pluralize(items.size)}"
-    summary += " (#{urgent} need#{'s' if urgent == 1} attention now)" if urgent.positive?
-    "Here's what I found — #{summary}:"
+    urgent = items.count(&:urgent)
+
+    if STATUS_COMMANDS.include?(command)
+      # Metric snapshot: don't call the count "items found".
+      return "Here's the current status — all clear:" if urgent.zero?
+
+      "Here's the current status — #{urgent} need#{'s' if urgent == 1} attention:"
+    else
+      summary = "#{items.size} #{'item'.pluralize(items.size)}"
+      summary += " (#{urgent} need#{'s' if urgent == 1} attention now)" if urgent.positive?
+      "Here's what I found — #{summary}:"
+    end
   end
 
   # A conversational, agency-grounded answer for free-form questions. Returns
