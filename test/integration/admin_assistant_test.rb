@@ -37,6 +37,15 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_match "ri-sparkling-2-line", response.body
   end
 
+  test "a status report with all-zero metrics reads as a status snapshot, not findings" do
+    sign_in @admin
+    # No pending evals → compliance metrics are all zero.
+    post admin_assistant_ask_path, params: { q: "compliance status" }, as: :turbo_stream
+    assert_response :success
+    assert_match "current status — all clear", response.body
+    assert_no_match(/what I found/, response.body)   # zeros aren't "findings"
+  end
+
   test "the classifier routes each command to its answer title" do
     sign_in @admin
     {
