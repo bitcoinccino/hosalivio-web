@@ -1,9 +1,8 @@
-<%# Append the exchange to the Ask HosAlivio thread: the manager's question as
-    a right-aligned bubble, then HosAlivio's answer as a left bubble. %>
+<%# The question bubble + a typing indicator are added optimistically client-
+    side on submit. Here we drop the typing indicator and append HosAlivio's
+    answer bubble. %>
+<%= turbo_stream.remove "assistant-typing" %>
 <%= turbo_stream.append "assistant-thread" do %>
-  <div class="flex justify-end">
-    <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-[#D97757] text-white px-3.5 py-2 text-[13px] whitespace-pre-wrap break-words"><%= @query.presence || "…" %></div>
-  </div>
   <div class="flex items-start gap-2">
     <span class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] text-[#D97757] flex items-center justify-center flex-shrink-0"><i class="ri-sparkling-2-line text-[14px]"></i></span>
     <div class="max-w-[85%] rounded-2xl rounded-tl-sm bg-white border border-[#EFECE6] px-3.5 py-2.5"><%= render "answer" %></div>

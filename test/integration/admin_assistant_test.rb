@@ -26,9 +26,9 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     sign_in @admin
     post admin_assistant_ask_path, params: { q: "show today's pending items" }, as: :turbo_stream
     assert_response :success
-    # chat exchange: the question appears as a bubble, then HosAlivio's answer
+    # HosAlivio's answer is appended to the chat thread (the question bubble +
+    # typing indicator are added client-side, so they're not in this response).
     assert_match "assistant-thread", response.body
-    assert_match "show today", response.body                  # question bubble
     assert_match "priority items", response.body
     assert_match "NOE overdue", response.body
     assert_match "Maria Gonzalez", response.body
@@ -71,7 +71,17 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_no_match(/I didn't catch that/, response.body)
   end
 
-  test "falls back to the command nudge when HosAlivio has no answer (no key)" do
+  test "greets warmly even with no LLM (canned reply, not the nudge)" do
+    sign_in @admin
+    stubbing_brain(nil) do
+      post admin_assistant_ask_path, params: { q: "hello" }, as: :turbo_stream
+    end
+    assert_response :success
+    assert_match "Ask me for", response.body            # the warm greeting reply
+    assert_no_match(/I didn't catch that/, response.body)
+  end
+
+  test "falls back to the command nudge for unknown input with no LLM" do
     sign_in @admin
     stubbing_brain(nil) do
       post admin_assistant_ask_path, params: { q: "book a flight to Miami" }, as: :turbo_stream

@@ -815,16 +815,55 @@
 
       document.addEventListener("turbo:load", initMissionStage);
 
-      // After an Ask HosAlivio submit (composer or a quick-ask button), clear
-      // the composer input and scroll the stage to the newest bubble. Channel
-      // posts navigate away, so their action won't match this guard.
-      document.addEventListener("turbo:submit-end", (e) => {
-        const form = e.target;
-        if (!form || !String(form.action || "").includes("/admin_assistant/")) return;
-        const input = document.querySelector('input[data-composer-target="input"]');
-        if (input && input.name === "q") input.value = "";
+      // --- Ask HosAlivio: optimistic question bubble + typing indicator ---
+      const isAskForm = (form) => form && String(form.action || "").includes("/admin_assistant/");
+      const askStageScroll = () => {
         const stage = document.getElementById("assistant-stage");
         if (stage) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
+      };
+
+      // On submit: show the question immediately + a "typing…" bubble, so the
+      // manager sees HosAlivio working before the answer (esp. the LLM path).
+      document.addEventListener("turbo:submit-start", (e) => {
+        const form = e.detail?.formSubmission?.formElement || e.target;
+        if (!isAskForm(form)) return;
+        const q = (form.querySelector('input[name="q"]')?.value || "").trim();
+        const thread = document.getElementById("assistant-thread");
+        if (!thread || !q) return;
+
+        const question = document.createElement("div");
+        question.className = "flex justify-end";
+        const qb = document.createElement("div");
+        qb.className = "max-w-[85%] rounded-2xl rounded-tr-sm bg-[#D97757] text-white px-3.5 py-2 text-[13px] whitespace-pre-wrap break-words";
+        qb.textContent = q;
+        question.appendChild(qb);
+        thread.appendChild(question);
+
+        const typing = document.createElement("div");
+        typing.id = "assistant-typing";
+        typing.className = "flex items-start gap-2";
+        typing.innerHTML = `
+          <span class="w-7 h-7 rounded-full bg-white border border-[#EFECE6] text-[#D97757] flex items-center justify-center flex-shrink-0"><i class="ri-sparkling-2-line text-[14px]"></i></span>
+          <div class="rounded-2xl rounded-tl-sm bg-white border border-[#EFECE6] px-3.5 py-3">
+            <span class="flex gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#B9B3A9] animate-bounce"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#B9B3A9] animate-bounce" style="animation-delay:0.15s"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#B9B3A9] animate-bounce" style="animation-delay:0.3s"></span>
+            </span>
+          </div>`;
+        thread.appendChild(typing);
+        askStageScroll();
+      });
+
+      // On completion: clear the composer input, drop any lingering typing
+      // indicator, and scroll to the newest bubble.
+      document.addEventListener("turbo:submit-end", (e) => {
+        const form = e.detail?.formSubmission?.formElement || e.target;
+        if (!isAskForm(form)) return;
+        const input = document.querySelector('input[data-composer-target="input"]');
+        if (input && input.name === "q") input.value = "";
+        document.getElementById("assistant-typing")?.remove();
+        askStageScroll();
       });
     })();
   </script>
