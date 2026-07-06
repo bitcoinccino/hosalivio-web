@@ -3,8 +3,8 @@
       @answer → a free-form, agency-grounded reply
       else    → the command nudge %>
 <% if @items %>
-  <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold"><%= @title %></div>
-  <p class="text-[13px] text-[#1D1C1A] mt-0.5 <%= 'mb-2' if @items.any? %>"><%= @lead %></p>
+  <%# Single natural lead (topic folded in) — no separate title label. %>
+  <p class="text-[13px] text-[#1D1C1A] <%= 'mb-2' if @items.any? %>"><%= @lead %></p>
   <% if @items.any? %>
     <ul class="space-y-1.5">
       <% @items.each do |it| %>
