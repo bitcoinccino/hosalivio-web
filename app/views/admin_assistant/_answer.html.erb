@@ -1,0 +1,25 @@
+<%# HosAlivio's answer body (no avatar — the bubble supplies it). Three states:
+      @items  → a deterministic oversight report (title + lead + list)
+      @answer → a free-form, agency-grounded reply
+      else    → the command nudge %>
+<% if @items %>
+  <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold"><%= @title %></div>
+  <p class="text-[13px] text-[#1D1C1A] mt-0.5 <%= 'mb-2' if @items.any? %>"><%= @lead %></p>
+  <% if @items.any? %>
+    <ul class="space-y-1.5">
+      <% @items.each do |it| %>
+        <li class="text-[13px] flex items-start gap-2 <%= it.urgent ? "text-[#C1403A] font-medium" : "text-[#1D1C1A]" %>">
+          <i class="<%= it.urgent ? "ri-alarm-warning-fill text-[#C1403A]" : "ri-checkbox-blank-circle-fill text-[6px] text-[#B9B3A9] mt-1.5" %>"></i>
+          <span class="flex-1"><%= it.text %></span>
+          <% if it.patient_id %>
+            <%= link_to "Open", patient_path(it.patient_id), class: "text-[11px] text-[#2B4A7A] hover:underline whitespace-nowrap flex-shrink-0" %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+<% elsif @answer.present? %>
+  <div class="text-[13px] text-[#1D1C1A] whitespace-pre-wrap leading-snug"><%= @answer %></div>
+<% else %>
+  <p class="text-[13px] text-[#6B665F]">I didn't catch that. Try: <strong>today's priorities</strong>, <strong>patients needing attention</strong>, <strong>compliance status</strong>, <strong>new referrals</strong>, or <strong>daily report</strong>.</p>
+<% end %>

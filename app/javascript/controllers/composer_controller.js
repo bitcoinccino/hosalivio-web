@@ -19,7 +19,6 @@ export default class extends Controller {
     const slug = el.dataset.channelSlug
 
     this.formTarget.setAttribute("action", el.dataset.channelUrl)
-    this.formTarget.removeAttribute("data-turbo-frame")   // real navigation → land in the channel
     this.inputTarget.name = "body"
     this.inputTarget.placeholder = `Message #${slug} — @ to tag a teammate…`
 
@@ -37,7 +36,6 @@ export default class extends Controller {
   ask(event) {
     if (event) event.preventDefault()
     this.formTarget.setAttribute("action", this.askUrlValue)
-    this.formTarget.setAttribute("data-turbo-frame", "assistant-answer")
     this.inputTarget.name = "q"
     this.inputTarget.placeholder = this.askPlaceholderValue
     this.inputTarget.value = ""

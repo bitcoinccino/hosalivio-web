@@ -25,15 +25,22 @@ class AdminAssistantController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       command = classify(@query)
       if command
-        # Fast path: a recognized oversight report, computed directly (no LLM).
+        # Fast path: a recognized oversight report, computed directly (no LLM
+        # — the numbers stay exact). HosAlivio still delivers it, in her voice.
         @title = Admin::Overview::COMMANDS[command]
         @items = Admin::Overview.run(command, current_user.agency)
+        @lead  = report_lead(@items)
       else
         # Anything else → HosAlivio answers in natural language, grounded in a
         # live agency snapshot. Falls back to the command nudge if there's no
         # model / no answer (e.g. no API key in CI).
         @answer = freeform_answer(@query)
       end
+    end
+
+    respond_to do |format|
+      format.turbo_stream                              # appends bubbles to the thread
+      format.html { redirect_to dashboard_path }       # JS-off fallback
     end
   end
 
@@ -43,6 +50,16 @@ class AdminAssistantController < ApplicationController
     return "pending_items" if query.blank?
     COMMAND_ROUTES.each { |pattern, command| return command if pattern.match?(query) }
     nil
+  end
+
+  # HosAlivio's one-line framing over a deterministic report list.
+  def report_lead(items)
+    return "You're all caught up — nothing here right now." if items.empty?
+
+    urgent  = items.count(&:urgent)
+    summary = "#{items.size} #{'item'.pluralize(items.size)}"
+    summary += " (#{urgent} need#{'s' if urgent == 1} attention now)" if urgent.positive?
+    "Here's what I found — #{summary}:"
   end
 
   # A conversational, agency-grounded answer for free-form questions. Returns
