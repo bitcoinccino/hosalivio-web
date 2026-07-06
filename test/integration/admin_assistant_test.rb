@@ -1,6 +1,15 @@
 require "test_helper"
 
 class AdminAssistantTest < ActionDispatch::IntegrationTest
+  # Swap HosalivioBrain.complete_text for a fixed answer (or nil) for the block.
+  def stubbing_brain(answer)
+    original = HosalivioBrain.method(:complete_text)
+    HosalivioBrain.define_singleton_method(:complete_text) { |**| answer }
+    yield
+  ensure
+    HosalivioBrain.define_singleton_method(:complete_text, original)
+  end
+
   setup do
     @agency = create_agency
     @admin  = create_user(agency: @agency, full_name: "Ada Admin", roles: %w[admin])
@@ -37,9 +46,21 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "an unrecognized command gets a graceful nudge listing the commands" do
+  test "a free-form question gets a natural-language answer from HosAlivio" do
     sign_in @admin
-    post admin_assistant_ask_path, params: { q: "book a flight to Miami" }
+    stubbing_brain("Everything is quiet today — no overdue NOEs.") do
+      post admin_assistant_ask_path, params: { q: "hello, how are things looking?" }
+    end
+    assert_response :success
+    assert_match "no overdue NOEs", response.body
+    assert_no_match(/I didn't catch that/, response.body)
+  end
+
+  test "falls back to the command nudge when HosAlivio has no answer (no key)" do
+    sign_in @admin
+    stubbing_brain(nil) do
+      post admin_assistant_ask_path, params: { q: "book a flight to Miami" }
+    end
     assert_response :success
     assert_match "I didn't catch that", response.body
     assert_match "compliance status", response.body

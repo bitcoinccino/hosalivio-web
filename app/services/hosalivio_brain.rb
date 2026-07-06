@@ -676,6 +676,22 @@ class HosalivioBrain
     k.to_s.length > 10 && !k.to_s.match?(/(your[_-]?api[_-]?key|placeholder)/i)
   end
 
+  # Generic PLAIN-TEXT completion over the provider chain (claude → openai →
+  # openrouter). Returns the answer string, or nil when no key is set (dormant
+  # in test/CI) or on any failure. Callers must tolerate nil.
+  def self.complete_text(system:, user:)
+    if valid_key?(ENV["ANTHROPIC_API_KEY"])
+      call_claude_plain(system: system, user: user)
+    elsif valid_key?(ENV["OPENAI_API_KEY"])
+      call_openai_plain(system: system, user: user)
+    elsif valid_key?(ENV["OPENROUTER_API_KEY"])
+      oai_chat(provider: :openrouter, system: system, user: user, max_tokens: 400, json: false)
+    end
+  rescue => e
+    Rails.logger.warn("[HosalivioBrain.complete_text] #{e.class}: #{e.message}")
+    nil
+  end
+
   # Generic JSON completion over the provider chain (claude → openai →
   # openrouter). Returns a parsed Ruby object (Hash/Array) or nil — nil when no
   # key is set (dormant in test/CI) or on any failure. Callers must tolerate nil.
