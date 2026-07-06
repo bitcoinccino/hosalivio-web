@@ -32,9 +32,9 @@ class AdminAssistantController < ApplicationController
         @lead  = report_lead(command, @items)
       else
         # Anything else → HosAlivio answers in natural language, grounded in a
-        # live agency snapshot. Falls back to the command nudge if there's no
-        # model / no answer (e.g. no API key in CI).
-        @answer = freeform_answer(@query)
+        # live agency snapshot. If there's no model (e.g. no API key), a warm
+        # canned reply still handles greetings/help; otherwise the nudge.
+        @answer = freeform_answer(@query) || canned_reply(@query)
       end
     end
 
@@ -92,6 +92,19 @@ class AdminAssistantController < ApplicationController
     user = "Agency snapshot (#{Date.current.strftime('%b %-d, %Y')}):\n\n#{agency_snapshot}\n\nManager asked: #{query}"
 
     HosalivioBrain.complete_text(system: system, user: user)
+  end
+
+  # A warm, LLM-free reply for greetings / thanks / "what can you do?", so
+  # HosAlivio still responds when the model is dormant. nil → the command nudge.
+  def canned_reply(query)
+    case query.downcase
+    when /\A\s*(hi|hello|hey|yo|hiya|howdy|good\s+(?:morning|afternoon|evening))\b/, /\bhow are you\b|what'?s up\b/
+      "Hi! I'm HosAlivio. Ask me for today's priorities, patients needing attention, compliance status, new referrals, or the daily report — or anything about your agency."
+    when /\b(thanks|thank you|thx|appreciate)\b/
+      "Anytime! Want today's priorities or a quick compliance check?"
+    when /\b(help|what can you (?:do|help)|what do you do|commands|options)\b/
+      "I can pull today's priorities, patients needing attention, compliance status, new referrals, or a daily report — and answer questions about your agency's current state."
+    end
   end
 
   # Compact, labeled digest of the five oversight reports — the grounding
