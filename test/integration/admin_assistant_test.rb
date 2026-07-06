@@ -29,6 +29,9 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_match "priority items", response.body
     assert_match "NOE overdue", response.body
     assert_match "Maria Gonzalez", response.body
+    # HosAlivio delivers the report in her voice (lead line + persona icon)
+    assert_match "what I found", response.body
+    assert_match "ri-sparkling-2-line", response.body
   end
 
   test "the classifier routes each command to its answer title" do

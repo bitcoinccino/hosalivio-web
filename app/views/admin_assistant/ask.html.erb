@@ -1,23 +1,27 @@
 <%= turbo_frame_tag "assistant-answer" do %>
   <div class="mt-3 rounded-xl border border-[#EFECE6] bg-[#FBF9F5] p-3">
     <% if @items %>
-      <%# Fast-path oversight report. %>
-      <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold mb-2"><%= @title %></div>
-      <% if @items.empty? %>
-        <p class="text-[13px] text-[#2F6F4E]">Nothing to show — you're all caught up.</p>
-      <% else %>
-        <ul class="space-y-1.5">
-          <% @items.each do |it| %>
-            <li class="text-[13px] flex items-start gap-2 <%= it.urgent ? "text-[#C1403A] font-medium" : "text-[#1D1C1A]" %>">
-              <i class="<%= it.urgent ? "ri-alarm-warning-fill text-[#C1403A]" : "ri-checkbox-blank-circle-fill text-[6px] text-[#B9B3A9] mt-1.5" %>"></i>
-              <span class="flex-1"><%= it.text %></span>
-              <% if it.patient_id %>
-                <%= link_to "Open", patient_path(it.patient_id), class: "text-[11px] text-[#2B4A7A] hover:underline whitespace-nowrap flex-shrink-0" %>
+      <%# Deterministic oversight report — delivered in HosAlivio's voice. %>
+      <div class="flex items-start gap-2">
+        <span class="w-6 h-6 rounded-full bg-white text-[#D97757] flex items-center justify-center flex-shrink-0"><i class="ri-sparkling-2-line text-[13px]"></i></span>
+        <div class="flex-1 min-w-0">
+          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold"><%= @title %></div>
+          <p class="text-[13px] text-[#1D1C1A] mt-0.5 mb-2"><%= @lead %></p>
+          <% if @items.any? %>
+            <ul class="space-y-1.5">
+              <% @items.each do |it| %>
+                <li class="text-[13px] flex items-start gap-2 <%= it.urgent ? "text-[#C1403A] font-medium" : "text-[#1D1C1A]" %>">
+                  <i class="<%= it.urgent ? "ri-alarm-warning-fill text-[#C1403A]" : "ri-checkbox-blank-circle-fill text-[6px] text-[#B9B3A9] mt-1.5" %>"></i>
+                  <span class="flex-1"><%= it.text %></span>
+                  <% if it.patient_id %>
+                    <%= link_to "Open", patient_path(it.patient_id), class: "text-[11px] text-[#2B4A7A] hover:underline whitespace-nowrap flex-shrink-0" %>
+                  <% end %>
+                </li>
               <% end %>
-            </li>
+            </ul>
           <% end %>
-        </ul>
-      <% end %>
+        </div>
+      </div>
     <% elsif @answer.present? %>
       <%# Free-form, agency-grounded answer from HosAlivio. %>
       <div class="flex items-start gap-2">
