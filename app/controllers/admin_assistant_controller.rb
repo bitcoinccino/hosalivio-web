@@ -110,15 +110,31 @@ class AdminAssistantController < ApplicationController
     end
   end
 
-  # Compact, labeled digest of the five oversight reports — the grounding
-  # context for a free-form answer.
+  # Compact, labeled digest of agency state — the grounding context for a
+  # free-form answer: a census headcount plus the five oversight reports.
   def agency_snapshot
-    Admin::Overview::COMMANDS.map do |cmd, title|
+    reports = Admin::Overview::COMMANDS.map do |cmd, title|
       items = Admin::Overview.run(cmd, current_user.agency)
       lines = items.first(8).map { |it| "- #{it.text}" }
       lines = [ "- (none)" ] if lines.empty?
       "#{title}:\n#{lines.join("\n")}"
     end.join("\n\n")
+
+    [ census_summary, reports ].join("\n\n")
+  end
+
+  # Headcount by status, so questions like "how many active patients?" can be
+  # answered from the snapshot.
+  def census_summary
+    scope  = Patient.where(agency: current_user.agency)
+    active = scope.where(status: :active).count
+    total  = scope.count
+    lines  = [ "- #{active} active patients", "- #{total} patients on record" ]
+    Patient.statuses.keys.reject { |s| s == "active" }.each do |status|
+      n = scope.where(status: status).count
+      lines << "- #{n} #{status.tr('_', ' ')}" if n.positive?
+    end
+    "Census:\n#{lines.join("\n")}"
   end
 
   def authorize_manager!

@@ -72,6 +72,25 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_no_match(/I didn't catch that/, response.body)
   end
 
+  test "the agency snapshot feeds the LLM an active-patient headcount" do
+    in_tenant(@agency) do
+      create_patient(agency: @agency, first_name: "Ann", last_name: "A").update!(status: :active)
+      create_patient(agency: @agency, first_name: "Ben", last_name: "B").update!(status: :active)
+    end
+    sign_in @admin
+    # Echo the prompt back as the "answer" so we can assert what the model saw.
+    original = HosalivioBrain.method(:complete_text)
+    HosalivioBrain.define_singleton_method(:complete_text) { |system:, user:| user }
+    begin
+      post admin_assistant_ask_path, params: { q: "how many active patients do we have?" }, as: :turbo_stream
+    ensure
+      HosalivioBrain.define_singleton_method(:complete_text, original)
+    end
+    assert_response :success
+    assert_match "Census:", response.body
+    assert_match "2 active patients", response.body
+  end
+
   test "greets warmly even with no LLM (canned reply, not the nudge)" do
     sign_in @admin
     stubbing_brain(nil) do
