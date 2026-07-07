@@ -98,7 +98,7 @@ class AdminAssistantController < ApplicationController
 
       Always end with a helpful offer if appropriate (e.g., "Let me know if you'd like details on anything specific.").
     SYS
-    user = "Agency snapshot (#{Date.current.strftime('%b %-d, %Y')}):\n\n#{agency_snapshot}\n\nManager asked: #{query}"
+    user = "Agency snapshot as of #{Time.current.strftime('%b %-d, %Y at %-l:%M %p %Z')}:\n\n#{agency_snapshot}\n\nManager asked: #{query}"
 
     HosalivioBrain.complete_text(system: system, user: user)
   end
@@ -153,18 +153,26 @@ class AdminAssistantController < ApplicationController
     "Staff:\n#{lines.join("\n")}"
   end
 
-  # Branch roster: location, staff and patient counts, service area.
+  # Branch roster with a rollup header, then per-branch location, staff and
+  # patient counts, and service area.
   def branches_summary
-    branches = Branch.where(agency: current_user.agency).order(:name).first(12)
+    branches = Branch.where(agency: current_user.agency).order(:name).to_a
     return nil if branches.empty?
 
-    lines = branches.map do |b|
+    active_count   = branches.count(&:active)
+    total_patients = branches.sum(&:patient_count)
+    shown          = branches.first(12)
+
+    lines = shown.map do |b|
       loc = b.location_label.presence
       "- #{b.name}#{" (#{loc})" if loc}: #{b.staff_count} staff, #{b.patient_count} patients" \
         "#{", #{b.service_area_summary}" if b.service_area_zips.any? || b.service_area_counties.any?}" \
         "#{' [inactive]' unless b.active}"
     end
-    "Branches (#{branches.size}):\n#{lines.join("\n")}"
+
+    header = "Branches — #{active_count} active, #{total_patients} patients total"
+    header += " (showing #{shown.size} of #{branches.size})" if branches.size > shown.size
+    "#{header}:\n#{lines.join("\n")}"
   end
 
   # Headcount by status, so questions like "how many active patients?" can be

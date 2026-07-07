@@ -76,6 +76,7 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     in_tenant(@agency) do
       create_patient(agency: @agency, first_name: "Ann", last_name: "A").update!(status: :active)
       create_patient(agency: @agency, first_name: "Ben", last_name: "B").update!(status: :active)
+      Branch.create!(agency: @agency, name: "Orlando", timezone: "America/New_York")
     end
     sign_in @admin
     # Echo the prompt back as the "answer" so we can assert what the model saw.
@@ -93,6 +94,8 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_match "Staff:", response.body
     assert_match "active staff", response.body
     assert_match(/Agency: /, response.body)
+    assert_match "snapshot as of", response.body        # last-updated timestamp
+    assert_match "Branches — 1 active", response.body   # branch rollup header
   end
 
   test "greets warmly even with no LLM (canned reply, not the nudge)" do
