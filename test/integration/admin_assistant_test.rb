@@ -89,6 +89,10 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "Census:", response.body
     assert_match "2 active patients", response.body
+    # the snapshot spans the admin-relevant models, not just the reports
+    assert_match "Staff:", response.body
+    assert_match "active staff", response.body
+    assert_match(/Agency: /, response.body)
   end
 
   test "greets warmly even with no LLM (canned reply, not the nudge)" do

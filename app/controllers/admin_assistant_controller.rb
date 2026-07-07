@@ -84,13 +84,14 @@ class AdminAssistantController < ApplicationController
 
     system = <<~SYS.strip
       You are HosAlivio, an operations assistant for a hospice-agency manager.
-      Answer the manager's question using ONLY the agency snapshot provided.
-      Be warm but concise — a sentence or two, or a short list. If the snapshot
-      doesn't contain the answer, say you don't have that detail and point them
-      to the closest report: today's priorities, patients needing attention,
-      compliance status, new referrals, or daily report. Never invent patient
-      names, counts, or clinical facts. This is operational oversight only — no
-      medical advice, and nothing here is written to a patient's chart.
+      Answer the manager's question using ONLY the agency snapshot provided —
+      it covers census, staff, branches, and today's oversight reports
+      (priorities, patients needing attention, compliance, referrals, daily
+      report). Be warm but concise — a sentence or two, or a short list. If the
+      snapshot doesn't contain the answer, say you don't have that detail and
+      point them to the closest report. Never invent patient names, counts, or
+      clinical facts. This is operational oversight only — no medical advice,
+      and nothing here is written to a patient's chart.
     SYS
     user = "Agency snapshot (#{Date.current.strftime('%b %-d, %Y')}):\n\n#{agency_snapshot}\n\nManager asked: #{query}"
 
@@ -111,16 +112,54 @@ class AdminAssistantController < ApplicationController
   end
 
   # Compact, labeled digest of agency state — the grounding context for a
-  # free-form answer: a census headcount plus the five oversight reports.
+  # free-form answer. Aggregates (not raw rows) across the admin-relevant
+  # models: census, staff, branches, and the five oversight reports.
   def agency_snapshot
-    reports = Admin::Overview::COMMANDS.map do |cmd, title|
+    [ "Agency: #{current_user.agency.name}",
+      census_summary,
+      staff_summary,
+      branches_summary,
+      reports_summary ].compact.join("\n\n")
+  end
+
+  def reports_summary
+    Admin::Overview::COMMANDS.map do |cmd, title|
       items = Admin::Overview.run(cmd, current_user.agency)
       lines = items.first(8).map { |it| "- #{it.text}" }
       lines = [ "- (none)" ] if lines.empty?
       "#{title}:\n#{lines.join("\n")}"
     end.join("\n\n")
+  end
 
-    [ census_summary, reports ].join("\n\n")
+  # Active, non-family staff: headcount, role mix, and license risk.
+  def staff_summary
+    staff = User.where(agency: current_user.agency, active: true, family_access: [ false, nil ]).includes(:roles)
+    by_role = Hash.new(0)
+    staff.each { |u| u.role_names.each { |r| by_role[r] += 1 } }
+    role_mix = by_role.sort_by { |_, n| -n }.map { |r, n| "#{n} #{r.tr('_', ' ')}" }.join(", ")
+
+    scope    = User.where(agency: current_user.agency, active: true)
+    expired  = scope.where(license_expires_on: ...Date.current).count
+    expiring = scope.where(license_expires_on: Date.current..(Date.current + 60.days)).count
+
+    lines = [ "- #{staff.size} active staff#{" (#{role_mix})" if role_mix.present?}" ]
+    lines << "- #{expired} with expired licenses"                if expired.positive?
+    lines << "- #{expiring} with licenses expiring within 60 days" if expiring.positive?
+    "Staff:\n#{lines.join("\n")}"
+  end
+
+  # Branch roster: location, staff and patient counts, service area.
+  def branches_summary
+    branches = Branch.where(agency: current_user.agency).order(:name).first(12)
+    return nil if branches.empty?
+
+    lines = branches.map do |b|
+      loc = b.location_label.presence
+      "- #{b.name}#{" (#{loc})" if loc}: #{b.staff_count} staff, #{b.patient_count} patients" \
+        "#{", #{b.service_area_summary}" if b.service_area_zips.any? || b.service_area_counties.any?}" \
+        "#{' [inactive]' unless b.active}"
+    end
+    "Branches (#{branches.size}):\n#{lines.join("\n")}"
   end
 
   # Headcount by status, so questions like "how many active patients?" can be
