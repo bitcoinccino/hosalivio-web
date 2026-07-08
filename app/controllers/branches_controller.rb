@@ -61,7 +61,7 @@ class BranchesController < ApplicationController
       :npi, :ccn, :ein, :state_license_number,
       :timezone, :triage_email, :after_hours_phone, :branch_type,
       :medical_director_id, :director_of_nursing_id, :clinical_supervisor_id,
-      service_area_zips: [], service_area_counties: []
+      service_area_zips: [], service_area_counties: [], levels_of_care: []
     )
   end
 

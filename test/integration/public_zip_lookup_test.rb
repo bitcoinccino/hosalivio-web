@@ -77,6 +77,34 @@ class PublicZipLookupTest < ActionDispatch::IntegrationTest
     HosalivioBrain.define_singleton_method(:answer_public_question, original) if original
   end
 
+  test "agency cards carry level-of-care badges, and ?level filters to branches that offer it" do
+    ActsAsTenant.without_tenant do
+      full = create_agency(name: "Full Levels Hospice")
+      full.update!(is_partner: true, accepting_referrals: true, active: true)
+      Branch.create!(agency: full, name: "Miami", timezone: "America/New_York", active: true,
+                     service_area_zips: [ "33025" ], levels_of_care: %w[routine_home respite])
+
+      home_only = create_agency(name: "Home Only Hospice")
+      home_only.update!(is_partner: true, accepting_referrals: true, active: true)
+      Branch.create!(agency: home_only, name: "Hollywood", timezone: "America/New_York", active: true,
+                     service_area_zips: [ "33025" ], levels_of_care: %w[routine_home])
+    end
+
+    # Unfiltered: both agencies, and the badges ride along.
+    get public_chat_agencies_path, params: { zip: "33025" }
+    assert_response :success
+    cards = JSON.parse(response.body)["agencies"]
+    full_card = cards.find { |c| c["agency_name"] == "Full Levels Hospice" }
+    assert_equal [ "Routine", "Respite" ], full_card["levels"]
+
+    # Filtered to respite: only the agency that offers it.
+    get public_chat_agencies_path, params: { zip: "33025", level: "respite" }
+    assert_response :success
+    names = JSON.parse(response.body)["agencies"].map { |c| c["agency_name"] }
+    assert_includes     names, "Full Levels Hospice"
+    assert_not_includes names, "Home Only Hospice"
+  end
+
   test "a general question does not reach back into history for cards" do
     ActsAsTenant.without_tenant do
       agency = create_agency(name: "Palm Hospice")

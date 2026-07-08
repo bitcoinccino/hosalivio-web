@@ -162,6 +162,23 @@
               space_separated: false %>
         <div class="text-[10px] text-[#6B665F] mt-1">Add one county per tag. Used alongside ZIPs to route inquiries to this branch.</div>
       </div>
+      <div>
+        <%= f.label :levels_of_care, "Levels of care offered", class: label_cls %>
+        <%# Hidden blank so unchecking every box clears the array on save. %>
+        <input type="hidden" name="branch[levels_of_care][]" value="">
+        <div class="grid grid-cols-2 gap-2 mt-1">
+          <% current_levels = Array(@branch.levels_of_care).map(&:to_s) %>
+          <% Branch::LEVELS_OF_CARE.each do |key, lbl| %>
+            <label class="flex items-center gap-2 text-[13px] text-[#1D1C1A]">
+              <%= check_box_tag "branch[levels_of_care][]", key, current_levels.include?(key),
+                    id: "branch_level_#{key}",
+                    class: "rounded border-[#D9D5CD] text-[#D97757] focus:ring-[#D97757]" %>
+              <%= lbl %>
+            </label>
+          <% end %>
+        </div>
+        <div class="text-[10px] text-[#6B665F] mt-1">GIP and Inpatient Respite usually require a facility contract, so they can differ by branch. Shown as badges on the public agency card and used to match families who need a specific level.</div>
+      </div>
     </div>
   </details>
 
