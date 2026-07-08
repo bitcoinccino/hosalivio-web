@@ -34,4 +34,13 @@ class HosalivioBrainTest < ActiveSupport::TestCase
       assert_nil HosalivioBrain.complete_text(system: "s", user: "u")
     end
   end
+
+  test "answer_public_question routes through the full provider chain (complete_text)" do
+    # complete_text carries the claude → openai → openrouter fallthrough, so the
+    # public chat reaches OpenRouter when Anthropic/OpenAI are dry.
+    stubbing(:complete_text, ->(system:, user:) { "Yes — care can happen at home." }) do
+      answer = HosalivioBrain.answer_public_question(question: "Can care happen at home?")
+      assert_equal "Yes, care can happen at home.", answer   # em-dash scrubbed to ", "
+    end
+  end
 end
