@@ -196,11 +196,11 @@
             prefers-reduced-motion (just renders the final string). %>
         <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-3 min-h-[1.5em]"
             data-controller="typewriter"
-            data-typewriter-phrases-value='["Care that listens.","Relief that lasts.","Hospice Redefined."]'
+            data-typewriter-phrases-value='["Care that listens. Comfort that lasts.","Compassionate care that truly listens.","Hospice, redefined, with heart.","Listening first. Comfort that lasts.","Care that hears you. Relief that lasts."]'
             data-typewriter-speed-value="55"
             data-typewriter-erase-speed-value="32"
             data-typewriter-hold-value="1600"
-            aria-label="Care that listens. Relief that lasts. Hospice Redefined."></h1>
+            aria-label="Care that listens. Comfort that lasts."></h1>
         <p class="text-[15px] text-[#3A3936] mx-auto max-w-2xl leading-relaxed italic">
           Even when the rest of the world is asleep.
         </p>
@@ -249,24 +249,33 @@
           <button type="submit" data-welcome-chat-target="send" class="hidden" aria-hidden="true"></button>
         </form>
 
-        <%# Starter prompts — plain, non-clickable text stacked under the
-            composer. They model the kinds of questions HosAlivio can answer;
-            the visitor types their own in the composer. Hidden after the
+        <%# Starter prompts — plain stacked text that fills the composer and
+            asks on click. Kept visually as text (not chips), but each is a
+            button so tapping one starts the conversation. Hidden after the
             first turn so they don't keep occupying space. %>
         <div data-welcome-chat-target="quickStart"
              class="flex flex-col items-start gap-1.5 mt-4 text-[#6B665F] text-[14px] italic">
-          <div class="inline-flex items-center gap-1.5">
+          <button type="button"
+                  data-action="click->welcome-chat#pick"
+                  data-welcome-chat-question-param="What does hospice cost?"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-money-dollar-circle-line text-[15px] not-italic"></i>
             <span>What does hospice cost?</span>
-          </div>
-          <div class="inline-flex items-center gap-1.5">
+          </button>
+          <button type="button"
+                  data-action="click->welcome-chat#pick"
+                  data-welcome-chat-question-param="Can care happen at home?"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-home-heart-line text-[15px] not-italic"></i>
             <span>Can care happen at home?</span>
-          </div>
-          <div class="inline-flex items-center gap-1.5">
+          </button>
+          <button type="button"
+                  data-action="click->welcome-chat#pick"
+                  data-welcome-chat-question-param="How do we get started?"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-route-line text-[15px] not-italic"></i>
             <span>How do we get started?</span>
-          </div>
+          </button>
         </div>
       </div>
     </section>
