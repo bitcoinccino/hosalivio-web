@@ -14,7 +14,9 @@ require "net/http"
 require "json"
 
 class HosalivioBrain
-  SOUL_PATH = File.expand_path("~/.openclaw/agents/admission_coordinator/SOUL.md")
+  # HosAlivio's front-door persona for family-message triage. Inline (single
+  # source of truth) — the behavioral guidance lives in #instruction_block.
+  SOUL = "You are HosAlivio, an experienced hospice admissions coordinator. Warm, specific, unhurried."
 
   # Claude primary config
   CLAUDE_URL     = "https://api.anthropic.com/v1/messages"
@@ -758,10 +760,7 @@ class HosalivioBrain
     JSON.parse(stripped).transform_keys(&:to_sym)
   end
 
-  def soul_md
-    @soul_md ||= File.exist?(SOUL_PATH) ? File.read(SOUL_PATH) :
-      "You are HosAlivio, an experienced hospice admissions coordinator. Warm, specific, unhurried."
-  end
+  def soul_md = SOUL
 
   def instruction_block
     <<~INSTR
