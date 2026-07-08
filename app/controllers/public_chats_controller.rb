@@ -24,11 +24,15 @@ class PublicChatsController < ActionController::Base
       return render(json: { error: "You've hit the limit for this hour. Try again later or tap 'Talk to a hospice nurse · 24/7' so a human can help." }, status: :too_many_requests)
     end
 
-    # Detect ZIP / city / agency-name in the question so the bot's
-    # reply can be aware of what cards are about to render below
-    # it. The agency lookup runs once, server-side, and the result
-    # rides back in the same JSON payload as the answer.
-    locator = audience == "family" ? extract_locator(question) : nil
+    history = sanitize_history(payload["history"])
+
+    # Detect ZIP / city / agency-name so the bot's reply can be aware of
+    # what cards are about to render below it. We resolve against the whole
+    # conversation, not just this message: if the visitor gave a ZIP or city
+    # earlier and now asks "so who can help us?", we look the agency up by
+    # that remembered location. The lookup runs once, server-side, and the
+    # result rides back in the same JSON payload as the answer.
+    locator = audience == "family" ? resolve_locator(question, history) : nil
     cards   = locator ? lookup_branches_as_cards(**locator) : []
 
     # Single source of truth: when the visitor handed us a real
@@ -51,7 +55,7 @@ class PublicChatsController < ActionController::Base
     answer = HosalivioBrain.answer_public_question(
       question: context.present? ? "#{context}\n\n#{question}" : question,
       audience: audience.to_sym,
-      history:  sanitize_history(payload["history"])
+      history:  history
     )
     if answer.blank?
       return render(json: { error: "We couldn't reach the assistant right now. Please tap 'Talk to a hospice nurse · 24/7' below." }, status: :bad_gateway)
@@ -206,6 +210,30 @@ class PublicChatsController < ActionController::Base
     ")\\b",
     Regexp::IGNORECASE
   ).freeze
+
+  # Messages that signal the visitor wants agencies / next steps. Only when
+  # the current message matches this do we reach back into history for a
+  # previously-shared ZIP or city, so a general question ("does Medicare
+  # cover this?") doesn't re-trigger the agency cards.
+  AGENCY_INTENT_RE = /\b(agenc(?:y|ies)|who can help|help (?:us|me|my)|find|match|options?|partners?|near me|nearest|closest|get started|getting started|sign up|refer|referral|admission|home care|next steps?)\b/i
+
+  # Resolve the location to look up. Prefer whatever is in the current
+  # message; if it has none but the visitor is asking about agencies, fall
+  # back to the most recent ZIP / city / state they gave earlier in the
+  # conversation. We deliberately ignore the name-fuzzy fallback from
+  # history (too loose to reuse blindly across turns).
+  def resolve_locator(question, history)
+    current = extract_locator(question)
+    return current if current
+    return nil unless question.match?(AGENCY_INTENT_RE)
+
+    Array(history).reverse_each do |turn|
+      next unless turn[:role] == "user"
+      loc = extract_locator(turn[:content].to_s)
+      return loc if loc && (loc[:zip] || loc[:city] || loc[:state])
+    end
+    nil
+  end
 
   def extract_locator(question)
     if (m = question.match(/\b\d{5}\b/))
