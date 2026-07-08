@@ -564,7 +564,7 @@ class ClinicianDispatcher
       return Result.new(dispatched: false, reason: "offer_unresolvable", intent: "confirm_relay")
     end
     deliver_relay(role: role, target: target, message: message)
-    post_ack("Sent to #{target.full_name} (#{relay_role_label(role)}). It's in their queue now.")
+    post_ack("Sent to @#{target.full_name} (#{relay_role_label(role)}). It's in their queue now.")
     Result.new(dispatched: true, intent: "confirm_relay")
   end
 
@@ -785,7 +785,7 @@ class ClinicianDispatcher
     payload = { "role" => role, "target_user_id" => target.id, "message" => message }
     # No "reply yes/cancel" line — the chat renders Send/Cancel buttons.
     # Typing yes/cancel still works as a keyboard fallback.
-    preview = "Here's what I'll send #{target.full_name} (#{label}):\n\n\"#{message}\""
+    preview = "Here's what I'll send/tag to @#{target.full_name} (#{label}):\n\n\"#{message}\""
     Note.create!(
       agency:         @agency,
       patient:        @patient,
@@ -840,6 +840,7 @@ class ClinicianDispatcher
   # Human-readable label for a relay target role (handles the sw alias).
   def relay_role_label(role)
     key = role == "sw" ? "social_worker" : role
+    key = "rn" if key == "admissions"   # admission relays address the Admission Nurse who visits
     HosalivioTriager::ROLE_LABELS[key] || key.titleize
   end
 
@@ -871,6 +872,7 @@ class ClinicianDispatcher
   def resolve_clinician_for_role(role)
     by_assignment = case role
     when "rn"            then @patient.assigned_rn
+    when "admissions"    then @patient.assigned_rn || @patient.assigned_visit_rn  # admission tasks go to the Admission RN who visits, not a persona
     when "visit_rn"      then @patient.assigned_visit_rn || @patient.assigned_rn  # fall back to admission RN
     when "md"            then @patient.assigned_md
     when "sw", "social_worker" then @patient.assigned_sw
