@@ -186,15 +186,15 @@
     <div id="hero" class="flex-1 flex flex-col items-center justify-center w-full">
 
     <!-- Hero -->
-    <section class="px-4 md:px-10 pt-4 pb-4 w-full">
+    <section class="px-4 md:px-10 pt-3 pb-2 w-full">
       <div class="max-w-3xl mx-auto text-center">
-        <div class="font-serif text-3xl md:text-4xl text-[#D97757] font-bold tracking-tight mb-4">
+        <div class="font-serif text-3xl md:text-4xl text-[#D97757] font-bold tracking-tight mb-2">
           HosAlivio
         </div>
         <%# Typewriter tagline — types itself out on first paint
             with a short pause between the two beats. Honors
             prefers-reduced-motion (just renders the final string). %>
-        <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-3 min-h-[1.5em]"
+        <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-2 min-h-[1.5em]"
             data-controller="typewriter"
             data-typewriter-phrases-value='["Care that hears you.","Relief that lasts.","Hospice Redefined.","Your voice guides our care."]'
             data-typewriter-speed-value="55"
@@ -212,7 +212,7 @@
          lookup through /public_chat/agencies. JS detects a 5-digit
          ZIP (or "in <City>") and fires both calls in parallel so
          partner agency cards show up alongside the friendly answer. -->
-    <section class="px-4 md:px-10 pt-4 pb-6 w-full">
+    <section class="px-4 md:px-10 pt-2 pb-4 w-full">
       <div class="max-w-3xl mx-auto"
            data-controller="welcome-chat"
            data-welcome-chat-url-value="<%= public_chat_path %>"
@@ -254,47 +254,47 @@
             button so tapping one starts the conversation. Hidden after the
             first turn so they don't keep occupying space. %>
         <div data-welcome-chat-target="quickStart"
-             class="flex flex-col items-start gap-1.5 mt-4 text-[#6B665F] text-[14px] italic">
+             class="grid grid-cols-2 justify-items-start gap-x-6 gap-y-2 mt-3 text-[#6B665F] text-[14px] italic">
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What does hospice cost?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-money-dollar-circle-line text-[15px] not-italic"></i>
+            <i class="ri-money-dollar-circle-line text-[19px] not-italic"></i>
             <span>What does hospice cost?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Can care happen at home?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-home-heart-line text-[15px] not-italic"></i>
+            <i class="ri-home-heart-line text-[19px] not-italic"></i>
             <span>Can care happen at home?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="How do we get started?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-route-line text-[15px] not-italic"></i>
+            <i class="ri-route-line text-[19px] not-italic"></i>
             <span>How do we get started?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Who qualifies for hospice?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-shield-check-line text-[15px] not-italic"></i>
+            <i class="ri-shield-check-line text-[19px] not-italic"></i>
             <span>Who qualifies for hospice?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What services are included?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-hand-heart-line text-[15px] not-italic"></i>
+            <i class="ri-hand-heart-line text-[19px] not-italic"></i>
             <span>What services are included?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What's the difference between hospice and palliative care?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-scales-3-line text-[15px] not-italic"></i>
+            <i class="ri-scales-3-line text-[19px] not-italic"></i>
             <span>Hospice vs palliative care?</span>
           </button>
         </div>
