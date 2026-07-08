@@ -154,7 +154,7 @@ class HosalivioBrain
           # OutboundPing for the named user. We validate the role
           # against a fixed set; everything else is just a string the
           # caller can sanity-check.
-          allowed_roles = %w[rn md don sw social_worker chaplain aide admissions insurance billing]
+          allowed_roles = %w[rn md sw social_worker chaplain aide admissions insurance billing]
 
           notify = parsed["notify"]
           notify = nil unless notify.is_a?(Hash)
@@ -884,7 +884,7 @@ class HosalivioBrain
   # relay target and Family is reached through the family chat, not an
   # @-mention. Each resolves to a real assigned human (or the first active
   # user with that role), who gets an @-mention note + bell notification.
-  NOTIFY_CLINICIAN_ROLES = %w[rn md don].freeze
+  NOTIFY_CLINICIAN_ROLES = %w[rn md].freeze
 
   # Free-text role words the brain (or the clinician) might use, normalized
   # to a canonical NOTIFY_CLINICIAN_ROLES key. "@Director"/"DON"/"Director of
@@ -1301,7 +1301,7 @@ class HosalivioBrain
           events; if two look duplicated, note that rather than repeating.
 
     Role-aware emphasis (REQUESTER_ROLE field):
-      rn / md / don         : full clinical detail OK. If the RN asks
+      rn / md /         : full clinical detail OK. If the RN asks
                               "what can I do here?", give concrete
                               nursing workflow steps grounded in the
                               chart: complete/resolve open documentation

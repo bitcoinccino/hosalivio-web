@@ -125,7 +125,7 @@ class VisitsController < ApplicationController
       # owned by admissions/admin/DON. Performing clinicians can
       # update narrative + vitals but not the assignment. Strip
       # those fields if a non-scheduler PATCH tries to change them.
-      scheduler_roles = %w[admin don admissions]
+      scheduler_roles = %w[admin admissions]
       recording_type_picker =
         params[:recording_type_picker].to_s == "1" &&
         @visit.user_id == current_user.id &&
@@ -381,7 +381,7 @@ class VisitsController < ApplicationController
       redirect_to(edit_visit_path(@visit), status: :see_other, alert: "Completed visits can't be deleted. File a late-entry correction instead.") and return
     end
 
-    is_scheduler = (current_user.role_names & %w[admin don admissions]).any?
+    is_scheduler = (current_user.role_names & %w[admin admissions]).any?
     # The assigned clinician may discard their own in-progress DRAFT (a recording
     # they started and don't want to keep), but a not-yet-started SCHEDULED slot
     # is admin's schedule — only a scheduler removes it from the calendar.
@@ -710,21 +710,15 @@ class VisitsController < ApplicationController
             .where(agency: eval_rec.agency, active: true)
             .where(roles: { name: "md" }).to_a
       end
-    don_targets = User.joins(user_roles: :role)
-                      .where(agency: eval_rec.agency, active: true)
-                      .where(roles: { name: "don" }).to_a
-
-    (md_targets + don_targets).uniq.each do |target|
+    # DON quality-copy recipients were retired; the certifying MD is the sole
+    # pre-admit review target now.
+    md_targets.uniq.each do |target|
       next if Notification.exists?(user: target, kind: "pre_admit_review_ready", linked: eval_rec)
-      role = target.role_names.include?("md") ? "MD" : "DON"
-      title = role == "MD" ?
-        "Pre-admit eval ready to certify: #{eval_rec.patient.full_name}" :
-        "Quality copy: pre-admit eval submitted for #{eval_rec.patient.full_name}"
       Notification.create!(
         agency: eval_rec.agency,
         user:   target,
         kind:   "pre_admit_review_ready",
-        title:  title,
+        title:  "Pre-admit eval ready to certify: #{eval_rec.patient.full_name}",
         linked: eval_rec
       )
     end
@@ -912,7 +906,7 @@ class VisitsController < ApplicationController
   # MD may open / record / edit / route it — so an unassigned clinician (e.g.
   # another RN) can't touch an admission that isn't theirs and corrupt its
   # audit trail or sign-off.
-  VISIT_ACCESS_ROLES = %w[admin don admissions md].freeze
+  VISIT_ACCESS_ROLES = %w[admin admissions md].freeze
   def visit_accessible?(visit)
     return true if visit.user_id == current_user.id
     return true if visit.created_by_user_id == current_user.id
@@ -924,7 +918,7 @@ class VisitsController < ApplicationController
   # may act for oversight. The reviewing MD can READ a visit for clinical
   # context (visit_accessible?) but must NOT write to it or sign the RN's
   # route-to-MD handoff — note md is absent from VISIT_WRITER_ROLES.
-  VISIT_WRITER_ROLES = %w[admin don admissions].freeze
+  VISIT_WRITER_ROLES = %w[admin admissions].freeze
   def authorize_visit_writer!
     return if @visit.user_id == current_user.id
     return if @visit.created_by_user_id == current_user.id
@@ -946,7 +940,7 @@ class VisitsController < ApplicationController
   # form) is an admin / admissions / DON action. Performing clinicians start
   # their OWN visit through #start_now (self-assigned) and record the visits
   # already on their list — they never use the scheduler form.
-  SCHEDULER_ROLES = %w[admin don admissions].freeze
+  SCHEDULER_ROLES = %w[admin admissions].freeze
   def authorize_visit_scheduler!
     return if (current_user.role_names & SCHEDULER_ROLES).any?
     redirect_to dashboard_path, status: :see_other,
@@ -989,7 +983,7 @@ class VisitsController < ApplicationController
     Time.zone.local(base.year, base.month, base.day, base.hour, (base.min / 15) * 15, 0)
   end
 
-  CLINICAL_ROLES = %w[rn md don sw chaplain aide social_worker].freeze
+  CLINICAL_ROLES = %w[rn md sw chaplain aide social_worker].freeze
   def agency_clinicians
     scope = User.joins(user_roles: :role)
                 .where(agency: current_user.agency, active: true)

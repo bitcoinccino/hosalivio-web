@@ -24,7 +24,7 @@ module VisitsHelper
   }.freeze
 
   CLINICIAN_TOKENS = %w[
-    rn nurse clinician md doctor physician don aide chaplain
+    rn nurse clinician md doctor physician aide chaplain
     social worker social_worker lpn lvn np pa
   ].freeze
 

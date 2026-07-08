@@ -5,7 +5,7 @@ class PatientsController < ApplicationController
 
   # Registering a patient is an agency-admin job (same roles that schedule
   # visits). Clinicians work from patients admissions has registered.
-  REGISTRAR_ROLES = %w[admin don admissions].freeze
+  REGISTRAR_ROLES = %w[admin admissions].freeze
 
   def new
     ActsAsTenant.with_tenant(current_user.agency) do

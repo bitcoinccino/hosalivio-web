@@ -8,7 +8,7 @@
   # Scheduling is a manager action. Performing clinicians (RN/MD) view their
   # own schedule read-only — so the "+ Add" / click-to-book affordances and
   # the empty-cell copy both branch on this.
-  can_schedule = (current_user.role_names & %w[admin don admissions]).any?
+  can_schedule = (current_user.role_names & %w[admin admissions]).any?
 %>
 
 <div class="min-h-screen" data-controller="calendar">
@@ -127,7 +127,7 @@
           <!-- Row header: clinician name -->
           <div class="px-3 py-3 border-r border-[#EFECE6] flex items-center gap-2">
             <%
-              role = (user.role_names & %w[rn md don sw chaplain aide social_worker]).first || "rn"
+              role = (user.role_names & %w[rn md sw chaplain aide social_worker]).first || "rn"
               role_color = discipline_color[role == "social_worker" ? "sw" : role] || "#6B665F"
             %>
             <% if user.has_avatar? %>

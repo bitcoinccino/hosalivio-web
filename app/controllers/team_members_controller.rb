@@ -3,7 +3,7 @@ class TeamMembersController < ApplicationController
   before_action :authorize_team_manager!
   before_action :set_member, only: [ :edit, :update, :destroy, :reactivate ]
 
-  CLINICAL_ROLES = %w[rn lpn md don sw social_worker chaplain aide admissions insurance billing dme pharmacy].freeze
+  CLINICAL_ROLES = %w[rn lpn md sw social_worker chaplain aide admissions insurance billing dme pharmacy].freeze
   DEFAULT_PASSWORD = "hello123".freeze
 
   def index
@@ -94,7 +94,7 @@ class TeamMembersController < ApplicationController
     end
   end
 
-  MANAGER_ROLES = %w[admin don admissions].freeze
+  MANAGER_ROLES = %w[admin admissions].freeze
   def authorize_team_manager!
     return if (current_user.role_names & MANAGER_ROLES).any?
     redirect_to dashboard_path, alert: "Only coordinators, DONs, or admins can manage the team."

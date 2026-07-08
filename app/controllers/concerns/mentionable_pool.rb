@@ -5,7 +5,7 @@ module MentionablePool
   extend ActiveSupport::Concern
 
   MENTION_ROLE_LABELS = {
-    "rn" => "RN", "lpn" => "LPN", "md" => "MD", "don" => "DON",
+    "rn" => "RN", "lpn" => "LPN", "md" => "MD",
     "social_worker" => "SW", "sw" => "SW", "chaplain" => "Chaplain",
     "aide" => "Aide", "admissions" => "Admissions", "insurance" => "Insurance",
     "billing" => "Billing", "admin" => "Admin", "pharmacy" => "Pharmacy", "dme" => "DME"

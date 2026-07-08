@@ -358,7 +358,7 @@ class ClinicianDispatcher
       return Result.new(dispatched: true, intent: "capability_answer")
     end
 
-    role = (@requester.role_names & %w[rn md don admissions admin aide sw social_worker chaplain]).first || "rn"
+    role = (@requester.role_names & %w[rn md admissions admin aide sw social_worker chaplain]).first || "rn"
     result = HosalivioBrain.answer_clinician_question(
       question:       @note.body.to_s,
       patient:        @patient,

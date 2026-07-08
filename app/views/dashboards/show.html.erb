@@ -41,7 +41,7 @@
             <span class="hidden group-data-[collapsed=true]/sb:block absolute top-1 right-1 w-2 h-2 bg-[#D97757] rounded-full"></span>
           <% end %>
         </a>
-        <% manager_roles = %w[admin don admissions] %>
+        <% manager_roles = %w[admin admissions] %>
         <% if (current_user.role_names & manager_roles).any? %>
           <a href="<%= admissions_queue_path %>" title="Admissions queue"
              class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
@@ -128,7 +128,7 @@
       </div>
     <% else %>
       <%
-        manager_roles = %w[admin don admissions]
+        manager_roles = %w[admin admissions]
         is_manager    = (current_user.role_names & manager_roles).any?
         noe_soon      = @noe_overdue.size + @noe_due_today.size
         quick_stats = [

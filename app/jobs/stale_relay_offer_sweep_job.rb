@@ -32,7 +32,7 @@ class StaleRelayOfferSweepJob < ApplicationJob
             # Still unsent? pending_relay_offer returns the offer only while it's
             # the latest AI note (a Send or Cancel posts a newer note).
             next unless ClinicianDispatcher.pending_relay_offer(offer.patient)&.id == offer.id
-            escalated += 1 if escalate_to_don(agency, offer)
+            escalated += 1 if escalate_to_manager(agency, offer)
           end
         end
       end
@@ -42,17 +42,19 @@ class StaleRelayOfferSweepJob < ApplicationJob
 
   private
 
-  def escalate_to_don(agency, offer)
+  def escalate_to_manager(agency, offer)
     return false if AgentEvent.where(agency: agency, action: "relay_offer_escalated", subject: offer).exists?
 
-    don = User.joins(user_roles: :role)
-              .where(agency: agency, active: true, family_access: false, roles: { name: "don" })
-              .first
-    return false unless don
+    # DON was retired; the agency admin is now the escalation owner for an
+    # unsent family draft.
+    manager = User.joins(user_roles: :role)
+                  .where(agency: agency, active: true, family_access: false, roles: { name: "admin" })
+                  .first
+    return false unless manager
 
     waited = STALE_AFTER.to_i / 60
-    # Address the recipient by their human role label, never the "DON" acronym.
-    label  = HosalivioTriager::ROLE_LABELS.fetch("don", "care coordinator")
+    # Address the recipient by their human role label.
+    label  = HosalivioTriager::ROLE_LABELS.fetch("admin", "administrator")
     AgentEvent.create!(
       agency:           agency,
       agent_id:         "system",
@@ -64,7 +66,7 @@ class StaleRelayOfferSweepJob < ApplicationJob
     )
     Notification.create!(
       agency: agency,
-      user:   don,
+      user:   manager,
       kind:   "relay_offer_escalated",
       title:  "Unsent family draft needs your review — #{offer.patient.first_name}",
       body:   "A drafted family update has waited over #{waited} minutes without the assigned nurse sending it. As #{label}, please review or reassign.",

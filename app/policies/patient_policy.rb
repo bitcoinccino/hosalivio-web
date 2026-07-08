@@ -10,7 +10,7 @@ class PatientPolicy < ApplicationPolicy
   # management action — admin / DON / admissions only. Clinical roles (RN, MD)
   # don't edit the patient record or the care-team assignment here; the MD's
   # job is reviewing/certifying the eval, not re-staffing the patient.
-  def update?  = has_role?(:admissions, :don, :admin)
+  def update?  = has_role?(:admissions, :admin)
   def destroy? = admin?
 
   class Scope < Scope

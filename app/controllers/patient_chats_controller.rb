@@ -20,7 +20,7 @@ class PatientChatsController < ApplicationController
       # Inline RN reassignment in the IDG roster — admin / DON / admissions only
       # (mirrors PatientPolicy#update?). @assignable_rns is the dropdown pool.
       @can_reassign_rn = !current_user.family_access? &&
-                         (current_user.role_names & %w[admin don admissions]).any?
+                         (current_user.role_names & %w[admin admissions]).any?
       @assignable_rns  = @can_reassign_rn ? agency_rns.to_a : []   # admission + primary nurse pool
       @assignable_lpns = @can_reassign_rn ? agency_lpns.to_a : []  # support nurse pool
 
@@ -114,7 +114,7 @@ class PatientChatsController < ApplicationController
   # now (User#on_call == true), not just that they're assigned. A grey dot
   # = assigned but off-duty; slot with no user = role unassigned.
   MENTION_ROLE_LABELS = {
-    "rn" => "RN", "lpn" => "LPN", "md" => "MD", "don" => "DON",
+    "rn" => "RN", "lpn" => "LPN", "md" => "MD",
     "social_worker" => "SW", "sw" => "SW", "chaplain" => "Chaplain",
     "aide" => "Aide", "admissions" => "Admissions", "insurance" => "Insurance",
     "billing" => "Billing", "admin" => "Admin", "pharmacy" => "Pharmacy", "dme" => "DME"

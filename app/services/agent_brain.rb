@@ -67,7 +67,7 @@ class AgentBrain
   # produce structured records (pharm_delivery, dme_order, insurance note,
   # billing claim) are skipped to avoid prompt bloat without protection value.
   ROLES_REQUIRING_DOCUMENTATION_DISCIPLINE = %w[
-    admissions rn lpn md don aide social_worker chaplain
+    admissions rn lpn md aide social_worker chaplain
   ].freeze
 
   # Universal documentation hygiene. Non-negotiable. Appended to the system

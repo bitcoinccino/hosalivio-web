@@ -8,7 +8,7 @@ class PriorAuthReviewsController < ApplicationController
 
   # Utilization-review roles + MD (physician review). No family; agency is
   # enforced by the tenant scope.
-  REVIEWER_ROLES = %w[admin don md insurance billing].freeze
+  REVIEWER_ROLES = %w[admin md insurance billing].freeze
 
   # Start a review: pick a patient + procedure. Evidence comes from the docs
   # already on the patient's chart.

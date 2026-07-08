@@ -28,7 +28,7 @@
       chaplain, aide) get a read-only view because changing the
       assignment from the bedside is a workflow violation; they
       ping admissions if anything's wrong. %>
-  <% can_edit_metadata = (current_user.role_names & %w[admin don admissions]).any? %>
+  <% can_edit_metadata = (current_user.role_names & %w[admin admissions]).any? %>
   <% role_label = @visit.discipline.to_s.presence&.upcase || "VISIT" %>
   <% calendar_return_path = calendar_path(date: (@visit.scheduled_at || Time.current).to_date.iso8601) %>
 
@@ -74,7 +74,7 @@
         <%= f.label :user_id, "Clinician", class: "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1" %>
         <%= f.select :user_id,
               @clinicians.map { |u|
-                role = (u.role_names & %w[rn md don sw chaplain aide social_worker]).first
+                role = (u.role_names & %w[rn md sw chaplain aide social_worker]).first
                 branch_tag = u.branch&.name.presence ? " · #{u.branch.name}" : ""
                 ["#{u.full_name} (#{role})#{branch_tag}", u.id]
               },
@@ -168,7 +168,7 @@
       }
       ro_rows = [
         ["Patient",         @visit.patient ? "#{@visit.patient.mrn} · #{@visit.patient.full_name}" : "—"],
-        ["Clinician",       @visit.user ? "#{@visit.user.full_name} (#{(@visit.user.role_names & %w[rn md don sw chaplain aide social_worker admissions]).first || '—'})" : "—"],
+        ["Clinician",       @visit.user ? "#{@visit.user.full_name} (#{(@visit.user.role_names & %w[rn md sw chaplain aide social_worker admissions]).first || '—'})" : "—"],
         ["Discipline",      @visit.discipline.to_s.upcase],
         ["Visit type",      @visit.visit_type_label],
         ["Place of service", location_labels_ro[@visit.service_location.to_s] || @visit.service_location.to_s.titleize],

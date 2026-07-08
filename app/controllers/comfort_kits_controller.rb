@@ -12,7 +12,7 @@ class ComfortKitsController < ApplicationController
 
   # Roles allowed to assemble/save the kit (the admission side). MD is added so
   # an MD reviewing the admission can also stage it; authorization is MD-only.
-  KIT_EDITOR_ROLES = %w[admin don admissions rn md].freeze
+  KIT_EDITOR_ROLES = %w[admin admissions rn md].freeze
 
   def show
     with_tenant do

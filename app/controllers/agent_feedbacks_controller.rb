@@ -6,7 +6,7 @@ class AgentFeedbacksController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_curator!
 
-  PRIVILEGED_ROLES = %w[admin don].freeze
+  PRIVILEGED_ROLES = %w[admin].freeze
 
   def show
     ActsAsTenant.with_tenant(current_user.agency) do

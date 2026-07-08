@@ -6,7 +6,7 @@ class AgencyProfileController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_admin!
 
-  PRIVILEGED_ROLES = %w[admin don admissions].freeze
+  PRIVILEGED_ROLES = %w[admin admissions].freeze
 
   PERMITTED = %i[
     name dba_name slug
