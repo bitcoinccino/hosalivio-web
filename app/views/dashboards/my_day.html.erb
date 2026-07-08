@@ -117,6 +117,18 @@
           <%= render role_partial %>
         <% end %>
 
+        <%# Team chat — the same live thread every role's dashboard shows.
+            Bounded height so the thread's own message list scrolls internally. %>
+        <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden flex flex-col h-[520px]">
+          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center gap-2 flex-shrink-0">
+            <i class="ri-chat-3-line text-[#D97757]"></i>
+            <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">Team chat</h3>
+          </div>
+          <div class="flex-1 min-h-0">
+            <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables %>
+          </div>
+        </section>
+
         <%# Subscribe this dashboard to live broadcasts. Each card
             below is a turbo-frame; AgentEvent / MedicationLog /
             Visit after_commit hooks broadcast turbo_stream.replace

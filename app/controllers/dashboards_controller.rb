@@ -58,6 +58,9 @@ class DashboardsController < ApplicationController
     # @-mention pool for team-chat mode: active staff in this agency.
     @mentionables = build_mentionables(@agency, current_user)
 
+    # Live team-chat thread(s) shared with every role's dashboard.
+    load_team_channels
+
     @unresolved_note_ids = Note.where(author_role: "family", urgency: :crisis, read_at: nil).pluck(:id)
 
     # Recent + upcoming visits across the agency (yesterday → next 7 days),
@@ -192,6 +195,26 @@ class DashboardsController < ApplicationController
       @claims_pending = []
       @denials_pending = []
     end
+
+    # Live team-chat thread(s) — the same panel every role's dashboard shows.
+    load_team_channels
+  end
+
+  # Readable team channels, each with its root messages (+ replies) and a
+  # can_post flag, for the shared dashboard team-chat panel. Shared by the
+  # manager mission stage and the clinician my-day view so every role sees
+  # the identical live thread.
+  def load_team_channels
+    Channel.ensure_defaults_for(@agency)
+    channels = Channel.order(:position, :slug).select { |c| c.readable_by?(current_user) }
+    @team_threads = channels.map do |c|
+      {
+        channel:  c,
+        messages: c.channel_messages.roots.includes(:user, replies: :user).order(:created_at).to_a,
+        can_post: c.postable_by?(current_user)
+      }
+    end
+    @mentionables ||= build_mentionables(@agency, current_user)
   end
 
   # Family users have no business on the mission stage — send them to their patient.

@@ -1,0 +1,39 @@
+<%# Dashboard team-chat panel — the same live thread on every role's dashboard.
+    Renders one live `channels/thread` per readable channel; all threads stay
+    mounted and Turbo-subscribed so replies + HosAlivio answers append live
+    regardless of which channel tab is showing.
+
+    Locals:
+      threads      — [{ channel:, messages:, can_post: }, …] (readable channels)
+      mentionables — @-mention pool JSON for the composers
+%>
+<% threads      = local_assigns.fetch(:threads, []) %>
+<% mentionables = local_assigns.fetch(:mentionables, []) %>
+
+<div data-controller="tabs" class="flex flex-col h-full min-h-0">
+  <% if threads.empty? %>
+    <p class="px-5 py-8 text-center text-[13px] text-[#6B665F]">No team channels yet.</p>
+  <% else %>
+    <%# Channel switcher (hidden when there's only one channel). %>
+    <% if threads.size > 1 %>
+      <div class="flex items-center gap-1 px-3 py-2 border-b border-[#EFECE6] flex-shrink-0">
+        <% threads.each_with_index do |t, i| %>
+          <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="<%= i %>"
+                  data-on="<%= i.zero? %>"
+                  class="inline-flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full border border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#2B4A7A] data-[on=true]:text-white data-[on=true]:border-[#2B4A7A]">
+            <span class="opacity-70">#</span><%= t[:channel].slug %>
+          </button>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% threads.each_with_index do |t, i| %>
+      <div data-tabs-target="pane" class="flex-1 flex flex-col min-h-0 <%= "hidden" unless i.zero? %>">
+        <%= render "channels/thread",
+              channel: t[:channel], messages: t[:messages],
+              can_post: t[:can_post], mentionables: mentionables,
+              return_to: "dashboard" %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

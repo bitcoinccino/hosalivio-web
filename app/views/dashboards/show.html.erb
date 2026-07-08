@@ -457,24 +457,35 @@
 
   <!-- ─── Right Rail: Live agent-activity feed ─────────────────── -->
   <% if @agency %>
-    <aside data-mission-mobile-target="tab" data-tab-name="activity"
+    <aside data-mission-mobile-target="tab" data-tab-name="activity" data-controller="tabs"
            class="hidden md:flex w-96 bg-white border-l border-[#EFECE6] flex-col overflow-hidden
                   data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
-      <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between flex-shrink-0">
-        <div class="flex items-center gap-2">
-          <span class="relative flex h-2 w-2">
+      <%# Two live surfaces share this column: the agent-activity feed and the
+          team-chat thread. Both stay mounted (Team stays Turbo-subscribed even
+          while hidden) so replies append live regardless of the active tab. %>
+      <div class="px-4 py-2.5 border-b border-[#EFECE6] flex items-center gap-1.5 flex-shrink-0">
+        <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="0" data-on="true"
+                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+          <span class="relative flex h-1.5 w-1.5">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2F6F4E] opacity-70"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-[#2F6F4E]"></span>
+            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#2F6F4E]"></span>
           </span>
-          <h3 class="text-[11px] uppercase tracking-widest text-[#6B665F]">Live activity</h3>
-        </div>
+          Live activity
+        </button>
+        <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="1" data-on="false"
+                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+          <i class="ri-chat-3-line"></i> Team chat
+        </button>
         <% open_crises = @unresolved_note_ids.size %>
         <% if open_crises > 0 %>
-          <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider animate-pulse">
+          <span class="ml-auto inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C1403A] text-white tracking-wider animate-pulse">
             <i class="ri-alarm-warning-line"></i> <%= open_crises %> OPEN
           </span>
         <% end %>
       </div>
+
+      <%# ── Pane 0: agent-activity feed ─────────────────────────── %>
+      <div data-tabs-target="pane" class="flex-1 flex flex-col min-h-0 overflow-hidden">
 
       <%#
         Chronological, day-grouped stream (oldest → newest, newest at the
@@ -556,6 +567,12 @@
             <% end %>
           </div>
         <% end %>
+      </div>
+      <%# ── end Pane 0 ─────────────────────────────────────────── %>
+
+      <%# ── Pane 1: live team-chat thread (same panel every role sees) ── %>
+      <div data-tabs-target="pane" class="flex-1 flex-col min-h-0 overflow-hidden hidden">
+        <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables %>
       </div>
     </aside>
   <% end %>

@@ -54,6 +54,25 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Patients needing attention", response.body
     assert_match "Compliance status", response.body
     assert_match "Daily report", response.body
+
+    # Live team-chat thread panel (right column "Team chat" tab) — same partial
+    # every role's dashboard renders, subscribed for live replies.
+    assert_match "Team chat", response.body
+    assert_match "channel-", response.body   # the #channel-<id>-messages live container
+  end
+
+  test "the clinician my-day dashboard renders the same live team-chat thread" do
+    agency = create_agency
+    rn     = create_user(agency: agency, full_name: "Reggie RN", roles: %w[rn])
+
+    sign_in rn
+    get dashboard_path
+
+    assert_response :success
+    assert_match "My patients", response.body        # my_day view, not Mission Stage
+    assert_match "Team chat", response.body           # the shared panel
+    assert_match "-messages", response.body           # the live message container
+    assert_match "Message #", response.body           # the channel composer (postable channel)
   end
 
   test "the activity feed groups by day with a Show earlier messages toggle" do
