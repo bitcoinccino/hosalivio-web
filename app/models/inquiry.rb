@@ -54,6 +54,17 @@ class Inquiry < ApplicationRecord
   validates :requester_role, inclusion: { in: REQUESTER_ROLE_OPTIONS }, allow_blank: true
   validates :urgency,        inclusion: { in: URGENCY_LEVELS },         allow_blank: true
 
+  # "Book a Call" preferred-window slots for the public page. These are a
+  # preference the family picks ("when's best to reach you?"), not a committed
+  # appointment — a coordinator still owns first contact. Key is stored;
+  # CALL_SLOTS maps it to the human label shown to family and staff.
+  CALL_SLOTS = {
+    "morning"   => "9-11 AM",
+    "afternoon" => "1-3 PM",
+    "evening"   => "4-6 PM"
+  }.freeze
+  validates :preferred_slot, inclusion: { in: CALL_SLOTS.keys }, allow_blank: true
+
   enum :status, {
     new_lead:   0,
     claimed:    1,
@@ -84,6 +95,23 @@ class Inquiry < ApplicationRecord
   def display_label
     name = first_name.presence || "Anonymous"
     "#{name}#{is_general ? ' (general inquiry)' : ''} · #{zip_prefix}xx"
+  end
+
+  # Human label for the preferred callback window, e.g. "Thu, Jul 9 · 1-3 PM".
+  # nil when the family didn't pick one (a plain "call me back" lead).
+  def preferred_window_label
+    parts = []
+    parts << preferred_date.strftime("%a, %b %-d") if preferred_date.present?
+    parts << CALL_SLOTS[preferred_slot]            if preferred_slot.present?
+    parts.join(" · ").presence
+  end
+
+  # Sort key so booked calls float to the top of the queue by soonest window;
+  # unscheduled leads sort after any scheduled ones.
+  def preferred_window_at
+    return nil if preferred_date.blank?
+    hour = { "morning" => 9, "afternoon" => 13, "evening" => 16 }[preferred_slot] || 9
+    preferred_date.in_time_zone.change(hour: hour)
   end
 
   private

@@ -53,4 +53,24 @@ class PublicInquiryIntakeTest < ActionDispatch::IntegrationTest
     }
     assert_response :unprocessable_entity
   end
+
+  test "captures a book-a-call preferred window and exposes a human label" do
+    post inquiries_path, as: :json, params: {
+      first_name: "Rosa", last_name: "Diaz", caregiver_phone: "305-555-0102", zip: "33101",
+      preferred_date: "2026-07-09", preferred_slot: "afternoon"
+    }
+    assert_response :created
+    i = last_inquiry
+    assert_equal Date.new(2026, 7, 9), i.preferred_date
+    assert_equal "afternoon",          i.preferred_slot
+    assert_equal "Thu, Jul 9 · 1-3 PM", i.preferred_window_label
+  end
+
+  test "rejects a preferred_slot outside the catalog" do
+    post inquiries_path, as: :json, params: {
+      first_name: "Rosa", last_name: "Diaz", caregiver_phone: "305-555-0103", zip: "33101",
+      preferred_slot: "midnight"
+    }
+    assert_response :unprocessable_entity
+  end
 end

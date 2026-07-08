@@ -70,4 +70,20 @@ class InquiryAlertJobTest < ActiveSupport::TestCase
       create_inquiry
     end
   end
+
+  test "the alert body names the preferred call window when one was booked" do
+    user = create_user(agency: @agency, full_name: "Casey Coordinator", roles: %w[admissions])
+    in_tenant(@agency) { user.update!(on_call: true) }
+
+    inquiry = in_tenant(@agency) do
+      Inquiry.create!(agency: @agency, first_name: "Pat", contact: "family@example.com",
+                      zip: "33101", source_prompt: "book_call", is_general: true,
+                      routed_to_role: "admissions",
+                      preferred_date: Date.new(2026, 7, 9), preferred_slot: "afternoon")
+    end
+    InquiryAlertJob.perform_now(inquiry.id, @agency.id)
+
+    body = in_tenant(@agency) { Notification.where(user: user, kind: InquiryAlertJob::KIND).last.body }
+    assert_includes body, "Preferred time: Thu, Jul 9 · 1-3 PM."
+  end
 end

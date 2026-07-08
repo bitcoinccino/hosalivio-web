@@ -18,6 +18,12 @@ class CoordinationController < ApplicationController
       @leads = Inquiry.where(status: [ :new_lead, :claimed, :contacted ])
                       .includes(:claimed_by)
                       .order(created_at: :desc).limit(100).to_a
+      # Booked calls float to the top by soonest preferred window (ascending);
+      # unscheduled leads keep newest-first underneath.
+      @leads.sort_by! do |l|
+        at = l.preferred_window_at
+        at ? [ 0, at.to_i ] : [ 1, -l.created_at.to_i ]
+      end
 
       @new_patients = Patient.where(status: :referred)
                              .includes(:assigned_rn)

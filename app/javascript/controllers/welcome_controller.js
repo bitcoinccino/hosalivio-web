@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Public landing-page conversation. Stateless: nothing is persisted
 // to the clinical backend until the user explicitly submits the capture form.
 export default class extends Controller {
-  static targets = ["thread", "chips", "capture", "captureDialog", "captureThanks", "captureIntro", "anythingInput", "partnerBanner", "partnerBannerName", "nav"]
+  static targets = ["thread", "chips", "capture", "captureDialog", "captureThanks", "captureThanksMsg", "captureIntro", "anythingInput", "partnerBanner", "partnerBannerName", "nav"]
   static values  = { prompts: Object }
 
   connect() {
@@ -165,6 +165,8 @@ export default class extends Controller {
       dob:             fd.get("dob"),
       diagnosis:       fd.get("diagnosis"),
       zip:             fd.get("zip"),
+      preferred_date:  fd.get("preferred_date"),
+      preferred_slot:  fd.get("preferred_slot"),
       question:        this._question || ""
     }
 
@@ -198,6 +200,11 @@ export default class extends Controller {
     // The thank-you already answers "what happens next," so drop the intro
     // paragraph to avoid saying it twice.
     if (this.hasCaptureIntroTarget) this.captureIntroTarget.classList.add("hidden")
+    // If they picked a preferred window, confirm the specific time back to them.
+    if (this.hasCaptureThanksMsgTarget) {
+      this.captureThanksMsgTarget.textContent =
+        this._confirmMessage(payload.preferred_date, payload.preferred_slot)
+    }
     this.captureThanksTarget.classList.remove("hidden")
 
     // Reset context so the next capture starts fresh (modal stays open on success
@@ -206,6 +213,22 @@ export default class extends Controller {
     this._partnerName  = null
     this._question     = null
     this._sourcePrompt = "capture"
+  }
+
+  // Build the thank-you line. Preferred-window, not a hard appointment, so the
+  // copy says we'll "aim" for it. Falls back to the generic callback message.
+  _confirmMessage(dateStr, slot) {
+    const SLOTS = { morning: "9-11 AM", afternoon: "1-3 PM", evening: "4-6 PM" }
+    const label = SLOTS[slot] || ""
+    if (dateStr) {
+      const d   = new Date(`${dateStr}T00:00:00`)
+      const day = d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })
+      return label
+        ? `Your call is scheduled for ${day} (${label}). We'll aim to reach you then — keep your phone nearby.`
+        : `Your call is scheduled for ${day}. We'll aim to reach you then — keep your phone nearby.`
+    }
+    if (label) return `We'll aim to call you ${slot} (${label}). Keep your phone nearby.`
+    return "Got it. A coordinator will reach out shortly. Keep your phone nearby."
   }
 
   // Bottom "Ask HosAlivio Anything" textarea — freeform question that drops into
