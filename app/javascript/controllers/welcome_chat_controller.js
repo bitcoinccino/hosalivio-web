@@ -330,7 +330,7 @@ export default class extends Controller {
     agencies.forEach(a => {
       const card = document.createElement("div")
       card.className = "rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-sm"
-      const name = (a.agency_dba && a.agency_dba !== a.agency_name) ? `${a.agency_name} (${a.agency_dba})` : a.agency_name
+      const name = a.agency_name || a.agency_dba
       const langBadges = (a.languages || []).map(l =>
         `<span class="text-[11px] font-semibold text-[#6B665F] bg-[#F3F1EC] rounded px-1.5 py-0.5">${escapeHtml(String(l).toUpperCase())}</span>`
       ).join("")
