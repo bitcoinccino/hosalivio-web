@@ -30,6 +30,16 @@ export default class extends Controller {
     this._history = []
   }
 
+  // Starter-prompt click — fill the composer with the tapped question
+  // and immediately submit, so one tap starts the conversation.
+  pick(event) {
+    event?.preventDefault?.()
+    const q = event?.params?.question || event?.currentTarget?.dataset?.welcomeChatQuestionParam
+    if (!q || !this.hasInputTarget) return
+    this.inputTarget.value = q
+    this.ask(event)
+  }
+
   setAudience(event) {
     const a = event?.currentTarget?.dataset?.welcomeChatAudienceParam
     if (!a) return
