@@ -33,9 +33,9 @@
   agency      = @eval.agency
   visit       = @eval.visit
   scheduler   = visit&.created_by_user || (visit&.agent_authored ? nil : visit&.user)
-  scheduler_role = scheduler ? (scheduler.role_names & %w[admin don admissions rn md sw social_worker chaplain aide]).first : nil
+  scheduler_role = scheduler ? (scheduler.role_names & %w[admin admissions rn md sw social_worker chaplain aide]).first : nil
   evaluator   = @eval.evaluator || visit&.user
-  evaluator_role = evaluator ? (evaluator.role_names & %w[rn md sw social_worker chaplain aide don admissions]).first : nil
+  evaluator_role = evaluator ? (evaluator.role_names & %w[rn md sw social_worker chaplain aide admissions]).first : nil
 
   branch =
     @eval.patient&.branch ||
@@ -222,7 +222,7 @@
                 <%# Sync to EMR (VITAS gateway) — admin / DON / MD. Enabled once
                     the eval is certified, or to retry a failed transmission;
                     shown disabled (with why) before then. %>
-                <% if (current_user.role_names & %w[admin don md]).any? %>
+                <% if (current_user.role_names & %w[admin md]).any? %>
                   <% sync_enabled = @eval.sync_failed? ||
                                     ((@eval.status_certified? || @eval.status_noe_filed?) && !@eval.sync_processing?) %>
                   <% if sync_enabled %>

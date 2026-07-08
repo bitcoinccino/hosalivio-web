@@ -62,13 +62,13 @@
           <div class="text-xs text-[#6B665F] mt-0.5"><%= Date.current.strftime("%A, %B %-d") %> · <%= role&.tr("_", " ")&.upcase %> at <%= @agency&.name %></div>
         </div>
         <div class="flex items-center gap-3">
-          <% if (current_user.role_names & %w[admin don admissions]).any? %>
+          <% if (current_user.role_names & %w[admin admissions]).any? %>
             <%= link_to coordination_path,
                   class: "text-[11px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] inline-flex items-center gap-1.5 font-medium transition" do %>
               <i class="ri-inbox-line"></i> Coordination
             <% end %>
           <% end %>
-          <% if (current_user.role_names & %w[rn md don admissions admin]).any? %>
+          <% if (current_user.role_names & %w[rn md admissions admin]).any? %>
             <%= link_to admissions_queue_path,
                   class: "text-[11px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] inline-flex items-center gap-1.5 font-medium transition" do %>
               <i class="ri-folder-history-line"></i> Admissions queue

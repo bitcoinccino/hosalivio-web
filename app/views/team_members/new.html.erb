@@ -1,18 +1,12 @@
 <% content_for :title, "Add team member · HosAlivio" %>
 <%
+  # Focused on the admission actors: Admission RN, Physician, Agency Admin.
+  # Other IDG/ops roles still exist in the data model (family-chat relay, etc.)
+  # but aren't offered here to keep staffing quick and admission-centric.
   role_options = [
-    ["RN — bedside nursing", "rn"],
-    ["LPN — licensed practical nurse", "lpn"],
-    ["MD — medical director", "md"],
-    ["DON — director of nursing", "don"],
-    ["Social Worker", "social_worker"],
-    ["Chaplain", "chaplain"],
-    ["Aide (HHA / CNA)", "aide"],
-    ["Admissions / coordinator", "admissions"],
-    ["Insurance", "insurance"],
-    ["Billing", "billing"],
-    ["DME", "dme"],
-    ["Pharmacy", "pharmacy"]
+    ["Admission Registered Nurse", "rn"],
+    ["Physician (MD)", "md"],
+    ["Agency Admin", "admin"]
   ]
   employment_options = [
     ["Full-time", "full_time"], ["Part-time", "part_time"],

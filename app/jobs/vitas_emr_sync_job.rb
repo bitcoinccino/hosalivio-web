@@ -91,7 +91,7 @@ class VitasEmrSyncJob < ApplicationJob
     ActsAsTenant.with_tenant(eval_rec.agency) do
       eval_rec.update!(sync_status: :failed) unless eval_rec.sync_failed?
 
-      recipients = User.joins(:roles).where(roles: { name: %w[admin don] }).distinct
+      recipients = User.joins(:roles).where(roles: { name: %w[admin] }).distinct
       recipients.find_each do |user|
         # One open alert per eval — don't re-ping admin/DON on every manual
         # retry. A fresh failure after they've cleared the last one re-notifies.

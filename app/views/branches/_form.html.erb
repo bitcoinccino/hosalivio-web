@@ -14,10 +14,9 @@
   }
   any_clinician_options = clinical_pool.map { |u| [u.full_name, u.id] }
 
-  manager_options    = options_for_role.call(%w[admin don admissions])
+  manager_options    = options_for_role.call(%w[admin admissions])
   md_options         = options_for_role.call(%w[md])
-  don_options        = options_for_role.call(%w[don])
-  supervisor_options = options_for_role.call(%w[don rn])
+  supervisor_options = options_for_role.call(%w[rn])
 
   type_options = [
     ["Standard office (admin)", "office"],
@@ -197,10 +196,6 @@
         <div>
           <%= f.label :medical_director_id, "Medical Director (MD)", class: label_cls %>
           <%= f.select :medical_director_id, md_options, { include_blank: "— none —" }, class: input_cls %>
-        </div>
-        <div>
-          <%= f.label :director_of_nursing_id, "Director of Nursing (DON)", class: label_cls %>
-          <%= f.select :director_of_nursing_id, don_options, { include_blank: "— none —" }, class: input_cls %>
         </div>
         <div>
           <%= f.label :clinical_supervisor_id, "Clinical supervisor", class: label_cls %>

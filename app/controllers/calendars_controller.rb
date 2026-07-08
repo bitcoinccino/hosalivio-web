@@ -15,7 +15,7 @@ class CalendarsController < ApplicationController
       # Managers (admin / admissions / DON) see the whole team grid for
       # scheduling oversight; a performing clinician (RN, MD, etc.) sees only
       # their own column — their schedule, not the whole team's.
-      manager     = (current_user.role_names & %w[admin don admissions]).any?
+      manager     = (current_user.role_names & %w[admin admissions]).any?
       @clinicians = manager ? agency_clinicians(@agency) : [ current_user ]
       @visits     = Visit
         .where(user_id: @clinicians.map(&:id))
@@ -47,7 +47,7 @@ class CalendarsController < ApplicationController
   end
 
   # Clinicians are agency users holding any of the bedside-adjacent roles.
-  CLINICAL_ROLES = %w[rn md don sw chaplain aide social_worker].freeze
+  CLINICAL_ROLES = %w[rn md sw chaplain aide social_worker].freeze
   def agency_clinicians(agency)
     User.joins(user_roles: :role)
         .where(agency: agency, active: true)

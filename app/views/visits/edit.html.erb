@@ -47,7 +47,7 @@
     end
 
   scheduler = @visit.created_by_user || (@visit.agent_authored ? nil : @visit.user)
-  scheduler_role = scheduler ? (scheduler.role_names & %w[admin don admissions rn md sw social_worker chaplain aide]).first : nil
+  scheduler_role = scheduler ? (scheduler.role_names & %w[admin admissions rn md sw social_worker chaplain aide]).first : nil
 
   patient = @visit.patient
   patient_initials = patient ? [patient.first_name, patient.last_name].compact.map { |n| n[0] }.join.upcase : ""
@@ -62,7 +62,7 @@
     else                   "#6B665F"
     end
 
-  rn_role = (current_user.role_names & %w[rn md don sw chaplain aide social_worker admissions admin]).first
+  rn_role = (current_user.role_names & %w[rn md sw chaplain aide social_worker admissions admin]).first
 %>
 <% content_for :title, page_title %>
 

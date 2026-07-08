@@ -116,7 +116,7 @@ class PreAdmitNarrativeExtractor
       h["date_of_visit"]   = @visit.started_at&.to_date&.iso8601 || @visit.scheduled_at&.to_date&.iso8601 if h["date_of_visit"].to_s.empty?
       h["visit_type"]      = @visit.visit_type.to_s.tr("_", " ").capitalize if h["visit_type"].to_s.empty?
       if @visit.user
-        clinician_role = (@visit.user.role_names & %w[rn md sw chaplain aide don]).first&.upcase
+        clinician_role = (@visit.user.role_names & %w[rn md sw chaplain aide]).first&.upcase
         h["clinician_name"] = [ @visit.user.full_name, clinician_role ].compact.join(", ") if h["clinician_name"].to_s.empty?
       end
     end

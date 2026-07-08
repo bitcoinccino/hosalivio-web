@@ -3,7 +3,7 @@ class PatientPhotosController < ApplicationController
   before_action :set_patient
   before_action :authorize_editor!
 
-  PRIVILEGED_ROLES = %w[admin don admissions].freeze
+  PRIVILEGED_ROLES = %w[admin admissions].freeze
 
   def create
     file = params.dig(:patient, :photo) || params[:photo]

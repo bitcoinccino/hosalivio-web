@@ -1,12 +1,12 @@
 require "test_helper"
 
 # The NOE 5-day billing clock: within 48h nudges Insurance; overdue escalates
-# to the DON + admin; idempotent across sweeps.
+# to the agency admin; idempotent across sweeps.
 class NoeDeadlineSweepJobTest < ActiveSupport::TestCase
   setup do
     @agency  = create_agency
     @kendra  = create_user(agency: @agency, full_name: "Kendra Insurance", roles: %w[insurance])
-    @don     = create_user(agency: @agency, full_name: "Dana DON",   roles: %w[don])
+    @admin     = create_user(agency: @agency, full_name: "Dana Admin",   roles: %w[admin])
     @admin   = create_user(agency: @agency, full_name: "Alex Admin",  roles: %w[admin])
     @patient = create_patient(agency: @agency)
   end
@@ -15,7 +15,7 @@ class NoeDeadlineSweepJobTest < ActiveSupport::TestCase
   # the stamp/freeze callback so the tier is deterministic).
   def certified_eval(deadline:)
     in_tenant(@agency) do
-      e = PreAdmitEval.create!(agency: @agency, patient: @patient, evaluator: @don,
+      e = PreAdmitEval.create!(agency: @agency, patient: @patient, evaluator: @admin,
         evaluator_name: "Reggie RN", evaluated_at: Time.current, status: :certified,
         raw_json: { "pre_admit_eval" => {} })
       e.update_column(:noe_deadline_at, deadline)
@@ -31,13 +31,13 @@ class NoeDeadlineSweepJobTest < ActiveSupport::TestCase
     certified_eval(deadline: 1.5.days.from_now)
     NoeDeadlineSweepJob.perform_now
     assert_equal 1, count(@kendra, NoeDeadlineSweepJob::KIND_IMMINENT)
-    assert_equal 0, count(@don,    NoeDeadlineSweepJob::KIND_OVERDUE)
+    assert_equal 0, count(@admin,    NoeDeadlineSweepJob::KIND_OVERDUE)
   end
 
-  test "escalates to the DON and admin when the NOE is overdue" do
+  test "escalates to the agency admin when the NOE is overdue" do
     certified_eval(deadline: 1.hour.ago)
     NoeDeadlineSweepJob.perform_now
-    assert_equal 1, count(@don,   NoeDeadlineSweepJob::KIND_OVERDUE)
+    assert_equal 1, count(@admin,   NoeDeadlineSweepJob::KIND_OVERDUE)
     assert_equal 1, count(@admin, NoeDeadlineSweepJob::KIND_OVERDUE)
     assert_equal 0, count(@kendra, NoeDeadlineSweepJob::KIND_IMMINENT), "insurance isn't paged for overdue"
   end

@@ -10,7 +10,7 @@
 # relying on the model to filter via system prompt.
 
 class PatientContextBuilder
-  FULL_CLINICAL = %w[rn md don admissions admin].freeze
+  FULL_CLINICAL = %w[rn md admissions admin].freeze
   AIDE_ONLY     = %w[aide].freeze
   PSYCHOSOCIAL  = %w[sw social_worker chaplain].freeze
   FAMILY        = %w[family].freeze
@@ -287,7 +287,7 @@ class PatientContextBuilder
     return nil unless user
     {
       name:    user.full_name,
-      role:    (user.role_names & %w[rn md don sw social_worker chaplain aide admissions admin insurance billing]).first,
+      role:    (user.role_names & %w[rn md sw social_worker chaplain aide admissions admin insurance billing]).first,
       on_call: user.respond_to?(:on_call) ? user.on_call : nil
     }.compact
   end

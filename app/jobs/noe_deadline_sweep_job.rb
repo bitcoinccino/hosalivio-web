@@ -20,7 +20,7 @@ class NoeDeadlineSweepJob < ApplicationJob
 
   # role → tier routing
   IMMINENT_ROLES = %w[insurance].freeze
-  OVERDUE_ROLES  = %w[don admin].freeze
+  OVERDUE_ROLES  = %w[admin].freeze
 
   def perform
     sent = 0

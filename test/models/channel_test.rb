@@ -15,7 +15,7 @@ class ChannelTest < ActiveSupport::TestCase
     in_tenant(@agency) { Channel.ensure_defaults_for(@agency) }   # second call adds nothing
     assert_equal %w[admission general], in_tenant(@agency) { Channel.order(:slug).pluck(:slug) }
     assert @general.system?
-    assert_equal %w[admin don rn md admissions], @admission.post_roles
+    assert_equal %w[admin rn md admissions], @admission.post_roles
   end
 
   test "#general is open to all staff for posting" do

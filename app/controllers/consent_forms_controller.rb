@@ -82,7 +82,7 @@ class ConsentFormsController < ApplicationController
   # for THIS patient: only the patient's assigned clinicians, a clinician who
   # has a visit with them (the admitting RN witnessing during the visit), or an
   # agency manager may do it. Blocks unassigned clinicians and family users.
-  CONSENT_MANAGER_ROLES = %w[admin don admissions].freeze
+  CONSENT_MANAGER_ROLES = %w[admin admissions].freeze
   def authorize_consent_witness!
     return if (current_user.role_names & CONSENT_MANAGER_ROLES).any?
     assigned_ids = [ @patient.assigned_rn_id, @patient.assigned_md_id,

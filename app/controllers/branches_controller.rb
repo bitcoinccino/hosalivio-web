@@ -3,7 +3,7 @@ class BranchesController < ApplicationController
   before_action :authorize_branch_manager!
   before_action :set_branch, only: [ :edit, :update, :destroy ]
 
-  MANAGER_ROLES = %w[admin don admissions].freeze
+  MANAGER_ROLES = %w[admin admissions].freeze
 
   def index
     ActsAsTenant.with_tenant(current_user.agency) do

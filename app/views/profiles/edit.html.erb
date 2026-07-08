@@ -10,7 +10,7 @@
     "insurance" => "#3A6B7A", "billing" => "#5A6B3A",
     "dme" => "#7A6B5A", "pharmacy" => "#4A6B8C"
   }[role] || "#6B665F"
-  clinical = %w[rn md don admissions sw social_worker chaplain aide insurance billing dme pharmacy].include?(role)
+  clinical = %w[rn md admissions sw social_worker chaplain aide insurance billing dme pharmacy].include?(role)
   input_cls = "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
   label_cls = "block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1"
 

@@ -19,7 +19,7 @@ class Channel < ApplicationRecord
   DEFAULTS = [
     { slug: "general",   name: "General",   position: 0, post_roles: [],
       description: "Team announcements and general discussion." },
-    { slug: "admission", name: "Admission", position: 1, post_roles: %w[admin don rn md admissions],
+    { slug: "admission", name: "Admission", position: 1, post_roles: %w[admin rn md admissions],
       description: "Referrals, pre-admit evals, blockers, and scheduling." }
   ].freeze
 

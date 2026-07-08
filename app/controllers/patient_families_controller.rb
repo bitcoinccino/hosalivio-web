@@ -5,7 +5,7 @@ class PatientFamiliesController < ApplicationController
 
   RELATIONSHIPS = %w[son daughter spouse partner parent sibling grandchild niece nephew
                      guardian caregiver friend other].freeze
-  PRIVILEGED_ROLES = %w[admin don admissions].freeze
+  PRIVILEGED_ROLES = %w[admin admissions].freeze
 
   def new
     @family_user = User.new(

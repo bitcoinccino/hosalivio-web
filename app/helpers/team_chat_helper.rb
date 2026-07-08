@@ -16,7 +16,7 @@ module TeamChatHelper
     "admin" => "Admin"
   }.freeze
 
-  ROLE_PRIORITY = %w[admin don md rn visit_rn lpn admissions social_worker sw chaplain
+  ROLE_PRIORITY = %w[admin md rn visit_rn lpn admissions social_worker sw chaplain
                      pharmacy dme insurance billing aide].freeze
 
   # The role we show for a user in team chat: their highest-priority role.

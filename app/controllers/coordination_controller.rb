@@ -11,7 +11,7 @@ class CoordinationController < ApplicationController
   before_action :authenticate_user!
   before_action :authorize_coordinator!
 
-  COORDINATOR_ROLES = %w[admin don admissions].freeze
+  COORDINATOR_ROLES = %w[admin admissions].freeze
 
   def index
     ActsAsTenant.with_tenant(current_user.agency) do
