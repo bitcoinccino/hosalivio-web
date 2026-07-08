@@ -196,11 +196,11 @@
             prefers-reduced-motion (just renders the final string). %>
         <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-3 min-h-[1.5em]"
             data-controller="typewriter"
-            data-typewriter-phrases-value='["Care that listens..","Relief that lasts."]'
+            data-typewriter-phrases-value='["Care that listens..","Relief that lasts.","Hospice Redefined."]'
             data-typewriter-speed-value="55"
             data-typewriter-erase-speed-value="32"
             data-typewriter-hold-value="1600"
-            aria-label="Care that listens. Relief that lasts."></h1>
+            aria-label="Care that listens. Relief that lasts. Hospice Redefined."></h1>
         <p class="text-[15px] text-[#3A3936] mx-auto max-w-2xl leading-relaxed italic">
           Even when the rest of the world is asleep.
         </p>
@@ -262,11 +262,12 @@
                   class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#EFECE6] text-[#6B665F] hover:border-[#D97757] hover:text-[#D97757] transition flex-shrink-0">
             <i class="ri-share-forward-line text-[17px]"></i>
           </button>
+          <%# Plain text (not a chip). Still clickable to fire the question. %>
           <button type="button"
                   data-welcome-chat-target="promptChip"
                   data-action="click->welcome-chat#usePrompt"
-                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i data-welcome-chat-target="promptIcon" class="ri-money-dollar-circle-line text-[17px]"></i>
+                  class="inline-flex items-center gap-1.5 bg-transparent text-[#6B665F] text-[14px] italic hover:text-[#D97757] transition">
+            <i data-welcome-chat-target="promptIcon" class="ri-money-dollar-circle-line text-[15px] not-italic"></i>
             <span data-welcome-chat-target="promptText">What does hospice cost?</span>
           </button>
         </div>
