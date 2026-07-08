@@ -694,8 +694,15 @@ export default class extends Controller {
   // on "Sending…" until the page is refreshed and the server re-renders it.
   // Matches the server-rendered Handled state (quiet italic, no buttons).
   _markRelayOffersHandled() {
-    this.element.querySelectorAll("[data-relay-offer] [data-relay-actions]").forEach((actions) => {
-      actions.innerHTML = `<span class="text-[11px] text-[#9A938A] italic">Handled</span>`
+    this.element.querySelectorAll("[data-relay-offer]").forEach((pill) => {
+      // Collapse an open Edit textarea back to the read-only preview so a
+      // "Handled" offer never leaves an editable field behind.
+      const edit    = pill.querySelector("[data-relay-edit]")
+      const preview = pill.querySelector("[data-relay-preview]")
+      if (edit) { edit.classList.add("hidden"); edit.disabled = true }
+      if (preview) preview.classList.remove("hidden")
+      const actions = pill.querySelector("[data-relay-actions]")
+      if (actions) actions.innerHTML = `<span class="text-[11px] text-[#9A938A] italic">Handled</span>`
     })
   }
 
