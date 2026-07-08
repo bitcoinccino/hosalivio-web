@@ -236,7 +236,7 @@
             during in-flight requests. %>
         <form data-welcome-chat-target="form"
               data-action="submit->welcome-chat#ask"
-              class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-3 pr-4 py-2">
+              class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] focus-within:border-[#D97757] transition-colors pl-3 pr-4 py-2">
           <input type="hidden" name="audience" value="family" data-welcome-chat-target="audience">
           <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[#D97757] text-white flex items-center justify-center">
             <i class="ri-heart-pulse-line text-lg"></i>
@@ -249,55 +249,26 @@
           <button type="submit" data-welcome-chat-target="send" class="hidden" aria-hidden="true"></button>
         </form>
 
-        <%# Quick-start chips ─ "Three-Tap" relief framing (financial · environment ·
-            logistical), now below the composer. Helps visitors in cognitive
-            tunneling pick a path without phrasing the question themselves; hidden
-            after the first turn so they don't keep occupying space. %>
+        <%# Quick-start prompt cycler ─ one starter question shown at the far
+            left under the composer, with a share-forward arrow to cycle to the
+            next relief prompt (financial · environment · logistical). Keeps the
+            prompts reachable without stacking three chips. Hidden after the
+            first turn so it doesn't keep occupying space. %>
         <div data-welcome-chat-target="quickStart"
-             class="flex flex-wrap items-center justify-center gap-2.5 mt-4">
+             class="flex items-center gap-2 mt-4">
           <button type="button"
-                  data-action="click->welcome-chat#quickStart"
-                  data-welcome-chat-question-param="What does hospice cost?"
-                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i class="ri-money-dollar-circle-line text-[17px]"></i>
-            What does hospice cost?
+                  data-action="click->welcome-chat#nextPrompt"
+                  aria-label="Next suggestion" title="Next suggestion"
+                  class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#EFECE6] text-[#6B665F] hover:border-[#D97757] hover:text-[#D97757] transition flex-shrink-0">
+            <i class="ri-share-forward-line text-[17px]"></i>
           </button>
           <button type="button"
-                  data-action="click->welcome-chat#quickStart"
-                  data-welcome-chat-question-param="Can care happen at home?"
-                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i class="ri-home-heart-line text-[17px]"></i>
-            Can care happen at home?
+                  data-welcome-chat-target="promptChip"
+                  data-action="click->welcome-chat#usePrompt"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
+            <i data-welcome-chat-target="promptIcon" class="ri-money-dollar-circle-line text-[17px]"></i>
+            <span data-welcome-chat-target="promptText">What does hospice cost?</span>
           </button>
-          <button type="button"
-                  data-action="click->welcome-chat#quickStart"
-                  data-welcome-chat-question-param="How do we get started?"
-                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i class="ri-route-line text-[17px]"></i>
-            How do we get started?
-          </button>
-        </div>
-
-        <%# 24/7 clinical lifeline ─ different role from the per-card
-            "Request call" CTA: that one is agency-shopping; this is
-            "talk to a real nurse right now." Pulsing green dot
-            signals "someone is actually there" without being loud.
-            Pushed further from the composer so it reads as its own
-            commitment, not a footnote on the chat. %>
-        <div class="text-center mt-10 pt-6 border-t border-[#EFECE6]">
-          <button type="button"
-             data-action="click->welcome#nurseLine"
-             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#2F6F4E] text-[#2F6F4E] hover:bg-[#E6F0EE] text-[12px] font-bold uppercase tracking-widest shadow-sm transition">
-            <span class="relative inline-flex w-2.5 h-2.5">
-              <span class="absolute inline-flex w-full h-full rounded-full bg-[#2F6F4E] opacity-60 animate-ping"></span>
-              <span class="relative inline-flex w-2.5 h-2.5 rounded-full bg-[#2F6F4E]"></span>
-            </span>
-            <i class="ri-phone-fill"></i>
-            Talk to a hospice nurse · 24/7
-          </button>
-          <div class="text-[10px] text-[#6B665F] mt-2 italic">
-            Day or night. Even when the rest of the world is asleep.
-          </div>
         </div>
       </div>
     </section>
