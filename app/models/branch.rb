@@ -9,6 +9,24 @@ class Branch < ApplicationRecord
     storage_hub:  3   # DME / supplies warehouse, non-clinical
   }, prefix: true, validate: true
 
+  # The four Medicare hospice levels of care this branch can deliver. Tracked
+  # per-branch (not per-agency) because GIP and Inpatient Respite depend on a
+  # facility contract that can differ between branches of the same agency.
+  # key => full label (form + "levels offered" display).
+  LEVELS_OF_CARE = {
+    "routine_home"    => "Routine Home Care",
+    "continuous_home" => "Continuous Home Care",
+    "gip"             => "General Inpatient (GIP)",
+    "respite"         => "Inpatient Respite"
+  }.freeze
+  # Short labels for the compact public agency-card badges.
+  LEVEL_BADGES = {
+    "routine_home"    => "Routine",
+    "continuous_home" => "Continuous",
+    "gip"             => "GIP",
+    "respite"         => "Respite"
+  }.freeze
+
   belongs_to :agency
   belongs_to :manager,             class_name: "User", optional: true
   belongs_to :medical_director,    class_name: "User", optional: true
@@ -45,6 +63,22 @@ class Branch < ApplicationRecord
     (service_area_zips || []).any? { |entry| entry.to_s == z || entry.to_s == prefix }
   end
 
+  # Does this branch deliver the given level of care? key is one of
+  # LEVELS_OF_CARE.keys (e.g. "respite").
+  def offers_level?(key)
+    Array(levels_of_care).map(&:to_s).include?(key.to_s)
+  end
+
+  # Full labels, in canonical order, for display ("Routine Home Care", …).
+  def levels_of_care_labels
+    LEVELS_OF_CARE.keys.select { |k| offers_level?(k) }.map { |k| LEVELS_OF_CARE[k] }
+  end
+
+  # Short labels for the compact public-card badges ("Routine", "Respite", …).
+  def levels_of_care_badges
+    LEVELS_OF_CARE.keys.select { |k| offers_level?(k) }.map { |k| LEVEL_BADGES[k] }
+  end
+
   def covers_county?(county)
     return false if county.blank?
     (service_area_counties || []).map(&:to_s).map(&:downcase).include?(county.to_s.downcase)
@@ -78,6 +112,9 @@ class Branch < ApplicationRecord
   def normalize_arrays
     self.service_area_zips     = split_listish(service_area_zips)
     self.service_area_counties = split_listish(service_area_counties)
+    # Keep only recognized level keys, in canonical order (drops the blank the
+    # form submits to allow clearing, plus any unknown values).
+    self.levels_of_care = LEVELS_OF_CARE.keys & split_listish(levels_of_care)
   end
 
   # The unique indexes on npi / ccn allow multiple NULLs but reject

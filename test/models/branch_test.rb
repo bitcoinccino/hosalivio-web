@@ -38,4 +38,26 @@ class BranchTest < ActiveSupport::TestCase
       assert_equal [ "Palm Beach", "Orange" ], b.service_area_counties
     end
   end
+
+  test "levels of care keep only known keys, in canonical order, and drop blanks" do
+    in_tenant(@agency) do
+      # submitted out of order, with the form's blank and an unknown value
+      b = build(levels_of_care: [ "", "respite", "bogus", "routine_home" ])
+      b.save!
+      assert_equal %w[routine_home respite], b.levels_of_care
+      assert b.offers_level?(:respite)
+      assert_not b.offers_level?(:gip)
+      assert_equal [ "Routine Home Care", "Inpatient Respite" ], b.levels_of_care_labels
+      assert_equal [ "Routine", "Respite" ], b.levels_of_care_badges
+    end
+  end
+
+  test "levels of care default to an empty array" do
+    in_tenant(@agency) do
+      b = build
+      b.save!
+      assert_equal [], b.levels_of_care
+      assert_equal [], b.levels_of_care_badges
+    end
+  end
 end

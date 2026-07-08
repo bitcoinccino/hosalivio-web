@@ -80,6 +80,7 @@ class PublicChatsController < ActionController::Base
     city  = params[:city].to_s.strip
     name  = params[:name].to_s.strip
     state = params[:state].to_s.strip.upcase[0, 2]
+    level = params[:level].to_s.strip
 
     if zip.blank? && city.blank? && name.blank? && state.blank?
       return render(json: { error: "Enter a ZIP, city, state, or agency name." }, status: :unprocessable_entity)
@@ -88,7 +89,7 @@ class PublicChatsController < ActionController::Base
       return render(json: { error: "You've hit the limit for this hour." }, status: :too_many_requests)
     end
 
-    branches = lookup_branches(zip: zip, city: city, name: name, state: state)
+    branches = lookup_branches(zip: zip, city: city, name: name, state: state, level: level)
     bump_rate_counter
 
     cards = branches.first(8).map do |b|
@@ -103,6 +104,7 @@ class PublicChatsController < ActionController::Base
         after_hours:    b.after_hours_phone.presence,
         languages:      Array(a&.languages),
         accepting:      !!a&.accepting_referrals,
+        levels:         b.levels_of_care_badges,
         match_reason:   match_reason_for(b, zip: zip, city: city, name: name, state: state)
       }
     end
@@ -281,6 +283,7 @@ class PublicChatsController < ActionController::Base
         after_hours:  b.after_hours_phone.presence,
         languages:    Array(a&.languages),
         accepting:    !!a&.accepting_referrals,
+        levels:       b.levels_of_care_badges,
         match_reason: match_reason_for(b, zip: zip.to_s, city: city.to_s, name: name.to_s, state: state.to_s)
       }
     end
@@ -308,7 +311,7 @@ class PublicChatsController < ActionController::Base
   # an agency can have multiple branches with different coverage).
   # Filter by partner + active first to keep the result tight.
   # Match precedence: ZIP -> state -> city -> agency-name fuzzy.
-  def lookup_branches(zip:, city:, name: nil, state: nil)
+  def lookup_branches(zip:, city:, name: nil, state: nil, level: nil)
     scope = Branch.joins(:agency).where(active: true,
                                         agencies: { active: true, is_partner: true,
                                                     accepting_referrals: true })
@@ -333,6 +336,11 @@ class PublicChatsController < ActionController::Base
       scope = scope.where("LOWER(agencies.name) LIKE :p OR LOWER(agencies.dba_name) LIKE :p", p: pattern)
     else
       return Branch.none
+    end
+    # Optional level-of-care filter: only branches that deliver the requested
+    # level (e.g. respite). Ignored unless it's a recognized level key.
+    if level.present? && Branch::LEVELS_OF_CARE.key?(level.to_s)
+      scope = scope.where("branches.levels_of_care @> ?::jsonb", [ level.to_s ].to_json)
     end
     ordered_matches(scope.distinct.limit(20).includes(:agency).to_a, zip: zip)
   rescue ActiveRecord::StatementInvalid

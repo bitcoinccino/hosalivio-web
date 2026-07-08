@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_04_150618) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_08_174823) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -123,6 +123,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_150618) do
     t.datetime "created_at", null: false
     t.uuid "director_of_nursing_id"
     t.string "ein"
+    t.jsonb "levels_of_care", default: [], null: false
     t.uuid "manager_id"
     t.uuid "medical_director_id"
     t.string "name", null: false
@@ -141,6 +142,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_150618) do
     t.index ["ccn"], name: "index_branches_on_ccn"
     t.index ["clinical_supervisor_id"], name: "index_branches_on_clinical_supervisor_id"
     t.index ["director_of_nursing_id"], name: "index_branches_on_director_of_nursing_id"
+    t.index ["levels_of_care"], name: "index_branches_on_levels_of_care", using: :gin
     t.index ["manager_id"], name: "index_branches_on_manager_id"
     t.index ["medical_director_id"], name: "index_branches_on_medical_director_id"
     t.index ["npi"], name: "index_branches_on_npi"
@@ -416,6 +418,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_150618) do
     t.string "first_name"
     t.boolean "is_general", default: false, null: false
     t.string "last_name"
+    t.date "preferred_date"
+    t.string "preferred_slot"
     t.text "question"
     t.text "raw_fhir_payload"
     t.text "reason_for_referral"

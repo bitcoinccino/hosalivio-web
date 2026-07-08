@@ -334,6 +334,9 @@ export default class extends Controller {
       const langBadges = (a.languages || []).map(l =>
         `<span class="text-[11px] font-semibold text-[#6B665F] bg-[#F3F1EC] rounded px-1.5 py-0.5">${escapeHtml(String(l).toUpperCase())}</span>`
       ).join("")
+      const levelBadges = (a.levels || []).map(l =>
+        `<span class="text-[11px] font-semibold text-[#2B4A7A] bg-[#F0F4FA] rounded px-1.5 py-0.5">${escapeHtml(String(l))}</span>`
+      ).join("")
       // A muted-icon row: fixed-width icon slot + text, so address / phone /
       // languages line up down a left rail instead of running together.
       const row = (icon, body) =>
@@ -364,6 +367,7 @@ export default class extends Controller {
           ${a.phone ? row("ri-phone-line",
             `<a href="tel:${escapeHtml(stripPhone(a.phone))}" class="hover:text-[#D97757] transition-colors">${escapeHtml(formatPhone(a.phone))}</a>${a.after_hours && a.after_hours !== a.phone ? `<span class="text-[#B0AA9F]"> · after hours ${escapeHtml(formatPhone(a.after_hours))}</span>` : ""}`) : ""}
           ${langBadges ? row("ri-translate-2", `<div class="flex items-center gap-1.5 flex-wrap">${langBadges}</div>`) : ""}
+          ${levelBadges ? row("ri-service-line", `<div class="flex items-center gap-1.5 flex-wrap">${levelBadges}</div>`) : ""}
         </div>
 
         ${a.match_reason ? `<div class="mt-3"><span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#D97757] bg-[#FBEEE8] rounded-full px-2.5 py-1"><i class="ri-map-pin-2-fill text-[12px]"></i> ${escapeHtml(a.match_reason)}</span></div>` : ""}
