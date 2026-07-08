@@ -90,7 +90,7 @@ export default class extends Controller {
       this._renderAssistant("We couldn't reach the assistant right now. Tap 'Talk to a hospice nurse · 24/7' below.", "error")
     }
 
-    if (cardsReady) this._renderAgencyCards(data.agencies)
+    if (cardsReady) this._renderAgencyCards(data.agencies, data.query)
 
     this._sending = false
     this.sendTarget.disabled = false
@@ -296,7 +296,15 @@ export default class extends Controller {
     this._scrollBottom()
   }
 
-  _renderAgencyCards(agencies) {
+  _renderAgencyCards(agencies, query) {
+    // Truthful count header — "We found N partner agencies near you (ZIP …)".
+    const n   = agencies.length
+    const zip = /^\d{5}$/.test(String(query || "").trim()) ? String(query).trim() : null
+    const header = document.createElement("div")
+    header.className = "ml-10 mt-1 mb-1 text-[12px] font-semibold text-[#1D1C1A]"
+    header.textContent = `We found ${n} partner ${n === 1 ? "agency" : "agencies"} near you${zip ? ` (ZIP ${zip})` : ""}`
+    this.transcriptTarget.appendChild(header)
+
     const container = document.createElement("div")
     container.className = "ml-10 grid gap-2"
     agencies.forEach(a => {
