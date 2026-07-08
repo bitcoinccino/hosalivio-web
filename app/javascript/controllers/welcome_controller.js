@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Public landing-page conversation. Stateless: nothing is persisted
 // to the clinical backend until the user explicitly submits the capture form.
 export default class extends Controller {
-  static targets = ["thread", "chips", "capture", "captureDialog", "captureThanks", "anythingInput", "partnerBanner", "partnerBannerName", "nav"]
+  static targets = ["thread", "chips", "capture", "captureDialog", "captureThanks", "captureIntro", "anythingInput", "partnerBanner", "partnerBannerName", "nav"]
   static values  = { prompts: Object }
 
   connect() {
@@ -104,6 +104,7 @@ export default class extends Controller {
     document.body.style.overflow = ""
     // Reset thanks so next open shows the form
     if (this.hasCaptureThanksTarget) this.captureThanksTarget.classList.add("hidden")
+    if (this.hasCaptureIntroTarget) this.captureIntroTarget.classList.remove("hidden")
     const form = this.captureTarget.querySelector("form")
     if (form) form.classList.remove("hidden")
   }
@@ -117,6 +118,7 @@ export default class extends Controller {
     if (!this.hasCaptureTarget) return
     // Reset the form/thanks state so each open is clean
     if (this.hasCaptureThanksTarget) this.captureThanksTarget.classList.add("hidden")
+    if (this.hasCaptureIntroTarget) this.captureIntroTarget.classList.remove("hidden")
     const form = this.captureTarget.querySelector("form")
     if (form) { form.reset(); form.classList.remove("hidden") }
     if (!this._partnerId && this.hasPartnerBannerTarget) {
@@ -193,6 +195,9 @@ export default class extends Controller {
 
     form.classList.add("hidden")
     if (this.hasPartnerBannerTarget) this.partnerBannerTarget.classList.add("hidden")
+    // The thank-you already answers "what happens next," so drop the intro
+    // paragraph to avoid saying it twice.
+    if (this.hasCaptureIntroTarget) this.captureIntroTarget.classList.add("hidden")
     this.captureThanksTarget.classList.remove("hidden")
 
     // Reset context so the next capture starts fresh (modal stays open on success
