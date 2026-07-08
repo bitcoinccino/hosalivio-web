@@ -196,11 +196,11 @@
             prefers-reduced-motion (just renders the final string). %>
         <h1 class="font-serif text-3xl md:text-4xl leading-tight text-[#1D1C1A] mb-3 min-h-[1.5em]"
             data-controller="typewriter"
-            data-typewriter-phrases-value='["Care that listens..","Relief that lasts."]'
+            data-typewriter-phrases-value='["Care that listens..","Relief that lasts.","Hospice Redefined."]'
             data-typewriter-speed-value="55"
             data-typewriter-erase-speed-value="32"
             data-typewriter-hold-value="1600"
-            aria-label="Care that listens. Relief that lasts."></h1>
+            aria-label="Care that listens. Relief that lasts. Hospice Redefined."></h1>
         <p class="text-[15px] text-[#3A3936] mx-auto max-w-2xl leading-relaxed italic">
           Even when the rest of the world is asleep.
         </p>
@@ -245,30 +245,28 @@
                  data-welcome-chat-target="input"
                  autocomplete="off"
                  class="flex-1 bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2"
-                 placeholder="Ask HosAlivio… or share your ZIP to find a partner near you">
+                 placeholder="Ask anything about hospice">
           <button type="submit" data-welcome-chat-target="send" class="hidden" aria-hidden="true"></button>
         </form>
 
-        <%# Quick-start prompt cycler ─ one starter question shown at the far
-            left under the composer, with a share-forward arrow to cycle to the
-            next relief prompt (financial · environment · logistical). Keeps the
-            prompts reachable without stacking three chips. Hidden after the
-            first turn so it doesn't keep occupying space. %>
+        <%# Starter prompts — plain, non-clickable text stacked under the
+            composer. They model the kinds of questions HosAlivio can answer;
+            the visitor types their own in the composer. Hidden after the
+            first turn so they don't keep occupying space. %>
         <div data-welcome-chat-target="quickStart"
-             class="flex items-center gap-2 mt-4">
-          <button type="button"
-                  data-action="click->welcome-chat#nextPrompt"
-                  aria-label="Next suggestion" title="Next suggestion"
-                  class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#EFECE6] text-[#6B665F] hover:border-[#D97757] hover:text-[#D97757] transition flex-shrink-0">
-            <i class="ri-share-forward-line text-[17px]"></i>
-          </button>
-          <button type="button"
-                  data-welcome-chat-target="promptChip"
-                  data-action="click->welcome-chat#usePrompt"
-                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i data-welcome-chat-target="promptIcon" class="ri-money-dollar-circle-line text-[17px]"></i>
-            <span data-welcome-chat-target="promptText">What does hospice cost?</span>
-          </button>
+             class="flex flex-col items-start gap-1.5 mt-4 text-[#6B665F] text-[14px] italic">
+          <div class="inline-flex items-center gap-1.5">
+            <i class="ri-money-dollar-circle-line text-[15px] not-italic"></i>
+            <span>What does hospice cost?</span>
+          </div>
+          <div class="inline-flex items-center gap-1.5">
+            <i class="ri-home-heart-line text-[15px] not-italic"></i>
+            <span>Can care happen at home?</span>
+          </div>
+          <div class="inline-flex items-center gap-1.5">
+            <i class="ri-route-line text-[15px] not-italic"></i>
+            <span>How do we get started?</span>
+          </div>
         </div>
       </div>
     </section>
