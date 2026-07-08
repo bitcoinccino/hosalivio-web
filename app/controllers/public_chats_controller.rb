@@ -50,7 +50,8 @@ class PublicChatsController < ActionController::Base
     context = build_brain_context(question: question, locator: locator, cards_count: cards.size)
     answer = HosalivioBrain.answer_public_question(
       question: context.present? ? "#{context}\n\n#{question}" : question,
-      audience: audience.to_sym
+      audience: audience.to_sym,
+      history:  sanitize_history(payload["history"])
     )
     if answer.blank?
       return render(json: { error: "We couldn't reach the assistant right now. Please tap 'Talk to a hospice nurse · 24/7' below." }, status: :bad_gateway)
@@ -328,6 +329,21 @@ class PublicChatsController < ActionController::Base
     end
   rescue JSON::ParserError
     {}
+  end
+
+  # Normalize the client-supplied conversation history into a trusted shape
+  # before it reaches the brain. Only user/assistant roles, string content
+  # capped in length, and at most the last 10 turns (older ones are dropped
+  # client- and server-side so a hostile payload can't balloon the prompt).
+  def sanitize_history(raw)
+    Array(raw).last(10).filter_map do |turn|
+      next unless turn.is_a?(Hash)
+      role    = turn["role"].to_s
+      role    = "user" unless %w[user assistant].include?(role)
+      content = turn["content"].to_s.strip[0, MAX_QUESTION_LENGTH]
+      next if content.blank?
+      { role: role, content: content }
+    end
   end
 
   # Single-window counter per IP. Cache key includes the current hour

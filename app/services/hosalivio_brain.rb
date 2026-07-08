@@ -529,7 +529,13 @@ class HosalivioBrain
     - Never give personalized medical advice, eligibility decisions, or treatment recommendations.
     - Never invent statistics, prices, phone numbers, agency names, or clinician names.
     - If you don't know something or the question is clinical, say "I don't have that information here" and gently guide them toward connecting with a local agency.
-    - Always end by offering to match them with local agencies. If they haven't shared a ZIP code, ask for it.
+    - If they haven't shared a ZIP code yet, offer to match them with local agencies and ask for it. Once they have, don't ask again.
+
+    Conversation Memory (the conversation so far is provided above the latest message):
+    - Remember what the visitor already shared, especially their ZIP code, city, or name. If they already gave a ZIP, do NOT ask for it again, acknowledge it and reference the agencies that were matched.
+    - If they point out they already shared something, thank them briefly ("Thanks for the reminder") and continue from there. Never make them repeat themselves.
+    - Vary your wording between replies. Do not reuse the same opening or closing sentence across messages.
+    - Do not tack "Did this help?" onto every reply.
 
     How the system works (never describe things that don't exist):
     - The system runs the agency lookup, not you. When agency cards are shown, a [UI CONTEXT] block appears, do not echo it. Simply acknowledge that local options are available.
@@ -592,12 +598,17 @@ class HosalivioBrain
     them to the family side of this chat with one sentence.
   PROMPT
 
-  def self.answer_public_question(question:, audience: :family)
+  def self.answer_public_question(question:, audience: :family, history: [])
     system_prompt = (audience.to_sym == :partner) ? PUBLIC_PARTNER_SYSTEM : PUBLIC_FAMILY_SYSTEM
+
+    # complete_text takes a single user string, so we fold prior turns into a
+    # "Conversation so far" preamble. Without this the model only ever sees the
+    # latest message and re-asks for the ZIP the visitor already gave.
+    user = public_user_prompt(history, question)
 
     # Full provider chain (claude → openai → openrouter), so a dry Anthropic /
     # OpenAI key falls through to OpenRouter instead of dead-ending the chat.
-    text = complete_text(system: system_prompt, user: question)
+    text = complete_text(system: system_prompt, user: user)
 
     # Belt-and-suspenders: strip any em / en dashes the model slips
     # in despite the system prompt rule. Same scrub the clinician
@@ -606,6 +617,21 @@ class HosalivioBrain
   rescue => e
     Rails.logger.warn("[HosalivioBrain.answer_public_question] #{e.class}: #{e.message}")
     nil
+  end
+
+  # Fold prior conversation turns into the user prompt as a labeled preamble.
+  # history is an array of { role: "user"|"assistant", content: "..." }. We cap
+  # to the last few turns so the context stays cheap and recent.
+  def self.public_user_prompt(history, question)
+    convo = Array(history).last(10).filter_map do |m|
+      role    = (m[:role]    || m["role"]).to_s
+      content = (m[:content] || m["content"]).to_s.strip
+      next if content.blank?
+      "#{role == 'assistant' ? 'HosAlivio' : 'Visitor'}: #{content}"
+    end
+    return question if convo.empty?
+
+    "Conversation so far:\n#{convo.join("\n")}\n\nVisitor's latest message: #{question}"
   end
 
   def self.call_claude_plain(system:, user:)

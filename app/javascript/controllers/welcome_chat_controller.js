@@ -24,6 +24,10 @@ export default class extends Controller {
 
   connect() {
     this._sending = false
+    // Rolling transcript sent back to the server each turn so the brain
+    // remembers what the visitor already shared (ZIP, city, name) instead
+    // of re-asking. Capped to the last few turns; the server caps again.
+    this._history = []
   }
 
   // Quick-start chip click — fills the input and immediately
@@ -71,7 +75,7 @@ export default class extends Controller {
     // lookup, AND tailors the brain's reply with that context, so
     // the bot acknowledges the cards rather than asking "what do
     // you mean?" The response payload is { answer, query, agencies }.
-    const data = await this._fetchAnswer(q, audience).catch(err => ({ error: err.message || "Network error" }))
+    const data = await this._fetchAnswer(q, audience, this._history).catch(err => ({ error: err.message || "Network error" }))
     thinking.remove()
 
     const cardsReady = !!data?.agencies?.length
@@ -83,9 +87,16 @@ export default class extends Controller {
       this._renderAssistant(data.error, "error")
     } else if (noResults) {
       this._renderNoResultsCard(data.query, where)
+      // Remember the ZIP the visitor gave even when no partner covers it,
+      // so a follow-up ("did you find anyone?") keeps the context.
+      this._recordTurn(q, null)
     } else if (data?.answer) {
       const wrap = this._renderAssistant(data.answer)
-      this._attachFeedback(wrap, q, data.answer, audience)
+      // Feedback bar only on plain answers. When cards render, their
+      // "Request a call" CTA is the action, so we skip the widget to
+      // avoid a "Did this help?" on every single reply.
+      if (!cardsReady) this._attachFeedback(wrap, q, data.answer, audience)
+      this._recordTurn(q, data.answer)
     } else if (!cardsReady) {
       this._renderAssistant("We couldn't reach the assistant right now. Tap 'Talk to a hospice nurse · 24/7' below.", "error")
     }
@@ -98,15 +109,24 @@ export default class extends Controller {
   }
 
   // ── network ────────────────────────────────────────────────
-  async _fetchAnswer(question, audience) {
+  async _fetchAnswer(question, audience, history) {
     const resp = await fetch(this.urlValue, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ question, audience })
+      body: JSON.stringify({ question, audience, history: history || [] })
     })
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`)
     return data
+  }
+
+  // Append the just-finished exchange to the rolling history and trim to
+  // the last 10 turns. Pass answer=null when there was no bot reply (e.g.
+  // a no-results card) so the user's message is still remembered.
+  _recordTurn(question, answer) {
+    this._history.push({ role: "user", content: question })
+    if (answer) this._history.push({ role: "assistant", content: answer })
+    if (this._history.length > 10) this._history = this._history.slice(-10)
   }
 
   // ── render helpers ─────────────────────────────────────────

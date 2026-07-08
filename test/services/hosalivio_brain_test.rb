@@ -43,4 +43,26 @@ class HosalivioBrainTest < ActiveSupport::TestCase
       assert_equal "Yes, care can happen at home.", answer   # em-dash scrubbed to ", "
     end
   end
+
+  test "answer_public_question folds prior turns into the user prompt so the ZIP is remembered" do
+    seen_user = nil
+    history = [
+      { "role" => "user",      "content" => "My mom needs help, we're in 33025" },
+      { "role" => "assistant", "content" => "Thanks. I found a partner near 33025." }
+    ]
+    stubbing(:complete_text, ->(system:, user:) { seen_user = user; "Reply" }) do
+      HosalivioBrain.answer_public_question(question: "did you find anyone?", history: history)
+    end
+    assert_includes seen_user, "Conversation so far:"
+    assert_includes seen_user, "33025"                     # the earlier ZIP is now visible to the model
+    assert_includes seen_user, "Visitor's latest message: did you find anyone?"
+  end
+
+  test "answer_public_question with no history passes the bare question" do
+    seen_user = nil
+    stubbing(:complete_text, ->(system:, user:) { seen_user = user; "Reply" }) do
+      HosalivioBrain.answer_public_question(question: "How much does hospice cost?")
+    end
+    assert_equal "How much does hospice cost?", seen_user
+  end
 end
