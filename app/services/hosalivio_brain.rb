@@ -594,14 +594,10 @@ class HosalivioBrain
 
   def self.answer_public_question(question:, audience: :family)
     system_prompt = (audience.to_sym == :partner) ? PUBLIC_PARTNER_SYSTEM : PUBLIC_FAMILY_SYSTEM
-    text = nil
 
-    if valid_key?(ENV["ANTHROPIC_API_KEY"])
-      text = call_claude_plain(system: system_prompt, user: question)
-    end
-    if text.blank? && valid_key?(ENV["OPENAI_API_KEY"])
-      text = call_openai_plain(system: system_prompt, user: question)
-    end
+    # Full provider chain (claude → openai → openrouter), so a dry Anthropic /
+    # OpenAI key falls through to OpenRouter instead of dead-ending the chat.
+    text = complete_text(system: system_prompt, user: question)
 
     # Belt-and-suspenders: strip any em / en dashes the model slips
     # in despite the system prompt rule. Same scrub the clinician

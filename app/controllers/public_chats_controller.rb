@@ -285,10 +285,11 @@ class PublicChatsController < ActionController::Base
                                                     accepting_referrals: true })
     if zip.present?
       prefix = zip[0, 3]
-      # Qualify `service_area_zips` with the `branches.` prefix —
-      # both `agencies` and `branches` carry that column, so an
-      # unqualified reference here raises PG::AmbiguousColumn.
-      scope = scope.where(<<~SQL, full: zip, prefix: prefix, like: "#{zip}%")
+      # service_area_zips stores ZIPs as JSON *strings*, so the search value
+      # must be JSON-encoded (a bare "33025" casts to a jsonb *number* and never
+      # matches; a leading-zero ZIP would even raise). Qualify with `branches.`
+      # since both `agencies` and `branches` carry the column (PG::AmbiguousColumn).
+      scope = scope.where(<<~SQL, full: zip.to_json, prefix: prefix.to_json, like: "#{zip}%")
         branches.service_area_zips @> :full::jsonb
         OR branches.service_area_zips @> :prefix::jsonb
         OR branches.zip LIKE :like
