@@ -305,9 +305,21 @@ class PublicChatsController < ActionController::Base
     else
       return Branch.none
     end
-    scope.distinct.limit(20)
+    ordered_matches(scope.distinct.limit(20).includes(:agency).to_a, zip: zip)
   rescue ActiveRecord::StatementInvalid
     Branch.none
+  end
+
+  # Deterministic card order: exact-ZIP matches before 3-digit-prefix matches,
+  # then agencies accepting referrals, then alphabetical. (No distance/rating
+  # data to sort on, so this is the most-relevant ordering we can ground.)
+  def ordered_matches(branches, zip:)
+    z = zip.to_s
+    branches.sort_by do |b|
+      exact     = z.present? && (Array(b.service_area_zips).include?(z) || b.zip.to_s.start_with?(z)) ? 0 : 1
+      accepting = b.agency&.accepting_referrals ? 0 : 1
+      [ exact, accepting, b.agency&.name.to_s.downcase ]
+    end
   end
 
   def match_reason_for(branch, zip:, city:, name: nil, state: nil)
