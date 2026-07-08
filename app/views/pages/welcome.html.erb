@@ -249,32 +249,25 @@
           <button type="submit" data-welcome-chat-target="send" class="hidden" aria-hidden="true"></button>
         </form>
 
-        <%# Quick-start chips ─ "Three-Tap" relief framing (financial · environment ·
-            logistical), now below the composer. Helps visitors in cognitive
-            tunneling pick a path without phrasing the question themselves; hidden
-            after the first turn so they don't keep occupying space. %>
+        <%# Quick-start prompt cycler ─ one starter question shown at the far
+            left under the composer, with a share-forward arrow to cycle to the
+            next relief prompt (financial · environment · logistical). Keeps the
+            prompts reachable without stacking three chips. Hidden after the
+            first turn so it doesn't keep occupying space. %>
         <div data-welcome-chat-target="quickStart"
-             class="flex flex-wrap items-center justify-center gap-2.5 mt-4">
+             class="flex items-center gap-2 mt-4">
           <button type="button"
-                  data-action="click->welcome-chat#quickStart"
-                  data-welcome-chat-question-param="What does hospice cost?"
-                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i class="ri-money-dollar-circle-line text-[17px]"></i>
-            What does hospice cost?
+                  data-action="click->welcome-chat#nextPrompt"
+                  aria-label="Next suggestion" title="Next suggestion"
+                  class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#EFECE6] text-[#6B665F] hover:border-[#D97757] hover:text-[#D97757] transition flex-shrink-0">
+            <i class="ri-share-forward-line text-[17px]"></i>
           </button>
           <button type="button"
-                  data-action="click->welcome-chat#quickStart"
-                  data-welcome-chat-question-param="Can care happen at home?"
-                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i class="ri-home-heart-line text-[17px]"></i>
-            Can care happen at home?
-          </button>
-          <button type="button"
-                  data-action="click->welcome-chat#quickStart"
-                  data-welcome-chat-question-param="How do we get started?"
-                  class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
-            <i class="ri-route-line text-[17px]"></i>
-            How do we get started?
+                  data-welcome-chat-target="promptChip"
+                  data-action="click->welcome-chat#usePrompt"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EFECE6] text-[#3A3936] text-[14px] font-medium hover:border-[#D97757] hover:text-[#D97757] hover:shadow-sm transition">
+            <i data-welcome-chat-target="promptIcon" class="ri-money-dollar-circle-line text-[17px]"></i>
+            <span data-welcome-chat-target="promptText">What does hospice cost?</span>
           </button>
         </div>
       </div>
