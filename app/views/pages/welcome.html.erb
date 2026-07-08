@@ -976,6 +976,23 @@
           <% end %>
         </select>
 
+        <%# Book-a-call preferred window (optional). We capture a preferred day
+            and time-of-day so the coordinator can aim for it; it's a preference,
+            not a committed appointment. %>
+        <div class="pt-1">
+          <div class="text-[11px] text-[#6B665F] mb-1">When's the best time to reach you? (optional)</div>
+          <div class="grid grid-cols-2 gap-3">
+            <input type="date" name="preferred_date" min="<%= Date.current.iso8601 %>" max="<%= (Date.current + 7).iso8601 %>"
+                   aria-label="Preferred call date" class="<%= field_class %>">
+            <select name="preferred_slot" aria-label="Preferred call time" class="<%= field_class %> text-[#6B665F]">
+              <option value="" selected>Any time</option>
+              <% Inquiry::CALL_SLOTS.each do |key, label| %>
+                <option value="<%= key %>"><%= label %></option>
+              <% end %>
+            </select>
+          </div>
+        </div>
+
         <div class="pt-3 border-t border-[#EFECE6] space-y-3">
           <div class="flex items-start gap-2 text-[11px] leading-relaxed text-[#6B665F]">
             <i class="ri-lock-2-line text-[#2F6F4E] mt-0.5"></i>
@@ -993,7 +1010,7 @@
         <div class="flex items-start gap-3 text-[#1D1C1A]">
           <i class="ri-check-double-line text-[#D97757] text-2xl"></i>
           <div>
-            <div class="font-medium">Got it. A coordinator will reach out shortly. Keep your phone nearby.</div>
+            <div class="font-medium" data-welcome-target="captureThanksMsg">Got it. A coordinator will reach out shortly. Keep your phone nearby.</div>
             <div class="text-[12px] text-[#3A3936] mt-1">If this is a medical emergency, call 911 now.</div>
           </div>
         </div>

@@ -46,6 +46,11 @@
                   <div class="text-[13px] font-medium text-[#1D1C1A] truncate"><%= lead.display_label %></div>
                   <span class="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style="background: <%= bg %>; color: <%= fg %>;"><%= lbl %></span>
                 </div>
+                <% if lead.preferred_window_label %>
+                  <div class="text-[11px] text-[#D97757] font-medium mt-0.5">
+                    <i class="ri-calendar-event-line"></i> Prefers a call <%= lead.preferred_window_label %>
+                  </div>
+                <% end %>
                 <div class="text-[11px] text-[#6B665F] mt-0.5 truncate">
                   <%= lead.source_prompt.to_s.tr("_", " ") %><%
                     %><%= " · #{lead.requester_role}" if lead.requester_role.present? %><%

@@ -35,6 +35,8 @@ class InquiriesController < ApplicationController
         contact:         contact,
         zip:             params[:zip].to_s.strip,
         question:        params[:question].to_s.strip,
+        preferred_date:  params[:preferred_date].to_s.strip.presence,
+        preferred_slot:  params[:preferred_slot].to_s.strip.presence,
         source_prompt:   params[:source_prompt].to_s.presence || "capture",
         routed_to_role:  params[:routed_to_role].to_s.presence || "admissions",
         status:          :new_lead
@@ -201,6 +203,7 @@ class InquiriesController < ApplicationController
       referral_date:       i.referral_date&.iso8601,
       external_referral_id: i.external_referral_id,
       question:        i.question,
+      preferred_window: i.preferred_window_label,
       source_prompt:   i.source_prompt,
       is_general:      i.is_general,
       status:          i.status,

@@ -82,8 +82,10 @@ class InquiryAlertJob < ApplicationJob
   end
 
   def alert_body(inquiry, routed_branch)
+    window = inquiry.preferred_window_label
     [
       "#{inquiry.display_label} asked for a callback.",
+      window ? "Preferred time: #{window}." : nil,
       routed_branch ? "Routed to #{routed_branch.name}." : nil,
       "Open to see how to reach them."
     ].compact.join(" ")
