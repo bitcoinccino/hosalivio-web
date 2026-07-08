@@ -49,4 +49,56 @@ class PublicZipLookupTest < ActionDispatch::IntegrationTest
     names = JSON.parse(response.body)["agencies"].map { |c| c["agency_name"] }
     assert_not_includes names, "Internal Only"
   end
+
+  test "a follow-up with no ZIP reuses the ZIP from history to surface cards" do
+    ActsAsTenant.without_tenant do
+      agency = create_agency(name: "Coral Hospice")
+      agency.update!(is_partner: true, accepting_referrals: true, active: true)
+      Branch.create!(agency: agency, name: "Miami", timezone: "America/New_York",
+                     active: true, service_area_zips: [ "33025" ])
+    end
+
+    # Stub the brain so the test doesn't depend on a live provider key; the
+    # ZIP resolution + card lookup is what we're exercising here.
+    original = HosalivioBrain.method(:answer_public_question)
+    HosalivioBrain.define_singleton_method(:answer_public_question) { |**| "Here are some options." }
+
+    post public_chat_path, params: {
+      question: "so who can help us?",           # no ZIP in this message
+      audience: "family",
+      history:  [ { role: "user", content: "we are in 33025" } ]
+    }, as: :json
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal "33025", body.dig("query", "zip")
+    assert_includes body["agencies"].map { |c| c["agency_name"] }, "Coral Hospice"
+  ensure
+    HosalivioBrain.define_singleton_method(:answer_public_question, original) if original
+  end
+
+  test "a general question does not reach back into history for cards" do
+    ActsAsTenant.without_tenant do
+      agency = create_agency(name: "Palm Hospice")
+      agency.update!(is_partner: true, accepting_referrals: true, active: true)
+      Branch.create!(agency: agency, name: "Hollywood", timezone: "America/New_York",
+                     active: true, service_area_zips: [ "33025" ])
+    end
+
+    original = HosalivioBrain.method(:answer_public_question)
+    HosalivioBrain.define_singleton_method(:answer_public_question) { |**| "Medicare usually covers hospice." }
+
+    post public_chat_path, params: {
+      question: "does Medicare cover this?",     # no agency intent
+      audience: "family",
+      history:  [ { role: "user", content: "we are in 33025" } ]
+    }, as: :json
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_nil body["query"]
+    assert_empty Array(body["agencies"])
+  ensure
+    HosalivioBrain.define_singleton_method(:answer_public_question, original) if original
+  end
 end
