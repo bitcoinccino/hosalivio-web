@@ -236,7 +236,7 @@
             during in-flight requests. %>
         <form data-welcome-chat-target="form"
               data-action="submit->welcome-chat#ask"
-              class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] shadow-sm pl-3 pr-4 py-2">
+              class="flex items-center gap-3 bg-white rounded-full border border-[#EFECE6] pl-3 pr-4 py-2">
           <input type="hidden" name="audience" value="family" data-welcome-chat-target="audience">
           <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[#D97757] text-white flex items-center justify-center">
             <i class="ri-heart-pulse-line text-lg"></i>
@@ -276,28 +276,6 @@
             <i class="ri-route-line text-[17px]"></i>
             How do we get started?
           </button>
-        </div>
-
-        <%# 24/7 clinical lifeline ─ different role from the per-card
-            "Request call" CTA: that one is agency-shopping; this is
-            "talk to a real nurse right now." Pulsing green dot
-            signals "someone is actually there" without being loud.
-            Pushed further from the composer so it reads as its own
-            commitment, not a footnote on the chat. %>
-        <div class="text-center mt-10 pt-6 border-t border-[#EFECE6]">
-          <button type="button"
-             data-action="click->welcome#nurseLine"
-             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#2F6F4E] text-[#2F6F4E] hover:bg-[#E6F0EE] text-[12px] font-bold uppercase tracking-widest shadow-sm transition">
-            <span class="relative inline-flex w-2.5 h-2.5">
-              <span class="absolute inline-flex w-full h-full rounded-full bg-[#2F6F4E] opacity-60 animate-ping"></span>
-              <span class="relative inline-flex w-2.5 h-2.5 rounded-full bg-[#2F6F4E]"></span>
-            </span>
-            <i class="ri-phone-fill"></i>
-            Talk to a hospice nurse · 24/7
-          </button>
-          <div class="text-[10px] text-[#6B665F] mt-2 italic">
-            Day or night. Even when the rest of the world is asleep.
-          </div>
         </div>
       </div>
     </section>
