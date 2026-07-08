@@ -19,16 +19,8 @@ import { Controller } from "@hotwired/stimulus"
 //   quickStart  — wrapper around the "Three-Tap" relief chips
 //                 (cost / home / how to start). Hidden after first turn.
 export default class extends Controller {
-  static targets = ["transcript", "form", "input", "send", "intro", "audience", "audienceBtn", "quickStart", "promptChip", "promptText", "promptIcon"]
+  static targets = ["transcript", "form", "input", "send", "intro", "audience", "audienceBtn", "quickStart"]
   static values  = { url: String, agenciesUrl: String, feedbackUrl: String }
-
-  // "Three-Tap" relief prompts (financial · environment · logistical),
-  // surfaced one at a time via the share-forward cycler under the composer.
-  PROMPTS = [
-    { icon: "ri-money-dollar-circle-line", text: "What does hospice cost?" },
-    { icon: "ri-home-heart-line",          text: "Can care happen at home?" },
-    { icon: "ri-route-line",               text: "How do we get started?" }
-  ]
 
   connect() {
     this._sending = false
@@ -36,27 +28,6 @@ export default class extends Controller {
     // remembers what the visitor already shared (ZIP, city, name) instead
     // of re-asking. Capped to the last few turns; the server caps again.
     this._history = []
-    this._promptIdx = 0
-  }
-
-  // Share-forward arrow — advance to the next starter prompt in place.
-  nextPrompt(event) {
-    event?.preventDefault?.()
-    this._promptIdx = (this._promptIdx + 1) % this.PROMPTS.length
-    const p = this.PROMPTS[this._promptIdx]
-    if (this.hasPromptTextTarget) this.promptTextTarget.textContent = p.text
-    if (this.hasPromptIconTarget) this.promptIconTarget.className = `${p.icon} text-[17px]`
-  }
-
-  // Tap the visible prompt chip — fill the input with the current
-  // question and immediately submit, so the visitor goes from "blank
-  // page anxiety" to a real conversation in one tap.
-  usePrompt(event) {
-    event?.preventDefault?.()
-    const p = this.PROMPTS[this._promptIdx]
-    if (!p || !this.hasInputTarget) return
-    this.inputTarget.value = p.text
-    this.ask(event)
   }
 
   setAudience(event) {
