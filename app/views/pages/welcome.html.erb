@@ -146,10 +146,13 @@
                 class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#EFECE6]">
           <i class="ri-menu-line text-lg"></i>
         </button>
-        <div class="w-8 h-8 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+        <%# Brand hidden on small screens — the hamburger opens the sidebar,
+            which carries the HosAlivio brand, so repeating it here just
+            crowds the bar. %>
+        <div class="hidden sm:flex w-8 h-8 rounded-full bg-[#D97757] text-white items-center justify-center">
           <i class="ri-heart-pulse-line text-sm"></i>
         </div>
-        <h1 class="text-xs uppercase tracking-[0.2em] text-[#1D1C1A] font-bold">HosAlivio</h1>
+        <h1 class="hidden sm:block text-xs uppercase tracking-[0.2em] text-[#1D1C1A] font-bold">HosAlivio</h1>
       </div>
       <div class="flex items-center gap-2">
         <%= link_to new_user_session_path,
