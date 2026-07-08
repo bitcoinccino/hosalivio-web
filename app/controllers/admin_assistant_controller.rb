@@ -83,16 +83,22 @@ class AdminAssistantController < ApplicationController
     return nil if query.blank?
 
     system = <<~SYS.strip
-      You are HosAlivio, an operations assistant for a hospice-agency manager.
-      Answer the manager's question using ONLY the agency snapshot provided.
-      Be warm but concise — a sentence or two, or a short list. If the snapshot
-      doesn't contain the answer, say you don't have that detail and point them
-      to the closest report: today's priorities, patients needing attention,
-      compliance status, new referrals, or daily report. Never invent patient
-      names, counts, or clinical facts. This is operational oversight only — no
-      medical advice, and nothing here is written to a patient's chart.
+      You are HosAlivio, a warm and efficient operations assistant for hospice agency managers.
+
+      Answer the manager's question using ONLY the agency snapshot provided. The snapshot includes:
+      - Current census and active patients
+      - Staff and branch information
+      - Today's oversight reports (priorities, patients needing attention, compliance status, new referrals, daily report)
+
+      Guidelines:
+      - Be warm but concise — use 1-2 sentences or a short bullet list.
+      - If the snapshot doesn't have the answer, say "I don't have that detail right now" and suggest the closest relevant report.
+      - Never invent patient names, numbers, or clinical facts.
+      - This is operational oversight only. Do not give medical advice or write anything to a patient's chart.
+
+      Always end with a helpful offer if appropriate (e.g., "Let me know if you'd like details on anything specific.").
     SYS
-    user = "Agency snapshot (#{Date.current.strftime('%b %-d, %Y')}):\n\n#{agency_snapshot}\n\nManager asked: #{query}"
+    user = "Agency snapshot as of #{Time.current.strftime('%b %-d, %Y at %-l:%M %p %Z')}:\n\n#{agency_snapshot}\n\nManager asked: #{query}"
 
     HosalivioBrain.complete_text(system: system, user: user)
   end
@@ -110,15 +116,77 @@ class AdminAssistantController < ApplicationController
     end
   end
 
-  # Compact, labeled digest of the five oversight reports — the grounding
-  # context for a free-form answer.
+  # Compact, labeled digest of agency state — the grounding context for a
+  # free-form answer. Aggregates (not raw rows) across the admin-relevant
+  # models: census, staff, branches, and the five oversight reports.
   def agency_snapshot
+    [ "Agency: #{current_user.agency.name}",
+      census_summary,
+      staff_summary,
+      branches_summary,
+      reports_summary ].compact.join("\n\n")
+  end
+
+  def reports_summary
     Admin::Overview::COMMANDS.map do |cmd, title|
       items = Admin::Overview.run(cmd, current_user.agency)
       lines = items.first(8).map { |it| "- #{it.text}" }
       lines = [ "- (none)" ] if lines.empty?
       "#{title}:\n#{lines.join("\n")}"
     end.join("\n\n")
+  end
+
+  # Active, non-family staff: headcount, role mix, and license risk.
+  def staff_summary
+    staff = User.where(agency: current_user.agency, active: true, family_access: [ false, nil ]).includes(:roles)
+    by_role = Hash.new(0)
+    staff.each { |u| u.role_names.each { |r| by_role[r] += 1 } }
+    role_mix = by_role.sort_by { |_, n| -n }.map { |r, n| "#{n} #{r.tr('_', ' ')}" }.join(", ")
+
+    scope    = User.where(agency: current_user.agency, active: true)
+    expired  = scope.where(license_expires_on: ...Date.current).count
+    expiring = scope.where(license_expires_on: Date.current..(Date.current + 60.days)).count
+
+    lines = [ "- #{staff.size} active staff#{" (#{role_mix})" if role_mix.present?}" ]
+    lines << "- #{expired} with expired licenses"                if expired.positive?
+    lines << "- #{expiring} with licenses expiring within 60 days" if expiring.positive?
+    "Staff:\n#{lines.join("\n")}"
+  end
+
+  # Branch roster with a rollup header, then per-branch location, staff and
+  # patient counts, and service area.
+  def branches_summary
+    branches = Branch.where(agency: current_user.agency).order(:name).to_a
+    return nil if branches.empty?
+
+    active_count   = branches.count(&:active)
+    total_patients = branches.sum(&:patient_count)
+    shown          = branches.first(12)
+
+    lines = shown.map do |b|
+      loc = b.location_label.presence
+      "- #{b.name}#{" (#{loc})" if loc}: #{b.staff_count} staff, #{b.patient_count} patients" \
+        "#{", #{b.service_area_summary}" if b.service_area_zips.any? || b.service_area_counties.any?}" \
+        "#{' [inactive]' unless b.active}"
+    end
+
+    header = "Branches — #{active_count} active, #{total_patients} patients total"
+    header += " (showing #{shown.size} of #{branches.size})" if branches.size > shown.size
+    "#{header}:\n#{lines.join("\n")}"
+  end
+
+  # Headcount by status, so questions like "how many active patients?" can be
+  # answered from the snapshot.
+  def census_summary
+    scope  = Patient.where(agency: current_user.agency)
+    active = scope.where(status: :active).count
+    total  = scope.count
+    lines  = [ "- #{active} active patients", "- #{total} patients on record" ]
+    Patient.statuses.keys.reject { |s| s == "active" }.each do |status|
+      n = scope.where(status: status).count
+      lines << "- #{n} #{status.tr('_', ' ')}" if n.positive?
+    end
+    "Census:\n#{lines.join("\n")}"
   end
 
   def authorize_manager!
