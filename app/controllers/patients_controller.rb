@@ -38,6 +38,16 @@ class PatientsController < ApplicationController
              .group_by(&:patient_id)
              .transform_values(&:first)
 
+      # Per-patient record completeness (preloaded to avoid N+1):
+      # latest pre-admit eval, team-note count, and documents (with type).
+      @latest_eval_by_patient =
+        PreAdmitEval.where(patient_id: ids).order(:created_at)
+                    .group_by(&:patient_id).transform_values(&:last)
+      @team_note_counts =
+        Note.where(patient_id: ids).where.not(author_role: "family").group(:patient_id).count
+      @docs_by_patient =
+        PatientDocument.where(patient_id: ids).order(:created_at).group_by(&:patient_id)
+
       @branches       = Branch.where(agency: current_user.agency, active: true).order(:name)
       @status_counts  = Patient.where(agency: current_user.agency).group(:status).count
       @total_patients = Patient.where(agency: current_user.agency).count
