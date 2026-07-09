@@ -1,0 +1,37 @@
+<%# Active Census roster (left rail). Shared by the manager Mission Stage and
+    the clinician my-day dashboard. Locals:
+      patients     — roster to list (agency-wide for managers, caseload for clinicians)
+      active_count — count shown in the pill (defaults to patients.size)
+      label        — heading text (defaults to "Active Census")
+%>
+<% patients     = local_assigns.fetch(:patients, []) %>
+<% active_count = local_assigns.fetch(:active_count, patients.size) %>
+<% label        = local_assigns.fetch(:label, "Active Census") %>
+<div class="mt-6 flex-1 min-h-0 flex flex-col group-data-[collapsed=true]/sb:hidden">
+  <div class="flex items-center justify-between mb-2 px-1">
+    <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold"><%= label %></div>
+    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D9D5CD] text-[#1D1C1A]"><%= active_count %></span>
+  </div>
+  <div class="flex-1 min-h-0 overflow-y-auto -mx-1 pr-1">
+    <% if patients.empty? %>
+      <div class="px-1 text-[11px] text-[#6B665F] italic">No patients yet.</div>
+    <% else %>
+      <div class="space-y-0.5">
+        <% patients.each do |p| %>
+          <a href="/patients/<%= p.id %>" class="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[#D9D5CD] transition">
+            <div class="w-7 h-7 rounded-full bg-[#D9D5CD] text-[#6B665F] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+              <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-[12px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
+              <div class="text-[10px] text-[#6B665F] font-mono truncate"><%= p.mrn %> · <%= p.status %></div>
+            </div>
+            <% if p.dnr? || p.dnr_dni? %>
+              <span class="text-[8px] font-bold px-1 py-0.5 rounded bg-[#C1403A] text-white tracking-wider flex-shrink-0"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+            <% end %>
+          </a>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
