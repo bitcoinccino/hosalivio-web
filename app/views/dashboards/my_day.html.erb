@@ -262,7 +262,7 @@
         <% unread_notifs = @my_notifications.count { |n| n.read_at.nil? } %>
         <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="2" data-on="false"
                 class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
-          <i class="ri-notification-3-line"></i> Alerts
+          <i class="ri-notification-3-line"></i> Notifications
           <% if unread_notifs > 0 %>
             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#D97757] text-white"><%= unread_notifs %></span>
           <% end %>
