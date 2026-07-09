@@ -1,7 +1,7 @@
 <% content_for :title, "HosAlivio · Mission Stage" %>
 
 <div class="flex h-screen" data-controller="sidebar mission-mobile" data-sidebar-storage-key-value="dashboardSidebar">
-  <!-- ─── Left rail: nav + Active Census ───────────────────────── -->
+  <!-- ─── Left rail: nav ───────────────────────────────────────── -->
   <aside data-sidebar-target="sidebar" data-collapsed="false"
          data-mission-mobile-target="tab" data-tab-name="census"
          class="group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200
@@ -53,15 +53,7 @@
         <a href="/calendar" title="Calendar" class="<%= nav_item %>">
           <i class="ri-calendar-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Calendar</span>
         </a>
-        <% unread_count = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
-        <a href="/notifications" title="Notifications" class="<%= nav_item %> relative">
-          <i class="ri-notification-3-line"></i>
-          <span class="group-data-[collapsed=true]/sb:hidden">Notifications</span>
-          <% if unread_count > 0 %>
-            <span class="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D97757] text-white group-data-[collapsed=true]/sb:hidden"><%= unread_count %></span>
-            <span class="hidden group-data-[collapsed=true]/sb:block absolute top-1 right-1 w-2 h-2 bg-[#D97757] rounded-full"></span>
-          <% end %>
-        </a>
+        <%# Notifications moved into the right-column tabs (Live activity | Team chat | Notifications). %>
 
         <%# Organization %>
         <% if is_mgr_nav %>
@@ -72,10 +64,11 @@
           <a href="/team_members" title="Team" class="<%= nav_item %>">
             <i class="ri-team-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Team</span>
           </a>
-          <a href="<%= edit_agency_features_path %>" title="Agency features"
-             class="flex items-center gap-2 px-3 py-2 text-[#9A938A] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-            <i class="ri-toggle-line text-[13px]"></i>
-            <span class="text-[12px] group-data-[collapsed=true]/sb:hidden">Features</span>
+
+          <%# Settings — where an admin configures the agency. %>
+          <div class="<%= nav_group %>">Settings</div>
+          <a href="<%= edit_agency_features_path %>" title="Agency features" class="<%= nav_item %>">
+            <i class="ri-toggle-line text-[13px]"></i><span class="group-data-[collapsed=true]/sb:hidden">Features</span>
           </a>
         <% end %>
 
@@ -95,38 +88,9 @@
       </nav>
     </div>
 
-    <%# Active Census — a scrollable roster list, like the patient-chat left
-        rail. Fills the space between nav and the user menu. %>
-    <% if @agency %>
-      <div class="mt-6 flex-1 min-h-0 flex flex-col group-data-[collapsed=true]/sb:hidden">
-        <div class="flex items-center justify-between mb-2 px-1">
-          <div class="text-[11px] uppercase tracking-widest text-[#6B665F] font-bold">Active Census</div>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D9D5CD] text-[#1D1C1A]"><%= (@active_patient_count || @patients.size) %></span>
-        </div>
-        <div class="flex-1 min-h-0 overflow-y-auto -mx-1 pr-1">
-          <% if @patients.empty? %>
-            <div class="px-1 text-[11px] text-[#6B665F] italic">No patients yet.</div>
-          <% else %>
-            <div class="space-y-0.5">
-              <% @patients.each do |p| %>
-                <a href="/patients/<%= p.id %>" class="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[#D9D5CD] transition">
-                  <div class="w-7 h-7 rounded-full bg-[#D9D5CD] text-[#6B665F] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                    <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="text-[12px] text-[#1D1C1A] truncate"><%= p.full_name %></div>
-                    <div class="text-[10px] text-[#6B665F] font-mono truncate"><%= p.mrn %> · <%= p.status %></div>
-                  </div>
-                  <% if p.dnr? || p.dnr_dni? %>
-                    <span class="text-[8px] font-bold px-1 py-0.5 rounded bg-[#C1403A] text-white tracking-wider flex-shrink-0"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
-                  <% end %>
-                </a>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
+    <%# Active Census lives on its own Patients page now — the sidebar just
+        keeps the nav, so a spacer pins the user menu to the bottom. %>
+    <div class="flex-1"></div>
 
     <div class="mt-3 flex-shrink-0">
       <%= render "shared/user_menu", direction: :up %>
@@ -476,7 +440,7 @@
       <%# Two live surfaces share this column: the agent-activity feed and the
           team-chat thread. Both stay mounted (Team stays Turbo-subscribed even
           while hidden) so replies append live regardless of the active tab. %>
-      <div class="px-4 py-2.5 border-b border-[#EFECE6] flex items-center gap-1.5 flex-shrink-0">
+      <div class="px-4 py-2.5 border-b border-[#EFECE6] flex items-center gap-1.5 flex-wrap flex-shrink-0">
         <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="0" data-on="true"
                 class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
           <span class="relative flex h-1.5 w-1.5">
@@ -488,6 +452,14 @@
         <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="1" data-on="false"
                 class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
           <i class="ri-chat-3-line"></i> Team chat
+        </button>
+        <% unread_notifs = @my_notifications.count { |n| n.read_at.nil? } %>
+        <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="2" data-on="false"
+                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+          <i class="ri-notification-3-line"></i> Notifications
+          <% if unread_notifs > 0 %>
+            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#D97757] text-white"><%= unread_notifs %></span>
+          <% end %>
         </button>
         <% open_crises = @unresolved_note_ids.size %>
         <% if open_crises > 0 %>
@@ -586,6 +558,18 @@
       <%# ── Pane 1: live team-chat thread (same panel every role sees) ── %>
       <div data-tabs-target="pane" class="flex-1 flex-col min-h-0 overflow-hidden hidden">
         <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables %>
+      </div>
+
+      <%# ── Pane 2: my notifications (moved off the sidebar) ── %>
+      <div data-tabs-target="pane" class="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2 hidden">
+        <% if @my_notifications.any? %>
+          <%= render @my_notifications %>
+        <% else %>
+          <p class="px-2 py-8 text-center text-[13px] text-[#6B665F]">No notifications.</p>
+        <% end %>
+        <div class="pt-1 text-center">
+          <a href="/notifications" class="text-[11px] text-[#6B665F] hover:text-[#1D1C1A] hover:underline">See all notifications →</a>
+        </div>
       </div>
     </aside>
   <% end %>

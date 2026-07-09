@@ -63,6 +63,9 @@ class DashboardsController < ApplicationController
 
     @unresolved_note_ids = Note.where(author_role: "family", urgency: :crisis, read_at: nil).pluck(:id)
 
+    # My notifications — surfaced as a right-column tab (moved off the sidebar).
+    @my_notifications = Notification.where(user: current_user).newest_first.limit(30)
+
     # Recent + upcoming visits across the agency (yesterday → next 7 days),
     # so the oversight screen shows who's being seen and when, not just the
     # eval/NOE backlog. Ordered by the visit's anchor time (scheduled, else
