@@ -61,8 +61,9 @@ export default class extends Controller {
 
     this._sending = true
     this.sendTarget.disabled = true
-    if (this.hasIntroTarget)      this.introTarget.classList.add("hidden")
-    if (this.hasQuickStartTarget) this.quickStartTarget.classList.add("hidden")
+    if (this.hasIntroTarget) this.introTarget.classList.add("hidden")
+    // Keep the starter prompts visible so a family can click through several
+    // questions in a row, not just the first one.
 
     this._renderUser(q)
     this.inputTarget.value = ""
