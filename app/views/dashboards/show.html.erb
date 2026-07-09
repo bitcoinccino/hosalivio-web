@@ -20,20 +20,41 @@
           <i class="ri-side-bar-line text-[15px]"></i>
         </button>
       </div>
-      <nav class="mt-8 space-y-1.5 text-sm">
+      <%
+        nav_item  = "flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0"
+        nav_group = "mt-4 mb-1 px-3 text-[10px] uppercase tracking-widest text-[#B9B3A9] font-bold group-data-[collapsed=true]/sb:hidden"
+        manager_roles = %w[admin admissions]
+        is_mgr_nav    = (current_user.role_names & manager_roles).any?
+      %>
+      <nav class="mt-8 space-y-1 text-sm">
+        <%# Oversight %>
         <a href="/dashboard" title="Mission Stage"
            class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#D9D5CD] text-[#1D1C1A] font-medium group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <i class="ri-radar-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">Mission Stage</span>
         </a>
-        <a href="/calendar" title="Calendar"
-           class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-          <i class="ri-calendar-line"></i>
-          <span class="group-data-[collapsed=true]/sb:hidden">Calendar</span>
+
+        <%# Admission funnel: Referrals (inbound) → Admissions (in-flight) → Patients (managed). %>
+        <% if is_mgr_nav %>
+          <div class="<%= nav_group %>">Admissions</div>
+          <a href="<%= inquiries_path %>" title="Referrals" class="<%= nav_item %>">
+            <i class="ri-inbox-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Referrals</span>
+          </a>
+          <a href="<%= admissions_queue_path %>" title="Admissions" class="<%= nav_item %>">
+            <i class="ri-folder-history-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Admissions</span>
+          </a>
+          <a href="<%= patients_path %>" title="Patients" class="<%= nav_item %>">
+            <i class="ri-team-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Patients</span>
+          </a>
+        <% end %>
+
+        <%# Schedule & comms %>
+        <div class="<%= nav_group %>">Schedule</div>
+        <a href="/calendar" title="Calendar" class="<%= nav_item %>">
+          <i class="ri-calendar-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Calendar</span>
         </a>
         <% unread_count = (Notification.where(user: current_user, read_at: nil).count rescue 0) %>
-        <a href="/notifications" title="Notifications"
-           class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0 relative">
+        <a href="/notifications" title="Notifications" class="<%= nav_item %> relative">
           <i class="ri-notification-3-line"></i>
           <span class="group-data-[collapsed=true]/sb:hidden">Notifications</span>
           <% if unread_count > 0 %>
@@ -41,31 +62,24 @@
             <span class="hidden group-data-[collapsed=true]/sb:block absolute top-1 right-1 w-2 h-2 bg-[#D97757] rounded-full"></span>
           <% end %>
         </a>
-        <% manager_roles = %w[admin admissions] %>
-        <% if (current_user.role_names & manager_roles).any? %>
-          <a href="<%= admissions_queue_path %>" title="Admissions queue"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-            <i class="ri-folder-history-line"></i>
-            <span class="group-data-[collapsed=true]/sb:hidden">Admissions queue</span>
+
+        <%# Organization %>
+        <% if is_mgr_nav %>
+          <div class="<%= nav_group %>">Organization</div>
+          <a href="/branches" title="Branches" class="<%= nav_item %>">
+            <i class="ri-map-pin-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Branches</span>
           </a>
-          <a href="/branches" title="Branches"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-            <i class="ri-map-pin-line"></i>
-            <span class="group-data-[collapsed=true]/sb:hidden">Branches</span>
+          <a href="/team_members" title="Team" class="<%= nav_item %>">
+            <i class="ri-team-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Team</span>
           </a>
-          <a href="/team_members" title="Team"
-             class="flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-            <i class="ri-team-line"></i>
-            <span class="group-data-[collapsed=true]/sb:hidden">Team</span>
-          </a>
-          <%# De-emphasized: config link, not a daily-driver. %>
           <a href="<%= edit_agency_features_path %>" title="Agency features"
              class="flex items-center gap-2 px-3 py-2 text-[#9A938A] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
             <i class="ri-toggle-line text-[13px]"></i>
             <span class="text-[12px] group-data-[collapsed=true]/sb:hidden">Features</span>
           </a>
         <% end %>
-        <div class="mt-3 mb-1 px-3 text-[10px] uppercase tracking-widest text-[#B9B3A9] font-bold group-data-[collapsed=true]/sb:hidden">Reports</div>
+
+        <div class="<%= nav_group %>">Reports</div>
         <div title="IDG Review (soon)"
              class="flex items-center gap-2 px-3 py-2 text-[#9A938A] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
           <i class="ri-group-line"></i>
@@ -175,17 +189,16 @@
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             <span>Care Team ↔ HosAlivio · <span id="cable-status" class="font-mono">connecting…</span></span>
           </div>
+          <%# The admission funnel: Referrals (inbound) → Admissions (in-flight) → Patients (managed). %>
           <div class="hidden sm:flex items-center gap-2">
-            <%= link_to coordination_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
-              <i class="ri-inbox-line"></i> Coordination
+            <%= link_to inquiries_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
+              <i class="ri-inbox-line"></i> Referrals
             <% end %>
             <%= link_to admissions_queue_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] font-medium transition" do %>
-              <i class="ri-folder-history-line"></i> Admissions queue
+              <i class="ri-folder-history-line"></i> Admissions
             <% end %>
-            <% if is_manager %>
-              <%= link_to new_patient_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
-                <i class="ri-user-add-line"></i> New patient
-              <% end %>
+            <%= link_to patients_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
+              <i class="ri-team-line"></i> Patients
             <% end %>
           </div>
         </div>

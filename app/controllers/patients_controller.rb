@@ -7,6 +7,43 @@ class PatientsController < ApplicationController
   # visits). Clinicians work from patients admissions has registered.
   REGISTRAR_ROLES = %w[admin admissions].freeze
 
+  # The patient roster — search, filter, and register. Replaces the old
+  # Coordination page's "new registrations" half.
+  def index
+    @agency = current_user.agency
+    ActsAsTenant.with_tenant(current_user.agency) do
+      @q      = params[:q].to_s.strip
+      @status = params[:status].to_s.strip
+      @branch = params[:branch_id].to_s.strip
+
+      scope = Patient.where(agency: current_user.agency)
+      scope = scope.where(status: @status)        if Patient.statuses.key?(@status)
+      scope = scope.where(branch_id: @branch)     if @branch.present?
+      rows  = scope.order(created_at: :desc).limit(500).to_a
+
+      # Name is deterministically encrypted (no SQL LIKE), so filter the free
+      # text against name + MRN in Ruby. The roster is agency-sized, so fine.
+      if @q.present?
+        needle = @q.downcase
+        rows   = rows.select { |p| p.full_name.downcase.include?(needle) || p.mrn.to_s.downcase.include?(needle) }
+      end
+      @patients = rows.first(200)
+
+      # Latest visit per patient → the care-stage badge (Admission / Follow-up /
+      # Routine-Continuous), in one query instead of N+1.
+      ids = @patients.map(&:id)
+      @latest_visit_by_patient =
+        Visit.where(patient_id: ids)
+             .order(Arel.sql("COALESCE(started_at, scheduled_at, created_at) DESC"))
+             .group_by(&:patient_id)
+             .transform_values(&:first)
+
+      @branches       = Branch.where(agency: current_user.agency, active: true).order(:name)
+      @status_counts  = Patient.where(agency: current_user.agency).group(:status).count
+      @total_patients = Patient.where(agency: current_user.agency).count
+    end
+  end
+
   def new
     ActsAsTenant.with_tenant(current_user.agency) do
       @patient = Patient.new(status: :referred, code_status: :full_code, benefit_period: :bp1_90)

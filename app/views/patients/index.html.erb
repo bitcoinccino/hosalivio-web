@@ -1,0 +1,113 @@
+<% content_for :title, "Patients" %>
+<%
+  # Latest-visit → care-stage label the roster shows per patient.
+  stage_for = ->(patient) {
+    v = @latest_visit_by_patient[patient.id]
+    if v
+      case Visit::VISIT_TYPE_CATEGORIES[v.visit_type.to_s]
+      when :initial   then [ "Admission",           "#2B4A7A", "#F0F4FA" ]
+      when :routine   then [ "Routine / Continuous", "#2F6F4E", "#E6F0EE" ]
+      when :follow_up then [ "Follow-up",           "#8A4B2F", "#FFF7F2" ]
+      else                 [ "Visit",               "#6B665F", "#EFECE6" ]
+      end
+    else
+      case patient.status.to_s
+      when "referred" then [ "Referral",  "#D97757", "#FFF3EC" ]
+      when "admitted" then [ "Admitting", "#2B4A7A", "#F0F4FA" ]
+      else                 [ "—",         "#6B665F", "#EFECE6" ]
+      end
+    end
+  }
+  status_pill = {
+    "referred" => [ "#D97757", "Referred" ], "admitted" => [ "#2B4A7A", "Admitted" ],
+    "active" => [ "#2F6F4E", "Active" ],     "revoked" => [ "#C1403A", "Revoked" ],
+    "discharged" => [ "#6B665F", "Discharged" ], "deceased" => [ "#3A3936", "Deceased" ]
+  }
+%>
+<div class="max-w-6xl mx-auto px-4 md:px-8 py-6">
+  <div class="flex items-start justify-between gap-3 mb-5 flex-wrap">
+    <div>
+      <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-2">
+        <i class="ri-arrow-left-line"></i> Dashboard
+      </a>
+      <h1 class="font-serif text-[24px] text-[#1D1C1A]">Patients</h1>
+      <div class="text-[12px] text-[#6B665F]"><%= @agency&.name %> · <%= @total_patients %> total</div>
+    </div>
+    <%= link_to new_patient_path,
+          class: "inline-flex items-center gap-1.5 text-[12px] px-3.5 py-2 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium transition" do %>
+      <i class="ri-user-add-line"></i> Register patient
+    <% end %>
+  </div>
+
+  <%# Search + status filters (GET form preserves the current status/branch). %>
+  <%= form_with url: patients_path, method: :get, data: { turbo: false }, class: "mb-4" do %>
+    <div class="flex items-center gap-2 bg-white rounded-full border border-[#EFECE6] focus-within:border-[#D97757] transition-colors pl-4 pr-1.5 py-1.5 max-w-lg">
+      <i class="ri-search-line text-[#9A938A]"></i>
+      <input type="text" name="q" value="<%= @q %>" autocomplete="off"
+             placeholder="Search by name or MRN…"
+             class="flex-1 bg-transparent border-0 focus:outline-none text-[14px] placeholder-[#6B665F] py-1">
+      <% if @branch.present? %><input type="hidden" name="branch_id" value="<%= @branch %>"><% end %>
+      <% if @status.present? %><input type="hidden" name="status" value="<%= @status %>"><% end %>
+      <button type="submit" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white transition">
+        <i class="ri-arrow-right-line text-[15px]"></i>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-1.5 flex-wrap mt-3">
+      <%= link_to "All", patients_path(q: @q.presence),
+            class: "text-[11px] px-2.5 py-1 rounded-full border transition #{@status.blank? ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" %>
+      <% Patient.statuses.each_key do |st| %>
+        <% color, label = status_pill[st] %>
+        <%= link_to patients_path(q: @q.presence, status: st),
+              class: "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition #{@status == st ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" do %>
+          <span class="w-1.5 h-1.5 rounded-full" style="background: <%= color %>;"></span><%= label %>
+          <span class="font-mono opacity-70"><%= @status_counts[st] || 0 %></span>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <section class="rounded-2xl border border-[#EFECE6] bg-white overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+      <h2 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+        <i class="ri-team-line text-[#D97757]"></i> Roster (<%= @patients.size %>)
+      </h2>
+      <span class="text-[10px] text-[#6B665F]">name · MRN · stage</span>
+    </div>
+    <% if @patients.empty? %>
+      <p class="px-5 py-10 text-center text-[13px] text-[#6B665F]">
+        <%= @q.present? ? "No patients match \"#{@q}\"." : "No patients yet. Register the first one." %>
+      </p>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @patients.each do |p| %>
+          <% stage_label, stage_fg, stage_bg = stage_for.call(p) %>
+          <% st_color, _st_label = status_pill[p.status.to_s] || [ "#6B665F", p.status.to_s ] %>
+          <li>
+            <%= link_to patient_path(p), class: "flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
+              <div class="w-10 h-10 rounded-full bg-[#EFECE6] text-[#1D1C1A] text-[12px] font-bold flex items-center justify-center flex-shrink-0">
+                <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-[14px] text-[#1D1C1A] truncate"><%= p.full_name %></span>
+                  <% if p.dnr? || p.dnr_dni? %>
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+                  <% end %>
+                </div>
+                <div class="text-[11px] text-[#6B665F] truncate">
+                  <span class="font-mono"><%= p.mrn %></span>
+                  <% if p.primary_diagnosis.present? %> · <%= p.primary_diagnosis.to_s[0, 40] %><% end %>
+                </div>
+              </div>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0" style="color: <%= stage_fg %>; background: <%= stage_bg %>;"><%= stage_label %></span>
+              <span class="inline-flex items-center gap-1 text-[10px] text-[#6B665F] whitespace-nowrap flex-shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full" style="background: <%= st_color %>;"></span><%= p.status %>
+              </span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>
