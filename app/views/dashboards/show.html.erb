@@ -556,7 +556,7 @@
       <%# ── end Pane 0 ─────────────────────────────────────────── %>
 
       <%# ── Pane 1: live team-chat thread (same panel every role sees) ── %>
-      <div data-tabs-target="pane" class="flex-1 flex-col min-h-0 overflow-hidden hidden">
+      <div data-tabs-target="pane" class="flex-1 flex flex-col min-h-0 overflow-hidden hidden">
         <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables %>
       </div>
 
