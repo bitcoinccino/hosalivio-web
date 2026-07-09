@@ -53,7 +53,7 @@ class PatientsIndexTest < ActionDispatch::IntegrationTest
 
     get patients_path(branch_id: branch.id)
     assert_response :success
-    assert_match      "Maria Gonzalez", response.body
+    assert_match "Maria Gonzalez", response.body
     assert_no_match(/Carlos Diaz/,      response.body)
   end
 
