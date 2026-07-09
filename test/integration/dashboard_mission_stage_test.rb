@@ -79,7 +79,7 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "-messages", response.body           # the live message container
     assert_match "Message #", response.body           # the channel composer (postable channel)
     assert_match "My admissions", response.body       # renamed + moved to the left sidebar
-    assert_match "Alerts", response.body              # notifications moved into a right-column tab
+    assert_match "Notifications", response.body       # notifications moved into a right-column tab
     assert_no_match(/Admissions queue/, response.body) # old header button is gone for the RN
   end
 
