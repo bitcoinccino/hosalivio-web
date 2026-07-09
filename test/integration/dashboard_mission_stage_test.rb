@@ -26,10 +26,13 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Reports", response.body
     # ask assistant composer still present
     assert_match "Ask HosAlivio", response.body
-    # patient-chat-style layout: banner status line, left census, right feed
+    # patient-chat-style layout: banner status line + right feed
     assert_match "Care Team", response.body          # banner status line
-    assert_match "Active Census", response.body      # left-rail census list
-    assert_match "Live activity", response.body # right-rail feed header
+    assert_no_match(/Active Census<\/div>/, response.body) # census moved to the Patients page
+    assert_match "Live activity", response.body      # right-rail feed header
+    # Notifications moved into the right-column tabs; Features lives under Settings
+    assert_match "Notifications", response.body
+    assert_match "Settings", response.body
     # mobile bottom tab bar
     assert_match "Activity", response.body
     assert_match "Stage", response.body
