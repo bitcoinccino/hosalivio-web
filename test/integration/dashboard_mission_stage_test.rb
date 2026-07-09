@@ -70,7 +70,12 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_match "My patients", response.body        # my_day view, not Mission Stage
-    assert_match "Team chat", response.body           # the shared panel
+    # Same Mission Stage shell as the admin, scoped to this clinician:
+    assert_match "My census", response.body           # left-rail caseload roster
+    assert_match "My activity", response.body         # right-column live-activity tab
+    assert_match 'id="event-feed"', response.body     # the live-activity feed container
+    assert_match 'id="cable-status"', response.body   # the socket feed binds here
+    assert_match "Team chat", response.body           # the shared team-chat panel (right tab)
     assert_match "-messages", response.body           # the live message container
     assert_match "Message #", response.body           # the channel composer (postable channel)
   end

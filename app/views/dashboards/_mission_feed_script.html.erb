@@ -1,0 +1,212 @@
+<%# Live-activity socket feed for the dashboards. Same logic the manager
+    Mission Stage uses; here it also honors #event-feed's data-caseload-ids —
+    when present (a clinician), only events about their caseload patients are
+    appended, so the live feed stays "pertaining to them". Locals: agency. %>
+<% agency = local_assigns.fetch(:agency, nil) %>
+<% if agency %>
+  <script>
+    (function () {
+      if (window.__missionFeedBound) return;
+      window.__missionFeedBound = true;
+
+      function initMissionFeed() {
+        const statusEl = document.getElementById("cable-status");
+        const feedEl   = document.getElementById("event-feed");
+        if (!statusEl || !feedEl) {
+          if (window.__missionFeedWS) { try { window.__missionFeedWS.close(); } catch (_) {} window.__missionFeedWS = null; }
+          return;
+        }
+        if (window.__missionFeedWS) { try { window.__missionFeedWS.close(); } catch (_) {} window.__missionFeedWS = null; }
+        const agencyId = "<%= agency.id %>";
+
+        // Caseload scoping: when set, only append events about these patients.
+        let caseloadSet = new Set();
+        try { (JSON.parse(feedEl.dataset.caseloadIds || "[]") || []).forEach((id) => caseloadSet.add(String(id))); } catch (_) {}
+
+        function recentContainer() {
+          let el = feedEl.querySelector("[data-feed-recent]");
+          if (!el) {
+            const empty = feedEl.querySelector("[data-feed-empty]");
+            if (empty) empty.remove();
+            el = document.createElement("div");
+            el.className = "space-y-4";
+            el.setAttribute("data-feed-recent", "");
+            feedEl.appendChild(el);
+          }
+          return el;
+        }
+        function ensureTodayDivider(recentEl) {
+          let div = recentEl.querySelector("[data-today-divider]");
+          if (div) return div;
+          div = document.createElement("div");
+          div.className = "flex items-center justify-center pt-2 pb-1";
+          div.setAttribute("data-today-divider", "");
+          div.setAttribute("data-day-pill", "");
+          div.innerHTML = `<div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium">Today</div>`;
+          if (activeLane !== "all") div.classList.add("hidden");
+          recentEl.appendChild(div);
+          return div;
+        }
+        const nearBottom = () => (feedEl.scrollHeight - feedEl.scrollTop - feedEl.clientHeight) < 140;
+
+        const LANE_COLOR = { admissions: "#2B4A7A", clinical: "#2F6F4E", family: "#D97757", ops: "#6B665F" };
+        const LANE_LABEL = { admissions: "Admissions", clinical: "Clinical", family: "Family", ops: "Ops" };
+        function categorize(p) {
+          const r = p.agent_id, s = p.subject_type, a = p.event;
+          if (r === "admissions") return "admissions";
+          if (s === "Inquiry" || (s === "Patient" && a === "create")) return "admissions";
+          if (r === "family" || r === "front_door_inbound") return "family";
+          if (["pharmacy", "dme", "insurance", "billing", "don", "system"].includes(r)) return "ops";
+          if (["rn", "md", "aide", "social_worker", "chaplain"].includes(r)) return "clinical";
+          return "ops";
+        }
+        let activeLane = "all";
+        const laneChips = Array.from(document.querySelectorAll("[data-lane-chip]"));
+        const matchesLane = (cat) => activeLane === "all" || cat === activeLane;
+        function applyLane(lane) {
+          activeLane = lane;
+          laneChips.forEach((c) => { c.dataset.on = (c.dataset.laneChip === lane) ? "true" : "false"; });
+          feedEl.querySelectorAll("[data-story]").forEach((el) => {
+            el.classList.toggle("hidden", !matchesLane(el.dataset.category));
+          });
+          const filtering = lane !== "all";
+          feedEl.querySelectorAll("[data-day-pill]").forEach((el) => el.classList.toggle("hidden", filtering));
+          const earlier = feedEl.querySelector("[data-earlier]");
+          const summary = feedEl.querySelector("[data-earlier-summary]");
+          if (earlier) earlier.open = filtering;
+          if (summary) summary.classList.toggle("hidden", filtering);
+        }
+        laneChips.forEach((c) => c.addEventListener("click", () => applyLane(c.dataset.laneChip)));
+
+        feedEl.scrollTop = feedEl.scrollHeight;
+
+        const proto = location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(`${proto}//${location.host}/cable`);
+        window.__missionFeedWS = ws;
+
+        ws.onopen = () => {
+          statusEl.textContent = "connected";
+          statusEl.classList.remove("text-[#6B665F]");
+          statusEl.classList.add("text-[#2F6F4E]");
+          ws.send(JSON.stringify({
+            command: "subscribe",
+            identifier: JSON.stringify({ channel: "MissionStageChannel", agency_id: agencyId })
+          }));
+        };
+        ws.onclose = () => { statusEl.textContent = "disconnected"; statusEl.classList.add("text-[#C1403A]"); };
+
+        const PERSONA = {
+          admissions:         { name: "HosAlivio",  title: "Admissions",    initials: "H", color: "#1D1C1A" },
+          front_door_inbound: { name: "Care Portal",title: "Family-facing", initials: "⌂", color: "#D97757" },
+          rn:                 { name: "Pascal",     title: "RN",            initials: "P", color: "#2F6F4E" },
+          md:                 { name: "Dr. Esther", title: "MD",            initials: "E", color: "#2B4A7A" },
+          social_worker:      { name: "Nickla",     title: "Social Worker", initials: "N", color: "#7A4A8C" },
+          chaplain:           { name: "Geoginio",   title: "Chaplain",      initials: "G", color: "#8C6A2F" },
+          pharmacy:           { name: "Simone",     title: "Pharmacy",      initials: "S", color: "#5A2F7A" },
+          dme:                { name: "Marcus",     title: "DME",           initials: "M", color: "#3E5D5D" },
+          insurance:          { name: "Kendra",     title: "Insurance",     initials: "K", color: "#3A3936" },
+          billing:            { name: "Wolfwide",   title: "Billing",       initials: "W", color: "#6B665F" },
+          aide:               { name: "Flore",      title: "Aide",          initials: "F", color: "#AD7340" },
+          family:             { name: "Family",     title: "Care Portal",   initials: "♥", color: "#D97757" },
+          system:             { name: "HosAlivio",  title: "System",        initials: "•", color: "#6B665F" }
+        };
+        const ROLE_LABEL = {
+          rn: "RN", md: "MD", aide: "Aide",
+          social_worker: "Social Work", chaplain: "Chaplain",
+          pharmacy: "Pharmacy", dme: "DME", insurance: "Insurance",
+          billing: "Billing", admissions: "Admissions"
+        };
+
+        function narrate(p) {
+          const s = p.subject_type, a = p.event, r = p.agent_id;
+          if (r === "admissions" && a === "handoff" && s === "Patient") {
+            const t = p.handoff_role ? (ROLE_LABEL[p.handoff_role] || p.handoff_role) : "team";
+            return { before: "assigned", after: `to the ${t} team`, icon: "ri-send-plane-2-line" };
+          }
+          if (r === "admissions" && a === "create" && s === "Note")
+            return { before: "posted a triage update for", after: p.urgency === "crisis" ? " (crisis triage)" : "", icon: "ri-chat-3-line" };
+          if (r === "front_door_inbound" && a === "create" && s === "Note")
+            return { before: "logged a new concern from", after: p.urgency === "crisis" ? "'s family — marked CRISIS" : "'s family", icon: "ri-feedback-line" };
+          if (a === "create" && s === "MedicationOrder")
+            return { before: `authorized a new medication order${p.drug_name ? ` (${p.drug_name})` : ""} for`, after: "", icon: "ri-capsule-line" };
+          if (a === "update" && s === "MedicationOrder")    return { before: "updated a medication order for", after: "", icon: "ri-capsule-line" };
+          if (a === "create" && s === "MedicationLog")      return { before: "administered a scheduled dose to", after: "", icon: "ri-syringe-line" };
+          if (a === "create" && s === "Visit")              return { before: `started a${p.visit_type ? " " + p.visit_type.replace(/_/g, ' ') : ""} bedside visit with`, after: "", icon: "ri-nurse-line" };
+          if (a === "create" && s === "PharmacyDelivery")   return { before: "requested a pharmacy delivery for", after: "", icon: "ri-truck-line" };
+          if (a === "update" && s === "PharmacyDelivery")   return { before: "updated a pharmacy delivery for", after: "", icon: "ri-truck-line" };
+          if (a === "create" && s === "DmeOrder")           return { before: `ordered${p.equipment_type ? " a " + p.equipment_type.replace(/_/g, ' ') : " equipment"} for`, after: "", icon: "ri-tools-line" };
+          if (a === "create" && s === "Patient")            return { before: "admitted", after: "as a new referral", icon: "ri-user-add-line" };
+          if (a === "update" && s === "Patient")            return { before: "updated", after: "'s chart", icon: "ri-edit-2-line" };
+          if (a === "update" && s === "Note")               return { before: "acknowledged a note on", after: "'s chart", icon: "ri-check-line" };
+          return { before: `${a}d a ${(s||"record").replace(/([A-Z])/g, " $1").trim().toLowerCase()} for`, after: "", icon: "ri-settings-3-line" };
+        }
+
+        function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+        function initialsOf(name) { return (name || "").split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?"; }
+        function actionLabel(phrase) {
+          let before = (phrase.before || "").trim();
+          const after = (phrase.after || "").trim();
+          if (after.startsWith("'s")) return `${before} the${after.slice(2)}`.trim();
+          before = before.replace(/\s+(?:for|with|to|from|about|of|on)$/i, "");
+          return [before, after].filter(Boolean).join(" ").trim();
+        }
+
+        ws.onmessage = (msg) => {
+          const data = JSON.parse(msg.data);
+          if (["ping", "welcome", "confirm_subscription"].includes(data.type)) return;
+          const p = data.message;
+          if (!p) return;
+          // Clinician scoping: only their caseload's events land in the feed.
+          if (caseloadSet.size && !caseloadSet.has(String(p.patient_id))) return;
+
+          const persona = PERSONA[p.agent_id] || { name: p.agent_id, title: "", initials: (p.agent_id||"?")[0].toUpperCase(), color: "#6B665F" };
+          const phrase  = narrate(p);
+          const isCrisis = p.urgency === "crisis";
+          const cat      = categorize(p);
+          const catColor = LANE_COLOR[cat] || "#6B665F";
+          const catLabel = LANE_LABEL[cat] || "Ops";
+          const source     = persona.title ? `${persona.name} (${persona.title})` : persona.name;
+          const action     = actionLabel(phrase);
+          const hasPatient = !!p.patient_id;
+          const headline   = hasPatient ? (p.patient_name || source) : source;
+          const initials   = hasPatient && p.patient_name ? initialsOf(p.patient_name) : (persona.initials || "?");
+          const crisisPill = isCrisis
+            ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
+            : "";
+          const flash = isCrisis ? "bg-[#FFF3EC]" : "bg-[#FFFBEB]";
+
+          const row = document.createElement(hasPatient ? "a" : "div");
+          row.className = `group/story flex items-start gap-2.5 rounded-lg border-l-[3px] pl-2.5 pr-2 py-1.5 -mx-2 transition ${hasPatient ? "hover:bg-[#FBF9F5]" : ""} ${flash}`;
+          row.style.borderLeftColor = catColor;
+          row.setAttribute("data-story", "");
+          row.setAttribute("data-category", cat);
+          if (hasPatient) row.setAttribute("href", `/patients/${p.patient_id}`);
+          row.innerHTML = `
+            <span class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+                  style="background: ${catColor};" title="${esc(catLabel)}">${esc(initials)}</span>
+            <div class="min-w-0 flex-1">
+              <div class="text-[13px] font-semibold text-[#1D1C1A] truncate ${hasPatient ? "group-hover/story:text-[#D97757]" : ""}">${esc(headline)}</div>
+              <div class="text-[12px] text-[#6B665F] leading-snug">${hasPatient ? esc(source) + " " : ""}${esc(action)}</div>
+              <div class="mt-0.5 flex items-center gap-2 text-[10px] text-[#9A938A]">
+                <time class="font-mono">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
+                ${crisisPill}
+                ${p.patient_mrn ? `<span class="font-mono">· ${esc(p.patient_mrn)}</span>` : ""}
+              </div>
+            </div>
+          `;
+          if (!matchesLane(cat)) row.classList.add("hidden");
+          const recentEl = recentContainer();
+          ensureTodayDivider(recentEl);
+          const stick = nearBottom();
+          recentEl.appendChild(row);
+          if (stick && matchesLane(cat)) feedEl.scrollTop = feedEl.scrollHeight;
+          if (!isCrisis) {
+            setTimeout(() => { row.classList.remove("bg-[#FFFBEB]"); }, 1800);
+          }
+        };
+      }
+
+      document.addEventListener("turbo:load", initMissionFeed);
+    })();
+  </script>
+<% end %>

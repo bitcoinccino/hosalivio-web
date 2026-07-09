@@ -1,0 +1,90 @@
+<%# Live-activity narrative feed. Shared by the manager Mission Stage and the
+    clinician my-day dashboard. Same UI; the clinician version is scoped to
+    their caseload both server-side (stories) and live (data-caseload-ids
+    filters incoming socket events).
+
+    Locals:
+      stories             — EventNarrator stories (already scoped by the caller)
+      unresolved_note_ids — crisis note ids for the event_story partial
+      caseload_ids        — [] for agency-wide (no filter); patient ids to
+                            restrict the live socket feed for a clinician
+%>
+<% stories             = local_assigns.fetch(:stories, []) %>
+<% unresolved_note_ids = local_assigns.fetch(:unresolved_note_ids, []) %>
+<% caseload_ids        = local_assigns.fetch(:caseload_ids, []) %>
+
+<div class="px-4 py-1.5 border-b border-[#EFECE6] text-[10px] text-[#6B665F] flex-shrink-0">
+  Live · <span id="cable-status" class="font-mono">connecting…</span>
+</div>
+
+<%# Lane filter chips — split the stream by type (Admissions / Clinical / Family / Ops). %>
+<% if stories.any? %>
+  <div class="px-4 py-2 border-b border-[#EFECE6] flex items-center gap-1.5 flex-wrap flex-shrink-0">
+    <% lane_counts = stories.group_by { |s| activity_category(s.event) }.transform_values(&:size) %>
+    <button type="button" data-lane-chip="all" data-on="true"
+            class="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white data-[on=true]:border-[#1D1C1A]">
+      All <span class="font-mono opacity-70"><%= stories.size %></span>
+    </button>
+    <% MissionStageHelper::ACTIVITY_LANES.each do |key, label, color| %>
+      <button type="button" data-lane-chip="<%= key %>" data-on="false"
+              class="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white data-[on=true]:border-[#1D1C1A]">
+        <span class="w-1.5 h-1.5 rounded-full" style="background: <%= color %>;"></span><%= label %> <span class="font-mono opacity-70"><%= lane_counts[key] || 0 %></span>
+      </button>
+    <% end %>
+  </div>
+<% end %>
+
+<div id="event-feed" data-caseload-ids="<%= caseload_ids.to_json %>" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+  <% if stories.empty? %>
+    <div data-feed-empty class="min-h-full flex flex-col items-center justify-center text-center text-sm text-[#6B665F]">
+      <i class="ri-checkbox-circle-line text-3xl text-[#2F6F4E] mb-2"></i>
+      <p class="max-w-xs">No recent activity — you're all caught up.</p>
+    </div>
+  <% else %>
+    <%
+      tz          = Time.zone
+      stories_asc = stories.sort_by { |s| s.event.happened_at }
+      latest_date = stories_asc.last.event.happened_at.in_time_zone(tz).to_date
+      earlier, recent = stories_asc.partition { |s| s.event.happened_at.in_time_zone(tz).to_date < latest_date }
+    %>
+
+    <% if earlier.any? %>
+      <details class="group/earlier" data-earlier>
+        <summary data-earlier-summary class="list-none cursor-pointer flex items-center justify-center [&::-webkit-details-marker]:hidden">
+          <span class="inline-flex items-center gap-1 px-3 py-1 text-[11px] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full hover:bg-[#EFECE6] transition">
+            <i class="ri-arrow-up-s-line group-open/earlier:rotate-180 transition-transform"></i>
+            <span class="group-open/earlier:hidden">Show earlier messages</span>
+            <span class="hidden group-open/earlier:inline">Hide earlier messages</span>
+          </span>
+        </summary>
+        <div class="space-y-4 mt-4">
+          <% last_date = nil %>
+          <% earlier.each do |story| %>
+            <% d = story.event.happened_at.in_time_zone(tz).to_date %>
+            <% if d != last_date %>
+              <div data-day-pill class="flex items-center justify-center pt-2 pb-1">
+                <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
+              </div>
+              <% last_date = d %>
+            <% end %>
+            <%= render "event_story", story: story, unresolved_note_ids: unresolved_note_ids %>
+          <% end %>
+        </div>
+      </details>
+    <% end %>
+
+    <div data-feed-recent class="space-y-4">
+      <% last_date = nil %>
+      <% recent.each do |story| %>
+        <% d = story.event.happened_at.in_time_zone(tz).to_date %>
+        <% if d != last_date %>
+          <div data-day-pill class="flex items-center justify-center pt-2 pb-1" <%= "data-today-divider" if d == Date.current %>>
+            <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
+          </div>
+          <% last_date = d %>
+        <% end %>
+        <%= render "event_story", story: story, unresolved_note_ids: unresolved_note_ids %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -10,7 +10,7 @@
 <div class="flex h-screen" data-controller="sidebar" data-sidebar-storage-key-value="myDaySidebar">
   <!-- Left rail (hidden on mobile; replaced by bottom tab bar) -->
   <aside data-sidebar-target="sidebar" data-collapsed="false"
-         class="group/sb hidden md:flex w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
+         class="group/sb hidden md:flex w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex-col p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200">
     <div>
       <div class="flex items-center justify-between group-data-[collapsed=true]/sb:justify-center">
         <div class="flex items-center gap-2 group-data-[collapsed=true]/sb:hidden">
@@ -48,7 +48,14 @@
         </a>
       </nav>
     </div>
-    <div class="mt-3">
+
+    <%# Active Census — this clinician's caseload (same left-rail roster the
+        manager Mission Stage shows, scoped to them). %>
+    <% if @agency %>
+      <%= render "dashboards/census", patients: @caseload, active_count: @active_patient_count, label: "My census" %>
+    <% end %>
+
+    <div class="mt-3 flex-shrink-0">
       <%= render "shared/user_menu", direction: :up %>
     </div>
   </aside>
@@ -116,18 +123,6 @@
         <% if lookup_context.exists?(role_partial, [], true) %>
           <%= render role_partial %>
         <% end %>
-
-        <%# Team chat — the same live thread every role's dashboard shows.
-            Bounded height so the thread's own message list scrolls internally. %>
-        <section class="rounded-2xl bg-white border border-[#EFECE6] overflow-hidden flex flex-col h-[520px]">
-          <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center gap-2 flex-shrink-0">
-            <i class="ri-chat-3-line text-[#D97757]"></i>
-            <h3 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">Team chat</h3>
-          </div>
-          <div class="flex-1 min-h-0">
-            <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables %>
-          </div>
-        </section>
 
         <%# Subscribe this dashboard to live broadcasts. Each card
             below is a turbo-frame; AgentEvent / MedicationLog /
@@ -254,6 +249,38 @@
       </div>
     </div>
   </main>
+
+  <!-- ─── Right: live activity + team chat (same shell the manager sees, scoped to me) ── -->
+  <% if @agency %>
+    <aside data-controller="tabs" class="hidden lg:flex w-96 bg-white border-l border-[#EFECE6] flex-col overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-[#EFECE6] flex items-center gap-1.5 flex-shrink-0">
+        <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="0" data-on="true"
+                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+          <span class="relative flex h-1.5 w-1.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2F6F4E] opacity-70"></span>
+            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#2F6F4E]"></span>
+          </span>
+          My activity
+        </button>
+        <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="1" data-on="false"
+                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+          <i class="ri-chat-3-line"></i> Team chat
+        </button>
+      </div>
+
+      <%# Pane 0: live activity feed, scoped to my caseload %>
+      <div data-tabs-target="pane" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <%= render "dashboards/activity_feed", stories: @stories, unresolved_note_ids: @unresolved_note_ids, caseload_ids: @caseload_ids %>
+      </div>
+
+      <%# Pane 1: team chat (same panel every role's dashboard shows) %>
+      <div data-tabs-target="pane" class="flex-1 flex-col min-h-0 overflow-hidden hidden">
+        <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables %>
+      </div>
+    </aside>
+
+    <%= render "dashboards/mission_feed_script", agency: @agency %>
+  <% end %>
 
   <!-- Mobile bottom tab bar (visible only below md) -->
   <div class="md:hidden fixed bottom-0 inset-x-0 z-40">

@@ -196,6 +196,19 @@ class DashboardsController < ApplicationController
       @denials_pending = []
     end
 
+    # Active Census + live-activity feed, scoped to this clinician's caseload —
+    # the same Mission Stage shell managers see, but "pertaining to them".
+    @caseload_ids         = caseload_ids
+    @active_patient_count = @caseload.count { |p| p.status.to_s == "active" }
+    @unresolved_note_ids  = @open_crises.map(&:id)
+
+    caseload_set  = caseload_ids.to_set
+    scoped_events = AgentEvent.order(happened_at: :desc).limit(200).to_a.select do |ev|
+      pid = ev.subject_type == "Patient" ? ev.subject_id : ev.subject.try(:patient_id)
+      pid && caseload_set.include?(pid)
+    end.first(80)
+    @stories = EventNarrator.stories_from(scoped_events, patient_lookup: @caseload.index_by(&:id))
+
     # Live team-chat thread(s) — the same panel every role's dashboard shows.
     load_team_channels
   end
