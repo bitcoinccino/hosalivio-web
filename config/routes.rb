@@ -79,7 +79,7 @@ Rails.application.routes.draw do
   # Patient registration (admin/DON/admissions) + per-patient nested resources.
   # Defined before the patients/:id show route so /patients/new isn't
   # swallowed by the :id segment.
-  resources :patients, only: [ :new, :create, :edit ] do
+  resources :patients, only: [ :index, :new, :create, :edit ] do
     member do
       patch :reassign_rn      # legacy single-RN reassign (kept for back-compat)
       patch :reassign_member  # admin/DON/admissions: assign admission RN / primary RN / LPN
@@ -169,8 +169,6 @@ Rails.application.routes.draw do
   get "patients/:patient_id/admissions", to: "pre_admit_evals#index", as: :patient_admissions
   # Cross-patient admissions worklist.
   get "admissions", to: "pre_admit_evals#queue", as: :admissions_queue
-  # Coordination queue: inbound leads + new registrations, side by side.
-  get "coordination", to: "coordination#index", as: :coordination
 
   # Prior-authorization review (new vertical — see docs/prior-auth-slice.md).
   # Reviewer opens the grounded per-criterion determination and signs off.

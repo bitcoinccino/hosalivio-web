@@ -18,8 +18,11 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Pending reviews", response.body
     assert_match "Open blockers", response.body
     assert_match "NOE deadlines", response.body
-    # sidebar tidy
-    assert_match "Admissions queue", response.body
+    # sidebar — admission funnel group (Referrals → Admissions → Patients)
+    assert_match "Referrals", response.body
+    assert_match "Admissions", response.body
+    assert_match "Patients", response.body
+    assert_no_match(/Coordination/, response.body)   # replaced by Referrals/Patients
     assert_match "Reports", response.body
     # ask assistant composer still present
     assert_match "Ask HosAlivio", response.body
