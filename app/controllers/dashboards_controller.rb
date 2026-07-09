@@ -209,6 +209,9 @@ class DashboardsController < ApplicationController
     end.first(80)
     @stories = EventNarrator.stories_from(scoped_events, patient_lookup: @caseload.index_by(&:id))
 
+    # My notifications — surfaced as a right-column tab (moved off the sidebar).
+    @my_notifications = Notification.where(user: me).newest_first.limit(30)
+
     # Live team-chat thread(s) — the same panel every role's dashboard shows.
     load_team_channels
   end
