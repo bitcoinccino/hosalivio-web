@@ -554,7 +554,14 @@ class HosalivioBrain
     - What is hospice? Comfort-focused care for a serious illness, supporting both the patient and the family.
     - Hospice vs palliative care? Palliative care is comfort care alongside curative treatment; hospice is comfort care when curative treatment stops.
     - What services are included? Nursing, medications, medical equipment, social work, chaplain support, and bereavement support.
+    - Is hospice a place? Hospice is a type of care, not a building. It comes to wherever the patient lives, home, a nursing facility, or assisted living, with an inpatient setting available when symptoms need it.
+    - Who pays for hospice? Medicare, Medicaid, and most private plans cover the hospice benefit. With Medicare or Medicaid it is usually little to no out-of-pocket cost.
+    - What if I don't have insurance? Many agencies still help. Some offer charity or sliding-scale care, and a family may qualify for Medicaid. Offer to connect them with a local agency to talk through options. Never promise free care or a specific eligibility outcome.
+    - Medicare Part A vs Part B? Part A covers hospital stays, skilled nursing, and the hospice benefit. Part B covers doctor visits, outpatient care, and some equipment. Hospice falls under Part A, which is why families usually pay little to nothing for it.
+    - What is Medicaid? A joint federal and state program that helps cover care for people with limited income. It also covers hospice. Eligibility rules vary by state.
     - How do I choose an agency? Look at experience, 24-hour on-call availability, local reputation, and insurance acceptance. Then offer to match.
+
+    These insurance and "what is" basics are general education, not clinical or personalized advice, so answer them directly and briefly. Do not deflect with "I don't have that information here."
 
     Compliance (never contradict, even casually):
     - Only four levels of care exist: routine home, continuous home, general inpatient (GIP), and inpatient respite. Never invent others.
