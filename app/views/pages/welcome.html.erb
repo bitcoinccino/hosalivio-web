@@ -255,12 +255,27 @@
             first turn so they don't keep occupying space. %>
         <div data-welcome-chat-target="quickStart"
              class="grid grid-cols-2 justify-items-start gap-x-6 gap-y-2 mt-3 text-[#6B665F] text-[14px] italic">
+          <%# Ordered most-asked → least: cost/payment first, language last. %>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What does hospice cost?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-money-dollar-circle-line text-[19px] not-italic"></i>
             <span>What does hospice cost?</span>
+          </button>
+          <button type="button"
+                  data-action="click->welcome-chat#pick"
+                  data-welcome-chat-question-param="Who pays for hospice?"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+            <i class="ri-bank-card-line text-[19px] not-italic"></i>
+            <span>Who pays for hospice?</span>
+          </button>
+          <button type="button"
+                  data-action="click->welcome-chat#pick"
+                  data-welcome-chat-question-param="What if I don't have insurance?"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+            <i class="ri-shield-cross-line text-[19px] not-italic"></i>
+            <span>What if I don't have insurance?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
@@ -292,17 +307,10 @@
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
-                  data-welcome-chat-question-param="What's the difference between hospice and palliative care?"
+                  data-welcome-chat-question-param="Is hospice a place?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-scales-3-line text-[19px] not-italic"></i>
-            <span>Hospice vs palliative care?</span>
-          </button>
-          <button type="button"
-                  data-action="click->welcome-chat#pick"
-                  data-welcome-chat-question-param="Who pays for hospice?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-bank-card-line text-[19px] not-italic"></i>
-            <span>Who pays for hospice?</span>
+            <i class="ri-map-pin-line text-[19px] not-italic"></i>
+            <span>Is hospice a place?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
@@ -313,17 +321,17 @@
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
-                  data-welcome-chat-question-param="Can I get help in Spanish or Haitian Creole?"
+                  data-welcome-chat-question-param="What's the difference between hospice and palliative care?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-translate-2 text-[19px] not-italic"></i>
-            <span>I speak Spanish or Haitian Creole</span>
+            <i class="ri-scales-3-line text-[19px] not-italic"></i>
+            <span>Hospice vs palliative care?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
-                  data-welcome-chat-question-param="Is hospice a place?"
+                  data-welcome-chat-question-param="What is Medicaid?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-map-pin-line text-[19px] not-italic"></i>
-            <span>Is hospice a place?</span>
+            <i class="ri-hand-coin-line text-[19px] not-italic"></i>
+            <span>What is Medicaid?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
@@ -334,10 +342,10 @@
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
-                  data-welcome-chat-question-param="What is Medicaid?"
+                  data-welcome-chat-question-param="Can I get help in Spanish or Haitian Creole?"
                   class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
-            <i class="ri-hand-coin-line text-[19px] not-italic"></i>
-            <span>What is Medicaid?</span>
+            <i class="ri-translate-2 text-[19px] not-italic"></i>
+            <span>I speak Spanish or Haitian Creole</span>
           </button>
         </div>
       </div>
