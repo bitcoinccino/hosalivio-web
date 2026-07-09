@@ -23,6 +23,11 @@
     "active" => [ "#2F6F4E", "Active" ],     "revoked" => [ "#C1403A", "Revoked" ],
     "discharged" => [ "#6B665F", "Discharged" ], "deceased" => [ "#3A3936", "Deceased" ]
   }
+  eval_pill = {
+    "draft" => [ "#8A4B2F", "Eval: Draft" ],       "final" => [ "#2B4A7A", "Eval: Awaiting MD" ],
+    "certified" => [ "#2F6F4E", "Eval: Certified" ], "noe_filed" => [ "#2F6F4E", "Eval: NOE filed" ],
+    "revoked" => [ "#C1403A", "Eval: Revoked" ]
+  }
 %>
 <div class="max-w-6xl mx-auto px-4 md:px-8 py-6">
   <div class="flex items-start justify-between gap-3 mb-5 flex-wrap">
@@ -46,23 +51,38 @@
       <input type="text" name="q" value="<%= @q %>" autocomplete="off"
              placeholder="Search by name or MRN…"
              class="flex-1 bg-transparent border-0 focus:outline-none text-[14px] placeholder-[#6B665F] py-1">
-      <% if @branch.present? %><input type="hidden" name="branch_id" value="<%= @branch %>"><% end %>
       <% if @status.present? %><input type="hidden" name="status" value="<%= @status %>"><% end %>
       <button type="submit" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white transition">
         <i class="ri-arrow-right-line text-[15px]"></i>
       </button>
     </div>
 
-    <div class="flex items-center gap-1.5 flex-wrap mt-3">
-      <%= link_to "All", patients_path(q: @q.presence),
-            class: "text-[11px] px-2.5 py-1 rounded-full border transition #{@status.blank? ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" %>
-      <% Patient.statuses.each_key do |st| %>
-        <% color, label = status_pill[st] %>
-        <%= link_to patients_path(q: @q.presence, status: st),
-              class: "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition #{@status == st ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" do %>
-          <span class="w-1.5 h-1.5 rounded-full" style="background: <%= color %>;"></span><%= label %>
-          <span class="font-mono opacity-70"><%= @status_counts[st] || 0 %></span>
+    <div class="flex items-center gap-2 flex-wrap mt-3">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <%= link_to "All", patients_path(q: @q.presence, branch_id: @branch.presence),
+              class: "text-[11px] px-2.5 py-1 rounded-full border transition #{@status.blank? ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" %>
+        <% Patient.statuses.each_key do |st| %>
+          <% color, label = status_pill[st] %>
+          <%= link_to patients_path(q: @q.presence, status: st, branch_id: @branch.presence),
+                class: "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition #{@status == st ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" do %>
+            <span class="w-1.5 h-1.5 rounded-full" style="background: <%= color %>;"></span><%= label %>
+            <span class="font-mono opacity-70"><%= @status_counts[st] || 0 %></span>
+          <% end %>
         <% end %>
+      </div>
+
+      <%# Branch filter — submits the form (keeps q + status). %>
+      <% if @branches.any? %>
+        <div class="ml-auto flex items-center gap-1.5">
+          <i class="ri-map-pin-line text-[#9A938A] text-[13px]"></i>
+          <select name="branch_id" onchange="this.form.submit()"
+                  class="text-[12px] rounded-full border border-[#EFECE6] bg-white px-3 py-1 focus:outline-none focus:border-[#D97757] text-[#1D1C1A]">
+            <option value="">All branches</option>
+            <% @branches.each do |b| %>
+              <option value="<%= b.id %>" <%= "selected" if @branch == b.id.to_s %>><%= b.name %></option>
+            <% end %>
+          </select>
+        </div>
       <% end %>
     </div>
   <% end %>
@@ -83,28 +103,53 @@
         <% @patients.each do |p| %>
           <% stage_label, stage_fg, stage_bg = stage_for.call(p) %>
           <% st_color, _st_label = status_pill[p.status.to_s] || [ "#6B665F", p.status.to_s ] %>
-          <li>
-            <%= link_to patient_path(p), class: "flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition" do %>
-              <div class="w-10 h-10 rounded-full bg-[#EFECE6] text-[#1D1C1A] text-[12px] font-bold flex items-center justify-center flex-shrink-0">
-                <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+          <% ev    = @latest_eval_by_patient[p.id] %>
+          <% notes = @team_note_counts[p.id].to_i %>
+          <% docs  = @docs_by_patient[p.id] || [] %>
+          <li class="flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition">
+            <div class="w-10 h-10 rounded-full bg-[#EFECE6] text-[#1D1C1A] text-[12px] font-bold flex items-center justify-center flex-shrink-0">
+              <%= p.full_name.to_s.split.map(&:first).first(2).join.upcase %>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <%= link_to p.full_name, patient_path(p), class: "text-[14px] text-[#1D1C1A] truncate hover:text-[#D97757] hover:underline" %>
+                <% if p.dnr? || p.dnr_dni? %>
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+                <% end %>
               </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="text-[14px] text-[#1D1C1A] truncate"><%= p.full_name %></span>
-                  <% if p.dnr? || p.dnr_dni? %>
-                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider"><%= p.code_status.to_s.upcase.tr("_", "/") %></span>
+              <div class="text-[11px] text-[#6B665F] truncate">
+                <span class="font-mono"><%= p.mrn %></span>
+                <% if p.primary_diagnosis.present? %> · <%= p.primary_diagnosis.to_s[0, 40] %><% end %>
+              </div>
+
+              <%# Record completeness: pre-admit eval · team notes · documents (with type). %>
+              <div class="mt-1 flex items-center gap-2 flex-wrap text-[10px]">
+                <% if ev %>
+                  <% ec, elabel = eval_pill[ev.status.to_s] || [ "#6B665F", "Eval" ] %>
+                  <%= link_to elabel, patient_admissions_path(p),
+                        class: "inline-flex items-center px-1.5 py-0.5 rounded font-semibold hover:underline",
+                        style: "color: #{ec}; background: #{ec}1a;" %>
+                <% else %>
+                  <%= link_to patient_admissions_path(p),
+                        class: "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[#C1403A] bg-[#FFF3EC] font-semibold hover:underline" do %>
+                    <i class="ri-error-warning-line"></i> No eval
                   <% end %>
-                </div>
-                <div class="text-[11px] text-[#6B665F] truncate">
-                  <span class="font-mono"><%= p.mrn %></span>
-                  <% if p.primary_diagnosis.present? %> · <%= p.primary_diagnosis.to_s[0, 40] %><% end %>
-                </div>
+                <% end %>
+                <%= link_to patient_path(p), class: "inline-flex items-center gap-1 text-[#6B665F] hover:text-[#1D1C1A]" do %>
+                  <i class="ri-chat-3-line"></i> <%= notes %> <%= "note".pluralize(notes) %>
+                <% end %>
+                <%= link_to patient_documents_path(p), class: "inline-flex items-center gap-1 text-[#6B665F] hover:text-[#1D1C1A]" do %>
+                  <i class="ri-folder-line"></i> <%= docs.size %> <%= "doc".pluralize(docs.size) %>
+                  <% if docs.any? %>
+                    <span class="text-[#9A938A]">· <%= docs.first(3).map(&:kind_label).compact.join(", ") %><%= docs.size > 3 ? "…" : "" %></span>
+                  <% end %>
+                <% end %>
               </div>
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0" style="color: <%= stage_fg %>; background: <%= stage_bg %>;"><%= stage_label %></span>
-              <span class="inline-flex items-center gap-1 text-[10px] text-[#6B665F] whitespace-nowrap flex-shrink-0">
-                <span class="w-1.5 h-1.5 rounded-full" style="background: <%= st_color %>;"></span><%= p.status %>
-              </span>
-            <% end %>
+            </div>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0" style="color: <%= stage_fg %>; background: <%= stage_bg %>;"><%= stage_label %></span>
+            <span class="inline-flex items-center gap-1 text-[10px] text-[#6B665F] whitespace-nowrap flex-shrink-0">
+              <span class="w-1.5 h-1.5 rounded-full" style="background: <%= st_color %>;"></span><%= p.status %>
+            </span>
           </li>
         <% end %>
       </ul>
