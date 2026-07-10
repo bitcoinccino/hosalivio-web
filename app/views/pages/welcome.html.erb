@@ -756,15 +756,14 @@
       <%# Family/patient FAQ: visible when data-audience="family" %>
       <div class="space-y-2 group-data-[audience=partner]/faq:hidden">
         <%
+          # Trimmed to the highest-intent, search-worthy questions — the chat
+          # widget handles the long tail. "Is HosAlivio my hospice?" stays for
+          # its canonical, compliance-sensitive wording.
           family_faq = [
             ["What is hospice care?",
              "Hospice is comfort-focused care for someone with a terminal illness when curative treatment is no longer the goal. The team (nurse, doctor, social worker, chaplain, aide) comes to your home and manages pain, breathing, and the family experience together."],
             ["Who pays for hospice?",
              "Medicare's Hospice Benefit covers it 100%: the nurse, the doctor, the medications related to the terminal diagnosis, oxygen, hospital beds, and chaplain visits. There's no copay or deductible. Medicaid and most private insurers cover it the same way."],
-            ["Do I have to give up my regular doctor?",
-             "No. Your primary doctor can stay involved. You also get a hospice physician (HosAlivio's Dr. Esther in our demo) who oversees the comfort plan. The two coordinate."],
-            ["Can I change my mind?",
-             "Yes. You can revoke hospice and go back to curative treatment any day, for any reason. Hospice isn't a one-way door."],
             ["How fast can someone start?",
              "If a doctor signs off on a six-month prognosis today, an admissions visit is usually the same day or next day. Crisis symptoms (pain, breathing) get a phone-call response within minutes once you're enrolled."],
             ["Is HosAlivio my hospice?",
@@ -780,6 +779,18 @@
             <div class="px-5 pb-4 text-[13px] text-[#3A3936] leading-relaxed border-t border-[#EFECE6] pt-3"><%= a %></div>
           </details>
         <% end %>
+
+        <%# Funnel the long tail into the chat — the FAQ covers the canonical
+            few, HosAlivio answers everything else. %>
+        <div class="text-center pt-5">
+          <p class="text-[13px] text-[#6B665F] mb-2">Still have questions?</p>
+          <button type="button"
+                  data-action="click->welcome#showHome"
+                  class="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-medium transition">
+            <i class="ri-chat-3-line"></i> Ask HosAlivio
+            <i class="ri-arrow-right-line"></i>
+          </button>
+        </div>
       </div>
 
       <%# Partner FAQ: visible when data-audience="partner" %>
