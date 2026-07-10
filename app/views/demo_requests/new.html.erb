@@ -1,0 +1,100 @@
+<% content_for :title, "Book a demo · HosAlivio" %>
+<%
+  field_class = "w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]"
+  label_class = "block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1"
+%>
+<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+  <div class="max-w-lg mx-auto">
+    <a href="<%= root_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back
+    </a>
+
+    <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm">
+      <div class="text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-1">
+        <i class="ri-hospital-line"></i> For partners
+      </div>
+
+      <% if flash[:notice].present? %>
+        <%# Thank-you state after a successful submit. %>
+        <div class="flex items-start gap-3 py-4">
+          <i class="ri-check-double-line text-[#D97757] text-2xl"></i>
+          <div>
+            <h1 class="font-serif text-xl text-[#1D1C1A]">Request received</h1>
+            <p class="text-[13px] text-[#3A3936] mt-1"><%= flash[:notice] %></p>
+          </div>
+        </div>
+        <a href="<%= root_path %>" class="inline-flex items-center gap-1.5 mt-2 px-4 py-2 rounded-full bg-[#1D1C1A] hover:bg-[#3A3936] text-white text-sm font-medium transition">
+          Back to home
+        </a>
+      <% else %>
+        <h1 class="font-serif text-2xl text-[#1D1C1A] mb-1">Book a demo</h1>
+        <p class="text-[13px] text-[#6B665F] mb-5">See how HosAlivio turns a clinician's spoken visit into a certified pre-admit eval. We'll reach out within one business day.</p>
+
+        <% if flash[:alert].present? %>
+          <div class="mb-4 px-3 py-2 rounded-lg bg-[#FFF3EC] border border-[#D97757] text-[#C1403A] text-sm"><%= flash[:alert] %></div>
+        <% end %>
+
+        <%= form_with model: @demo_request, url: demo_path, method: :post, data: { turbo: false },
+              html: { class: "space-y-3", data: { controller: "demo-form" } } do |f| %>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <%= f.label :first_name, "First name", class: label_class %>
+              <%= f.text_field :first_name, required: true, placeholder: "Jane", class: field_class %>
+            </div>
+            <div>
+              <%= f.label :last_name, "Last name", class: label_class %>
+              <%= f.text_field :last_name, required: true, placeholder: "Smith", class: field_class %>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :work_email, "Work email", class: label_class %>
+            <%= f.email_field :work_email, required: true, placeholder: "jane@agency.com", class: field_class %>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <%= f.label :organization, "Organization", class: label_class %>
+              <%= f.text_field :organization, placeholder: "Mercy Home Hospice", class: field_class %>
+            </div>
+            <div>
+              <%= f.label :phone, "Phone number", class: label_class %>
+              <%= f.telephone_field :phone, placeholder: "(000) 000-0000", class: field_class %>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :primary_ehr, "Primary EHR", class: label_class %>
+            <%= f.select :primary_ehr, DemoRequest::EHR_OPTIONS, { include_blank: "Select…" }, class: "#{field_class} text-[#6B665F]" %>
+          </div>
+
+          <div>
+            <%= f.label :referral_source, "How did you hear about HosAlivio?", class: label_class %>
+            <%= f.select :referral_source, DemoRequest::REFERRAL_SOURCES, { include_blank: "Select…" },
+                  class: "#{field_class} text-[#6B665F]",
+                  data: { "demo-form-target": "source", action: "change->demo-form#toggle" } %>
+          </div>
+
+          <div data-demo-form-target="other" class="hidden">
+            <%= f.label :referral_other, "Please specify", class: label_class %>
+            <%= f.text_field :referral_other, placeholder: "Please specify", class: field_class %>
+          </div>
+
+          <%# Honeypot — hidden from people, bots fill it; the controller drops those. %>
+          <div class="hidden" aria-hidden="true">
+            <label>Company website</label>
+            <input type="text" name="company_site" tabindex="-1" autocomplete="off">
+          </div>
+
+          <div class="pt-2">
+            <%= f.submit "Book a demo", class: "w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition cursor-pointer" %>
+          </div>
+        <% end %>
+
+        <div class="mt-4 pt-4 border-t border-[#EFECE6] text-center text-[12px] text-[#6B665F]">
+          Ready to onboard now? <%= link_to "Set up your agency", new_partner_path, class: "text-[#D97757] font-medium hover:underline" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
