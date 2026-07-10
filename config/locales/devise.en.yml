@@ -46,7 +46,9 @@ en:
       updated: "Your account has been updated successfully."
       updated_but_not_signed_in: "Your account has been updated successfully, but since your password was changed, you need to sign in again."
     sessions:
-      signed_in: "Signed in successfully."
+      # Blank the generic message — the passwordless flow shows a more useful
+      # "Signed in as <name>." confirmation instead.
+      signed_in: ""
       # Blank so Devise's set_flash_message! skips it — no "Signed out
       # successfully." toast on sign-out.
       signed_out: ""
