@@ -694,9 +694,13 @@
           </div>
         </div>
 
-        <div class="text-center mt-8">
-          <%= link_to new_partner_path,
+        <div class="flex flex-wrap items-center justify-center gap-3 mt-8">
+          <%= link_to demo_path,
                 class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
+            <i class="ri-calendar-check-line"></i> Book a demo
+          <% end %>
+          <%= link_to new_partner_path,
+                class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-[#D9D5CD] hover:border-[#1D1C1A] text-[#1D1C1A] text-sm font-medium transition" do %>
             <i class="ri-user-add-line"></i> Sign up your agency
           <% end %>
         </div>

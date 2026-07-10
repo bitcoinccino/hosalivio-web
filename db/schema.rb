@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_08_191256) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_005805) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -317,6 +317,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_08_191256) do
     t.boolean "verified", default: false, null: false
     t.index ["policy_criterion_id"], name: "index_criterion_results_on_policy_criterion_id"
     t.index ["prior_auth_review_id"], name: "index_criterion_results_on_prior_auth_review_id"
+  end
+
+  create_table "demo_requests", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "first_name"
+    t.string "ip_address"
+    t.string "last_name"
+    t.string "organization"
+    t.string "phone"
+    t.string "primary_ehr"
+    t.string "referral_other"
+    t.string "referral_source"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.string "work_email"
   end
 
   create_table "dme_orders", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

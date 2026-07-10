@@ -222,6 +222,11 @@ Rails.application.routes.draw do
   # Public pricing page for prospective partners
   get "pricing", to: "pages#pricing", as: :pricing
 
+  # Public "Book a demo" lead form — the low-friction top-of-funnel for
+  # prospective partners (the full signup wizard is for the ready-to-onboard).
+  get  "demo", to: "demo_requests#new",    as: :demo
+  post "demo", to: "demo_requests#create"
+
   # Public 3-step partner-signup wizard. Session-backed until step 3 so
   # abandoning the flow never creates a half-provisioned Agency.
   get    "partners/new",         to: "partners#new",      as: :new_partner
