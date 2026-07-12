@@ -1021,54 +1021,58 @@
 
       <%# Field styling is shared; keep it in one place so every input/select matches. %>
       <% field_class = "w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-      <form data-action="submit->welcome#submitCapture" class="space-y-3">
+      <form data-action="submit->welcome#submitCapture"
+            data-controller="more-toggle"
+            data-more-toggle-more-label-value="Add more details (optional)"
+            data-more-toggle-less-label-value="Hide extra details"
+            class="space-y-3">
+        <%# Required core — the minimum a coordinator needs to reach you. Every
+            control shares field_class so widths and heights stay uniform. %>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input type="text" name="first_name" placeholder="First name" required aria-label="First name" class="<%= field_class %>">
           <input type="text" name="last_name" placeholder="Last name" required aria-label="Last name" class="<%= field_class %>">
         </div>
-
-        <select name="requester_role" aria-label="Your relationship to the patient" class="<%= field_class %> text-[#6B665F]">
-          <option value="" selected>Your relationship to the patient (optional)</option>
-          <% Inquiry::REQUESTER_ROLE_OPTIONS.each do |role| %>
-            <option value="<%= role %>"><%= role %></option>
-          <% end %>
-        </select>
-
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input type="tel" name="caregiver_phone" placeholder="Caregiver phone number" required aria-label="Caregiver phone number"
                  inputmode="tel" class="<%= field_class %>">
-          <input type="email" name="email" placeholder="Email address (optional)" aria-label="Email address" class="<%= field_class %>">
+          <input type="text" name="zip" placeholder="Patient ZIP code" required inputmode="numeric" pattern="[0-9]{5}"
+                 aria-label="Patient ZIP code" class="<%= field_class %>">
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label class="block">
-            <span class="block text-[11px] text-[#6B665F] mb-1">Patient date of birth (MM/DD/YYYY)</span>
-            <input type="date" name="dob" aria-label="Patient date of birth" class="<%= field_class %>">
-          </label>
-          <label class="block">
-            <span class="block text-[11px] text-[#6B665F] mb-1">Patient ZIP code</span>
-            <input type="text" name="zip" placeholder="e.g. 33101" required inputmode="numeric" pattern="[0-9]{5}"
-                   aria-label="Patient ZIP code" class="<%= field_class %>">
-          </label>
-        </div>
+        <%# Optional details, grouped behind a toggle so the first view stays short. %>
+        <button type="button" data-action="click->more-toggle#toggle"
+                class="inline-flex items-center gap-1 text-[13px] text-[#D97757] font-medium hover:underline">
+          <i class="ri-arrow-down-s-line transition-transform" data-more-toggle-chevron></i>
+          <span data-more-toggle-target="label">Add more details (optional)</span>
+        </button>
 
-        <select name="diagnosis" aria-label="Primary diagnosis or primary concern" class="<%= field_class %> text-[#6B665F]">
-          <option value="" selected>Primary diagnosis or primary concern (optional)</option>
-          <% Inquiry::DIAGNOSIS_OPTIONS.each do |dx| %>
-            <option value="<%= dx %>"><%= dx %></option>
-          <% end %>
-        </select>
+        <div data-more-toggle-target="item" class="hidden space-y-3">
+          <select name="requester_role" aria-label="Your relationship to the patient" class="<%= field_class %> text-[#6B665F]">
+            <option value="" selected>Your relationship to the patient</option>
+            <% Inquiry::REQUESTER_ROLE_OPTIONS.each do |role| %>
+              <option value="<%= role %>"><%= role %></option>
+            <% end %>
+          </select>
 
-        <%# Book-a-call preferred window (optional). We capture a preferred day
-            and time-of-day so the coordinator can aim for it; it's a preference,
-            not a committed appointment. %>
-        <div class="pt-1">
-          <div class="text-[11px] text-[#6B665F] mb-1">When's the best time to reach you? (optional)</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input type="email" name="email" placeholder="Email address" aria-label="Email address" class="<%= field_class %>">
+            <input type="date" name="dob" aria-label="Patient date of birth" title="Patient date of birth" class="<%= field_class %> text-[#6B665F]">
+          </div>
+
+          <select name="diagnosis" aria-label="Primary diagnosis or primary concern" class="<%= field_class %> text-[#6B665F]">
+            <option value="" selected>Primary diagnosis or primary concern</option>
+            <% Inquiry::DIAGNOSIS_OPTIONS.each do |dx| %>
+              <option value="<%= dx %>"><%= dx %></option>
+            <% end %>
+          </select>
+
+          <%# Preferred call window — a preference the coordinator aims for, not
+              a committed appointment. %>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input type="date" name="preferred_date" min="<%= Date.current.iso8601 %>" max="<%= (Date.current + 7).iso8601 %>"
-                   aria-label="Preferred call date" class="<%= field_class %>">
+                   aria-label="Preferred call date" title="Preferred call date" class="<%= field_class %> text-[#6B665F]">
             <select name="preferred_slot" aria-label="Preferred call time" class="<%= field_class %> text-[#6B665F]">
-              <option value="" selected>Any time</option>
+              <option value="" selected>Best time to reach you</option>
               <% Inquiry::CALL_SLOTS.each do |key, label| %>
                 <option value="<%= key %>"><%= label %></option>
               <% end %>
