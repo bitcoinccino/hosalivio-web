@@ -297,7 +297,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Who qualifies for hospice?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-shield-check-line text-[19px] not-italic"></i>
             <span>Who qualifies for hospice?</span>
           </button>
@@ -305,7 +306,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What services are included?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-hand-heart-line text-[19px] not-italic"></i>
             <span>What services are included?</span>
           </button>
@@ -313,7 +315,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Is hospice a place?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-map-pin-line text-[19px] not-italic"></i>
             <span>Is hospice a place?</span>
           </button>
@@ -321,7 +324,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What if I need equipment like a hospital bed or oxygen?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-wheelchair-line text-[19px] not-italic"></i>
             <span>What if I need equipment?</span>
           </button>
@@ -329,7 +333,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What's the difference between hospice and palliative care?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-scales-3-line text-[19px] not-italic"></i>
             <span>Hospice vs palliative care?</span>
           </button>
@@ -337,7 +342,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What is Medicaid?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-hand-coin-line text-[19px] not-italic"></i>
             <span>What is Medicaid?</span>
           </button>
@@ -345,7 +351,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What's the difference between Medicare Part A and B?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-government-line text-[19px] not-italic"></i>
             <span>Medicare Part A vs B?</span>
           </button>
@@ -353,7 +360,8 @@
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Can I get help in Spanish or Haitian Creole?"
                   data-more-toggle-target="item"
-                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  style="display:none"
+                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-translate-2 text-[19px] not-italic"></i>
             <span>I speak Spanish or Haitian Creole</span>
           </button>
@@ -1020,7 +1028,8 @@
       <div data-welcome-target="captureIntro" class="font-serif text-[16px] text-[#1D1C1A] mb-5">Share a few details to reach our team. A real coordinator, not an AI bot, will review your message and contact you, usually within the hour.</div>
 
       <%# Field styling is shared; keep it in one place so every input/select matches. %>
-      <% field_class = "w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      <% field_class = "w-full box-border h-[42px] px-3 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
+      <% caption_class = "block text-[11px] text-[#6B665F] mb-1" %>
       <form data-action="submit->welcome#submitCapture"
             data-controller="more-toggle"
             data-more-toggle-more-label-value="Add more details (optional)"
@@ -1046,37 +1055,59 @@
           <span data-more-toggle-target="label">Add more details (optional)</span>
         </button>
 
-        <div data-more-toggle-target="item" class="hidden space-y-3">
-          <select name="requester_role" aria-label="Your relationship to the patient" class="<%= field_class %> text-[#6B665F]">
-            <option value="" selected>Your relationship to the patient</option>
-            <% Inquiry::REQUESTER_ROLE_OPTIONS.each do |role| %>
-              <option value="<%= role %>"><%= role %></option>
-            <% end %>
-          </select>
+        <%# Every optional field carries a caption so nothing (e.g. the date
+            pickers) shows up blank, and all controls share field_class for a
+            uniform width/height. Hidden via inline style so it beats the flex
+            utilities on reveal. %>
+        <div data-more-toggle-target="item" style="display:none" class="space-y-3">
+          <label class="block">
+            <span class="<%= caption_class %>">Your relationship to the patient</span>
+            <select name="requester_role" aria-label="Your relationship to the patient" class="<%= field_class %> text-[#6B665F]">
+              <option value="" selected>Select one</option>
+              <% Inquiry::REQUESTER_ROLE_OPTIONS.each do |role| %>
+                <option value="<%= role %>"><%= role %></option>
+              <% end %>
+            </select>
+          </label>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input type="email" name="email" placeholder="Email address" aria-label="Email address" class="<%= field_class %>">
-            <input type="date" name="dob" aria-label="Patient date of birth" title="Patient date of birth" class="<%= field_class %> text-[#6B665F]">
+            <label class="block">
+              <span class="<%= caption_class %>">Email address</span>
+              <input type="email" name="email" placeholder="you@example.com" aria-label="Email address" class="<%= field_class %>">
+            </label>
+            <label class="block">
+              <span class="<%= caption_class %>">Patient date of birth</span>
+              <input type="date" name="dob" aria-label="Patient date of birth" class="<%= field_class %> text-[#6B665F]">
+            </label>
           </div>
 
-          <select name="diagnosis" aria-label="Primary diagnosis or primary concern" class="<%= field_class %> text-[#6B665F]">
-            <option value="" selected>Primary diagnosis or primary concern</option>
-            <% Inquiry::DIAGNOSIS_OPTIONS.each do |dx| %>
-              <option value="<%= dx %>"><%= dx %></option>
-            <% end %>
-          </select>
+          <label class="block">
+            <span class="<%= caption_class %>">Primary diagnosis or concern</span>
+            <select name="diagnosis" aria-label="Primary diagnosis or primary concern" class="<%= field_class %> text-[#6B665F]">
+              <option value="" selected>Select one</option>
+              <% Inquiry::DIAGNOSIS_OPTIONS.each do |dx| %>
+                <option value="<%= dx %>"><%= dx %></option>
+              <% end %>
+            </select>
+          </label>
 
           <%# Preferred call window — a preference the coordinator aims for, not
               a committed appointment. %>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input type="date" name="preferred_date" min="<%= Date.current.iso8601 %>" max="<%= (Date.current + 7).iso8601 %>"
-                   aria-label="Preferred call date" title="Preferred call date" class="<%= field_class %> text-[#6B665F]">
-            <select name="preferred_slot" aria-label="Preferred call time" class="<%= field_class %> text-[#6B665F]">
-              <option value="" selected>Best time to reach you</option>
-              <% Inquiry::CALL_SLOTS.each do |key, label| %>
-                <option value="<%= key %>"><%= label %></option>
-              <% end %>
-            </select>
+            <label class="block">
+              <span class="<%= caption_class %>">Preferred call date</span>
+              <input type="date" name="preferred_date" min="<%= Date.current.iso8601 %>" max="<%= (Date.current + 7).iso8601 %>"
+                     aria-label="Preferred call date" class="<%= field_class %> text-[#6B665F]">
+            </label>
+            <label class="block">
+              <span class="<%= caption_class %>">Preferred call time</span>
+              <select name="preferred_slot" aria-label="Preferred call time" class="<%= field_class %> text-[#6B665F]">
+                <option value="" selected>Any time</option>
+                <% Inquiry::CALL_SLOTS.each do |key, label| %>
+                  <option value="<%= key %>"><%= label %></option>
+                <% end %>
+              </select>
+            </label>
           </div>
         </div>
 
