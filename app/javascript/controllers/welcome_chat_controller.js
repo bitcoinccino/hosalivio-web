@@ -375,7 +375,7 @@ export default class extends Controller {
 
         <div class="mt-4">
           <button type="button" data-action="click->welcome#nurseLine" data-source="chat_agency_card" ${a.agency_id ? `data-agency-id="${escapeHtml(String(a.agency_id))}"` : ""} data-agency-name="${escapeHtml(name || '')}" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-semibold w-full justify-center transition-colors">
-            <i class="ri-phone-fill"></i> Request call
+            <i class="ri-phone-fill"></i> Request Care
           </button>
         </div>
       `
