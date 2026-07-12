@@ -143,6 +143,7 @@ class PatientChatsController < ApplicationController
     User.joins(user_roles: :role)
         .where(agency: @agency, active: true)
         .where(roles: { name: "rn" })
+        .includes(:branch)
         .distinct
         .order(:full_name)
   end
@@ -151,6 +152,7 @@ class PatientChatsController < ApplicationController
     User.joins(user_roles: :role)
         .where(agency: @agency, active: true)
         .where(roles: { name: "lpn" })
+        .includes(:branch)
         .distinct
         .order(:full_name)
   end
