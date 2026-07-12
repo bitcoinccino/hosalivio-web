@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* ── Lock the page horizontally on every screen ────────────────────────
+   If any element is wider than the viewport, the whole page can be panned
+   / rubber-band dragged left-to-right on touch. Clip horizontal overflow
+   globally and cap the page width so pages stay fixed. `overflow-x: clip`
+   is preferred over `hidden`: it clips WITHOUT creating a scroll container,
+   so position: sticky and normal vertical scrolling keep working. `hidden`
+   is the fallback for older Safari (it comes first, clip overrides it). */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
 /* Voice-note recording — the 'Living Wave' bars in the chat composer.
    Each bar uses the same keyframe but a different animation-delay so
    they bounce out of sync, mimicking voice frequency without doing any
