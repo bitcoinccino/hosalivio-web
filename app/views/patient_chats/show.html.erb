@@ -233,16 +233,36 @@
     <!-- Patient Banner -->
     <% fam = current_user.family_access? %>
     <header class="relative px-6 py-4 border-b border-[#EFECE6] bg-white">
-      <%# Actions menu — staff only. Pinned top-right so it doesn't shift the
-          centered patient info. %>
+      <%# Back to the Mission Stage (the "station") — staff, mobile-only. Replaces
+          the old sections hamburger; sections now live in the "..." menu. %>
       <% unless fam %>
-        <% menu_item = "w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" %>
-        <div class="absolute top-4 right-4 z-20" data-controller="menu">
-          <button type="button" data-action="menu#toggle" aria-label="Patient actions"
-                  class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
-            <i class="ri-more-fill text-lg"></i>
+        <%= link_to dashboard_path, title: "Back to Mission Stage", "aria-label": "Back to Mission Stage",
+              class: "md:hidden absolute top-4 left-4 z-20 w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition" do %>
+          <i class="ri-arrow-left-line text-lg"></i>
+        <% end %>
+      <% end %>
+
+      <%# Actions "..." menu, top-right. Care Team / Clinical Details switch the
+          mobile overlays (mobile-only — on desktop all panes already show);
+          eval / documents / consents are staff pages. For family the whole
+          menu is mobile-only (nothing to show on desktop). %>
+      <% menu_item = "w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" %>
+      <div class="absolute top-4 right-4 z-20 <%= "md:hidden" if fam %>" data-controller="menu">
+        <button type="button" data-action="menu#toggle" aria-label="Patient actions"
+                class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
+          <i class="ri-more-fill text-lg"></i>
+        </button>
+        <div data-menu-target="panel" class="hidden absolute right-0 mt-2 w-52 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
+          <button type="button" data-action="patient-chat-mobile#activate menu#close" data-tab-name="team"
+                  class="md:hidden <%= menu_item %>">
+            <i class="ri-team-line text-[#6B665F]"></i> Care team
           </button>
-          <div data-menu-target="panel" class="hidden absolute right-0 mt-2 w-52 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
+          <button type="button" data-action="patient-chat-mobile#activate menu#close" data-tab-name="details"
+                  class="md:hidden <%= menu_item %>">
+            <i class="ri-file-list-3-line text-[#6B665F]"></i> Clinical details
+          </button>
+          <% unless fam %>
+            <div class="md:hidden my-1 border-t border-[#EFECE6]"></div>
             <%= link_to patient_admissions_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
               <i class="ri-file-shield-2-line text-[#6B665F]"></i> View eval
             <% end %>
@@ -250,28 +270,9 @@
               <i class="ri-folder-line text-[#6B665F]"></i> View documents
             <% end %>
             <%= link_to patient_consents_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
-              <i class="ri-file-list-3-line text-[#6B665F]"></i> View consents
+              <i class="ri-file-text-line text-[#6B665F]"></i> View consents
             <% end %>
-          </div>
-        </div>
-      <% end %>
-
-      <%# Mobile-only sections menu — the bottom tab bar is hidden in chat, so
-          this is how you reach the Care Team / Clinical Details overlays. %>
-      <div class="md:hidden absolute top-4 left-4 z-20" data-controller="menu">
-        <button type="button" data-action="menu#toggle" aria-label="Open sections"
-                class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
-          <i class="ri-menu-line text-lg"></i>
-        </button>
-        <div data-menu-target="panel" class="hidden absolute left-0 mt-2 w-48 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
-          <button type="button" data-action="patient-chat-mobile#activate menu#close" data-tab-name="team"
-                  class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
-            <i class="ri-team-line text-[#6B665F]"></i> Care team
-          </button>
-          <button type="button" data-action="patient-chat-mobile#activate menu#close" data-tab-name="details"
-                  class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
-            <i class="ri-file-list-3-line text-[#6B665F]"></i> Clinical details
-          </button>
+          <% end %>
         </div>
       </div>
 
@@ -346,11 +347,6 @@
           <span><%= @patient.age_years %>yo</span>
           <span>·</span>
           <span><%= @patient.gender %></span>
-          <% if @patient.primary_diagnosis.present? %>
-            <span>·</span>
-            <span class="text-[#1D1C1A]"><%= explain_icd(@patient.primary_diagnosis) %></span>
-          <% end %>
-          <span class="font-mono text-[10px]">· <%= @patient.mrn %></span>
         </div>
 
         <!-- Stat chips (hidden on small screens; essential info is in banner text) -->
@@ -393,12 +389,6 @@
               </div>
             </div>
           <% end %>
-        </div>
-
-        <!-- Status line -->
-        <div class="mt-2 text-[11px] text-[#6B665F] flex items-center justify-center gap-1.5">
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          <span>Family ↔ Care Team · <span data-patient-chat-target="status">connecting…</span></span>
         </div>
       </div>
     </header>
