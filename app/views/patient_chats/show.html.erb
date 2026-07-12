@@ -8,12 +8,14 @@
                 data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full data-[mobile-active=true]:pb-20 md:data-[mobile-active=true]:pb-6">
     <div>
       <div class="flex items-center justify-between group-data-[collapsed=true]/sb:justify-center">
-        <div class="flex items-center gap-2 group-data-[collapsed=true]/sb:hidden">
+        <div class="hidden md:flex items-center gap-2 group-data-[collapsed=true]/sb:hidden">
           <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
             <i class="ri-heart-pulse-line text-sm"></i>
           </div>
           <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold group-data-[collapsed=true]/sb:hidden">HosAlivio</h1>
         </div>
+        <%# On mobile this rail is the "Care team" overlay, not the app sidebar. %>
+        <div class="md:hidden text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold">Care team</div>
         <button type="button" data-action="click->sidebar#toggle"
                 title="Toggle sidebar"
                 class="w-7 h-7 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] hidden md:flex items-center justify-center flex-shrink-0 transition">
@@ -28,7 +30,7 @@
         </button>
       </div>
 
-      <div class="mt-6 pb-5 border-b border-[#D9D5CD] group-data-[collapsed=true]/sb:hidden">
+      <div class="hidden md:block mt-6 pb-5 border-b border-[#D9D5CD] group-data-[collapsed=true]/sb:hidden">
         <div class="text-[11px] uppercase tracking-widest text-[#6B665F]">Patient</div>
         <div class="mt-1 font-serif text-lg text-[#1D1C1A]"><%= @patient.full_name %></div>
         <div class="text-xs text-[#6B665F] mt-0.5 font-mono"><%= @patient.mrn %></div>
@@ -180,32 +182,8 @@
               <div class="text-[11px] text-[#6B665F] uppercase tracking-wider"><%= row[:role_label] %></div>
             </div>
           </div>
-          <% if @can_reassign_rn && %w[rn visit_rn lpn].include?(row[:role]) %>
-            <%# Admin/DON/admissions: assign this nurse slot inline (admission RN,
-                primary RN, or LPN). Auto-submits on change; the controller
-                validates the pick against the right role pool and redirects back. %>
-            <%
-              pool, current_id =
-                case row[:role]
-                when "lpn"      then [ @assignable_lpns, @patient.assigned_lpn_id ]
-                when "visit_rn" then [ @assignable_rns,  @patient.assigned_visit_rn_id ]
-                else                 [ @assignable_rns,  @patient.assigned_rn_id ]
-                end
-            %>
-            <%= form_with url: reassign_member_patient_path(@patient), method: :patch,
-                          class: "group-data-[collapsed=true]/sb:hidden mt-1 ml-10" do %>
-              <input type="hidden" name="field" value="<%= row[:role] %>">
-              <label for="reassign-<%= row[:role] %>-select" class="sr-only">Reassign <%= row[:role_label] %></label>
-              <select id="reassign-<%= row[:role] %>-select" name="user_id"
-                      onchange="this.form.requestSubmit()"
-                      class="w-full text-[12px] rounded-md border border-[#D9D5CD] bg-white px-2 py-1 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
-                <option value="">Unassigned</option>
-                <% pool.each do |u| %>
-                  <option value="<%= u.id %>" <%= "selected" if u.id == current_id %>><%= u.full_name %></option>
-                <% end %>
-              </select>
-            <% end %>
-          <% end %>
+          <%# Roster is read-only. Assigning is done via the patient "..."
+              menu → Assign care team (see the banner actions modal). %>
         <% end %>
       </nav>
     </div>
@@ -247,7 +225,7 @@
           eval / documents / consents are staff pages. For family the whole
           menu is mobile-only (nothing to show on desktop). %>
       <% menu_item = "w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" %>
-      <div class="absolute top-4 right-4 z-20 <%= "md:hidden" if fam %>" data-controller="menu">
+      <div class="absolute top-4 right-4 z-20 <%= "md:hidden" if fam %>" data-controller="menu dialog">
         <button type="button" data-action="menu#toggle" aria-label="Patient actions"
                 class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
           <i class="ri-more-fill text-lg"></i>
@@ -272,8 +250,92 @@
             <%= link_to patient_consents_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
               <i class="ri-file-text-line text-[#6B665F]"></i> View consents
             <% end %>
+            <% if @can_reassign_rn %>
+              <div class="my-1 border-t border-[#EFECE6]"></div>
+              <button type="button" data-action="menu#close dialog#open" class="<%= menu_item %>">
+                <i class="ri-user-settings-line text-[#6B665F]"></i> Assign care team
+              </button>
+            <% end %>
           <% end %>
         </div>
+
+        <%# Assign-care-team modal — nurse slots post to reassign_member and
+            reload the chart. Lives here so it isn't buried in the roster. %>
+        <% if @can_reassign_rn %>
+          <dialog data-dialog-target="el" data-action="click->dialog#backdrop"
+                  class="fixed inset-0 m-auto h-fit w-fit max-w-[90vw] max-h-[90vh] rounded-2xl p-0 bg-transparent backdrop:bg-black/40">
+            <div class="w-80 max-w-[90vw] bg-white rounded-2xl border border-[#EFECE6] shadow-xl text-left">
+              <div class="flex items-center justify-between gap-3 p-4 bg-[#FBF9F5] border-b border-[#EFECE6] rounded-t-2xl">
+                <div class="min-w-0">
+                  <div class="text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold">Assign care team</div>
+                  <div class="font-serif text-lg text-[#1D1C1A] truncate"><%= @patient.full_name %></div>
+                </div>
+                <button type="button" data-action="dialog#close" title="Close"
+                        class="text-[#6B665F] hover:text-[#1D1C1A] w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#EFECE6] flex-shrink-0">
+                  <i class="ri-close-line"></i>
+                </button>
+              </div>
+              <div class="p-4 space-y-3">
+                <%
+                  assign_slots = [
+                    [ "rn",       "Admission Nurse", "RN",  @assignable_rns,  @patient.assigned_rn_id ],
+                    [ "visit_rn", "Primary Nurse",   "RN",  @assignable_rns,  @patient.assigned_visit_rn_id ],
+                    [ "lpn",      "Support Nurse",   "LPN", @assignable_lpns, @patient.assigned_lpn_id ]
+                  ]
+                  pbranch = @patient.branch_id
+                %>
+                <% assign_slots.each do |field, label, role_short, pool, current_id| %>
+                  <%
+                    same    = pbranch.present? ? pool.select { |u| u.branch_id == pbranch } : []
+                    ordered = same + (pool - same)
+                    current = pool.find { |u| u.id == current_id }
+                  %>
+                  <%= form_with url: reassign_member_patient_path(@patient), method: :patch, data: { controller: "combobox" } do %>
+                    <input type="hidden" name="field" value="<%= field %>">
+                    <input type="hidden" name="user_id" value="<%= current_id %>" data-combobox-target="value">
+                    <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] mb-1"><%= label %></label>
+                    <div class="relative">
+                      <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-[#9A938A] text-[13px] pointer-events-none"></i>
+                      <input type="text" autocomplete="off" placeholder="Search name, role, or branch…"
+                             value="<%= current&.full_name %>"
+                             data-combobox-target="input"
+                             data-action="focus->combobox#open input->combobox#filter"
+                             class="w-full text-[13px] rounded-lg border border-[#D9D5CD] bg-white pl-8 pr-3 py-2 text-[#1D1C1A] focus:outline-none focus:ring-1 focus:ring-[#D97757]">
+                      <div data-combobox-target="list"
+                           class="hidden absolute top-full left-0 right-0 mt-1 z-40 max-h-56 overflow-y-auto rounded-lg border border-[#EFECE6] bg-white shadow-xl py-1">
+                        <% if pbranch.present? && same.empty? && pool.any? %>
+                          <div class="px-3 py-1.5 text-[11px] text-[#6B665F] italic border-b border-[#EFECE6]">No staff in this branch — showing all available</div>
+                        <% end %>
+                        <button type="button" data-combobox-target="option" data-value="" data-label=""
+                                data-search="unassigned clear none"
+                                data-action="click->combobox#select"
+                                class="w-full text-left px-3 py-2 text-[13px] text-[#6B665F] hover:bg-[#FBF9F5]">Unassigned</button>
+                        <% ordered.each do |u| %>
+                          <% bname = u.branch&.name %>
+                          <button type="button" data-combobox-target="option"
+                                  data-value="<%= u.id %>"
+                                  data-label="<%= u.full_name %>"
+                                  data-search="<%= [ u.full_name, role_short, bname ].compact.join(" ") %>"
+                                  data-action="click->combobox#select"
+                                  class="w-full text-left px-3 py-2 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5] flex items-center justify-between gap-2 <%= "bg-[#FBF9F5]" if u.id == current_id %>">
+                            <span class="min-w-0 truncate">
+                              <%= u.full_name %>
+                              <span class="text-[#6B665F]">(<%= role_short %>)<% if bname %> — <%= bname %><% end %></span>
+                            </span>
+                            <% if same.include?(u) %>
+                              <span class="flex-shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#E6F0EE] text-[#2F6F4E]">Same branch</span>
+                            <% end %>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                <% end %>
+                <p class="text-[11px] text-[#6B665F]">Same-branch staff show first. Changing a slot saves immediately and refreshes the chart.</p>
+              </div>
+            </div>
+          </dialog>
+        <% end %>
       </div>
 
       <%# Centered patient identity. px-10 keeps long names clear of the kebab. %>
