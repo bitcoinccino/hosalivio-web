@@ -1011,7 +1011,7 @@
   <div data-welcome-target="capture"
        data-action="keydown.esc@window->welcome#closeCapture click->welcome#backdropClose"
        class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-    <div class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-5 sm:p-6"
+    <div class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-5 sm:p-6"
          data-welcome-target="captureDialog">
       <button type="button" data-action="click->welcome#closeCapture"
               class="absolute top-3 right-3 w-8 h-8 rounded-full text-[#6B665F] hover:bg-[#EFECE6] flex items-center justify-center">
@@ -1025,7 +1025,7 @@
         <i class="ri-send-plane-2-line text-[#D97757]"></i>
         Sending your request to <span class="font-medium" data-welcome-target="partnerBannerName"></span>.
       </div>
-      <div data-welcome-target="captureIntro" class="font-serif text-[16px] text-[#1D1C1A] mb-5">Share a few details to reach our team. A real coordinator, not an AI bot, will review your message and contact you, usually within the hour.</div>
+      <div data-welcome-target="captureIntro" class="font-serif text-[16px] text-[#1D1C1A] mb-5">Share a few details to reach our team. A Care Coordinator will review your message and contact you, usually within the hour.</div>
 
       <%# Field styling is shared; keep it in one place so every input/select matches. %>
       <% field_class = "w-full box-border h-[42px] px-3 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
@@ -1055,52 +1055,42 @@
           <span data-more-toggle-target="label">Add more details (optional)</span>
         </button>
 
-        <%# Every optional field carries a caption so nothing (e.g. the date
-            pickers) shows up blank, and all controls share field_class for a
-            uniform width/height. Hidden via inline style so it beats the flex
-            utilities on reveal. %>
+        <%# Optional fields — placeholder-based like the core fields above, so
+            every control is the same width/height and shows its own label.
+            dob is a free-text string column, so it's a text input with a
+            visible placeholder; preferred_date is a real date column, so it
+            keeps the native picker (min-w-0 stops it overflowing its cell). %>
         <div data-more-toggle-target="item" style="display:none" class="space-y-3">
-          <label class="block">
-            <span class="<%= caption_class %>">Your relationship to the patient</span>
-            <select name="requester_role" aria-label="Your relationship to the patient" class="<%= field_class %> text-[#6B665F]">
-              <option value="" selected>Select one</option>
-              <% Inquiry::REQUESTER_ROLE_OPTIONS.each do |role| %>
-                <option value="<%= role %>"><%= role %></option>
-              <% end %>
-            </select>
-          </label>
+          <select name="requester_role" aria-label="Your relationship to the patient" class="<%= field_class %> text-[#6B665F]">
+            <option value="" selected>Your relationship to the patient (optional)</option>
+            <% Inquiry::REQUESTER_ROLE_OPTIONS.each do |role| %>
+              <option value="<%= role %>"><%= role %></option>
+            <% end %>
+          </select>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="block">
-              <span class="<%= caption_class %>">Email address</span>
-              <input type="email" name="email" placeholder="you@example.com" aria-label="Email address" class="<%= field_class %>">
-            </label>
-            <label class="block">
-              <span class="<%= caption_class %>">Patient date of birth</span>
-              <input type="date" name="dob" aria-label="Patient date of birth" class="<%= field_class %> text-[#6B665F]">
-            </label>
+            <input type="email" name="email" placeholder="Email address (optional)" aria-label="Email address" class="<%= field_class %>">
+            <input type="text" name="dob" placeholder="Date of birth (MM/DD/YYYY)" inputmode="numeric"
+                   aria-label="Patient date of birth" class="<%= field_class %>">
           </div>
 
-          <label class="block">
-            <span class="<%= caption_class %>">Primary diagnosis or concern</span>
-            <select name="diagnosis" aria-label="Primary diagnosis or primary concern" class="<%= field_class %> text-[#6B665F]">
-              <option value="" selected>Select one</option>
-              <% Inquiry::DIAGNOSIS_OPTIONS.each do |dx| %>
-                <option value="<%= dx %>"><%= dx %></option>
-              <% end %>
-            </select>
-          </label>
+          <select name="diagnosis" aria-label="Primary diagnosis or primary concern" class="<%= field_class %> text-[#6B665F]">
+            <option value="" selected>Primary diagnosis or concern (optional)</option>
+            <% Inquiry::DIAGNOSIS_OPTIONS.each do |dx| %>
+              <option value="<%= dx %>"><%= dx %></option>
+            <% end %>
+          </select>
 
-          <%# Preferred call window — a preference the coordinator aims for, not
-              a committed appointment. %>
+          <%# Preferred call window — a preference the coordinator aims for. Both
+              cells carry a caption so this row's heights stay matched. %>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label class="block">
-              <span class="<%= caption_class %>">Preferred call date</span>
+              <span class="<%= caption_class %>">Preferred call date (optional)</span>
               <input type="date" name="preferred_date" min="<%= Date.current.iso8601 %>" max="<%= (Date.current + 7).iso8601 %>"
-                     aria-label="Preferred call date" class="<%= field_class %> text-[#6B665F]">
+                     aria-label="Preferred call date" class="<%= field_class %> min-w-0 text-[#6B665F]">
             </label>
             <label class="block">
-              <span class="<%= caption_class %>">Preferred call time</span>
+              <span class="<%= caption_class %>">Preferred call time (optional)</span>
               <select name="preferred_slot" aria-label="Preferred call time" class="<%= field_class %> text-[#6B665F]">
                 <option value="" selected>Any time</option>
                 <% Inquiry::CALL_SLOTS.each do |key, label| %>
