@@ -35,6 +35,10 @@ class Inquiry < ApplicationRecord
     "Not sure"
   ].freeze
 
+  # Payer at the point of referral — reuses the agency-wide insurance catalog
+  # (Medicare / Medicaid / Private / VA / Self-pay) so intake and matching agree.
+  PAYER_OPTIONS = Agency::INSURANCE_CATALOG
+
   # Who is submitting the request — a family member or a referring clinician.
   REQUESTER_ROLE_OPTIONS = [
     "Caregiver or Family Member",
@@ -52,6 +56,7 @@ class Inquiry < ApplicationRecord
 
   validates :diagnosis,      inclusion: { in: DIAGNOSIS_OPTIONS },      allow_blank: true
   validates :requester_role, inclusion: { in: REQUESTER_ROLE_OPTIONS }, allow_blank: true
+  validates :payer,          inclusion: { in: PAYER_OPTIONS.keys },     allow_blank: true
   validates :urgency,        inclusion: { in: URGENCY_LEVELS },         allow_blank: true
 
   # "Book a Call" preferred-window slots for the public page. These are a
@@ -89,6 +94,19 @@ class Inquiry < ApplicationRecord
 
   def zip_prefix
     zip.to_s[0, 3]
+  end
+
+  # Human label for the payer, e.g. "Medicare"; nil when not captured.
+  def payer_label
+    PAYER_OPTIONS[payer].presence
+  end
+
+  # "Miami, FL" resolved from the offline ZIP reference; nil when the ZIP is
+  # blank or unknown. Used by the Referrals inbox / detail views.
+  def city_state
+    z = ZipCode.lookup(zip)
+    return nil unless z
+    [ z.city, z.state ].map(&:presence).compact.join(", ").presence
   end
 
   # Shown to clinicians; hides raw PHI beyond first-name + zip prefix.

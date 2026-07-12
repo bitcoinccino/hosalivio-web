@@ -1094,6 +1094,13 @@
             <% end %>
           </select>
 
+          <select name="payer" aria-label="Insurance or coverage" class="<%= field_class %> text-[#6B665F]">
+            <option value="" selected>Insurance / coverage (optional)</option>
+            <% Inquiry::PAYER_OPTIONS.each do |key, label| %>
+              <option value="<%= key %>"><%= label %></option>
+            <% end %>
+          </select>
+
           <%# Preferred call window — both are selects so their width/height
               exactly match the rest of the form (a native date input renders a
               different width). preferred_date is a real date column, so each

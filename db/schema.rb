@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_005805) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_212716) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -433,6 +433,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_005805) do
     t.string "first_name"
     t.boolean "is_general", default: false, null: false
     t.string "last_name"
+    t.string "payer"
     t.date "preferred_date"
     t.string "preferred_slot"
     t.text "question"

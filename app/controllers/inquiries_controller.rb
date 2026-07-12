@@ -7,7 +7,7 @@ class InquiriesController < ApplicationController
   # landing-page submission (:create) is open.
   before_action :authorize_inquiry_manager!, except: :create
 
-  before_action :set_inquiry, only: [ :claim, :mark_contacted, :dismiss, :convert, :convert_to_patient ]
+  before_action :set_inquiry, only: [ :show, :claim, :mark_contacted, :dismiss, :convert, :convert_to_patient ]
 
   # ── Public submission from landing page ──────────────────────────────
   def create
@@ -31,6 +31,7 @@ class InquiriesController < ApplicationController
         caregiver_phone: caregiver_phone.presence,
         email:           email.presence,
         diagnosis:       params[:diagnosis].to_s.strip.presence,
+        payer:           params[:payer].to_s.strip.presence,
         requester_role:  params[:requester_role].to_s.strip.presence,
         contact:         contact,
         zip:             params[:zip].to_s.strip,
@@ -67,6 +68,14 @@ class InquiriesController < ApplicationController
     respond_to do |f|
       f.html
       f.json { render json: @inquiries.map { |i| inquiry_json(i) } }
+    end
+  end
+
+  # ── Inquiry detail — the decision hub (claim / contact / dismiss / convert) ──
+  def show
+    respond_to do |f|
+      f.html
+      f.json { render json: inquiry_json(@inquiry) }
     end
   end
 
@@ -204,6 +213,7 @@ class InquiriesController < ApplicationController
       caregiver_phone: i.caregiver_phone,
       email:           i.email,
       diagnosis:       i.diagnosis,
+      payer:           i.payer,
       requester_role:  i.requester_role,
       external_mrn:        i.external_mrn,
       referring_provider:  i.referring_provider,

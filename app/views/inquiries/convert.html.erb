@@ -3,8 +3,8 @@
 <div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
   <div class="max-w-2xl mx-auto">
 
-    <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
-      <i class="ri-arrow-left-line"></i> Back to dashboard
+    <a href="<%= inquiry_path(@inquiry) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-4">
+      <i class="ri-arrow-left-line"></i> Back to inquiry
     </a>
 
     <div class="rounded-2xl bg-white border border-[#EFECE6] shadow-sm p-8">
@@ -20,47 +20,8 @@
 
       <!-- Inquiry summary — everything the family / referrer gave us, so you can
            review the full picture before committing to a patient record. -->
-      <%
-        full_name = [ @inquiry.first_name, @inquiry.last_name ].map(&:presence).compact.join(" ")
-        mono_labels = [ "ZIP", "Contact", "Caregiver phone", "Email", "External MRN" ]
-        summary_fields = [
-          [ "Name",                    full_name.presence ],
-          [ "Date of birth",           @inquiry.dob.presence ],
-          [ "ZIP",                     @inquiry.zip.presence ],
-          [ "Contact",                 @inquiry.contact.presence ],
-          [ "Caregiver phone",         @inquiry.caregiver_phone.presence ],
-          [ "Email",                   @inquiry.email.presence ],
-          [ "Diagnosis (their words)", @inquiry.diagnosis.presence ],
-          [ "Who's asking",            @inquiry.requester_role.presence ],
-          [ "Urgency",                 @inquiry.urgency.presence&.upcase ],
-          [ "Preferred callback",      @inquiry.preferred_window_label ],
-          [ "Referring provider",      @inquiry.referring_provider.presence ],
-          [ "Reason for referral",     @inquiry.reason_for_referral.presence ],
-          [ "External MRN",            @inquiry.external_mrn.presence ],
-          [ "Source",                  @inquiry.source_prompt.to_s.tr("_", " ").presence ]
-        ].select { |_, value| value.present? }
-      %>
-      <div class="rounded-lg bg-[#FBF9F5] border border-[#EFECE6] p-4 mb-6 text-[13px]">
-        <div class="flex items-center justify-between mb-2">
-          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Inquiry on file</div>
-          <% if @inquiry.claimed_by.present? %>
-            <div class="text-[10px] text-[#6B665F]">Claimed by <%= @inquiry.claimed_by.full_name %></div>
-          <% end %>
-        </div>
-        <div class="grid grid-cols-2 gap-3 text-[#1D1C1A]">
-          <% summary_fields.each do |label, value| %>
-            <div>
-              <div class="text-[10px] text-[#6B665F] uppercase tracking-widest"><%= label %></div>
-              <div class="<%= "font-mono" if mono_labels.include?(label) %>"><%= value %></div>
-            </div>
-          <% end %>
-        </div>
-        <% if @inquiry.question.present? %>
-          <div class="mt-3 pt-3 border-t border-[#EFECE6]">
-            <div class="text-[10px] text-[#6B665F] uppercase tracking-widest mb-1">Their words</div>
-            <div class="italic text-[#3A3936]">"<%= @inquiry.question %>"</div>
-          </div>
-        <% end %>
+      <div class="mb-6">
+        <%= render "summary", inquiry: @inquiry %>
       </div>
 
       <% if flash[:alert] %>
@@ -132,7 +93,7 @@
         </div>
 
         <div class="pt-4 border-t border-[#EFECE6] flex items-center justify-between gap-3">
-          <a href="<%= dashboard_path %>" class="text-[13px] text-[#6B665F] hover:text-[#1D1C1A]">Cancel</a>
+          <a href="<%= inquiry_path(@inquiry) %>" class="text-[13px] text-[#6B665F] hover:text-[#1D1C1A]">Cancel</a>
           <button type="submit" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
             <i class="ri-user-add-line"></i> Create patient &amp; convert
           </button>
