@@ -1029,7 +1029,6 @@
 
       <%# Field styling is shared; keep it in one place so every input/select matches. %>
       <% field_class = "w-full box-border h-[42px] px-3 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-      <% caption_class = "block text-[11px] text-[#6B665F] mb-1" %>
       <form data-action="submit->welcome#submitCapture"
             data-controller="more-toggle"
             data-more-toggle-more-label-value="Add more details (optional)"
@@ -1081,23 +1080,24 @@
             <% end %>
           </select>
 
-          <%# Preferred call window — a preference the coordinator aims for. Both
-              cells carry a caption so this row's heights stay matched. %>
+          <%# Preferred call window — both are selects so their width/height
+              exactly match the rest of the form (a native date input renders a
+              different width). preferred_date is a real date column, so each
+              option value is an ISO date for the coming week. %>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="block">
-              <span class="<%= caption_class %>">Preferred call date (optional)</span>
-              <input type="date" name="preferred_date" min="<%= Date.current.iso8601 %>" max="<%= (Date.current + 7).iso8601 %>"
-                     aria-label="Preferred call date" class="<%= field_class %> min-w-0 text-[#6B665F]">
-            </label>
-            <label class="block">
-              <span class="<%= caption_class %>">Preferred call time (optional)</span>
-              <select name="preferred_slot" aria-label="Preferred call time" class="<%= field_class %> text-[#6B665F]">
-                <option value="" selected>Any time</option>
-                <% Inquiry::CALL_SLOTS.each do |key, label| %>
-                  <option value="<%= key %>"><%= label %></option>
-                <% end %>
-              </select>
-            </label>
+            <select name="preferred_date" aria-label="Preferred call date" class="<%= field_class %> text-[#6B665F]">
+              <option value="" selected>Preferred call date (optional)</option>
+              <% (0..7).each do |n| %>
+                <% d = Date.current + n %>
+                <option value="<%= d.iso8601 %>"><%= n.zero? ? "Today · #{d.strftime('%a, %b %-d')}" : d.strftime('%a, %b %-d') %></option>
+              <% end %>
+            </select>
+            <select name="preferred_slot" aria-label="Preferred call time" class="<%= field_class %> text-[#6B665F]">
+              <option value="" selected>Preferred call time (optional)</option>
+              <% Inquiry::CALL_SLOTS.each do |key, label| %>
+                <option value="<%= key %>"><%= label %></option>
+              <% end %>
+            </select>
           </div>
         </div>
 
