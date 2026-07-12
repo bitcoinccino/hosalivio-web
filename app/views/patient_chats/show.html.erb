@@ -243,9 +243,6 @@
             <i class="ri-more-fill text-lg"></i>
           </button>
           <div data-menu-target="panel" class="hidden absolute right-0 mt-2 w-52 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
-            <%= link_to patient_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
-              <i class="ri-chat-3-line text-[#6B665F]"></i> View chat
-            <% end %>
             <%= link_to patient_admissions_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
               <i class="ri-file-shield-2-line text-[#6B665F]"></i> View eval
             <% end %>
