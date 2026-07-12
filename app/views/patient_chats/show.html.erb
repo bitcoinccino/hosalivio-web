@@ -359,6 +359,26 @@
         <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
         <span>Family ↔ Care Team · <span data-patient-chat-target="status">connecting…</span></span>
       </div>
+
+      <%# Chart nav — staff only. The chat is the hub ("Chart"); the other tabs
+          jump to the patient's eval, documents, and consents pages. %>
+      <% unless current_user.family_access? %>
+        <% chart_tab   = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] border border-[#EFECE6] text-[#3A3936] hover:bg-[#FBF9F5] transition" %>
+        <nav class="mt-3 flex items-center gap-1.5 flex-wrap">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] bg-[#1D1C1A] text-white font-medium">
+            <i class="ri-chat-3-line"></i> Chart
+          </span>
+          <%= link_to patient_admissions_path(@patient), class: chart_tab do %>
+            <i class="ri-file-shield-2-line text-[#6B665F]"></i> Admission / Eval
+          <% end %>
+          <%= link_to patient_documents_path(@patient), class: chart_tab do %>
+            <i class="ri-folder-line text-[#6B665F]"></i> Documents
+          <% end %>
+          <%= link_to patient_consents_path(@patient), class: chart_tab do %>
+            <i class="ri-file-list-3-line text-[#6B665F]"></i> Consents
+          <% end %>
+        </nav>
+      <% end %>
     </header>
 
     <!-- Pinned crisis strip -->
