@@ -120,7 +120,7 @@ export default class extends Controller {
   // visible (there's room). Re-runs each turn; respects the visitor's choice
   // to expand.
   _applyHistoryCollapse() {
-    const KEEP = 2          // most recent turns always visible
+    const KEEP = 1          // when collapsed, keep only the current turn visible
     const THRESHOLD = 3     // collapse only once there are more than this many
     const isMobile = window.matchMedia("(max-width: 640px)").matches
     const t = this.transcriptTarget

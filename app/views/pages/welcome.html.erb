@@ -136,7 +136,7 @@
   </aside>
 
   <!-- ─── Main Stage: Directory + AI Guide ─────────────────────── -->
-  <main class="flex-1 overflow-y-auto min-w-0 flex flex-col">
+  <main class="flex-1 overflow-y-auto overflow-x-hidden min-w-0 flex flex-col">
     <!-- Mobile-only top bar: hamburger + brand + Sign in -->
     <div class="md:hidden flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#EFECE6]">
       <div class="flex items-center gap-2">
@@ -396,7 +396,7 @@
           options as data-audience flips. Track is fixed-width (300px)
           so the indicator math is exact. %>
       <div class="flex justify-center mb-6">
-        <div class="relative inline-flex w-[300px] rounded-full bg-[#FBF9F5] border border-[#EFECE6] p-1 text-[13px]">
+        <div class="relative inline-flex w-[300px] max-w-full rounded-full bg-[#FBF9F5] border border-[#EFECE6] p-1 text-[13px]">
           <span aria-hidden="true"
                 class="absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-[#1D1C1A] shadow-sm transition-transform duration-300 ease-out
                        group-data-[audience=partner]/aud:translate-x-full"></span>
