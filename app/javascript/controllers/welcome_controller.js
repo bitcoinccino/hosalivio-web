@@ -164,6 +164,7 @@ export default class extends Controller {
       email:           fd.get("email"),
       dob:             fd.get("dob"),
       diagnosis:       fd.get("diagnosis"),
+      payer:           fd.get("payer"),
       zip:             fd.get("zip"),
       preferred_date:  fd.get("preferred_date"),
       preferred_slot:  fd.get("preferred_slot"),

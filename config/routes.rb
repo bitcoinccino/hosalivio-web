@@ -240,7 +240,7 @@ Rails.application.routes.draw do
   post   "partners/complete",    to: "partners#complete", as: :complete_partner
 
   # Inquiries: public create, authenticated management
-  resources :inquiries, only: [ :index, :create ] do
+  resources :inquiries, only: [ :index, :show, :create ] do
     member do
       post :claim
       post :mark_contacted
