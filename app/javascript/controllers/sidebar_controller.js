@@ -18,15 +18,39 @@ export default class extends Controller {
   static values  = { storageKey: { type: String, default: "sidebarCollapsed" } }
 
   connect() {
-    if (localStorage.getItem(this.storageKeyValue) === "1") {
-      this.apply(true)
+    this._sync = this._sync.bind(this)
+    this._sync()
+    // Re-evaluate on rotate/resize so crossing the md breakpoint can't strand
+    // the sidebar in a collapsed rail while it's a full-screen mobile overlay.
+    window.addEventListener("resize", this._sync)
+  }
+
+  disconnect() {
+    window.removeEventListener("resize", this._sync)
+  }
+
+  // Desktop (>= md): collapse into an icon rail. Mobile: the sidebar is a
+  // full-screen overlay, so the collapsed rail makes no sense.
+  get isDesktop() {
+    return window.matchMedia("(min-width: 768px)").matches
+  }
+
+  // Restore the saved preference on desktop; always expand on mobile (without
+  // clobbering the saved desktop preference).
+  _sync() {
+    if (this.isDesktop) {
+      this.sidebarTarget.dataset.collapsed =
+        localStorage.getItem(this.storageKeyValue) === "1" ? "true" : "false"
+    } else {
+      this.sidebarTarget.dataset.collapsed = "false"
     }
   }
 
-  collapse() { this.apply(true) }
+  collapse() { if (this.isDesktop) this.apply(true) }
   expand()   { this.apply(false) }
 
   toggle() {
+    if (!this.isDesktop) return // collapsing is a desktop-only affordance
     const current = this.sidebarTarget.dataset.collapsed === "true"
     this.apply(!current)
   }
