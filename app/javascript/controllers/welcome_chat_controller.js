@@ -378,40 +378,73 @@ export default class extends Controller {
     header.textContent = `We found ${n} partner ${n === 1 ? "agency" : "agencies"} near you${zip ? ` (ZIP ${zip})` : ""}`
     this.transcriptTarget.appendChild(header)
 
-    const container = document.createElement("div")
-    container.className = "ml-10 grid gap-3"
+    // Compact list — one lightweight row per agency with a "View" button.
+    // Keeps the transcript short (especially with several matches); the full
+    // detail opens in a modal on tap. A single match is just a one-item list.
+    const list = document.createElement("div")
+    list.className = "ml-10 grid gap-2"
     agencies.forEach(a => {
-      const card = document.createElement("div")
-      card.className = "rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-sm"
-      const name = a.agency_name || a.agency_dba
-      const langBadges = (a.languages || []).map(l =>
-        `<span class="text-[11px] font-semibold text-[#6B665F] bg-[#F3F1EC] rounded px-1.5 py-0.5">${escapeHtml(String(l).toUpperCase())}</span>`
-      ).join("")
-      const levelBadges = (a.levels || []).map(l =>
-        `<span class="text-[11px] font-semibold text-[#2B4A7A] bg-[#F0F4FA] rounded px-1.5 py-0.5">${escapeHtml(String(l))}</span>`
-      ).join("")
-      // A muted-icon row: fixed-width icon slot + text, so address / phone /
-      // languages line up down a left rail instead of running together.
-      const row = (icon, body) =>
-        `<div class="flex items-start gap-2.5 text-[13px] text-[#4A453E] leading-snug">
-           <i class="${icon} text-[16px] text-[#B0AA9F] mt-[1px] flex-shrink-0"></i>
-           <div class="min-w-0">${body}</div>
-         </div>`
-      // Carry which agency the visitor wants into the capture modal so the
-      // inquiry routes to that specific partner, not the general queue.
-      card.innerHTML = `
-        <div class="flex items-start gap-3">
+      const name = a.agency_name || a.agency_dba || "Partner agency"
+      const sub  = a.branch_name || a.match_reason || a.address || ""
+      const rowEl = document.createElement("div")
+      rowEl.className = "flex items-center justify-between gap-3 rounded-xl border border-[#EFECE6] bg-white px-3 py-2.5 shadow-sm"
+      rowEl.innerHTML = `
+        <div class="min-w-0 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-[#FBEEE8] text-[#D97757] flex items-center justify-center flex-shrink-0">
+            <i class="ri-hospital-line text-[18px]"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-[14px] font-bold text-[#1D1C1A] truncate">${escapeHtml(name)}</div>
+            ${sub ? `<div class="text-[12px] text-[#6B665F] truncate">${escapeHtml(sub)}</div>` : ""}
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          ${a.accepting ? `<span class="hidden sm:inline text-[10px] uppercase tracking-widest font-bold text-[#2F6F4E] bg-[#E6F0EE] border border-[#2F6F4E] rounded-full px-2 py-0.5">Accepting</span>` : ""}
+          <button type="button" data-view class="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[12px] font-semibold transition-colors">
+            <i class="ri-eye-line"></i> View
+          </button>
+        </div>
+      `
+      rowEl.querySelector("[data-view]").addEventListener("click", () => this._openAgencyModal(a))
+      list.appendChild(rowEl)
+    })
+    this.transcriptTarget.appendChild(list)
+    this._scrollBottom()
+  }
+
+  // Full agency detail in a modal card, opened from a list row's "View" button.
+  // Mounted inside the welcome-controller root so the "Request Care" button's
+  // welcome#nurseLine action resolves (it opens the capture modal + routes the
+  // inquiry to this specific partner).
+  _openAgencyModal(a) {
+    const name = a.agency_name || a.agency_dba || "Partner agency"
+    const langBadges = (a.languages || []).map(l =>
+      `<span class="text-[11px] font-semibold text-[#6B665F] bg-[#F3F1EC] rounded px-1.5 py-0.5">${escapeHtml(String(l).toUpperCase())}</span>`
+    ).join("")
+    const levelBadges = (a.levels || []).map(l =>
+      `<span class="text-[11px] font-semibold text-[#2B4A7A] bg-[#F0F4FA] rounded px-1.5 py-0.5">${escapeHtml(String(l))}</span>`
+    ).join("")
+    const row = (icon, body) =>
+      `<div class="flex items-start gap-2.5 text-[13px] text-[#4A453E] leading-snug">
+         <i class="${icon} text-[16px] text-[#B0AA9F] mt-[1px] flex-shrink-0"></i>
+         <div class="min-w-0">${body}</div>
+       </div>`
+
+    const overlay = document.createElement("div")
+    overlay.className = "fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+    overlay.innerHTML = `
+      <div class="relative w-full max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-5">
+        <button type="button" data-close aria-label="Close" class="absolute top-3 right-3 w-8 h-8 rounded-full text-[#6B665F] hover:bg-[#EFECE6] flex items-center justify-center">
+          <i class="ri-close-line text-lg"></i>
+        </button>
+        <div class="flex items-start gap-3 pr-8">
           <div class="w-11 h-11 rounded-full bg-[#FBEEE8] text-[#D97757] flex items-center justify-center flex-shrink-0">
             <i class="ri-hospital-line text-[20px]"></i>
           </div>
           <div class="min-w-0 flex-1">
-            <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
-                <div class="text-[15px] font-bold text-[#1D1C1A] leading-snug">${escapeHtml(name || "Partner agency")}</div>
-                ${a.branch_name ? `<div class="text-[12px] text-[#6B665F] mt-0.5">${escapeHtml(a.branch_name)}</div>` : ""}
-              </div>
-              ${a.accepting ? `<span class="flex-shrink-0 text-[10px] uppercase tracking-widest font-bold text-[#2F6F4E] bg-[#E6F0EE] border border-[#2F6F4E] rounded-full px-2 py-0.5">Accepting</span>` : ""}
-            </div>
+            <div class="text-[16px] font-bold text-[#1D1C1A] leading-snug">${escapeHtml(name)}</div>
+            ${a.branch_name ? `<div class="text-[12px] text-[#6B665F] mt-0.5">${escapeHtml(a.branch_name)}</div>` : ""}
+            ${a.accepting ? `<span class="inline-block mt-1.5 text-[10px] uppercase tracking-widest font-bold text-[#2F6F4E] bg-[#E6F0EE] border border-[#2F6F4E] rounded-full px-2 py-0.5">Accepting</span>` : ""}
           </div>
         </div>
 
@@ -425,16 +458,25 @@ export default class extends Controller {
 
         ${a.match_reason ? `<div class="mt-3"><span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#D97757] bg-[#FBEEE8] rounded-full px-2.5 py-1"><i class="ri-map-pin-2-fill text-[12px]"></i> ${escapeHtml(a.match_reason)}</span></div>` : ""}
 
-        <div class="mt-4">
-          <button type="button" data-action="click->welcome#nurseLine" data-source="chat_agency_card" ${a.agency_id ? `data-agency-id="${escapeHtml(String(a.agency_id))}"` : ""} data-agency-name="${escapeHtml(name || '')}" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-semibold w-full justify-center transition-colors">
+        <div class="mt-5">
+          <button type="button" data-action="click->welcome#nurseLine" data-source="chat_agency_card" ${a.agency_id ? `data-agency-id="${escapeHtml(String(a.agency_id))}"` : ""} data-agency-name="${escapeHtml(name)}" data-request class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-semibold w-full justify-center transition-colors">
             <i class="ri-phone-fill"></i> Request Care
           </button>
         </div>
-      `
-      container.appendChild(card)
-    })
-    this.transcriptTarget.appendChild(container)
-    this._scrollBottom()
+      </div>
+    `
+
+    const host = this.element.closest('[data-controller~="welcome"]') || document.body
+    host.appendChild(overlay)
+
+    const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey) }
+    const onKey = (e) => { if (e.key === "Escape") close() }
+    overlay.querySelector("[data-close]").addEventListener("click", close)
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close() })
+    // Request Care opens the capture modal (via welcome#nurseLine); close this
+    // one so it doesn't stack on top.
+    overlay.querySelector("[data-request]").addEventListener("click", close)
+    document.addEventListener("keydown", onKey)
   }
 
   _scrollBottom() {
