@@ -39,6 +39,11 @@ class PagesController < ApplicationController
   def pricing
   end
 
+  # Public "About" page — the mission and the two-pillar product story
+  # (admission scribe + family chat), for families and prospective partners.
+  def about
+  end
+
   # Left intact from earlier FAQ tree (still used by the educational prompts
   # in the side panel — we keep them as a secondary layer under the directory).
   HOSPICE_FAQS = [].freeze

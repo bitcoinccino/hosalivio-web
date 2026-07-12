@@ -1,0 +1,102 @@
+<% content_for :title, "About · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5]">
+
+  <%# ── Header bar ─────────────────────────────────────────── %>
+  <header class="bg-white border-b border-[#EFECE6] px-6 lg:px-8 py-4">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <a href="<%= welcome_path %>" class="inline-flex items-center gap-2 text-[#1D1C1A] hover:text-[#D97757]">
+        <span class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+          <i class="ri-heart-pulse-line text-sm"></i>
+        </span>
+        <span class="font-serif text-xl">HosAlivio</span>
+        <span class="text-[10px] uppercase tracking-widest font-bold text-[#D97757] bg-[#FBEEE8] border border-[#D97757] rounded-full px-2 py-0.5">Beta</span>
+      </a>
+      <%= link_to demo_path,
+            class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
+        <i class="ri-calendar-check-line"></i> Book a demo
+      <% end %>
+    </div>
+  </header>
+
+  <%# ── Hero ───────────────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 pt-12 pb-8 text-center">
+    <div class="max-w-3xl mx-auto">
+      <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-3">
+        <i class="ri-heart-3-line"></i> Our story
+      </div>
+      <h1 class="font-serif text-3xl md:text-5xl text-[#1D1C1A] leading-tight mb-4">Hospice care that actually hears you.</h1>
+      <p class="text-[15px] md:text-[16px] text-[#3A3936] leading-relaxed">
+        HosAlivio is the platform hospice agencies use to run their care — so the nurse, doctor, and chaplain feel one tap away for every family. We take the paperwork off clinicians and the wait out of the day, so people spend their time on comfort, not forms.
+      </p>
+    </div>
+  </section>
+
+  <%# ── Mission ────────────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 py-8">
+    <div class="max-w-3xl mx-auto bg-white rounded-2xl border border-[#EFECE6] p-6 md:p-8">
+      <h2 class="font-serif text-[22px] md:text-[26px] text-[#1D1C1A] mb-3">Why we exist</h2>
+      <p class="text-[14px] md:text-[15px] text-[#3A3936] leading-relaxed">
+        Hospice is some of the most human work there is — and clinicians spend hours of it typing. Meanwhile families sit with hard questions at 2 a.m. with no one to ask. HosAlivio closes both gaps: it listens to the clinician's spoken visit and turns it into a certified record, and it gives families a warm, always-on line back to their care team.
+      </p>
+    </div>
+  </section>
+
+  <%# ── Two pillars ────────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 py-8">
+    <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="bg-white rounded-2xl border border-[#EFECE6] p-6">
+        <div class="w-11 h-11 rounded-full bg-[#FBEEE8] text-[#D97757] flex items-center justify-center mb-4">
+          <i class="ri-mic-2-line text-[20px]"></i>
+        </div>
+        <h3 class="font-serif text-[18px] text-[#1D1C1A] mb-2">The admission scribe</h3>
+        <p class="text-[14px] text-[#3A3936] leading-relaxed">
+          A nurse speaks the visit the way they'd tell a colleague. HosAlivio turns it into a structured, certification-ready pre-admit eval — so the paperwork writes itself and the clinician stays with the patient.
+        </p>
+      </div>
+      <div class="bg-white rounded-2xl border border-[#EFECE6] p-6">
+        <div class="w-11 h-11 rounded-full bg-[#FBEEE8] text-[#D97757] flex items-center justify-center mb-4">
+          <i class="ri-chat-heart-line text-[20px]"></i>
+        </div>
+        <h3 class="font-serif text-[18px] text-[#1D1C1A] mb-2">The family line</h3>
+        <p class="text-[14px] text-[#3A3936] leading-relaxed">
+          Families get a warm, plain-language chat that answers questions in seconds, in English, Spanish, or Haitian Creole — and pages a real human the moment one is needed. No one is left waiting alone.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <%# ── Human in the loop ──────────────────────────────────── %>
+  <section class="px-6 lg:px-8 py-8">
+    <div class="max-w-3xl mx-auto bg-[#FFF3EC] rounded-2xl border border-[#D97757] p-6 md:p-8">
+      <div class="flex items-start gap-3">
+        <i class="ri-shield-check-line text-[#D97757] text-2xl mt-0.5"></i>
+        <div>
+          <h2 class="font-serif text-[20px] md:text-[22px] text-[#1D1C1A] mb-2">A human always signs off</h2>
+          <p class="text-[14px] text-[#3A3936] leading-relaxed">
+            HosAlivio drafts, schedules, and proposes — but a clinician reviews and approves before anything is committed. It's built to give your team leverage, not to take the decision out of their hands.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <%# ── CTA ────────────────────────────────────────────────── %>
+  <section class="px-6 lg:px-8 py-12 text-center">
+    <h2 class="font-serif text-[24px] md:text-[28px] text-[#1D1C1A] mb-5">See it on a real visit.</h2>
+    <div class="flex flex-wrap items-center justify-center gap-3">
+      <%= link_to demo_path,
+            class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
+        <i class="ri-calendar-check-line"></i> Book a demo
+      <% end %>
+      <%= link_to pricing_path,
+            class: "inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-[#D9D5CD] hover:border-[#1D1C1A] text-[#1D1C1A] text-sm font-medium transition" do %>
+        <i class="ri-price-tag-3-line"></i> See pricing
+      <% end %>
+    </div>
+  </section>
+
+  <footer class="px-6 lg:px-8 py-6 text-center text-[11px] text-[#6B665F] border-t border-[#EFECE6]">
+    © <%= Date.current.year %> HosAlivio · <a href="<%= welcome_path %>" class="hover:text-[#1D1C1A]">Home</a>
+  </footer>
+</div>

@@ -121,6 +121,17 @@
           </span>
           <span class="flex-1 group-data-[collapsed=true]/sb:hidden">Pricing</span>
         <% end %>
+
+        <%# About page — the mission + product story. Separate /about route. %>
+        <%= link_to about_path,
+              title: "About",
+              class: "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#1D1C1A] hover:bg-[#D9D5CD] transition
+                      group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0" do %>
+          <span class="w-7 h-7 rounded-full bg-white border border-[#D9D5CD] flex items-center justify-center flex-shrink-0 text-[#1D1C1A]">
+            <i class="ri-information-line"></i>
+          </span>
+          <span class="flex-1 group-data-[collapsed=true]/sb:hidden">About</span>
+        <% end %>
       </nav>
 
       <div class="mt-6 rounded-lg bg-[#FBF9F5] border border-[#D9D5CD] p-3 group-data-[collapsed=true]/sb:hidden">
