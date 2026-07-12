@@ -15,6 +15,7 @@ import { Controller } from "@hotwired/stimulus"
 //   </div>
 export default class extends Controller {
   static targets = ["input", "value", "list", "option"]
+  static values  = { role: String, confirm: Boolean }   // role labels the confirm prompt
 
   connect() {
     this._away = (e) => { if (!this.element.contains(e.target)) this.close() }
@@ -39,6 +40,16 @@ export default class extends Controller {
 
   select(e) {
     const o = e.currentTarget
+
+    // Confirm before committing (opt-in via data-combobox-confirm-value).
+    if (this.confirmValue) {
+      const role = this.roleValue || "assignment"
+      const msg  = o.dataset.value
+        ? `Assign ${o.dataset.label} as ${role}?`
+        : `Remove the current ${role}?`
+      if (!window.confirm(msg)) { this.close(); return }
+    }
+
     this.valueTarget.value = o.dataset.value || ""
     this.inputTarget.value = o.dataset.label || ""
     this.close()

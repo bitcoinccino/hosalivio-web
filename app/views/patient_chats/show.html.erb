@@ -290,7 +290,7 @@
                     ordered = same + (pool - same)
                     current = pool.find { |u| u.id == current_id }
                   %>
-                  <%= form_with url: reassign_member_patient_path(@patient), method: :patch, data: { controller: "combobox" } do %>
+                  <%= form_with url: reassign_member_patient_path(@patient), method: :patch, data: { controller: "combobox", combobox_confirm_value: true, combobox_role_value: label } do %>
                     <input type="hidden" name="field" value="<%= field %>">
                     <input type="hidden" name="user_id" value="<%= current_id %>" data-combobox-target="value">
                     <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] mb-1"><%= label %></label>
