@@ -430,9 +430,9 @@ export default class extends Controller {
        </div>`
 
     const overlay = document.createElement("div")
-    overlay.className = "fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+    overlay.className = "fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden overscroll-contain"
     overlay.innerHTML = `
-      <div class="relative w-full max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-5">
+      <div class="relative w-full max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-5">
         <button type="button" data-close aria-label="Close" class="absolute top-3 right-3 w-8 h-8 rounded-full text-[#6B665F] hover:bg-[#EFECE6] flex items-center justify-center">
           <i class="ri-close-line text-lg"></i>
         </button>
@@ -467,13 +467,14 @@ export default class extends Controller {
 
     const host = this.element.closest('[data-controller~="welcome"]') || document.body
     host.appendChild(overlay)
+    document.body.style.overflow = "hidden"   // lock page scroll behind the modal
 
     // Call the welcome controller directly rather than relying on a Stimulus
     // data-action bound to a node injected outside the transcript (that binding
     // is racy and was leaving Request Care inert).
     const welcomeCtrl = this.application.getControllerForElementAndIdentifier(host, "welcome")
 
-    const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey) }
+    const close = () => { overlay.remove(); document.body.style.overflow = ""; document.removeEventListener("keydown", onKey) }
     const onKey = (e) => { if (e.key === "Escape") close() }
     overlay.querySelector("[data-close]").addEventListener("click", close)
     overlay.addEventListener("click", (e) => { if (e.target === overlay) close() })

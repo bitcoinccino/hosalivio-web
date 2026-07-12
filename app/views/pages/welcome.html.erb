@@ -189,7 +189,10 @@
     <section class="px-4 md:px-10 pt-3 pb-5 w-full">
       <div class="max-w-3xl mx-auto text-center">
         <div class="font-serif text-3xl md:text-4xl text-[#D97757] font-bold tracking-tight mb-2">
-          HosAlivio
+          <span class="inline-flex items-center gap-2">
+            HosAlivio
+            <span class="font-sans text-[10px] md:text-[11px] uppercase tracking-widest font-bold text-[#D97757] bg-[#FBEEE8] border border-[#D97757] rounded-full px-2 py-0.5 self-start mt-1">Beta</span>
+          </span>
         </div>
         <%# Typewriter tagline — types itself out on first paint
             with a short pause between the two beats. Honors
@@ -1010,8 +1013,8 @@
   <!-- ─── Modal: contact form ─────────────────────────────────────── -->
   <div data-welcome-target="capture"
        data-action="keydown.esc@window->welcome#closeCapture click->welcome#backdropClose"
-       class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-    <div class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-5 sm:p-6"
+       class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden overscroll-contain">
+    <div class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain bg-white rounded-2xl border border-[#EFECE6] shadow-xl p-5 sm:p-6"
          data-welcome-target="captureDialog">
       <button type="button" data-action="click->welcome#closeCapture"
               class="absolute top-3 right-3 w-8 h-8 rounded-full text-[#6B665F] hover:bg-[#EFECE6] flex items-center justify-center">
