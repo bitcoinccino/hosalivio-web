@@ -114,23 +114,22 @@ export default class extends Controller {
     this.inputTarget.focus()
   }
 
-  // Once the conversation grows past a few questions on a small screen, tuck
-  // the older turns behind a "Show earlier messages" pill so the newest
-  // exchange stays in view without a long scroll. Desktop keeps everything
-  // visible (there's room). Re-runs each turn; respects the visitor's choice
-  // to expand.
+  // Keep only the current turn in view: as soon as the 2nd question is
+  // answered, the previous turn tucks behind a "Show earlier messages" pill,
+  // and each new turn hides the one before it (a rolling window). Older turns
+  // stay one tap away via the toggle. Re-runs each turn; respects the
+  // visitor's choice to expand.
   _applyHistoryCollapse() {
-    const KEEP = 1          // when collapsed, keep only the current turn visible
-    const THRESHOLD = 3     // collapse only once there are more than this many
-    const isMobile = window.matchMedia("(max-width: 640px)").matches
+    const KEEP = 1          // keep only the current turn visible
+    const THRESHOLD = 1     // start hiding once a 2nd turn exists
     const t = this.transcriptTarget
     const kids = Array.from(t.children).filter(el => !el.hasAttribute("data-history-toggle"))
     const userPositions = kids.map((el, i) => (el.dataset.role === "user" ? i : -1)).filter(i => i >= 0)
     const turns = userPositions.length
     let header = t.querySelector("[data-history-toggle]")
 
-    // Not enough turns (or on desktop): show everything, drop the toggle.
-    if (!isMobile || turns <= THRESHOLD) {
+    // Only one turn so far: show everything, drop the toggle.
+    if (turns <= THRESHOLD) {
       if (header) header.remove()
       kids.forEach(el => { el.style.display = "" })
       return
