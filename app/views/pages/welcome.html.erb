@@ -254,8 +254,10 @@
             button so tapping one starts the conversation. Stay visible after
             the first turn so a family can click through several questions. %>
         <div data-welcome-chat-target="quickStart"
+             data-controller="more-toggle"
              class="grid grid-cols-2 justify-items-start gap-x-6 gap-y-2 mt-3 text-[#6B665F] text-[14px] italic">
-          <%# Ordered most-asked → least: cost/payment first, language last. %>
+          <%# Ordered most-asked → least: cost/payment first, language last.
+              Top 5 show by default; the rest reveal via the "View more" toggle. %>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What does hospice cost?"
@@ -294,58 +296,74 @@
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Who qualifies for hospice?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-shield-check-line text-[19px] not-italic"></i>
             <span>Who qualifies for hospice?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What services are included?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-hand-heart-line text-[19px] not-italic"></i>
             <span>What services are included?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Is hospice a place?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-map-pin-line text-[19px] not-italic"></i>
             <span>Is hospice a place?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What if I need equipment like a hospital bed or oxygen?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-wheelchair-line text-[19px] not-italic"></i>
             <span>What if I need equipment?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What's the difference between hospice and palliative care?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-scales-3-line text-[19px] not-italic"></i>
             <span>Hospice vs palliative care?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What is Medicaid?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-hand-coin-line text-[19px] not-italic"></i>
             <span>What is Medicaid?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="What's the difference between Medicare Part A and B?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-government-line text-[19px] not-italic"></i>
             <span>Medicare Part A vs B?</span>
           </button>
           <button type="button"
                   data-action="click->welcome-chat#pick"
                   data-welcome-chat-question-param="Can I get help in Spanish or Haitian Creole?"
-                  class="inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
+                  data-more-toggle-target="item"
+                  class="hidden inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors">
             <i class="ri-translate-2 text-[19px] not-italic"></i>
             <span>I speak Spanish or Haitian Creole</span>
+          </button>
+
+          <%# Reveals the 8 hidden prompts above; spans both columns. %>
+          <button type="button"
+                  data-action="click->more-toggle#toggle"
+                  class="col-span-2 inline-flex items-center gap-1 text-[13px] not-italic text-[#D97757] font-medium hover:underline mt-1">
+            <span data-more-toggle-target="label">View more</span>
+            <i class="ri-arrow-down-s-line transition-transform" data-more-toggle-chevron></i>
           </button>
         </div>
       </div>
