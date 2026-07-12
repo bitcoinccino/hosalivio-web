@@ -28,6 +28,9 @@ export default class extends Controller {
     // remembers what the visitor already shared (ZIP, city, name) instead
     // of re-asking. Capped to the last few turns; the server caps again.
     this._history = []
+    // Whether the visitor tapped "Show earlier messages" to un-collapse the
+    // older turns (see _applyHistoryCollapse).
+    this._historyExpanded = false
   }
 
   // Starter-prompt click — fill the composer with the tapped question
@@ -104,9 +107,57 @@ export default class extends Controller {
 
     if (cardsReady) this._renderAgencyCards(data.agencies, data.query)
 
+    this._applyHistoryCollapse()
+
     this._sending = false
     this.sendTarget.disabled = false
     this.inputTarget.focus()
+  }
+
+  // Once the conversation grows past a few questions on a small screen, tuck
+  // the older turns behind a "Show earlier messages" pill so the newest
+  // exchange stays in view without a long scroll. Desktop keeps everything
+  // visible (there's room). Re-runs each turn; respects the visitor's choice
+  // to expand.
+  _applyHistoryCollapse() {
+    const KEEP = 2          // most recent turns always visible
+    const THRESHOLD = 3     // collapse only once there are more than this many
+    const isMobile = window.matchMedia("(max-width: 640px)").matches
+    const t = this.transcriptTarget
+    const kids = Array.from(t.children).filter(el => !el.hasAttribute("data-history-toggle"))
+    const userPositions = kids.map((el, i) => (el.dataset.role === "user" ? i : -1)).filter(i => i >= 0)
+    const turns = userPositions.length
+    let header = t.querySelector("[data-history-toggle]")
+
+    // Not enough turns (or on desktop): show everything, drop the toggle.
+    if (!isMobile || turns <= THRESHOLD) {
+      if (header) header.remove()
+      kids.forEach(el => { el.style.display = "" })
+      return
+    }
+
+    const cutoff = userPositions[turns - KEEP]   // index (within kids) of first kept turn
+    const hiddenTurns = turns - KEEP
+
+    if (!header) {
+      header = document.createElement("button")
+      header.type = "button"
+      header.setAttribute("data-history-toggle", "")
+      header.className = "sticky top-0 z-10 mx-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur border border-[#EFECE6] text-[12px] text-[#6B665F] hover:text-[#D97757] shadow-sm transition-colors"
+      header.addEventListener("click", () => {
+        this._historyExpanded = !this._historyExpanded
+        this._applyHistoryCollapse()
+      })
+      t.insertBefore(header, t.firstChild)
+    }
+
+    const expanded = this._historyExpanded
+    kids.forEach((el, i) => { el.style.display = (!expanded && i < cutoff) ? "none" : "" })
+    header.innerHTML = expanded
+      ? `<i class="ri-arrow-up-s-line"></i> Hide earlier messages`
+      : `<i class="ri-arrow-down-s-line"></i> Show ${hiddenTurns} earlier ${hiddenTurns === 1 ? "message" : "messages"}`
+
+    if (!expanded) this._scrollBottom()
   }
 
   // ── network ────────────────────────────────────────────────
@@ -133,6 +184,7 @@ export default class extends Controller {
   // ── render helpers ─────────────────────────────────────────
   _renderUser(text) {
     const wrap = document.createElement("div")
+    wrap.dataset.role = "user"   // marks a turn boundary for history collapse
     wrap.className = "flex justify-end"
     const bubble = document.createElement("div")
     bubble.className = "max-w-[85%] rounded-2xl rounded-br-sm bg-[#D97757] text-white text-[14px] leading-relaxed px-4 py-2.5 shadow-sm"
