@@ -223,7 +223,7 @@
     }
     spoken_lang = lang_map[@patient.preferred_language.to_s.downcase] || "en-US"
   %>
-  <main class="flex-1 flex flex-col min-w-0 pb-14 md:pb-0"
+  <main class="flex-1 flex flex-col min-w-0 pb-14 md:pb-0 peer/chat data-[mobile-active=true]:pb-0"
         data-controller="patient-chat"
         data-patient-chat-patient-id-value="<%= @patient.id %>"
         data-patient-chat-lang-value="<%= spoken_lang %>"
@@ -255,6 +255,25 @@
           </div>
         </div>
       <% end %>
+
+      <%# Mobile-only sections menu — the bottom tab bar is hidden in chat, so
+          this is how you reach the Care Team / Clinical Details overlays. %>
+      <div class="md:hidden absolute top-4 left-4 z-20" data-controller="menu">
+        <button type="button" data-action="menu#toggle" aria-label="Open sections"
+                class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
+          <i class="ri-menu-line text-lg"></i>
+        </button>
+        <div data-menu-target="panel" class="hidden absolute left-0 mt-2 w-48 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
+          <button type="button" data-action="patient-chat-mobile#activate menu#close" data-tab-name="team"
+                  class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+            <i class="ri-team-line text-[#6B665F]"></i> Care team
+          </button>
+          <button type="button" data-action="patient-chat-mobile#activate menu#close" data-tab-name="details"
+                  class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+            <i class="ri-file-list-3-line text-[#6B665F]"></i> Clinical details
+          </button>
+        </div>
+      </div>
 
       <%# Centered patient identity. px-10 keeps long names clear of the kebab. %>
       <div class="flex flex-col items-center text-center px-10">
@@ -742,8 +761,9 @@
     <% end %>
   </aside>
 
-  <!-- Mobile bottom tab bar (visible only below md) -->
-  <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch">
+  <!-- Mobile bottom tab bar (below md). Hidden while the Chat tab is active
+       (peer off <main>) so the composer isn't crowded; shown in Team/Details. -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch peer-data-[mobile-active=true]/chat:hidden">
     <%
       tabs = [
         { name: "team",    icon: "ri-team-line",           label: "Team" },
