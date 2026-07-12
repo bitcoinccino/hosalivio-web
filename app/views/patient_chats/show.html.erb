@@ -5,7 +5,7 @@
   <aside data-sidebar-target="sidebar" data-collapsed="false"
          data-patient-chat-mobile-target="tab" data-tab-name="team"
          class="group/sb hidden md:flex w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex-col justify-between p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200
-                data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
+                data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full data-[mobile-active=true]:pb-20 md:data-[mobile-active=true]:pb-6">
     <div>
       <div class="flex items-center justify-between group-data-[collapsed=true]/sb:justify-center">
         <div class="flex items-center gap-2 group-data-[collapsed=true]/sb:hidden">
@@ -18,6 +18,13 @@
                 title="Toggle sidebar"
                 class="w-7 h-7 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] hidden md:flex items-center justify-center flex-shrink-0 transition">
           <i class="ri-side-bar-line text-[15px]"></i>
+        </button>
+        <%# Mobile-only close — the roster is a full-screen overlay here, so
+            dismiss it by switching back to the Chat tab. %>
+        <button type="button" data-action="click->patient-chat-mobile#activate" data-tab-name="chat"
+                aria-label="Close menu"
+                class="md:hidden w-8 h-8 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] flex items-center justify-center flex-shrink-0 transition">
+          <i class="ri-close-line text-lg"></i>
         </button>
       </div>
 
