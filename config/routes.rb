@@ -222,6 +222,9 @@ Rails.application.routes.draw do
   # Public pricing page for prospective partners
   get "pricing", to: "pages#pricing", as: :pricing
 
+  # Public "About" page
+  get "about", to: "pages#about", as: :about
+
   # Public "Book a demo" lead form — the low-friction top-of-funnel for
   # prospective partners (the full signup wizard is for the ready-to-onboard).
   get  "demo", to: "demo_requests#new",    as: :demo
