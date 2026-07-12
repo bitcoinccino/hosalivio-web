@@ -458,7 +458,7 @@ export default class extends Controller {
         ${a.match_reason ? `<div class="mt-3"><span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#D97757] bg-[#FBEEE8] rounded-full px-2.5 py-1"><i class="ri-map-pin-2-fill text-[12px]"></i> ${escapeHtml(a.match_reason)}</span></div>` : ""}
 
         <div class="mt-5">
-          <button type="button" data-action="click->welcome#nurseLine" data-source="chat_agency_card" ${a.agency_id ? `data-agency-id="${escapeHtml(String(a.agency_id))}"` : ""} data-agency-name="${escapeHtml(name)}" data-request class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-semibold w-full justify-center transition-colors">
+          <button type="button" data-source="chat_agency_card" ${a.agency_id ? `data-agency-id="${escapeHtml(String(a.agency_id))}"` : ""} data-agency-name="${escapeHtml(name)}" data-request class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-[13px] font-semibold w-full justify-center transition-colors">
             <i class="ri-phone-fill"></i> Request Care
           </button>
         </div>
@@ -468,13 +468,22 @@ export default class extends Controller {
     const host = this.element.closest('[data-controller~="welcome"]') || document.body
     host.appendChild(overlay)
 
+    // Call the welcome controller directly rather than relying on a Stimulus
+    // data-action bound to a node injected outside the transcript (that binding
+    // is racy and was leaving Request Care inert).
+    const welcomeCtrl = this.application.getControllerForElementAndIdentifier(host, "welcome")
+
     const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey) }
     const onKey = (e) => { if (e.key === "Escape") close() }
     overlay.querySelector("[data-close]").addEventListener("click", close)
     overlay.addEventListener("click", (e) => { if (e.target === overlay) close() })
-    // Request Care opens the capture modal (via welcome#nurseLine); close this
-    // one so it doesn't stack on top.
-    overlay.querySelector("[data-request]").addEventListener("click", close)
+    // Request Care opens the capture modal (routed to this partner via the
+    // button's data-agency-* dataset); close this modal so it doesn't stack.
+    overlay.querySelector("[data-request]").addEventListener("click", (e) => {
+      const btn = e.currentTarget
+      close()
+      if (welcomeCtrl) welcomeCtrl.nurseLine({ preventDefault() {}, currentTarget: btn })
+    })
     document.addEventListener("keydown", onKey)
   }
 
