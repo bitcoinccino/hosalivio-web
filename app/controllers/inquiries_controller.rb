@@ -51,7 +51,18 @@ class InquiriesController < ApplicationController
   def index
     redirect_to(root_path) and return if current_user.family_access?
     ActsAsTenant.with_tenant(current_user.agency) do
-      @inquiries = Inquiry.where(status: [ :new_lead, :claimed, :contacted ]).order(created_at: :desc).limit(100)
+      @agency = current_user.agency
+      # The inbox tracks open work: leads to claim, claimed leads to convert,
+      # and contacted-but-not-yet-converted leads. Converted/dismissed drop off.
+      open_scope     = Inquiry.where(status: [ :new_lead, :claimed, :contacted ])
+      raw_counts     = open_scope.group(:status).count
+      # group(:status).count can key by enum label or raw integer depending on
+      # the adapter; normalize to label strings either way.
+      @status_counts = raw_counts.transform_keys { |k| k.is_a?(Integer) ? Inquiry.statuses.key(k) : k.to_s }
+      @open_total    = @status_counts.values.sum
+      @status        = params[:status].presence_in(%w[new_lead claimed contacted])
+      list           = @status ? open_scope.where(status: @status) : open_scope
+      @inquiries     = list.order(created_at: :desc).limit(100)
     end
     respond_to do |f|
       f.html

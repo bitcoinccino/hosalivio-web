@@ -18,26 +18,42 @@
         A new <span class="font-mono">Patient</span> row will be created with status <strong>referred</strong>. The family's original question will be attached as the first chart note so the admission nurse has context before the visit.
       </p>
 
-      <!-- Inquiry summary -->
+      <!-- Inquiry summary — everything the family / referrer gave us, so you can
+           review the full picture before committing to a patient record. -->
+      <%
+        full_name = [ @inquiry.first_name, @inquiry.last_name ].map(&:presence).compact.join(" ")
+        mono_labels = [ "ZIP", "Contact", "Caregiver phone", "Email", "External MRN" ]
+        summary_fields = [
+          [ "Name",                    full_name.presence ],
+          [ "Date of birth",           @inquiry.dob.presence ],
+          [ "ZIP",                     @inquiry.zip.presence ],
+          [ "Contact",                 @inquiry.contact.presence ],
+          [ "Caregiver phone",         @inquiry.caregiver_phone.presence ],
+          [ "Email",                   @inquiry.email.presence ],
+          [ "Diagnosis (their words)", @inquiry.diagnosis.presence ],
+          [ "Who's asking",            @inquiry.requester_role.presence ],
+          [ "Urgency",                 @inquiry.urgency.presence&.upcase ],
+          [ "Preferred callback",      @inquiry.preferred_window_label ],
+          [ "Referring provider",      @inquiry.referring_provider.presence ],
+          [ "Reason for referral",     @inquiry.reason_for_referral.presence ],
+          [ "External MRN",            @inquiry.external_mrn.presence ],
+          [ "Source",                  @inquiry.source_prompt.to_s.tr("_", " ").presence ]
+        ].select { |_, value| value.present? }
+      %>
       <div class="rounded-lg bg-[#FBF9F5] border border-[#EFECE6] p-4 mb-6 text-[13px]">
-        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] mb-2">Inquiry on file</div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[10px] uppercase tracking-widest text-[#6B665F]">Inquiry on file</div>
+          <% if @inquiry.claimed_by.present? %>
+            <div class="text-[10px] text-[#6B665F]">Claimed by <%= @inquiry.claimed_by.full_name %></div>
+          <% end %>
+        </div>
         <div class="grid grid-cols-2 gap-3 text-[#1D1C1A]">
-          <div>
-            <div class="text-[10px] text-[#6B665F] uppercase tracking-widest">Name</div>
-            <div><%= @inquiry.first_name.presence || "(not provided)" %></div>
-          </div>
-          <div>
-            <div class="text-[10px] text-[#6B665F] uppercase tracking-widest">ZIP</div>
-            <div class="font-mono"><%= @inquiry.zip.presence || "—" %></div>
-          </div>
-          <div>
-            <div class="text-[10px] text-[#6B665F] uppercase tracking-widest">Contact</div>
-            <div class="font-mono"><%= @inquiry.contact %></div>
-          </div>
-          <div>
-            <div class="text-[10px] text-[#6B665F] uppercase tracking-widest">Source</div>
-            <div class="capitalize"><%= @inquiry.source_prompt.to_s.tr("_", " ") %></div>
-          </div>
+          <% summary_fields.each do |label, value| %>
+            <div>
+              <div class="text-[10px] text-[#6B665F] uppercase tracking-widest"><%= label %></div>
+              <div class="<%= "font-mono" if mono_labels.include?(label) %>"><%= value %></div>
+            </div>
+          <% end %>
         </div>
         <% if @inquiry.question.present? %>
           <div class="mt-3 pt-3 border-t border-[#EFECE6]">
@@ -62,12 +78,12 @@
           </div>
           <div>
             <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Last name <span class="text-[#C1403A]">*</span></label>
-            <input type="text" name="last_name" required autofocus
+            <input type="text" name="last_name" value="<%= @inquiry.last_name %>" required autofocus
                    class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
           </div>
           <div>
             <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Date of birth <span class="text-[#C1403A]">*</span></label>
-            <input type="date" name="dob" required
+            <input type="date" name="dob" value="<%= @inquiry.dob %>" required
                    class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
           </div>
           <div>
@@ -110,7 +126,7 @@
           </div>
           <div>
             <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1">Caregiver phone</label>
-            <input type="text" name="caregiver_phone"
+            <input type="text" name="caregiver_phone" value="<%= @inquiry.caregiver_phone %>"
                    class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
           </div>
         </div>

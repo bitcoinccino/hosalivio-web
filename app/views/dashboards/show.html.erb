@@ -37,8 +37,11 @@
         <%# Admission funnel: Referrals (inbound) → Admissions (in-flight) → Patients (managed). %>
         <% if is_mgr_nav %>
           <div class="<%= nav_group %>">Admissions</div>
-          <a href="<%= inquiries_path %>" title="Referrals" class="<%= nav_item %>">
+          <a href="<%= inquiries_path %>" title="Referrals<%= " · #{@pending_inquiries} new" if @pending_inquiries.to_i.positive? %>" class="<%= nav_item %>">
             <i class="ri-inbox-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Referrals</span>
+            <% if @pending_inquiries.to_i.positive? %>
+              <span class="ml-auto group-data-[collapsed=true]/sb:hidden inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#D97757] text-white text-[10px] font-bold leading-none"><%= @pending_inquiries %></span>
+            <% end %>
           </a>
           <a href="<%= admissions_queue_path %>" title="Admissions" class="<%= nav_item %>">
             <i class="ri-folder-history-line"></i><span class="group-data-[collapsed=true]/sb:hidden">Admissions</span>
@@ -157,6 +160,9 @@
           <div class="hidden sm:flex items-center gap-2">
             <%= link_to inquiries_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
               <i class="ri-inbox-line"></i> Referrals
+              <% if @pending_inquiries.to_i.positive? %>
+                <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#D97757] text-white text-[10px] font-bold leading-none"><%= @pending_inquiries %></span>
+              <% end %>
             <% end %>
             <%= link_to admissions_queue_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] font-medium transition" do %>
               <i class="ri-folder-history-line"></i> Admissions
@@ -194,7 +200,7 @@
         <%
           has_glance = @pending_certifications.any? || @noe_overdue.any? || @noe_due_today.any? ||
                        @licenses_expired.to_i.positive? || @licenses_expiring.to_i.positive? ||
-                       @open_inquiries.any? || @mission_visits.any?
+                       @mission_visits.any?
         %>
         <%# Only surfaces when there's something to flag — otherwise the Stage
             stays clean (the banner stats already say "all zero"). %>
@@ -245,30 +251,8 @@
                 </details>
               <% end %>
 
-              <!-- Landing-page inquiries -->
-              <% if @open_inquiries.any? %>
-                <details class="group">
-                  <%= acc_header("ri-inbox-unarchive-line", "New Inquiries", @open_inquiries.size.to_s) %>
-                  <div class="px-5 pb-4 pt-2 space-y-2.5">
-                    <% @open_inquiries.each do |inq| %>
-                      <div class="text-[12px]">
-                        <div class="text-[#1D1C1A] font-medium truncate">
-                          <%= inq.first_name.presence || "Anonymous" %>
-                          <span class="text-[10px] text-[#6B665F] font-mono">· ZIP <%= inq.zip_prefix %>xx</span>
-                        </div>
-                        <div class="text-[11px] text-[#6B665F] truncate"><%= inq.contact %></div>
-                        <div class="flex items-center gap-1.5 mt-1">
-                          <% if inq.status_new_lead? %>
-                            <%= button_to claim_inquiry_path(inq), class: "text-[10px] px-2.5 py-1 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b]" do %><i class="ri-hand-heart-line"></i> Claim<% end %>
-                          <% else %>
-                            <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %><i class="ri-user-add-line"></i> Convert<% end %>
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                </details>
-              <% end %>
+              <%# New inquiries live in the dedicated Referrals inbox (sidebar → /inquiries),
+                  not in the at-a-glance stage. %>
 
               <!-- Visits · recent & upcoming -->
               <% if @mission_visits.any? %>

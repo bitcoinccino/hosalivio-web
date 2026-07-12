@@ -36,7 +36,9 @@ class DashboardsController < ApplicationController
   def load_mission_stage
     @patients       = Patient.order(created_at: :desc).limit(25)
     @recent_events  = AgentEvent.order(happened_at: :desc).limit(80).to_a
-    @open_inquiries = Inquiry.where(status: [ :new_lead, :claimed ]).order(created_at: :desc).limit(10)
+
+    # Unclaimed leads waiting in the Referrals inbox — drives the sidebar badge.
+    @pending_inquiries = Inquiry.status_new_lead.count
 
     compliance_scope    = User.where(agency: @agency, active: true)
     @licenses_expired   = compliance_scope.where("license_expires_on < ?", Date.current).count

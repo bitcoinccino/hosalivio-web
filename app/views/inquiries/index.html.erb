@@ -1,0 +1,108 @@
+<% content_for :title, "Referrals · Inquiries" %>
+<%
+  # Status pill: colour + human label per inquiry state shown in the inbox.
+  status_pill = {
+    "new_lead"  => [ "#D97757", "New lead" ],
+    "claimed"   => [ "#2B4A7A", "Claimed" ],
+    "contacted" => [ "#2F6F4E", "Contacted" ]
+  }
+  # Urgency chip: elevate asap/stat, amber for urgent, muted for routine.
+  urgency_pill = {
+    "stat" => [ "#C1403A", "#FFF3EC" ], "asap" => [ "#C1403A", "#FFF3EC" ],
+    "urgent" => [ "#8A4B2F", "#FFF7F2" ], "routine" => [ "#6B665F", "#EFECE6" ]
+  }
+%>
+<div class="max-w-5xl mx-auto px-4 md:px-8 py-6">
+  <div class="flex items-start justify-between gap-3 mb-5 flex-wrap">
+    <div>
+      <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-2">
+        <i class="ri-arrow-left-line"></i> Dashboard
+      </a>
+      <h1 class="font-serif text-[24px] text-[#1D1C1A]">Referrals &amp; inquiries</h1>
+      <div class="text-[12px] text-[#6B665F]"><%= @agency&.name %> · <%= @open_total %> open</div>
+    </div>
+  </div>
+
+  <%# Status filter chips (link-based, preserve nothing else — this list has no search yet). %>
+  <div class="flex items-center gap-1.5 flex-wrap mb-4">
+    <%= link_to "All", inquiries_path,
+          class: "text-[11px] px-2.5 py-1 rounded-full border transition #{@status.blank? ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" %>
+    <% %w[new_lead claimed contacted].each do |st| %>
+      <% color, label = status_pill[st] %>
+      <%= link_to inquiries_path(status: st),
+            class: "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition #{@status == st ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" do %>
+        <span class="w-1.5 h-1.5 rounded-full" style="background: <%= color %>;"></span><%= label %>
+        <span class="font-mono opacity-70"><%= @status_counts[st] || 0 %></span>
+      <% end %>
+    <% end %>
+  </div>
+
+  <section class="rounded-2xl border border-[#EFECE6] bg-white overflow-hidden">
+    <div class="px-5 py-3 border-b border-[#EFECE6] flex items-center justify-between">
+      <h2 class="text-[11px] uppercase tracking-widest text-[#1D1C1A] font-bold">
+        <i class="ri-inbox-unarchive-line text-[#D97757]"></i> Inbox (<%= @inquiries.size %>)
+      </h2>
+      <span class="text-[10px] text-[#6B665F]">name · ZIP · received</span>
+    </div>
+
+    <% if @inquiries.empty? %>
+      <p class="px-5 py-10 text-center text-[13px] text-[#6B665F]">
+        <%= @status.present? ? "No #{status_pill[@status]&.last&.downcase} inquiries right now." : "No open inquiries. New leads land here the moment they come in." %>
+      </p>
+    <% else %>
+      <ul class="divide-y divide-[#EFECE6]">
+        <% @inquiries.each do |inq| %>
+          <% st_color, st_label = status_pill[inq.status.to_s] || [ "#6B665F", inq.status.to_s ] %>
+          <% initials = [ inq.first_name, inq.last_name ].map { |n| n.to_s.strip.first }.compact.join.upcase.presence %>
+          <li class="flex items-center gap-3 px-5 py-3 hover:bg-[#FBF9F5] transition">
+            <div class="w-10 h-10 rounded-full bg-[#EFECE6] text-[#1D1C1A] text-[12px] font-bold flex items-center justify-center flex-shrink-0">
+              <%= initials || "?" %>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <%# Name links to the full inquiry view (the convert page shows every captured field). %>
+                <%= link_to convert_inquiry_path(inq), class: "text-[14px] text-[#1D1C1A] truncate hover:text-[#D97757] hover:underline" do %>
+                  <%= inq.first_name.presence || "Anonymous" %><%= " #{inq.last_name}" if inq.last_name.present? %>
+                <% end %>
+                <% if inq.is_general? %>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-[#EFECE6] text-[#6B665F] tracking-wider">GENERAL</span>
+                <% end %>
+                <% if inq.urgency.present? %>
+                  <% ufg, ubg = urgency_pill[inq.urgency.to_s] || [ "#6B665F", "#EFECE6" ] %>
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded tracking-wider" style="color: <%= ufg %>; background: <%= ubg %>;"><%= inq.urgency.to_s.upcase %></span>
+                <% end %>
+              </div>
+              <div class="text-[11px] text-[#6B665F] truncate">
+                <span class="font-mono">ZIP <%= inq.zip_prefix %>xx</span>
+                <% if inq.diagnosis.present? %> · <%= inq.diagnosis %><% end %>
+                <% if inq.requester_role.present? %> · <%= inq.requester_role %><% end %>
+              </div>
+              <div class="text-[11px] text-[#6B665F] truncate">
+                <% if inq.preferred_window_label.present? %>
+                  <i class="ri-phone-line"></i> <%= inq.preferred_window_label %> ·
+                <% end %>
+                <span title="<%= inq.created_at.strftime("%b %-d, %Y %-l:%M %p") %>"><%= time_ago_in_words(inq.created_at) %> ago</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <% if inq.status_new_lead? %>
+                <%= button_to claim_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-full bg-[#D97757] text-white hover:bg-[#c46a4b]" do %><i class="ri-hand-heart-line"></i> Claim<% end %>
+              <% else %>
+                <%= link_to convert_inquiry_path(inq), class: "inline-flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-full bg-[#1D1C1A] text-white hover:bg-[#3A3936]" do %><i class="ri-user-add-line"></i> Convert<% end %>
+              <% end %>
+              <%= button_to dismiss_inquiry_path(inq),
+                    form: { data: { turbo_confirm: "Dismiss this inquiry? It will drop off the inbox." } },
+                    class: "inline-flex items-center justify-center w-7 h-7 rounded-full border border-[#EFECE6] text-[#6B665F] hover:bg-[#FFF3EC] hover:text-[#C1403A] hover:border-[#D97757]",
+                    title: "Dismiss" do %><i class="ri-close-line"></i><% end %>
+            </div>
+
+            <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0" style="color: <%= st_color %>; background: <%= st_color %>1a;">
+              <span class="w-1.5 h-1.5 rounded-full" style="background: <%= st_color %>;"></span><%= st_label %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+</div>
