@@ -2,7 +2,8 @@
   <div class="max-w-3xl mx-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-[#6B665F]">
     <span>© <%= Date.current.year %> HosAlivio</span>
     <% [ [ "Home", welcome_path ], [ "About", about_path ], [ "Pricing", pricing_path ],
-         [ "Clinician Terms", terms_path ], [ "Privacy Policy", privacy_path ] ].each do |label, path| %>
+         [ "Clinician Terms", terms_path ], [ "Privacy Policy", privacy_path ],
+         [ "Cookies", cookies_path ] ].each do |label, path| %>
       <span aria-hidden="true">·</span>
       <a href="<%= path %>" class="hover:text-[#1D1C1A]"><%= label %></a>
     <% end %>
