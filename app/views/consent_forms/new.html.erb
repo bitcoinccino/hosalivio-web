@@ -25,14 +25,20 @@
 
       <%# Header — patient + consent kind %>
       <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <% if @guided %>
+          <div class="mb-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#D97757] font-bold">
+            <i class="ri-list-check-2"></i> Required admission consent · you can stop and finish later
+          </div>
+        <% end %>
         <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Consent</div>
         <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= label %></h1>
         <div class="text-[12px] text-[#6B665F] mt-1">
           For <strong class="text-[#1D1C1A] font-medium"><%= @patient.full_name %></strong>
           · MRN <%= @patient.mrn %>
-          · witnessed by <%= current_user.full_name %>
+          · witnessed by <%= @witness&.full_name || "your care team" %>
         </div>
         <%= f.hidden_field :kind, value: kind %>
+        <% if @guided %><input type="hidden" name="flow" value="required"><% end %>
       </section>
 
       <%# Why this form is required — collapsible; expand to read the rationale. %>
@@ -57,81 +63,85 @@
         <p class="px-5 pb-5 text-[14px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= body %></p>
       </details>
 
-      <%# Who is signing — patient vs representative %>
+      <%# Who is signing — patient / known family member / other %>
       <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
         <div class="text-[10px] uppercase tracking-widest text-[#4A4A45] font-bold mb-3">Who is signing?</div>
 
         <div class="inline-flex p-1 bg-[#FBF9F5] rounded-full border border-[#EFECE6] gap-1 mb-4">
-          <button type="button"
+          <button type="button" data-consent-sign-target="patientBtn"
                   data-action="click->consent-sign#signerPatient"
                   class="px-4 py-1.5 rounded-full text-[12px] font-medium bg-white text-[#1D1C1A] shadow-sm">
             The patient
           </button>
-          <button type="button"
-                  data-action="click->consent-sign#signerRepresentative"
+          <button type="button" data-consent-sign-target="someoneBtn"
+                  data-action="click->consent-sign#signerSomeone"
                   class="px-4 py-1.5 rounded-full text-[12px] font-medium text-[#6B665F]">
-            A family member / representative
+            Someone else
           </button>
         </div>
 
-        <%= f.hidden_field :signer_role, value: @consent.signer_role.presence || "patient",
-              data: { consent_sign_target: "roleInput" } %>
+        <%= f.hidden_field :signer_role, value: "patient", data: { consent_sign_target: "roleField" } %>
 
-        <%# Signer name — pre-filled with patient's name in patient
-            mode, editable + required in representative mode. %>
+        <%# Signer name — auto-filled + read-only for the patient and known
+            family; editable only in "other". %>
         <div class="mb-3">
           <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Signer name</label>
-          <%= f.text_field :signer_name,
-                value: @patient.full_name,
-                readonly: true,
-                required: true,
+          <%= f.text_field :signer_name, value: @patient.full_name, readonly: true, required: true,
                 placeholder: "Type the signer's full name",
-                data: { consent_sign_target: "signerNameInput" },
+                data: { consent_sign_target: "nameField" },
                 class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-serif uppercase tracking-wider" %>
         </div>
 
-        <%# Patient-only block (currently empty — kept as the
-            target so future per-mode UI can hang off it cleanly). %>
-        <div data-consent-sign-target="patientFields">
-          <div class="text-[11px] text-[#6B665F] italic">
-            The patient is signing in person, witnessed by <%= current_user.full_name %>.
-          </div>
+        <div data-consent-sign-target="patientNote" class="text-[11px] text-[#6B665F] italic">
+          The patient is signing in person, witnessed by <%= @witness&.full_name || current_user.full_name %>.
         </div>
 
-        <%# Representative-only block — relationship + authority %>
-        <div data-consent-sign-target="repFields" class="hidden space-y-3 pt-3 border-t border-[#EFECE6]">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <%# Representative block — family picker, manual fields, authority. %>
+        <div data-consent-sign-target="someoneBlock" class="hidden space-y-3 pt-3 border-t border-[#EFECE6]">
+          <% if @family_users.any? %>
+            <div>
+              <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Which family member?</label>
+              <select data-consent-sign-target="familySelect" data-action="change->consent-sign#familyChanged"
+                      class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+                <option value="">Select…</option>
+                <% @family_users.each do |fu| %>
+                  <option value="fam-<%= fu.id %>"
+                          data-name="<%= fu.full_name %>"
+                          data-role="<%= ConsentForm.role_for_relationship(fu.relationship) %>"
+                          data-rel="<%= fu.relationship %>">
+                    <%= fu.full_name %><%= " · #{fu.relationship}" if fu.relationship.present? %>
+                  </option>
+                <% end %>
+                <option value="other">Someone else (not listed)</option>
+              </select>
+            </div>
+          <% end %>
+
+          <%# Manual relationship fields — hidden until "other" (or shown
+              immediately when no family is on file). %>
+          <div data-consent-sign-target="otherFields" class="<%= "hidden" if @family_users.any? %> grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Relationship to patient</label>
-              <%= f.select :signer_role,
-                    [
-                      ["Spouse",          "spouse"],
-                      ["Son",             "son"],
-                      ["Daughter",        "daughter"],
-                      ["Parent",          "parent"],
-                      ["Sibling",         "sibling"],
-                      ["Other family",    "other_family"],
-                      ["Healthcare proxy","healthcare_proxy"],
-                      ["Power of attorney","poa"],
-                      ["Legal guardian",  "legal_guardian"]
-                    ],
-                    { include_blank: "Select…" },
-                    class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]",
-                    data: { consent_sign_target: "roleInput" } %>
+              <select data-consent-sign-target="roleSelect" data-action="change->consent-sign#roleSelectChanged"
+                      class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+                <%= options_for_select(ConsentForm::REPRESENTATIVE_ROLE_OPTIONS) %>
+              </select>
             </div>
             <div>
-              <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Relationship label (free text, optional)</label>
-              <%= f.text_field :signer_relationship,
-                    placeholder: "e.g. eldest son",
+              <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Relationship label (optional)</label>
+              <%= f.text_field :signer_relationship, placeholder: "e.g. eldest son",
+                    data: { consent_sign_target: "relInput" },
                     class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
             </div>
           </div>
+
+          <%# Authority to sign — a selectable list of standing bases. %>
           <div>
-            <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Authority to sign on patient's behalf</label>
-            <%= f.text_area :signer_authority, rows: 2,
-                  placeholder: "e.g. POA papers on file; patient unable to sign due to advanced confusion.",
+            <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Authority to sign on the patient's behalf</label>
+            <%= f.select :signer_authority, ConsentForm::AUTHORITY_OPTIONS,
+                  { include_blank: "Select…" },
                   class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]" %>
-            <div class="text-[10px] text-[#6B665F] mt-1">CMS expects a written reason when a representative signs instead of the patient.</div>
+            <div class="text-[10px] text-[#6B665F] mt-1">CMS expects a documented reason when a representative signs instead of the patient.</div>
           </div>
         </div>
       </section>
