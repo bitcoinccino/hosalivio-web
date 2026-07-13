@@ -1,0 +1,14 @@
+<header class="bg-white border-b border-[#EFECE6] px-6 lg:px-8 py-4">
+  <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+    <a href="<%= welcome_path %>" class="inline-flex items-center gap-2 text-[#1D1C1A] hover:text-[#D97757]">
+      <span class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center">
+        <i class="ri-heart-pulse-line text-sm"></i>
+      </span>
+      <span class="font-serif text-xl">HosAlivio</span>
+    </a>
+    <%= link_to demo_path,
+          class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
+      <i class="ri-calendar-check-line"></i> Book a demo
+    <% end %>
+  </div>
+</header>

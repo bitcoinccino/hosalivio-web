@@ -1,0 +1,88 @@
+<% content_for :title, "Clinician Terms of Service · HosAlivio" %>
+<%
+  # Section list: [heading, [paragraph | [bullet, bullet, …]]]. Original copy
+  # tailored to HosAlivio's hospice-documentation platform.
+  sections = [
+    [ "What HosAlivio is",
+      [ "HosAlivio is a software platform that helps hospice agencies run their care. It includes an admission documentation assistant (the “scribe”) that turns a clinician's spoken or written visit into a structured, certification-ready record, a secure family–care-team messaging channel, scheduling and coordination tools, and related features. HosAlivio uses automated and artificial-intelligence techniques to generate drafts and suggestions.",
+        "HosAlivio is an administrative and documentation tool. It is not a medical device, does not practice medicine, and does not provide medical advice, diagnosis, or treatment." ] ],
+    [ "Who may use the Service",
+      [ "The Service is for authorized users of a subscribing Agency who are at least 18 years old and, where applicable, hold the professional license or credentials required for their role. Your Agency controls who may access the Service and in what capacity. You may use the Service only for legitimate hospice care, documentation, and coordination on behalf of your Agency." ] ],
+    [ "Your account",
+      [ "You are responsible for keeping your login credentials confidential and for all activity under your account. Do not share your account or let anyone else use it. Notify your Agency administrator and HosAlivio promptly if you suspect unauthorized access. Access is provisioned and revoked through your Agency." ] ],
+    [ "Clinician responsibility and AI-assisted content",
+      [ "HosAlivio drafts, transcribes, summarizes, schedules, and proposes — but you remain in control. Anything the Service generates (including transcripts, notes, evaluations, summaries, orders, and schedules) is a draft for your review.",
+        "A qualified clinician must review, edit as needed, and approve any output before it is finalized, signed, submitted, billed, or relied upon for care. You are solely responsible for the accuracy and completeness of the clinical record and for all clinical judgments and care decisions. Automated output may contain errors or omissions and must never be used as the sole basis for a clinical decision. HosAlivio does not replace professional judgment, supervision, or your obligations under applicable law and your Agency's policies." ] ],
+    [ "Recording and consent",
+      [ "Some features capture audio or other recordings of a visit to produce documentation. You are responsible for obtaining any patient, family, or other consent required by law or your Agency's policy before recording, and for using recordings only as permitted. Do not record where you are not authorized to do so." ] ],
+    [ "Protected health information and HIPAA",
+      [ "In providing the Service, HosAlivio may create, receive, maintain, or transmit protected health information (“PHI”) on behalf of your Agency, which is the covered entity. HosAlivio acts as a business associate and handles PHI in accordance with a separate Business Associate Agreement (“BAA”) between HosAlivio and your Agency and with applicable law, including HIPAA. If these Terms conflict with the BAA as to PHI, the BAA controls. You agree to access and use PHI only as permitted by your role, your Agency, and applicable law." ] ],
+    [ "Acceptable use",
+      [ "You agree not to:",
+        [ "use the Service unlawfully or for any purpose other than authorized hospice care and operations;",
+          "upload or enter data you are not authorized to use, or access data about patients not under your care except as permitted by your Agency;",
+          "attempt to re-identify individuals from de-identified data;",
+          "interfere with, disrupt, probe, or reverse engineer the Service, or circumvent security or access controls;",
+          "share credentials, or use the Service to build a competing product." ],
+        "You must comply with your Agency's policies and all applicable laws and professional standards." ] ],
+    [ "Data and intellectual property",
+      [ "As between HosAlivio and your Agency, your Agency owns its clinical records and patient data, and HosAlivio owns the Service, including its software, models, and design. You grant HosAlivio the rights necessary to process your inputs to operate, secure, support, and improve the Service, subject to the BAA and this section.",
+        "HosAlivio does not sell PHI and does not use identifiable PHI to train third-party AI models except as permitted by the BAA or after de-identification in accordance with HIPAA. Feedback you provide may be used to improve the Service." ] ],
+    [ "Fees",
+      [ "Access to the Service is governed by the subscription agreement between HosAlivio and your Agency. Unless you have a separate written agreement with HosAlivio, you are not individually charged for use as an authorized Agency user." ] ],
+    [ "Disclaimers",
+      [ "The Service is provided “as is” and “as available,” without warranties of any kind, whether express, implied, or statutory, including implied warranties of merchantability, fitness for a particular purpose, accuracy, or non-infringement. HosAlivio does not warrant that the Service will be uninterrupted or error-free or that any output will be accurate or complete. The Service is not a substitute for professional clinical judgment." ] ],
+    [ "Limitation of liability",
+      [ "To the maximum extent permitted by law, HosAlivio and its suppliers will not be liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss of profits, data, or goodwill, arising out of or relating to the Service or these Terms, even if advised of the possibility. Nothing here limits liability that cannot be limited under applicable law, or a clinician's own professional and legal responsibilities." ] ],
+    [ "Suspension and termination",
+      [ "HosAlivio or your Agency may suspend or terminate your access at any time, including for violation of these Terms or your Agency's policies, or to protect the Service or patient safety. Your right to use the Service ends when your Agency's subscription ends or your authorization is revoked. Provisions that by their nature should survive (including the PHI, data, disclaimer, and liability sections) survive termination." ] ],
+    [ "Changes",
+      [ "HosAlivio may update the Service and these Terms from time to time. If we make material changes, we will update the “Last updated” date and, where appropriate, provide additional notice. Your continued use after changes take effect means you accept the updated Terms." ] ],
+    [ "Governing law",
+      [ "These Terms are governed by the laws of the State of Florida, without regard to its conflict-of-laws rules, except where superseded by applicable federal law." ] ],
+    [ "Contact",
+      [ "Questions about these Terms? Contact HosAlivio at legal@hosalivio.com." ] ]
+  ]
+%>
+<div class="min-h-screen bg-[#FBF9F5]">
+  <%= render "legal_header" %>
+
+  <main class="px-6 lg:px-8 py-10">
+    <div class="max-w-3xl mx-auto">
+      <div class="mb-6">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-2">
+          <i class="ri-file-shield-2-line"></i> Legal
+        </div>
+        <h1 class="font-serif text-3xl md:text-4xl text-[#1D1C1A] leading-tight">Clinician Terms of Service</h1>
+        <p class="text-[12px] text-[#6B665F] mt-2">Last updated July 13, 2026</p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-[#EFECE6] p-6 md:p-8">
+        <p class="text-[14px] text-[#3A3936] leading-relaxed mb-1">
+          These Clinician Terms of Service (“Terms”) govern your access to and use of the HosAlivio platform, websites, and related services (the “Service”) as an individual clinician, staff member, or other authorized user of a hospice agency that subscribes to HosAlivio (“Agency”). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
+        </p>
+
+        <% sections.each_with_index do |(heading, blocks), i| %>
+          <section class="mt-6">
+            <h2 class="font-serif text-[19px] text-[#1D1C1A] mb-2"><%= "#{i + 1}. #{heading}" %></h2>
+            <% blocks.each do |block| %>
+              <% if block.is_a?(Array) %>
+                <ul class="list-disc pl-5 text-[14px] text-[#3A3936] leading-relaxed mb-3 space-y-1">
+                  <% block.each do |li| %><li><%= li %></li><% end %>
+                </ul>
+              <% else %>
+                <p class="text-[14px] text-[#3A3936] leading-relaxed mb-3"><%= block %></p>
+              <% end %>
+            <% end %>
+          </section>
+        <% end %>
+
+        <p class="text-[11px] text-[#6B665F] italic mt-8 pt-4 border-t border-[#EFECE6]">
+          This document is provided as a starting point and does not constitute legal advice. Agencies should have their own counsel review it before relying on it.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <%= render "site_footer" %>
+</div>

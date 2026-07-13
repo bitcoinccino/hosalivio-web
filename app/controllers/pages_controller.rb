@@ -44,6 +44,15 @@ class PagesController < ApplicationController
   def about
   end
 
+  # Public legal pages. Content is a starting point tailored to HosAlivio's
+  # hospice-documentation platform; agencies should have counsel review before
+  # relying on it. Effective date lives in the views.
+  def terms
+  end
+
+  def privacy
+  end
+
   # Left intact from earlier FAQ tree (still used by the educational prompts
   # in the side panel — we keep them as a secondary layer under the directory).
   HOSPICE_FAQS = [].freeze
