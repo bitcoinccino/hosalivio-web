@@ -6,23 +6,30 @@
 <style>
   @media print {
     @page { margin: 0.6in; size: letter; }
-    body { background: white !important; color: black !important; }
+    html, body { background: #fff !important; }
+    /* Keep backgrounds, borders and colors in the printed / PDF output —
+       browsers strip them by default, which blanks the signature box + hash. */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .no-print, .no-print * { display: none !important; }
+    /* Strip the app chrome so it prints as one clean sheet. */
+    .print-page { min-height: 0 !important; background: #fff !important; padding: 0 !important; }
+    .print-wrap { max-width: none !important; margin: 0 !important; }
+    .print-card { border: none !important; box-shadow: none !important; padding: 0 !important; }
   }
 </style>
-<div class="min-h-screen bg-[#FBF9F5] py-8 px-6">
-  <div class="max-w-3xl mx-auto">
-    <div class="flex items-center justify-between gap-3 mb-4 no-print">
+<div class="min-h-screen bg-[#FBF9F5] py-8 px-6 print-page">
+  <div class="max-w-3xl mx-auto print-wrap">
+    <div class="flex items-center justify-between gap-3 mb-4 no-print" data-controller="print">
       <a href="<%= patient_consents_path(@patient) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A]">
         <i class="ri-arrow-left-line"></i> Back to consents
       </a>
-      <button type="button" onclick="window.print()"
+      <button type="button" data-action="click->print#now"
               class="inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#6B665F]">
-        <i class="ri-printer-line"></i> Print / Download PDF
+        <i class="ri-printer-line"></i> Print / Save as PDF
       </button>
     </div>
 
-    <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm">
+    <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm print-card">
       <div class="flex items-start justify-between gap-3 flex-wrap mb-1">
         <div>
           <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">Signed consent</div>
