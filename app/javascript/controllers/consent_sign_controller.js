@@ -16,7 +16,7 @@ import SignaturePad from "signature_pad"
 //   familySelect, otherFields, roleSelect, patientBtn, someoneBtn.
 export default class extends Controller {
   static targets = [
-    "canvas", "dataField", "roleField", "nameField", "relInput",
+    "canvas", "dataField", "roleField", "nameField", "relInput", "printedName",
     "patientNote", "familyBlock", "repDetails", "familySelect", "otherFields",
     "roleSelect", "patientBtn", "someoneBtn"
   ]
@@ -33,7 +33,11 @@ export default class extends Controller {
       window.addEventListener("resize", this._resize)
     }
     this._mode("patient")
+    this._syncPrintedName()
   }
+
+  // Live-echo the typed signer name into the printed-name line by the signature.
+  nameTyped() { this._syncPrintedName() }
 
   disconnect() {
     if (this._resize) window.removeEventListener("resize", this._resize)
@@ -125,6 +129,13 @@ export default class extends Controller {
     } else if (this.nameFieldTarget.value === this.patientNameValue) {
       this.nameFieldTarget.value = ""
     }
+    this._syncPrintedName()
+  }
+
+  _syncPrintedName() {
+    if (!this.hasPrintedNameTarget) return
+    const name = this.hasNameFieldTarget ? this.nameFieldTarget.value.trim() : ""
+    this.printedNameTarget.textContent = name || " "
   }
 
   _activate(btn, on) {
