@@ -86,11 +86,13 @@ class ConsentFormsController < ApplicationController
 
   def set_patient
     ActsAsTenant.with_tenant(current_user.agency) do
-      if params[:patient_id].present?
-        @patient = Patient.find(params[:patient_id])
-      else
+      # Consents are nested under patients, so #show carries BOTH :patient_id
+      # and :id — key off :id first to load the consent, then its patient.
+      if params[:id].present?
         @consent = ConsentForm.find(params[:id])
         @patient = @consent.patient
+      else
+        @patient = Patient.find(params[:patient_id])
       end
     end
   end
