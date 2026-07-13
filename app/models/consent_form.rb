@@ -44,6 +44,32 @@ class ConsentForm < ApplicationRecord
     healthcare_proxy poa legal_guardian other_family
   ].freeze
 
+  # Relationship roles a representative can pick (patient excluded — that's the
+  # separate "The patient" path). [label, value] for a select.
+  REPRESENTATIVE_ROLE_OPTIONS = [
+    [ "Spouse", "spouse" ], [ "Son", "son" ], [ "Daughter", "daughter" ],
+    [ "Parent", "parent" ], [ "Sibling", "sibling" ], [ "Other family", "other_family" ],
+    [ "Healthcare proxy", "healthcare_proxy" ], [ "Power of attorney", "poa" ],
+    [ "Legal guardian", "legal_guardian" ]
+  ].freeze
+
+  # Selectable reasons a representative has standing to sign (CMS wants a
+  # documented basis). The stored value is the descriptive text itself.
+  AUTHORITY_OPTIONS = [
+    "Healthcare proxy / medical power of attorney on file",
+    "Durable power of attorney on file",
+    "Legal guardian or conservator",
+    "Next of kin — patient is unable to sign",
+    "Patient is present but physically unable to sign",
+    "Other (documented in the patient's chart)"
+  ].freeze
+
+  # Map a free-text family relationship to a canonical signer_role.
+  def self.role_for_relationship(rel)
+    r = rel.to_s.strip.downcase
+    (SIGNER_ROLES - [ "patient" ]).include?(r) ? r : "other_family"
+  end
+
   validates :kind,        inclusion: { in: KINDS }
   validates :signer_role, inclusion: { in: SIGNER_ROLES }
   validates :signer_name, presence: true, length: { minimum: 2, maximum: 200 }

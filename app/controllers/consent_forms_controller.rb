@@ -11,6 +11,7 @@ class ConsentFormsController < ApplicationController
   before_action :set_patient
   before_action :authorize_patient_access!
   before_action :authorize_signing!, only: [ :new, :create ]
+  before_action :load_family_users, only: [ :new, :create ]
 
   def index
     @consents             = @patient.consent_forms.recent_first
@@ -148,6 +149,13 @@ class ConsentFormsController < ApplicationController
     return if @patient.visits.where(user_id: current_user.id).exists?
     redirect_to dashboard_path, status: :see_other,
                 alert: "Only the patient's assigned clinician or an admin can witness consents."
+  end
+
+  # Linked family members — offered as one-tap signer picks on the form.
+  def load_family_users
+    @family_users = ActsAsTenant.with_tenant(current_user.agency) do
+      User.where(patient_id: @patient.id, family_access: true, active: true).order(:full_name).to_a
+    end
   end
 
   def consent_params
