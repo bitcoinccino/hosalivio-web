@@ -40,7 +40,7 @@ class ConsentFormsController < ApplicationController
       patient:      @patient,
       witnessed_by: current_user,
       signed_at:    Time.current,
-      form_content: form_body_for(permitted[:kind])
+      form_content: ConsentForm.attestation_for(permitted[:kind], agency: @patient.agency)
     ))
 
     if data_url.blank? || !data_url.start_with?("data:image/")
@@ -104,23 +104,5 @@ class ConsentFormsController < ApplicationController
       :kind, :signer_role, :signer_name, :signer_relationship,
       :signer_authority, :signature_data_url
     )
-  end
-
-  # Snapshotted at signing time so legal copy revisions don't
-  # rewrite history. Each kind has its own short attestation; the
-  # patient/family is signing exactly this text.
-  def form_body_for(kind)
-    case kind.to_s
-    when "hospice_election"
-      "I elect to receive hospice care under the Medicare/Medicaid hospice benefit. I have been informed of the palliative (comfort-focused) nature of hospice care, the services available, and that hospice care waives my right to curative treatment for the terminal illness. I may revoke this election at any time."
-    when "dnr"
-      "I direct that, in the event my heart or breathing stops, no cardiopulmonary resuscitation (CPR) be initiated. Comfort-focused care will continue. I understand I may revoke this directive at any time by notifying the hospice team."
-    when "hipaa_acknowledgment"
-      "I acknowledge that I have received the agency's Notice of Privacy Practices describing how my protected health information may be used and disclosed."
-    when "plan_of_care"
-      "I have reviewed the hospice plan of care developed by the interdisciplinary team and agree to participate in the plan as described."
-    else
-      ""
-    end
   end
 end
