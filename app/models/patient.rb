@@ -102,6 +102,13 @@ class Patient < ApplicationRecord
   belongs_to :assigned_sw,       class_name: "User", optional: true
   belongs_to :assigned_chaplain, class_name: "User", optional: true
 
+  # Clinician of record who witnesses a consent when the patient/family signs
+  # it themselves (remotely, when they weren't ready at the admission visit).
+  # The Admission RN owns admission consents; fall back to the attending MD.
+  def consent_witness_of_record
+    assigned_rn || assigned_md
+  end
+
   has_many :visits,              dependent: :destroy
   has_many :medication_orders,   dependent: :destroy
   has_many :medication_logs,     through: :medication_orders

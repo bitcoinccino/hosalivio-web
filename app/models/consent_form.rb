@@ -24,6 +24,17 @@ class ConsentForm < ApplicationRecord
     "plan_of_care"          => "Plan of Care"
   }.freeze
 
+  # Forms required from every patient before care fully proceeds. Captured
+  # during the admission visit by the Admission RN. DNR is excluded — it's a
+  # separate clinical directive (flips code_status), not an admission consent.
+  REQUIRED_KINDS = %w[hospice_election hipaa_acknowledgment plan_of_care].freeze
+
+  # Required kinds this patient has not signed yet, in canonical order.
+  def self.outstanding_required_for(patient)
+    signed = patient.consent_forms.pluck(:kind).uniq
+    REQUIRED_KINDS - signed
+  end
+
   # Patient = the patient themselves. Everything else means a
   # representative is signing on the patient's behalf — relationship
   # + authority columns capture the why so a CMS auditor can tell

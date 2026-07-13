@@ -25,14 +25,20 @@
 
       <%# Header — patient + consent kind %>
       <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
+        <% if @guided %>
+          <div class="mb-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#D97757] font-bold">
+            <i class="ri-list-check-2"></i> Required admission consent · you can stop and finish later
+          </div>
+        <% end %>
         <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-1">Consent</div>
         <h1 class="font-serif text-2xl text-[#1D1C1A] leading-tight"><%= label %></h1>
         <div class="text-[12px] text-[#6B665F] mt-1">
           For <strong class="text-[#1D1C1A] font-medium"><%= @patient.full_name %></strong>
           · MRN <%= @patient.mrn %>
-          · witnessed by <%= current_user.full_name %>
+          · witnessed by <%= @witness&.full_name || "your care team" %>
         </div>
         <%= f.hidden_field :kind, value: kind %>
+        <% if @guided %><input type="hidden" name="flow" value="required"><% end %>
       </section>
 
       <%# Why this form is required — collapsible; expand to read the rationale. %>

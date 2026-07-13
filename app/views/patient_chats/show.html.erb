@@ -225,7 +225,7 @@
           eval / documents / consents are staff pages. For family the whole
           menu is mobile-only (nothing to show on desktop). %>
       <% menu_item = "w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]" %>
-      <div class="absolute top-4 right-4 z-20 <%= "md:hidden" if fam %>" data-controller="menu">
+      <div class="absolute top-4 right-4 z-20" data-controller="menu">
         <button type="button" data-action="menu#toggle" aria-label="Patient actions"
                 class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
           <i class="ri-more-fill text-lg"></i>
@@ -239,16 +239,23 @@
                   class="md:hidden <%= menu_item %>">
             <i class="ri-file-list-3-line text-[#6B665F]"></i> Clinical details
           </button>
+          <div class="md:hidden my-1 border-t border-[#EFECE6]"></div>
+          <%# Consent forms — family can review + sign here; clinicians manage. %>
+          <%= link_to patient_consents_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
+            <i class="ri-file-text-line text-[#6B665F]"></i> Consent forms
+            <% if fam %>
+              <% n = ConsentForm.outstanding_required_for(@patient).size %>
+              <% if n.positive? %>
+                <span class="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#D97757] text-white text-[10px] font-bold leading-none"><%= n %></span>
+              <% end %>
+            <% end %>
+          <% end %>
           <% unless fam %>
-            <div class="md:hidden my-1 border-t border-[#EFECE6]"></div>
             <%= link_to patient_admissions_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
               <i class="ri-file-shield-2-line text-[#6B665F]"></i> View eval
             <% end %>
             <%= link_to patient_documents_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
               <i class="ri-folder-line text-[#6B665F]"></i> View documents
-            <% end %>
-            <%= link_to patient_consents_path(@patient), data: { action: "menu#close" }, class: menu_item do %>
-              <i class="ri-file-text-line text-[#6B665F]"></i> View consents
             <% end %>
             <% if @can_reassign_rn %>
               <div class="my-1 border-t border-[#EFECE6]"></div>
