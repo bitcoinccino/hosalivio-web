@@ -71,5 +71,11 @@
     <% end %>
 
     <%= yield %>
+
+    <%# Cookie notice — shown to visitors (signed-in users have already passed
+        through the public site); avoids overlapping the app's fixed bottom UI. %>
+    <% unless user_signed_in? %>
+      <%= render "shared/cookie_banner" %>
+    <% end %>
   </body>
 </html>
