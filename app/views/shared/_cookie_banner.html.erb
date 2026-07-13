@@ -1,0 +1,15 @@
+<%# Cookie consent notice — dismissed via the cookie-consent controller
+    (localStorage), so it only shows until the visitor accepts. %>
+<div data-controller="cookie-consent"
+     class="fixed bottom-0 inset-x-0 z-40 px-4 pb-4 pointer-events-none">
+  <div class="max-w-3xl mx-auto pointer-events-auto rounded-2xl bg-white border border-[#EFECE6] shadow-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+    <p class="text-[12px] text-[#3A3936] leading-snug flex-1">
+      HosAlivio uses cookies to keep you signed in and to improve the site. See our
+      <%= link_to "Privacy Policy", privacy_path, class: "underline hover:text-[#1D1C1A]" %>.
+    </p>
+    <button type="button" data-action="cookie-consent#accept"
+            class="flex-shrink-0 self-end sm:self-auto inline-flex items-center justify-center text-[12px] px-4 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium transition">
+      Accept
+    </button>
+  </div>
+</div>
