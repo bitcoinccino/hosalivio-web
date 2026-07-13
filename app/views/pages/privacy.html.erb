@@ -1,0 +1,77 @@
+<% content_for :title, "Privacy Policy · HosAlivio" %>
+<%
+  sections = [
+    [ "Scope",
+      [ "This policy covers information we handle as a company — for example, information about clinicians and staff who use the Service, prospective partners who contact us, and visitors to our websites. Patient protected health information (“PHI”) that we process for a hospice agency is controlled by that agency (the covered entity) and handled under our Business Associate Agreement with it; patients should direct privacy requests to their hospice agency." ] ],
+    [ "Information we collect",
+      [ [ "Account and profile information: name, email, phone, role, professional credentials, and the agency you belong to.",
+          "Content you provide: visit recordings and transcripts, clinical notes and evaluations, messages, and patient and family information you enter or capture. This may include PHI.",
+          "Family and patient contact information used to enable the family–care-team chat.",
+          "Usage and device information: log data, IP address, browser and device type, pages viewed, and similar analytics.",
+          "Cookies and similar technologies used to keep you signed in and to operate the site." ] ] ],
+    [ "How we use information",
+      [ "We use information to provide, operate, and secure the Service; generate documentation and other features you request; authenticate users and prevent abuse; provide support; understand and improve the Service; and comply with legal obligations. Automated and AI techniques may process spoken visits and text you provide to generate drafts and suggestions, which a clinician then reviews." ] ],
+    [ "AI processing and training",
+      [ "The Service uses AI to help generate documentation. We do not sell personal information or PHI. We do not use identifiable PHI to train third-party AI models except as permitted by our Business Associate Agreement or after de-identification in accordance with HIPAA. We may use de-identified or aggregated data to operate and improve the Service." ] ],
+    [ "HIPAA and protected health information",
+      [ "When we handle PHI to provide the Service to a hospice agency, we act as a business associate under HIPAA. Our use and disclosure of PHI is governed by the Business Associate Agreement with the agency and by law. We maintain administrative, physical, and technical safeguards designed to protect PHI. Individuals seeking to access, amend, or restrict their health information should contact their hospice agency, which controls that information." ] ],
+    [ "How we share information",
+      [ "We share information with service providers and subprocessors (such as cloud hosting and AI-processing vendors) who act on our behalf under contract and confidentiality obligations; with the hospice agency responsible for the patient's care; when required by law or to protect safety and rights; and in connection with a merger, acquisition, or sale of assets, subject to this policy. We do not sell your personal information." ] ],
+    [ "Data security",
+      [ "We use encryption in transit and at rest, access controls, authentication, audit logging, and other measures designed to protect information. No system is perfectly secure, and we cannot guarantee absolute security." ] ],
+    [ "Data retention",
+      [ "We retain information for as long as needed to provide the Service and as required by our agreements with agencies and by law (including record-retention requirements applicable to hospice care). When information is no longer needed, we take steps to delete or de-identify it, subject to legal holds and backup cycles." ] ],
+    [ "Your choices",
+      [ "You can review and update your account information within the Service or through your agency administrator. Patients exercise HIPAA rights (such as access to and amendment of their records) through their hospice agency. You can control cookies through your browser settings, though some features may not work without them." ] ],
+    [ "Children",
+      [ "The Service is intended for use by hospice clinicians and staff and by adult family members. It is not directed to children, and we do not knowingly collect personal information from children through our public websites. Patient information — regardless of age — is handled under HIPAA and our agreements with the agency." ] ],
+    [ "Where information is processed",
+      [ "The Service is operated in the United States, and information may be processed and stored there." ] ],
+    [ "Changes to this policy",
+      [ "We may update this policy from time to time. If we make material changes, we will update the “Last updated” date and, where appropriate, provide additional notice." ] ],
+    [ "Contact",
+      [ "Questions about this policy or your information? Contact HosAlivio at privacy@hosalivio.com." ] ]
+  ]
+%>
+<div class="min-h-screen bg-[#FBF9F5]">
+  <%= render "legal_header" %>
+
+  <main class="px-6 lg:px-8 py-10">
+    <div class="max-w-3xl mx-auto">
+      <div class="mb-6">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#D97757] font-bold mb-2">
+          <i class="ri-lock-2-line"></i> Legal
+        </div>
+        <h1 class="font-serif text-3xl md:text-4xl text-[#1D1C1A] leading-tight">Privacy Policy</h1>
+        <p class="text-[12px] text-[#6B665F] mt-2">Last updated July 13, 2026</p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-[#EFECE6] p-6 md:p-8">
+        <p class="text-[14px] text-[#3A3936] leading-relaxed mb-1">
+          This Privacy Policy explains how HosAlivio (“we,” “us”) collects, uses, and shares information in connection with our websites and platform (the “Service”). HosAlivio provides software to hospice agencies. Much of the health information in the Service is processed on behalf of a hospice agency and is governed by HIPAA and a Business Associate Agreement, as described below.
+        </p>
+
+        <% sections.each_with_index do |(heading, blocks), i| %>
+          <section class="mt-6">
+            <h2 class="font-serif text-[19px] text-[#1D1C1A] mb-2"><%= "#{i + 1}. #{heading}" %></h2>
+            <% blocks.each do |block| %>
+              <% if block.is_a?(Array) %>
+                <ul class="list-disc pl-5 text-[14px] text-[#3A3936] leading-relaxed mb-3 space-y-1">
+                  <% block.each do |li| %><li><%= li %></li><% end %>
+                </ul>
+              <% else %>
+                <p class="text-[14px] text-[#3A3936] leading-relaxed mb-3"><%= block %></p>
+              <% end %>
+            <% end %>
+          </section>
+        <% end %>
+
+        <p class="text-[11px] text-[#6B665F] italic mt-8 pt-4 border-t border-[#EFECE6]">
+          This document is provided as a starting point and does not constitute legal advice. Agencies should have their own counsel review it before relying on it.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <%= render "site_footer" %>
+</div>
