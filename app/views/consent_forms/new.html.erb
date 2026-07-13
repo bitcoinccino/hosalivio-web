@@ -181,6 +181,12 @@
         </div>
       <% end %>
 
+      <p class="text-[11px] text-[#6B665F] text-center">
+        By signing, the signer agrees to HosAlivio's
+        <%= link_to "Terms of Service", terms_path, target: "_blank", rel: "noopener", class: "underline hover:text-[#1D1C1A]" %> and
+        <%= link_to "Privacy Policy", privacy_path, target: "_blank", rel: "noopener", class: "underline hover:text-[#1D1C1A]" %>.
+      </p>
+
       <div class="flex items-center justify-between gap-3">
         <%= link_to "Cancel", patient_consents_path(@patient),
               class: "text-[13px] text-[#6B665F] hover:text-[#1D1C1A]" %>
