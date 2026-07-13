@@ -24,9 +24,9 @@
 
       <%= form_with url: passwordless_path, method: :post, local: true, html: { class: "space-y-4 mt-6" } do %>
         <div class="text-left">
-          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1.5">Email</label>
+          <label class="block text-[11px] uppercase tracking-widest text-[#6B665F] font-medium mb-1.5">Your institutional email</label>
           <input type="email" name="email" value="<%= params[:email] %>" required autofocus
-                 placeholder="you@hospice.com"
+                 placeholder="you@hosalivio.com"
                  class="w-full px-3 py-2.5 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
         </div>
 
