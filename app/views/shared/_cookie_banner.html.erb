@@ -7,9 +7,15 @@
       HosAlivio uses cookies to keep you signed in and to improve the site. See our
       <%= link_to "Cookie Policy", cookies_path, class: "underline hover:text-[#1D1C1A]" %>.
     </p>
-    <button type="button" data-action="cookie-consent#accept"
-            class="flex-shrink-0 self-end sm:self-auto inline-flex items-center justify-center text-[12px] px-4 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium transition">
-      Accept
-    </button>
+    <div class="flex-shrink-0 self-end sm:self-auto flex items-center gap-2">
+      <button type="button" data-action="cookie-consent#reject"
+              class="text-[12px] px-4 py-1.5 rounded-full border border-[#D9D5CD] hover:bg-[#FBF9F5] text-[#6B665F] font-medium transition">
+        Reject
+      </button>
+      <button type="button" data-action="cookie-consent#accept"
+              class="text-[12px] px-4 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium transition">
+        Accept
+      </button>
+    </div>
   </div>
 </div>

@@ -1,20 +1,25 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Dismissible cookie notice. Once the visitor accepts, we remember it in
-// localStorage and don't show the banner again.
+// Cookie notice with Accept / Reject. The choice is remembered in
+// localStorage so the banner only shows until the visitor decides.
+// "accepted" allows optional cookies (e.g. analytics); "rejected" keeps only
+// the strictly-necessary ones.
 export default class extends Controller {
   static values = { key: { type: String, default: "cookieConsent" } }
 
   connect() {
-    if (this._accepted()) this.element.remove()
+    if (this._decided()) this.element.remove()
   }
 
-  accept() {
-    try { localStorage.setItem(this.keyValue, "1") } catch (_) { /* private mode */ }
+  accept() { this._save("accepted") }
+  reject() { this._save("rejected") }
+
+  _save(choice) {
+    try { localStorage.setItem(this.keyValue, choice) } catch (_) { /* private mode */ }
     this.element.remove()
   }
 
-  _accepted() {
-    try { return localStorage.getItem(this.keyValue) === "1" } catch (_) { return false }
+  _decided() {
+    try { return !!localStorage.getItem(this.keyValue) } catch (_) { return false }
   }
 }
