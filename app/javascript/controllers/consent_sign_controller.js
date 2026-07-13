@@ -12,13 +12,13 @@ import SignaturePad from "signature_pad"
 //              whenever a representative signs.
 //
 // Targets: canvas, dataField, roleField (hidden signer_role), nameField,
-//   relInput (signer_relationship), patientNote, someoneBlock, familySelect,
-//   otherFields, roleSelect, patientBtn, someoneBtn.
+//   relInput (signer_relationship), patientNote, familyBlock, repDetails,
+//   familySelect, otherFields, roleSelect, patientBtn, someoneBtn.
 export default class extends Controller {
   static targets = [
     "canvas", "dataField", "roleField", "nameField", "relInput",
-    "patientNote", "someoneBlock", "familySelect", "otherFields", "roleSelect",
-    "patientBtn", "someoneBtn"
+    "patientNote", "familyBlock", "repDetails", "familySelect", "otherFields",
+    "roleSelect", "patientBtn", "someoneBtn"
   ]
   static values = { patientName: String }
 
@@ -98,10 +98,11 @@ export default class extends Controller {
   // ── helpers ────────────────────────────────────────────────
   _mode(mode) {
     const isPatient = mode === "patient"
-    if (this.hasPatientNoteTarget)  this.patientNoteTarget.classList.toggle("hidden", !isPatient)
-    if (this.hasSomeoneBlockTarget) this.someoneBlockTarget.classList.toggle("hidden", isPatient)
-    if (this.hasPatientBtnTarget)   this._activate(this.patientBtnTarget, isPatient)
-    if (this.hasSomeoneBtnTarget)   this._activate(this.someoneBtnTarget, !isPatient)
+    if (this.hasPatientNoteTarget) this.patientNoteTarget.classList.toggle("hidden", !isPatient)
+    if (this.hasFamilyBlockTarget) this.familyBlockTarget.classList.toggle("hidden", isPatient)
+    if (this.hasRepDetailsTarget)  this.repDetailsTarget.classList.toggle("hidden", isPatient)
+    if (this.hasPatientBtnTarget)  this._activate(this.patientBtnTarget, isPatient)
+    if (this.hasSomeoneBtnTarget)  this._activate(this.someoneBtnTarget, !isPatient)
   }
 
   _showOther() {
