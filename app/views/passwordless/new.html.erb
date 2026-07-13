@@ -32,14 +32,10 @@
         </div>
 
         <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition">
-          <i class="ri-mail-send-line"></i> Email me a code
+          <i class="ri-login-box-line"></i> Sign In Or Log In
         </button>
-      <% end %>
-    </div>
-
-    <div class="text-center mt-5">
-      <%= link_to welcome_path, class: "inline-flex items-center gap-1.5 text-[12px] text-[#6B665F] hover:text-[#1D1C1A]" do %>
-        <i class="ri-arrow-left-line"></i> Back to HosAlivio
+        <%= link_to "Cancel", welcome_path,
+              class: "w-full inline-flex items-center justify-center px-6 py-2.5 rounded-full border border-[#D9D5CD] hover:bg-[#FBF9F5] text-[#6B665F] text-sm font-medium transition" %>
       <% end %>
     </div>
 
