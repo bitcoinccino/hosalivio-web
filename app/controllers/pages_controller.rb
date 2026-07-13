@@ -53,6 +53,9 @@ class PagesController < ApplicationController
   def privacy
   end
 
+  def cookies
+  end
+
   # Left intact from earlier FAQ tree (still used by the educational prompts
   # in the side panel — we keep them as a secondary layer under the directory).
   HOSPICE_FAQS = [].freeze

@@ -227,9 +227,10 @@ Rails.application.routes.draw do
   # Public "About" page
   get "about", to: "pages#about", as: :about
 
-  # Public legal pages (clinician terms of service + privacy policy)
+  # Public legal pages (clinician terms of service + privacy + cookies)
   get "terms",   to: "pages#terms",   as: :terms
   get "privacy", to: "pages#privacy", as: :privacy
+  get "cookies", to: "pages#cookies", as: :cookies
 
   # Public "Book a demo" lead form — the low-friction top-of-funnel for
   # prospective partners (the full signup wizard is for the ready-to-onboard).
