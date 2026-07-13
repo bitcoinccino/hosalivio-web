@@ -23,10 +23,17 @@
       <a href="<%= patient_consents_path(@patient) %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A]">
         <i class="ri-arrow-left-line"></i> Back to consents
       </a>
-      <button type="button" data-action="click->print#now"
-              class="inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#6B665F]">
-        <i class="ri-printer-line"></i> Print / Save as PDF
-      </button>
+      <div class="flex items-center gap-2">
+        <button type="button" data-action="click->print#now"
+                class="inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border border-[#EFECE6] bg-white hover:bg-[#FBF9F5] text-[#6B665F]">
+          <i class="ri-printer-line"></i> Print
+        </button>
+        <%# Server-generated PDF — reliable download on any device, incl. phones. %>
+        <a href="<%= pdf_patient_consent_path(@patient, @consent) %>" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium">
+          <i class="ri-download-2-line"></i> Download PDF
+        </a>
+      </div>
     </div>
 
     <div class="rounded-2xl bg-white border border-[#EFECE6] p-6 shadow-sm print-card">

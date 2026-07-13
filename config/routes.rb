@@ -86,7 +86,9 @@ Rails.application.routes.draw do
     end
     resource  :photo, only: [ :create, :destroy ], controller: "patient_photos"
     resources :family, only: [ :new, :create, :destroy ], controller: "patient_families"
-    resources :consents, only: [ :index, :new, :create, :show ], controller: "consent_forms"
+    resources :consents, only: [ :index, :new, :create, :show ], controller: "consent_forms" do
+      member { get :pdf }   # server-generated PDF download (works on phones)
+    end
     resources :documents, only: [ :index, :create, :destroy ], controller: "patient_documents"
     # Continuous Care interval (shift) charting. Shallow: index/new/create nest
     # under the patient; show/edit/update + sign are top-level by chart id.
