@@ -12,16 +12,25 @@
       </div>
     </div>
 
-    <%# Quick-add row — one button per consent kind. Click takes
-        the witnessing clinician to the inline-signing canvas. %>
+    <%# One card per consent kind — label + why it's required + a Sign action.
+        Click takes the signer to the inline-signing canvas. %>
     <div class="rounded-2xl bg-white border border-[#EFECE6] p-4 mb-5">
-      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">Capture new consent</div>
-      <div class="flex flex-wrap gap-2">
+      <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-3">Capture new consent</div>
+      <div class="space-y-2">
         <% ConsentForm::KIND_LABELS.each do |kind, label| %>
-          <%= link_to new_patient_consent_path(@patient, kind: kind),
-                class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#FFF3EC] hover:bg-[#FCE9DD] border border-[#D97757] text-[#D97757] font-medium" do %>
-            <i class="ri-quill-pen-line"></i> <%= label %>
-          <% end %>
+          <% r = ConsentForm.rationale_html_for(kind, agency: @patient.agency) %>
+          <div class="flex items-start justify-between gap-3 rounded-xl border border-[#EFECE6] p-3">
+            <div class="min-w-0">
+              <div class="text-[13px] font-medium text-[#1D1C1A]"><%= label %></div>
+              <% if r.present? %>
+                <div class="text-[11px] text-[#6B665F] mt-0.5 leading-snug"><%= r %></div>
+              <% end %>
+            </div>
+            <%= link_to new_patient_consent_path(@patient, kind: kind),
+                  class: "flex-shrink-0 inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#FFF3EC] hover:bg-[#FCE9DD] border border-[#D97757] text-[#D97757] font-medium" do %>
+              <i class="ri-quill-pen-line"></i> Sign
+            <% end %>
+          </div>
         <% end %>
       </div>
     </div>

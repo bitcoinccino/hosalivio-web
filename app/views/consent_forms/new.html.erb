@@ -2,19 +2,11 @@
   kind  = (@consent.kind.presence || "hospice_election")
   label = ConsentForm::KIND_LABELS[kind] || kind.titleize
 
-  # Snapshot copy lives server-side too (controller#form_body_for)
-  # — this is what the signer is visually agreeing to. Keep in
-  # sync if you change the controller copy.
-  body = case kind
-         when "hospice_election"
-           "I elect to receive hospice care under the Medicare/Medicaid hospice benefit. I have been informed of the palliative (comfort-focused) nature of hospice care, the services available, and that hospice care waives my right to curative treatment for the terminal illness. I may revoke this election at any time."
-         when "dnr"
-           "I direct that, in the event my heart or breathing stops, no cardiopulmonary resuscitation (CPR) be initiated. Comfort-focused care will continue. I understand I may revoke this directive at any time by notifying the hospice team."
-         when "hipaa_acknowledgment"
-           "I acknowledge that I have received the agency's Notice of Privacy Practices describing how my protected health information may be used and disclosed."
-         when "plan_of_care"
-           "I have reviewed the hospice plan of care developed by the interdisciplinary team and agree to participate in the plan as described."
-         end
+  # Single source of truth on the model (also snapshotted server-side into
+  # form_content at create). Agency name is filled in — bold + uppercase —
+  # so the document names who the care is from / whose notice it is.
+  body      = ConsentForm.attestation_html_for(kind, agency: @patient.agency)
+  rationale = ConsentForm.rationale_html_for(kind, agency: @patient.agency)
 %>
 <% content_for :title, "New consent · #{@patient.full_name}" %>
 <div class="min-h-screen bg-[#FBF9F5] py-8 px-6">
@@ -43,11 +35,27 @@
         <%= f.hidden_field :kind, value: kind %>
       </section>
 
-      <%# The text the signer is agreeing to %>
-      <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">
-        <div class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold mb-2">What's being signed</div>
-        <p class="text-[14px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= body %></p>
-      </section>
+      <%# Why this form is required — collapsible; expand to read the rationale. %>
+      <% if rationale.present? %>
+        <details class="group rounded-2xl bg-[#F0F4FA] border border-[#D7E0EE]">
+          <summary class="list-none cursor-pointer flex items-center justify-between gap-2 p-5 [&::-webkit-details-marker]:hidden">
+            <span class="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#2B4A7A] font-bold">
+              <i class="ri-information-line"></i> Why this is required
+            </span>
+            <i class="ri-arrow-down-s-line text-[#2B4A7A] group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <p class="px-5 pb-5 text-[13px] text-[#2B4A7A] leading-relaxed"><%= rationale %></p>
+        </details>
+      <% end %>
+
+      <%# The text the signer is agreeing to — collapsible, open by default. %>
+      <details open class="group rounded-2xl bg-white border border-[#EFECE6]">
+        <summary class="list-none cursor-pointer flex items-center justify-between gap-2 p-5 [&::-webkit-details-marker]:hidden">
+          <span class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold">What's being signed</span>
+          <i class="ri-arrow-down-s-line text-[#6B665F] group-open:rotate-180 transition-transform"></i>
+        </summary>
+        <p class="px-5 pb-5 text-[14px] text-[#1D1C1A] leading-relaxed whitespace-pre-wrap"><%= body %></p>
+      </details>
 
       <%# Who is signing — patient vs representative %>
       <section class="rounded-2xl bg-white border border-[#EFECE6] p-5">

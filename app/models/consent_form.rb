@@ -57,6 +57,96 @@ class ConsentForm < ApplicationRecord
     "#{signer_name} (#{rel})"
   end
 
+  # ── Consent copy (single source of truth) ──────────────────────────
+  # ATTESTATIONS is the exact text the signer attests to (snapshotted into
+  # form_content at signing). RATIONALES is the plain-language "why this is
+  # required" shown before signing. `%{agency}` is filled with the agency's
+  # name so the document names who the care is from / whose notice it is.
+
+  ATTESTATIONS = {
+    "hospice_election" =>
+      "I elect to receive hospice care from %{agency} under the Medicare/Medicaid Hospice Benefit. " \
+      "I understand that hospice care is palliative (comfort-focused) rather than curative, and that by " \
+      "electing this benefit I choose to waive Medicare/Medicaid coverage for treatments intended to cure my " \
+      "terminal illness (comfort care and care unrelated to the terminal illness remain covered). %{agency} will " \
+      "provide the nursing, physician oversight, medications, medical equipment, supplies, and social-work and " \
+      "spiritual support related to my terminal condition. I understand I may revoke this election and return to " \
+      "standard curative coverage at any time by notifying %{agency}.",
+    "dnr" =>
+      "I direct that, in the event my heart stops or I stop breathing, no cardiopulmonary resuscitation (CPR) be " \
+      "attempted. Comfort-focused care will continue at all times. I understand this directive governs %{agency}'s " \
+      "care of me and that I may revoke it at any time by notifying the hospice team.",
+    "hipaa_acknowledgment" =>
+      "I acknowledge that I have received %{agency}'s Notice of Privacy Practices, which describes how my protected " \
+      "health information may be used and disclosed for treatment, payment, and health-care operations, and my " \
+      "rights regarding that information.",
+    "plan_of_care" =>
+      "I have reviewed the hospice plan of care developed for me by %{agency}'s interdisciplinary team (nurse, " \
+      "physician, social worker, and chaplain) and I agree to participate in the plan as described. I understand the " \
+      "plan will be reviewed and updated as my needs change."
+  }.freeze
+
+  RATIONALES = {
+    "hospice_election" =>
+      "Federal law (the Medicare Hospice Benefit) requires a signed election before hospice care can begin. It " \
+      "confirms you understand hospice is comfort-focused and that you can change your mind at any time. Without it, " \
+      "%{agency} cannot provide or bill for the benefit.",
+    "dnr" =>
+      "This records your wishes about CPR so the care team and emergency responders honor them. It is entirely your " \
+      "choice, can be changed at any time, and does not reduce any other comfort care you receive.",
+    "hipaa_acknowledgment" =>
+      "HIPAA requires %{agency} to give you its privacy notice and to document that you received it. Signing only " \
+      "confirms you received the notice — it does not waive any of your privacy rights.",
+    "plan_of_care" =>
+      "Medicare requires that the patient or representative take part in the plan of care. Your agreement confirms " \
+      "the team's plan reflects your goals and that you were part of the decisions."
+  }.freeze
+
+  # The agency's name, UPPERCASED, for the consent copy (falls back when blank).
+  def self.agency_name(agency)
+    raw = (agency.respond_to?(:name) ? agency.name : agency).to_s.strip
+    (raw.presence || "the hospice agency").upcase
+  end
+
+  # Plain-text variants — used for the snapshot stored in form_content.
+  def self.attestation_for(kind, agency: nil)
+    interpolate_agency(ATTESTATIONS[kind.to_s], agency)
+  end
+
+  def self.rationale_for(kind, agency: nil)
+    interpolate_agency(RATIONALES[kind.to_s], agency)
+  end
+
+  # HTML variants — the agency name rendered bold + uppercase for display.
+  def self.attestation_html_for(kind, agency: nil)
+    interpolate_agency_html(ATTESTATIONS[kind.to_s], agency)
+  end
+
+  def self.rationale_html_for(kind, agency: nil)
+    interpolate_agency_html(RATIONALES[kind.to_s], agency)
+  end
+
+  def self.interpolate_agency(text, agency)
+    return "" if text.blank?
+    text.gsub("%{agency}", agency_name(agency))
+  end
+
+  # `text` is our own trusted copy (no HTML); only the agency name is escaped.
+  def self.interpolate_agency_html(text, agency)
+    return "".html_safe if text.blank?
+    name = ERB::Util.html_escape(agency_name(agency))
+    text.gsub("%{agency}", "<strong>#{name}</strong>").html_safe
+  end
+
+  # Render a stored snapshot (form_content) with the agency name bolded.
+  # Everything is escaped first, so arbitrary stored text stays inert.
+  def self.snapshot_html(text, agency)
+    return "".html_safe if text.blank?
+    esc  = ERB::Util.html_escape(text)
+    name = ERB::Util.html_escape(agency_name(agency))
+    esc.gsub(name, "<strong>#{name}</strong>").html_safe
+  end
+
   private
 
   def default_signed_at = self.signed_at ||= Time.current
