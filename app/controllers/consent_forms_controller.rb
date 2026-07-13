@@ -22,6 +22,13 @@ class ConsentFormsController < ApplicationController
     # @consent + @patient set in set_patient
   end
 
+  # Server-generated PDF of a signed consent. Downloads reliably on any device
+  # (phones included), unlike the browser's print-to-PDF.
+  def pdf
+    doc = ConsentPdf.new(@consent)
+    send_data doc.render, filename: doc.filename, type: "application/pdf", disposition: "inline"
+  end
+
   def new
     kind = requested_kind.presence || (family_signer? ? ConsentForm::REQUIRED_KINDS.first : "hospice_election")
     @consent = ConsentForm.new(patient: @patient, kind: kind, signer_role: "patient")
