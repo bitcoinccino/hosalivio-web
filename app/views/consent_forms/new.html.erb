@@ -82,13 +82,34 @@
 
         <%= f.hidden_field :signer_role, value: "patient", data: { consent_sign_target: "roleField" } %>
 
+        <%# "Someone else" mode: pick the family member FIRST — it fills in the
+            name below. Shown above the name field. %>
+        <% if @family_users.any? %>
+          <div data-consent-sign-target="familyBlock" class="hidden mb-3">
+            <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Which family member?</label>
+            <select data-consent-sign-target="familySelect" data-action="change->consent-sign#familyChanged"
+                    class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
+              <option value="">Select…</option>
+              <% @family_users.each do |fu| %>
+                <option value="fam-<%= fu.id %>"
+                        data-name="<%= fu.full_name %>"
+                        data-role="<%= ConsentForm.role_for_relationship(fu.relationship) %>"
+                        data-rel="<%= fu.relationship %>">
+                  <%= fu.full_name %><%= " · #{fu.relationship}" if fu.relationship.present? %>
+                </option>
+              <% end %>
+              <option value="other">Someone else (not listed)</option>
+            </select>
+          </div>
+        <% end %>
+
         <%# Signer name — auto-filled + read-only for the patient and known
             family; editable only in "other". %>
         <div class="mb-3">
           <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Signer name</label>
           <%= f.text_field :signer_name, value: @patient.full_name, readonly: true, required: true,
                 placeholder: "Type the signer's full name",
-                data: { consent_sign_target: "nameField" },
+                data: { consent_sign_target: "nameField", action: "input->consent-sign#nameTyped" },
                 class: "w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px] font-serif uppercase tracking-wider" %>
         </div>
 
@@ -96,27 +117,8 @@
           The patient is signing in person, witnessed by <%= @witness&.full_name || current_user.full_name %>.
         </div>
 
-        <%# Representative block — family picker, manual fields, authority. %>
-        <div data-consent-sign-target="someoneBlock" class="hidden space-y-3 pt-3 border-t border-[#EFECE6]">
-          <% if @family_users.any? %>
-            <div>
-              <label class="block text-[11px] uppercase tracking-widest text-[#4A4A45] font-bold mb-1">Which family member?</label>
-              <select data-consent-sign-target="familySelect" data-action="change->consent-sign#familyChanged"
-                      class="w-full px-3 py-2 rounded-lg border border-[#D9D5CD] bg-[#FBF9F5] focus:bg-white focus:border-[#D97757] focus:outline-none text-[14px]">
-                <option value="">Select…</option>
-                <% @family_users.each do |fu| %>
-                  <option value="fam-<%= fu.id %>"
-                          data-name="<%= fu.full_name %>"
-                          data-role="<%= ConsentForm.role_for_relationship(fu.relationship) %>"
-                          data-rel="<%= fu.relationship %>">
-                    <%= fu.full_name %><%= " · #{fu.relationship}" if fu.relationship.present? %>
-                  </option>
-                <% end %>
-                <option value="other">Someone else (not listed)</option>
-              </select>
-            </div>
-          <% end %>
-
+        <%# Representative details — shown below the name in "Someone else" mode. %>
+        <div data-consent-sign-target="repDetails" class="hidden space-y-3 pt-3 border-t border-[#EFECE6]">
           <%# Manual relationship fields — hidden until "other" (or shown
               immediately when no family is on file). %>
           <div data-consent-sign-target="otherFields" class="<%= "hidden" if @family_users.any? %> grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -152,6 +154,12 @@
         <div class="rounded-xl border-2 border-dashed border-[#D9D5CD] bg-[#FBF9F5] overflow-hidden mb-3" style="touch-action: none;">
           <canvas data-consent-sign-target="canvas"
                   class="w-full h-[200px] block bg-white"></canvas>
+        </div>
+        <%# Printed name beneath the signature — mirrors the signer name live. %>
+        <div class="flex items-baseline gap-2 mb-3 px-1">
+          <span class="text-[10px] uppercase tracking-widest text-[#6B665F] font-bold flex-shrink-0">Printed name</span>
+          <span data-consent-sign-target="printedName"
+                class="flex-1 border-b border-[#D9D5CD] text-[14px] text-[#1D1C1A] font-serif uppercase tracking-wider pb-0.5">&nbsp;</span>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div class="text-[11px] text-[#6B665F]">

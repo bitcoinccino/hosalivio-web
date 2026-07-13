@@ -12,13 +12,13 @@ import SignaturePad from "signature_pad"
 //              whenever a representative signs.
 //
 // Targets: canvas, dataField, roleField (hidden signer_role), nameField,
-//   relInput (signer_relationship), patientNote, someoneBlock, familySelect,
-//   otherFields, roleSelect, patientBtn, someoneBtn.
+//   relInput (signer_relationship), patientNote, familyBlock, repDetails,
+//   familySelect, otherFields, roleSelect, patientBtn, someoneBtn.
 export default class extends Controller {
   static targets = [
-    "canvas", "dataField", "roleField", "nameField", "relInput",
-    "patientNote", "someoneBlock", "familySelect", "otherFields", "roleSelect",
-    "patientBtn", "someoneBtn"
+    "canvas", "dataField", "roleField", "nameField", "relInput", "printedName",
+    "patientNote", "familyBlock", "repDetails", "familySelect", "otherFields",
+    "roleSelect", "patientBtn", "someoneBtn"
   ]
   static values = { patientName: String }
 
@@ -33,7 +33,11 @@ export default class extends Controller {
       window.addEventListener("resize", this._resize)
     }
     this._mode("patient")
+    this._syncPrintedName()
   }
+
+  // Live-echo the typed signer name into the printed-name line by the signature.
+  nameTyped() { this._syncPrintedName() }
 
   disconnect() {
     if (this._resize) window.removeEventListener("resize", this._resize)
@@ -98,10 +102,11 @@ export default class extends Controller {
   // ── helpers ────────────────────────────────────────────────
   _mode(mode) {
     const isPatient = mode === "patient"
-    if (this.hasPatientNoteTarget)  this.patientNoteTarget.classList.toggle("hidden", !isPatient)
-    if (this.hasSomeoneBlockTarget) this.someoneBlockTarget.classList.toggle("hidden", isPatient)
-    if (this.hasPatientBtnTarget)   this._activate(this.patientBtnTarget, isPatient)
-    if (this.hasSomeoneBtnTarget)   this._activate(this.someoneBtnTarget, !isPatient)
+    if (this.hasPatientNoteTarget) this.patientNoteTarget.classList.toggle("hidden", !isPatient)
+    if (this.hasFamilyBlockTarget) this.familyBlockTarget.classList.toggle("hidden", isPatient)
+    if (this.hasRepDetailsTarget)  this.repDetailsTarget.classList.toggle("hidden", isPatient)
+    if (this.hasPatientBtnTarget)  this._activate(this.patientBtnTarget, isPatient)
+    if (this.hasSomeoneBtnTarget)  this._activate(this.someoneBtnTarget, !isPatient)
   }
 
   _showOther() {
@@ -124,6 +129,13 @@ export default class extends Controller {
     } else if (this.nameFieldTarget.value === this.patientNameValue) {
       this.nameFieldTarget.value = ""
     }
+    this._syncPrintedName()
+  }
+
+  _syncPrintedName() {
+    if (!this.hasPrintedNameTarget) return
+    const name = this.hasNameFieldTarget ? this.nameFieldTarget.value.trim() : ""
+    this.printedNameTarget.textContent = name || " "
   }
 
   _activate(btn, on) {
