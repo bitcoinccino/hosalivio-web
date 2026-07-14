@@ -20,11 +20,20 @@
 #                               to /users/sign_in with instructions.
 
 class PartnersController < ApplicationController
-  # The wizard is public — no authentication required. Leaving
-  # skip_before_action off since ApplicationController doesn't currently
-  # force authenticate_user! globally.
+  # The wizard has no login, but it IS gated: provisioning a live agency
+  # must happen only *after* the agency has signed. Sales sends a link
+  # carrying a unique, one-time invite token (?token=…) once the agreement
+  # is in hand. Presenting a usable token authorizes this browser session
+  # for the rest of the wizard; the token is consumed when the wizard
+  # completes so it can't provision a second agency. Un-invited (or
+  # spent/expired) visitors get the "invite required" page.
+  before_action :require_signup_invite
 
   SESSION_KEY = :partner_signup
+
+  # Holds the id of the PartnerInvite that authorized this session, so
+  # steps 2/3 (and the POSTs) don't need the token echoed in every URL.
+  INVITE_KEY = :partner_invite_id
 
   def new
     @form = wizard_state
@@ -82,6 +91,10 @@ class PartnersController < ApplicationController
       return
     end
 
+    # One-time use: spend the invite and tie it to the agency it created.
+    # (Guarded so a rare double-submit can't 500 after a successful create.)
+    @partner_invite.consume!(result.agency) if @partner_invite&.usable?
+    session.delete(INVITE_KEY)
     reset_wizard_state
     flash[:notice] = "Partner '#{result.agency.name}' created. " \
                      "Sign in as #{result.admin.email} to start exploring."
@@ -89,6 +102,33 @@ class PartnersController < ApplicationController
   end
 
   private
+
+  # ── signup gate ──────────────────────────────────────────────────
+
+  # Authorize this request if a usable invite is presented now (token in
+  # the URL on first click) or already remembered for this session (later
+  # steps). Otherwise show the "invite required" page — 403 so it isn't
+  # cached/indexed as a real form. The winning invite is stashed on
+  # @partner_invite for #complete to consume.
+  def require_signup_invite
+    @partner_invite = locate_invite
+    if @partner_invite&.usable?
+      session[INVITE_KEY] = @partner_invite.id
+    else
+      session.delete(INVITE_KEY)
+      @invite_expired = @partner_invite&.expired?
+      render "partners/invite_required", status: :forbidden
+    end
+  end
+
+  # Prefer a usable token in the URL; else the invite this session was
+  # already authorized with; else fall back to a non-usable token invite so
+  # require_signup_invite can explain (e.g. expired). nil when nothing resolves.
+  def locate_invite
+    by_token = PartnerInvite.find_by(token: params[:token]) if params[:token].present?
+    return by_token if by_token&.usable?
+    PartnerInvite.find_by(id: session[INVITE_KEY]) || by_token
+  end
 
   # ── wizard state helpers ─────────────────────────────────────────
 
