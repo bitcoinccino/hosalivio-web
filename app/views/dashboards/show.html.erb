@@ -118,77 +118,41 @@
       <%
         manager_roles = %w[admin admissions]
         is_manager    = (current_user.role_names & manager_roles).any?
-        noe_soon      = @noe_overdue.size + @noe_due_today.size
-        quick_stats = [
-          { label: "Active patients", value: @active_patient_count,        urgent: false },
-          { label: "Pending reviews", value: @pending_certifications.size, urgent: false },
-          { label: "Open blockers",   value: @open_blockers,               urgent: @open_blockers.to_i.positive? },
-          { label: "NOE deadlines",   value: noe_soon,                     urgent: @noe_overdue.any? }
-        ]
       %>
 
       <!-- Banner -->
-      <header class="relative px-6 py-4 border-b border-[#EFECE6] bg-white">
-        <%# Mobile view switcher — jump to the Census or Activity overlays
-            (Stage is the current view). Bottom tabs also switch on mobile. %>
-        <div class="md:hidden absolute top-4 right-4 z-20" data-controller="menu">
-          <button type="button" data-action="menu#toggle" aria-label="Switch view"
-                  class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
-            <i class="ri-more-fill text-lg"></i>
-          </button>
-          <div data-menu-target="panel" class="hidden absolute right-0 mt-2 w-44 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
-            <button type="button" data-action="mission-mobile#activate menu#close" data-tab-name="census"
-                    class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
-              <i class="ri-team-line text-[#6B665F]"></i> Census
-            </button>
-            <button type="button" data-action="mission-mobile#activate menu#close" data-tab-name="activity"
-                    class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
-              <i class="ri-pulse-line text-[#6B665F]"></i> Activity
-            </button>
-          </div>
+      <%# Slim header — just the Mission Stage mark + live connection, so it
+          barely eats vertical space and stays out of the chat scroll. %>
+      <header class="relative flex items-center gap-3 px-6 py-2.5 border-b border-[#EFECE6] bg-white">
+        <div class="w-8 h-8 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+          <i class="ri-radar-line text-base"></i>
         </div>
+        <h2 class="font-serif text-[15px] text-[#1D1C1A] flex-shrink-0">Mission Stage</h2>
+        <span class="hidden sm:inline text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase truncate max-w-[160px]"><%= @agency.name %></span>
 
-        <%# Centered identity. px-10 keeps the long agency name clear of the kebab. %>
-        <div class="flex flex-col items-center text-center px-10">
-          <div class="w-12 h-12 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0 mb-2">
-            <i class="ri-radar-line text-xl"></i>
-          </div>
-          <div class="flex items-center justify-center gap-2 flex-wrap">
-            <h2 class="font-serif text-xl text-[#1D1C1A]">Mission Stage</h2>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase truncate max-w-[200px]"><%= @agency.name %></span>
-          </div>
-          <div class="text-[12px] text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
-
-          <% if is_manager %>
-            <div class="hidden lg:flex items-center justify-center gap-2 mt-3">
-              <% quick_stats.each do |s| %>
-                <div class="px-3 py-1.5 rounded-xl text-center <%= s[:urgent] ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %>">
-                  <div class="text-[9px] uppercase tracking-widest <%= s[:urgent] ? 'text-[#C1403A] font-bold' : 'text-[#6B665F]' %>"><%= s[:label] %></div>
-                  <div class="text-lg font-serif leading-none mt-0.5 <%= s[:urgent] ? 'text-[#C1403A]' : 'text-[#1D1C1A]' %>"><%= s[:value] %></div>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-
-          <div class="mt-2 text-[11px] text-[#6B665F] flex items-center justify-center gap-1.5">
+        <div class="ml-auto flex items-center gap-3">
+          <%# Live cable status. %>
+          <div class="flex items-center gap-1.5 text-[11px] text-[#6B665F]">
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            <span>Care Team ↔ HosAlivio · <span id="cable-status" class="font-mono">connecting…</span></span>
+            <span class="hidden sm:inline">Care Team ↔ HosAlivio · </span><span id="cable-status" class="font-mono">connecting…</span>
           </div>
 
-          <%# Admission funnel: Referrals (inbound) → Admissions (in-flight) → Patients. %>
-          <div class="hidden sm:flex items-center justify-center gap-2 mt-2">
-            <%= link_to inquiries_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
-              <i class="ri-inbox-line"></i> Referrals
-              <% if @pending_inquiries.to_i.positive? %>
-                <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#D97757] text-white text-[10px] font-bold leading-none"><%= @pending_inquiries %></span>
-              <% end %>
-            <% end %>
-            <%= link_to admissions_queue_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#2B4A7A] text-[#2B4A7A] hover:bg-[#F0F4FA] font-medium transition" do %>
-              <i class="ri-folder-history-line"></i> Admissions
-            <% end %>
-            <%= link_to patients_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-[#2F6F4E] hover:bg-[#265a3d] text-white font-medium" do %>
-              <i class="ri-team-line"></i> Patients
-            <% end %>
+          <%# Mobile view switcher — jump to the Census or Activity overlays. %>
+          <div class="md:hidden relative z-20" data-controller="menu">
+            <button type="button" data-action="menu#toggle" aria-label="Switch view"
+                    class="w-8 h-8 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
+              <i class="ri-more-fill text-lg"></i>
+            </button>
+            <div data-menu-target="panel" class="hidden absolute right-0 mt-2 w-44 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
+              <button type="button" data-action="mission-mobile#activate menu#close" data-tab-name="census"
+                      class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+                <i class="ri-team-line text-[#6B665F]"></i> Census
+              </button>
+              <button type="button" data-action="mission-mobile#activate menu#close" data-tab-name="activity"
+                      class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+                <i class="ri-pulse-line text-[#6B665F]"></i> Activity
+              </button>
+            </div>
           </div>
         </div>
       </header>

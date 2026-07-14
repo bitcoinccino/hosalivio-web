@@ -1,7 +1,7 @@
 require "test_helper"
 
 class DashboardMissionStageTest < ActionDispatch::IntegrationTest
-  test "the manager (Mission Stage) dashboard renders with the quick-stats bar + tidied sidebar" do
+  test "the manager (Mission Stage) dashboard renders with the slim banner + tidied sidebar" do
     agency = create_agency
     admin  = create_user(agency: agency, full_name: "Ada Admin", roles: %w[admin])
     create_user(agency: agency, full_name: "Reggie RN", roles: %w[rn])
@@ -13,11 +13,9 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "Mission Stage", response.body
     # nothing pending → the "At a glance" panel stays hidden (no empty-state filler)
     assert_no_match(/At a glance/, response.body)
-    # quick-stats bar
-    assert_match "Active patients", response.body
-    assert_match "Pending reviews", response.body
-    assert_match "Open blockers", response.body
-    assert_match "NOE deadlines", response.body
+    # slim banner — the tall stat-chip bar was removed to reclaim vertical space
+    assert_no_match(/Active patients/, response.body)
+    assert_match "cable-status", response.body   # live connection indicator kept
     # sidebar — admission funnel group (Referrals → Admissions → Patients)
     assert_match "Referrals", response.body
     assert_match "Admissions", response.body
