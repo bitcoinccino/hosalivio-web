@@ -34,7 +34,7 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_match "Maria Gonzalez", response.body
     # HosAlivio delivers the report in her voice (single lead + persona icon)
     assert_match "2 items", response.body
-    assert_match "ri-sparkling-2-line", response.body
+    assert_match "ri-heart-pulse-line", response.body
   end
 
   test "a status report with all-zero metrics reads as a status snapshot, not findings" do
