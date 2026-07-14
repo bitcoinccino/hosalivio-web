@@ -22,9 +22,9 @@ namespace :partners do
   task invites: :environment do
     PartnerInvite.order(created_at: :desc).limit(50).each do |i|
       status = if i.used_at then "USED #{i.used_at.strftime('%b %-d')}"
-               elsif i.expired? then "EXPIRED"
-               else "open"
-               end
+      elsif i.expired? then "EXPIRED"
+      else "open"
+      end
       puts format("%-10s  %-28s  %s", status, i.agency_label || i.email || "—", i.token)
     end
   end
