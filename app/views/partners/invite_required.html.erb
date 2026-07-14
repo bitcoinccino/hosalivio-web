@@ -16,12 +16,21 @@
         <i class="ri-shield-keyhole-line text-[#D97757] text-[22px]"></i>
       </div>
 
-      <h1 class="font-serif text-[24px] text-[#1D1C1A] leading-tight font-bold">Onboarding is by invitation</h1>
-      <p class="text-[13px] text-[#6B665F] mt-3 leading-relaxed">
-        Setting up a live agency happens after your agreement is signed. Once
-        it's in place, our team sends a private onboarding link that opens this
-        setup wizard. If you have that link, open it again to continue.
-      </p>
+      <% if @invite_expired %>
+        <h1 class="font-serif text-[24px] text-[#1D1C1A] leading-tight font-bold">This onboarding link has expired</h1>
+        <p class="text-[13px] text-[#6B665F] mt-3 leading-relaxed">
+          Your setup link is no longer valid — it may have expired or already
+          been used to create your agency. Reach out to your HosAlivio contact
+          for a fresh link, or book a demo to get started.
+        </p>
+      <% else %>
+        <h1 class="font-serif text-[24px] text-[#1D1C1A] leading-tight font-bold">Onboarding is by invitation</h1>
+        <p class="text-[13px] text-[#6B665F] mt-3 leading-relaxed">
+          Setting up a live agency happens after your agreement is signed. Once
+          it's in place, our team sends a private onboarding link that opens this
+          setup wizard. If you have that link, open it again to continue.
+        </p>
+      <% end %>
 
       <div class="mt-6 space-y-3">
         <%= link_to demo_path,
