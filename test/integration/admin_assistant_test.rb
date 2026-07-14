@@ -108,14 +108,28 @@ class AdminAssistantTest < ActionDispatch::IntegrationTest
     assert_no_match(/I didn't catch that/, response.body)
   end
 
-  test "falls back to the command nudge for unknown input with no LLM" do
+  test "offers tappable follow-ups instead of dead-ending on unknown input with no LLM" do
     sign_in @admin
     stubbing_brain(nil) do
       post admin_assistant_ask_path, params: { q: "book a flight to Miami" }, as: :turbo_stream
     end
     assert_response :success
-    assert_match "I didn't catch that", response.body
-    assert_match "compliance status", response.body
+    assert_match "ready report", response.body                # friendly, non-dead-end nudge
+    assert_no_match(/I didn't catch that/, response.body)
+    # ...and follow-up chips that re-enter #ask with a real report query
+    assert_match "ri-corner-down-right-line", response.body   # chip icon
+    assert_match admin_assistant_ask_path, response.body
+    assert_match "compliance status", response.body           # a suggested chip's q value
+  end
+
+  test "every answer offers tappable follow-up chips" do
+    sign_in @admin
+    post admin_assistant_ask_path, params: { q: "today's priorities" }, as: :turbo_stream
+    assert_response :success
+    assert_match "ri-corner-down-right-line", response.body   # chip icon
+    assert_match "Patients needing attention", response.body  # a humanized chip label
+    # the current view isn't suggested back to the manager
+    assert_no_match(/value="today&#39;s priorities"/, response.body)
   end
 
   test "a non-manager is redirected" do
