@@ -567,7 +567,7 @@
 
   <!-- ─── Mobile bottom tab bar (below md) ──────────────────────── -->
   <% if @agency %>
-    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch">
+    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch justify-center">
       <%
         mobile_tabs = [
           { name: "census",   icon: "ri-team-line",     label: "Census" },
@@ -581,7 +581,7 @@
                 data-tab-name="<%= t[:name] %>"
                 data-mission-mobile-target="button"
                 data-mobile-active="<%= t[:name] == 'stage' ? 'true' : 'false' %>"
-                class="flex-1 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F] data-[mobile-active=true]:text-[#D97757] data-[mobile-active=true]:bg-[#FBF9F5] transition">
+                class="w-24 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F] data-[mobile-active=true]:text-[#D97757] data-[mobile-active=true]:bg-[#FBF9F5] transition">
           <i class="<%= t[:icon] %> text-lg"></i>
           <span class="uppercase tracking-wider mt-0.5"><%= t[:label] %></span>
         </button>
