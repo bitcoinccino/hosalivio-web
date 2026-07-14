@@ -845,6 +845,50 @@
         if (stage) requestAnimationFrame(() => { stage.scrollTop = stage.scrollHeight; });
       };
 
+      // Rolling window over the Ask HosAlivio thread — keep only the current
+      // turn visible; tuck older turns behind a "Show N earlier messages" pill,
+      // exactly like the public welcome chat (_applyHistoryCollapse). Turn
+      // boundaries are the user bubbles (data-role="user").
+      const applyThreadCollapse = () => {
+        const t = document.getElementById("assistant-thread");
+        if (!t) return;
+        const KEEP = 1, THRESHOLD = 1;
+        const kids = Array.from(t.children).filter(el => !el.hasAttribute("data-history-toggle"));
+        const userPositions = kids.map((el, i) => (el.dataset.role === "user" ? i : -1)).filter(i => i >= 0);
+        const turns = userPositions.length;
+        let header = t.querySelector("[data-history-toggle]");
+
+        // One turn (or none): show everything, drop the toggle.
+        if (turns <= THRESHOLD) {
+          if (header) header.remove();
+          kids.forEach(el => { el.style.display = ""; });
+          return;
+        }
+
+        const cutoff = userPositions[turns - KEEP];   // first kept turn
+        const hiddenTurns = turns - KEEP;
+
+        if (!header) {
+          header = document.createElement("button");
+          header.type = "button";
+          header.setAttribute("data-history-toggle", "");
+          header.className = "sticky top-0 z-10 mx-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur border border-[#EFECE6] text-[12px] text-[#6B665F] hover:text-[#D97757] shadow-sm transition-colors";
+          header.addEventListener("click", () => {
+            window.__askHistoryExpanded = !window.__askHistoryExpanded;
+            applyThreadCollapse();
+          });
+          t.insertBefore(header, t.firstChild);
+        }
+
+        const expanded = !!window.__askHistoryExpanded;
+        kids.forEach((el, i) => { el.style.display = (!expanded && i < cutoff) ? "none" : ""; });
+        header.innerHTML = expanded
+          ? `<i class="ri-arrow-up-s-line"></i> Hide earlier messages`
+          : `<i class="ri-arrow-down-s-line"></i> Show ${hiddenTurns} earlier ${hiddenTurns === 1 ? "message" : "messages"}`;
+
+        if (!expanded) askStageScroll();
+      };
+
       // On submit: show the question immediately + a "typing…" bubble, so the
       // manager sees HosAlivio working before the answer (esp. the LLM path).
       document.addEventListener("turbo:submit-start", (e) => {
@@ -858,6 +902,7 @@
         window.__askStartedAt = Date.now();
 
         const question = document.createElement("div");
+        question.dataset.role = "user";   // turn boundary for the rolling window
         question.className = "flex justify-end";
         const qb = document.createElement("div");
         qb.className = "max-w-[85%] rounded-2xl rounded-br-sm bg-[#D97757] text-white text-[14px] leading-relaxed px-4 py-2.5 shadow-sm whitespace-pre-wrap break-words";
@@ -879,6 +924,8 @@
             </span>
           </div>`;
         thread.appendChild(typing);
+        // Collapse the prior turn(s) now that a new one has begun.
+        applyThreadCollapse();
         askStageScroll();
       });
 
