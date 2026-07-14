@@ -128,25 +128,39 @@
       %>
 
       <!-- Banner -->
-      <header class="px-6 py-4 border-b border-[#EFECE6] bg-white">
-        <div class="flex items-center gap-4">
-          <!-- Icon -->
-          <div class="w-12 h-12 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+      <header class="relative px-6 py-4 border-b border-[#EFECE6] bg-white">
+        <%# Mobile view switcher — jump to the Census or Activity overlays
+            (Stage is the current view). Bottom tabs also switch on mobile. %>
+        <div class="md:hidden absolute top-4 right-4 z-20" data-controller="menu">
+          <button type="button" data-action="menu#toggle" aria-label="Switch view"
+                  class="w-9 h-9 rounded-full bg-white border border-[#D9D5CD] text-[#1D1C1A] hover:bg-[#FBF9F5] hover:border-[#D97757] inline-flex items-center justify-center transition">
+            <i class="ri-more-fill text-lg"></i>
+          </button>
+          <div data-menu-target="panel" class="hidden absolute right-0 mt-2 w-44 z-30 rounded-2xl bg-white border border-[#EFECE6] shadow-xl overflow-hidden py-1">
+            <button type="button" data-action="mission-mobile#activate menu#close" data-tab-name="census"
+                    class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+              <i class="ri-team-line text-[#6B665F]"></i> Census
+            </button>
+            <button type="button" data-action="mission-mobile#activate menu#close" data-tab-name="activity"
+                    class="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#1D1C1A] hover:bg-[#FBF9F5]">
+              <i class="ri-pulse-line text-[#6B665F]"></i> Activity
+            </button>
+          </div>
+        </div>
+
+        <%# Centered identity. px-10 keeps the long agency name clear of the kebab. %>
+        <div class="flex flex-col items-center text-center px-10">
+          <div class="w-12 h-12 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0 mb-2">
             <i class="ri-radar-line text-xl"></i>
           </div>
-
-          <!-- Identity block -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <h2 class="font-serif text-xl text-[#1D1C1A] truncate">Mission Stage</h2>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase truncate max-w-[200px]"><%= @agency.name %></span>
-            </div>
-            <div class="text-[12px] text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
+          <div class="flex items-center justify-center gap-2 flex-wrap">
+            <h2 class="font-serif text-xl text-[#1D1C1A]">Mission Stage</h2>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase truncate max-w-[200px]"><%= @agency.name %></span>
           </div>
+          <div class="text-[12px] text-[#6B665F] mt-0.5">Agency-wide live agent activity</div>
 
-          <!-- Right-side stat chips (managers only; hidden on small screens) -->
           <% if is_manager %>
-            <div class="hidden lg:flex items-center gap-2 flex-shrink-0">
+            <div class="hidden lg:flex items-center justify-center gap-2 mt-3">
               <% quick_stats.each do |s| %>
                 <div class="px-3 py-1.5 rounded-xl text-center <%= s[:urgent] ? 'bg-[#FFF3EC] border border-[#D97757]' : 'bg-[#FBF9F5]' %>">
                   <div class="text-[9px] uppercase tracking-widest <%= s[:urgent] ? 'text-[#C1403A] font-bold' : 'text-[#6B665F]' %>"><%= s[:label] %></div>
@@ -155,16 +169,14 @@
               <% end %>
             </div>
           <% end %>
-        </div>
 
-        <!-- Status line + quick links -->
-        <div class="mt-2 flex items-center justify-between gap-3">
-          <div class="text-[11px] text-[#6B665F] flex items-center gap-1.5">
+          <div class="mt-2 text-[11px] text-[#6B665F] flex items-center justify-center gap-1.5">
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             <span>Care Team ↔ HosAlivio · <span id="cable-status" class="font-mono">connecting…</span></span>
           </div>
-          <%# The admission funnel: Referrals (inbound) → Admissions (in-flight) → Patients (managed). %>
-          <div class="hidden sm:flex items-center gap-2">
+
+          <%# Admission funnel: Referrals (inbound) → Admissions (in-flight) → Patients. %>
+          <div class="hidden sm:flex items-center justify-center gap-2 mt-2">
             <%= link_to inquiries_path, class: "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-[#D97757] text-[#D97757] hover:bg-[#FFF3EC] font-medium transition" do %>
               <i class="ri-inbox-line"></i> Referrals
               <% if @pending_inquiries.to_i.positive? %>
@@ -323,25 +335,6 @@
                { label: "Expiring licenses",          q: "expiring licenses",          icon: "ri-award-line" },
                { label: "Who's on call",              q: "who's on call",              icon: "ri-phone-line" }
              ] %>
-          <%# Question grid — presented the same way as the landing chat:
-              plain italic text links, 2-col, first 5 shown + "View more". %>
-          <div data-composer-target="quickAsks" data-controller="more-toggle"
-               class="grid grid-cols-2 justify-items-start gap-x-6 gap-y-2 mt-1 mb-2.5 text-[#6B665F] text-[14px] italic">
-            <% quick_asks.each_with_index do |a, i| %>
-              <%= button_to admin_assistant_ask_path, params: { q: a[:q] }, method: :post,
-                    form: { class: "contents", style: ("display:none" if i >= 5), data: (i >= 5 ? { more_toggle_target: "item" } : {}) },
-                    class: "inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors" do %>
-                <i class="<%= a[:icon] %> text-[19px] not-italic"></i>
-                <span><%= a[:label] %></span>
-              <% end %>
-            <% end %>
-            <%# Reveals the hidden prompts; spans both columns. %>
-            <button type="button" data-action="more-toggle#toggle"
-                    class="col-span-2 inline-flex items-center gap-1 text-[13px] not-italic text-[#D97757] font-medium hover:underline mt-1">
-              <span data-more-toggle-target="label">View more</span>
-              <i class="ri-arrow-down-s-line transition-transform" data-more-toggle-chevron></i>
-            </button>
-          </div>
 
           <%# Team-chat mode chip — hidden until a channel is picked. %>
           <div data-composer-target="chip" class="hidden mb-2 flex items-center gap-2">
@@ -432,6 +425,26 @@
             </div>
           <% end %>
 
+          <%# Question grid — below the input, presented like the landing chat:
+              plain italic text links, 2-col, first 5 shown + "View more". %>
+          <div data-composer-target="quickAsks" data-controller="more-toggle"
+               class="grid grid-cols-2 justify-items-start gap-x-6 gap-y-2 mt-3 text-[#6B665F] text-[14px] italic">
+            <% quick_asks.each_with_index do |a, i| %>
+              <%= button_to admin_assistant_ask_path, params: { q: a[:q] }, method: :post,
+                    form: { class: "contents", style: ("display:none" if i >= 5), data: (i >= 5 ? { more_toggle_target: "item" } : {}) },
+                    class: "inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors" do %>
+                <i class="<%= a[:icon] %> text-[19px] not-italic"></i>
+                <span><%= a[:label] %></span>
+              <% end %>
+            <% end %>
+            <%# Reveals the hidden prompts; spans both columns. %>
+            <button type="button" data-action="more-toggle#toggle"
+                    class="col-span-2 inline-flex items-center gap-1 text-[13px] not-italic text-[#D97757] font-medium hover:underline mt-1">
+              <span data-more-toggle-target="label">View more</span>
+              <i class="ri-arrow-down-s-line transition-transform" data-more-toggle-chevron></i>
+            </button>
+          </div>
+
           <div data-composer-target="hint" class="mt-2 text-[11px] text-[#6B665F] text-center">
             HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
           </div>
@@ -449,6 +462,13 @@
           team-chat thread. Both stay mounted (Team stays Turbo-subscribed even
           while hidden) so replies append live regardless of the active tab. %>
       <div class="px-4 py-2.5 border-b border-[#EFECE6] flex items-center gap-1.5 flex-wrap flex-shrink-0">
+        <%# Mobile-only close — this column is a full-screen overlay on mobile,
+            so dismiss it by switching back to the Stage. %>
+        <button type="button" data-action="click->mission-mobile#activate" data-tab-name="stage"
+                aria-label="Close activity"
+                class="md:hidden w-8 h-8 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] flex items-center justify-center flex-shrink-0 transition">
+          <i class="ri-close-line text-lg"></i>
+        </button>
         <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="0" data-on="true"
                 class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
           <span class="relative flex h-1.5 w-1.5">
@@ -582,29 +602,8 @@
     </aside>
   <% end %>
 
-  <!-- ─── Mobile bottom tab bar (below md) ──────────────────────── -->
-  <% if @agency %>
-    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#EFECE6] z-40 flex items-stretch justify-center">
-      <%
-        mobile_tabs = [
-          { name: "census",   icon: "ri-team-line",     label: "Census" },
-          { name: "stage",    icon: "ri-radar-line",    label: "Stage" },
-          { name: "activity", icon: "ri-pulse-line",    label: "Activity" }
-        ]
-      %>
-      <% mobile_tabs.each do |t| %>
-        <button type="button"
-                data-action="click->mission-mobile#activate"
-                data-tab-name="<%= t[:name] %>"
-                data-mission-mobile-target="button"
-                data-mobile-active="<%= t[:name] == 'stage' ? 'true' : 'false' %>"
-                class="w-24 flex flex-col items-center justify-center py-2 text-[10px] text-[#6B665F] data-[mobile-active=true]:text-[#D97757] data-[mobile-active=true]:bg-[#FBF9F5] transition">
-          <i class="<%= t[:icon] %> text-lg"></i>
-          <span class="uppercase tracking-wider mt-0.5"><%= t[:label] %></span>
-        </button>
-      <% end %>
-    </nav>
-  <% end %>
+  <%# Census / Activity are reached on mobile via the '...' kebab in the Stage
+      banner; each overlay has its own close button back to the Stage. %>
 </div>
 
 <% if @agency %>
