@@ -1,0 +1,40 @@
+<% content_for :title, "Onboarding link required · HosAlivio" %>
+
+<div class="min-h-screen bg-[#FBF9F5] px-6 py-12 flex items-center justify-center">
+  <div class="w-full max-w-md">
+
+    <%# ── HosAlivio brand, centered ─────────────────────────── %>
+    <div class="flex flex-col items-center text-center mb-6">
+      <div class="w-12 h-12 rounded-2xl bg-[#D97757] grid place-items-center shadow-sm mb-2.5">
+        <i class="ri-heart-pulse-line text-white text-[22px]"></i>
+      </div>
+      <div class="text-[12px] uppercase tracking-[0.25em] text-[#1D1C1A] font-bold">HosAlivio<sup class="text-[0.7em] tracking-normal align-super">™</sup></div>
+    </div>
+
+    <div class="bg-white rounded-3xl border border-[#EFECE6] p-8 shadow-sm text-center">
+      <div class="w-12 h-12 rounded-full bg-[#FFF3EC] grid place-items-center mx-auto mb-5">
+        <i class="ri-shield-keyhole-line text-[#D97757] text-[22px]"></i>
+      </div>
+
+      <h1 class="font-serif text-[24px] text-[#1D1C1A] leading-tight font-bold">Onboarding is by invitation</h1>
+      <p class="text-[13px] text-[#6B665F] mt-3 leading-relaxed">
+        Setting up a live agency happens after your agreement is signed. Once
+        it's in place, our team sends a private onboarding link that opens this
+        setup wizard. If you have that link, open it again to continue.
+      </p>
+
+      <div class="mt-6 space-y-3">
+        <%= link_to demo_path,
+              class: "w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white text-sm font-medium transition" do %>
+          <i class="ri-calendar-check-line"></i> Book a demo
+        <% end %>
+        <%= link_to "Back to home", welcome_path,
+              class: "w-full inline-flex items-center justify-center px-6 py-2.5 rounded-full border border-[#D9D5CD] hover:bg-[#FBF9F5] text-[#6B665F] text-sm font-medium transition" %>
+      </div>
+    </div>
+
+    <p class="text-center mt-4 text-[11px] text-[#6B665F]">
+      Already a customer? <%= link_to "Sign in", new_user_session_path, class: "underline hover:text-[#1D1C1A]" %>
+    </p>
+  </div>
+</div>

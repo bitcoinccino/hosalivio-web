@@ -20,11 +20,30 @@
 #                               to /users/sign_in with instructions.
 
 class PartnersController < ApplicationController
-  # The wizard is public — no authentication required. Leaving
-  # skip_before_action off since ApplicationController doesn't currently
-  # force authenticate_user! globally.
+  # The wizard has no login, but it IS gated: provisioning a live agency
+  # must happen only *after* the agency has signed. Sales sends a link
+  # carrying a one-time-style token (?token=…) once the agreement is in
+  # hand; presenting a valid token authorizes this browser session for the
+  # rest of the wizard. Un-invited visitors get the "invite required" page.
+  before_action :require_signup_invite
 
   SESSION_KEY = :partner_signup
+
+  # Session flag set once a valid token has been presented, so steps 2/3
+  # (and the POSTs) don't need the token echoed in every URL/form.
+  AUTHORIZED_KEY = :partner_signup_authorized
+
+  # The shared onboarding secret. Configure PARTNER_SIGNUP_TOKEN (env) or a
+  # :partner_signup_token credential in production. Fails CLOSED in
+  # production when unset (no one can self-provision until ops sets it);
+  # outside production a known token keeps local dev + CI usable.
+  def self.signup_token
+    configured = ENV["PARTNER_SIGNUP_TOKEN"].presence ||
+                 Rails.application.credentials.dig(:partner_signup_token)
+    return configured if configured.present?
+
+    Rails.env.production? ? nil : "dev-onboarding"
+  end
 
   def new
     @form = wizard_state
@@ -89,6 +108,28 @@ class PartnersController < ApplicationController
   end
 
   private
+
+  # ── signup gate ──────────────────────────────────────────────────
+
+  # Authorize this session if it already holds the flag, or if a valid
+  # token is presented now. Otherwise show the "invite required" page
+  # (200-family it is not — 403 so it isn't cached/indexed as a real form).
+  def require_signup_invite
+    return if session[AUTHORIZED_KEY]
+
+    if valid_signup_token?(params[:token])
+      session[AUTHORIZED_KEY] = true
+    else
+      render "partners/invite_required", status: :forbidden
+    end
+  end
+
+  def valid_signup_token?(token)
+    expected = self.class.signup_token
+    token = token.to_s
+    expected.present? && token.present? &&
+      ActiveSupport::SecurityUtils.secure_compare(token, expected)
+  end
 
   # ── wizard state helpers ─────────────────────────────────────────
 
