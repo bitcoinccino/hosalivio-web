@@ -7,10 +7,12 @@ import { Controller } from "@hotwired/stimulus"
 //   channel → POST a message to a team channel; the channels controller
 //             redirects into that channel's team chat.
 //
-// Picking a channel in the "+" modal calls channel(); the × on the mode
-// chip (or a fresh load) calls ask().
+// Picking a channel in the "+" modal — or the "Team chat" segment of the
+// mode toggle — calls channel(); the "Ask HosAlivio" segment, the × on the
+// mode chip, or a fresh load calls ask(). The toggle's segments stay in sync
+// with whichever entry point flipped the mode (see setMode).
 export default class extends Controller {
-  static targets = ["form", "input", "chip", "chipLabel", "hint", "quickAsks"]
+  static targets = ["form", "input", "chip", "chipLabel", "hint", "quickAsks", "modeTab"]
   static values = { askUrl: String, askPlaceholder: String }
 
   channel(event) {
@@ -27,6 +29,7 @@ export default class extends Controller {
     if (this.hasHintTarget) this.hintTarget.classList.add("hidden")
     // Oversight quick-asks are Ask-HosAlivio shortcuts — irrelevant here.
     if (this.hasQuickAsksTarget) this.quickAsksTarget.classList.add("hidden")
+    this.setMode("channel")
 
     const dlg = el.closest("dialog")
     if (dlg && dlg.open) dlg.close()
@@ -43,6 +46,15 @@ export default class extends Controller {
     this.chipTarget.classList.add("hidden")
     if (this.hasHintTarget) this.hintTarget.classList.remove("hidden")
     if (this.hasQuickAsksTarget) this.quickAsksTarget.classList.remove("hidden")
+    this.setMode("ask")
     this.inputTarget.focus()
+  }
+
+  // Light up the matching segment of the mode toggle (no-op if absent).
+  setMode(mode) {
+    if (!this.hasModeTabTarget) return
+    this.modeTabTargets.forEach((el) => {
+      el.dataset.active = (el.dataset.mode === mode) ? "true" : "false"
+    })
   }
 }

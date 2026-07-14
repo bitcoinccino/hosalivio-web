@@ -41,6 +41,9 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     assert_match "composer", response.body
     assert_match "composer#channel", response.body
     assert_match channel_messages_path("general"), response.body
+    # composer mode toggle — Ask HosAlivio ⇄ Team chat segmented control
+    assert_match "Composer mode", response.body
+    assert_match 'data-composer-target="modeTab"', response.body
     # popover-style menu (like the patient composer) with channel blurbs
     assert_match "data-quick-actions-target", response.body
     assert_match "Team announcements and general discussion", response.body

@@ -310,6 +310,25 @@
                { label: "Who's on call",              q: "who's on call",              icon: "ri-phone-line" }
              ] %>
 
+          <%# Mode toggle — flips the one composer between Ask HosAlivio (AI)
+              and Team chat. "Team chat" jumps straight to #general; the chip
+              below then shows the active channel and can switch it. Reuses the
+              same ask()/channel() wiring as the chip × and the "+" menu. %>
+          <div class="inline-flex items-center gap-1 p-1 mb-2.5 rounded-full bg-[#EFECE6] text-[13px]" role="tablist" aria-label="Composer mode">
+            <button type="button" role="tab" data-composer-target="modeTab" data-mode="ask"
+                    data-action="composer#ask" data-active="true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition text-[#6B665F] data-[active=true]:bg-white data-[active=true]:shadow-sm data-[active=true]:text-[#1D1C1A]">
+              <i class="ri-sparkling-2-line"></i> Ask HosAlivio
+            </button>
+            <button type="button" role="tab" data-composer-target="modeTab" data-mode="channel"
+                    data-action="composer#channel" data-active="false"
+                    data-channel-slug="general"
+                    data-channel-url="<%= channel_messages_path('general', return_to: 'dashboard') %>"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition text-[#6B665F] data-[active=true]:bg-white data-[active=true]:shadow-sm data-[active=true]:text-[#1D1C1A]">
+              <i class="ri-chat-3-line"></i> Team chat
+            </button>
+          </div>
+
           <%# Team-chat mode chip — hidden until a channel is picked. %>
           <div data-composer-target="chip" class="hidden mb-2 flex items-center gap-2">
             <span class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1 rounded-full bg-[#EAF1F7] text-[#2B4A7A] border border-[#CADCEC]">
