@@ -323,20 +323,21 @@
                { label: "Expiring licenses",          q: "expiring licenses",          icon: "ri-award-line" },
                { label: "Who's on call",              q: "who's on call",              icon: "ri-phone-line" }
              ] %>
-          <%# Question grid — first 5 shown, the rest behind "View more" (mirrors
-              the public chat's starter-prompt list). %>
-          <div data-composer-target="quickAsks" data-controller="more-toggle" class="mb-2.5">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <% quick_asks.each_with_index do |a, i| %>
-                <%= button_to admin_assistant_ask_path, params: { q: a[:q] }, method: :post,
-                      form: { class: "block", style: ("display:none" if i >= 5), data: (i >= 5 ? { more_toggle_target: "item" } : {}) },
-                      class: "w-full inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:bg-[#EFECE6] hover:text-[#1D1C1A] transition" do %>
-                  <i class="<%= a[:icon] %> text-[15px] flex-shrink-0"></i> <span class="truncate"><%= a[:label] %></span>
-                <% end %>
+          <%# Question grid — presented the same way as the landing chat:
+              plain italic text links, 2-col, first 5 shown + "View more". %>
+          <div data-composer-target="quickAsks" data-controller="more-toggle"
+               class="grid grid-cols-2 justify-items-start gap-x-6 gap-y-2 mt-1 mb-2.5 text-[#6B665F] text-[14px] italic">
+            <% quick_asks.each_with_index do |a, i| %>
+              <%= button_to admin_assistant_ask_path, params: { q: a[:q] }, method: :post,
+                    form: { class: "contents", style: ("display:none" if i >= 5), data: (i >= 5 ? { more_toggle_target: "item" } : {}) },
+                    class: "inline-flex items-center gap-1.5 text-left hover:text-[#D97757] transition-colors" do %>
+                <i class="<%= a[:icon] %> text-[19px] not-italic"></i>
+                <span><%= a[:label] %></span>
               <% end %>
-            </div>
+            <% end %>
+            <%# Reveals the hidden prompts; spans both columns. %>
             <button type="button" data-action="more-toggle#toggle"
-                    class="mt-2 inline-flex items-center gap-1 text-[12px] text-[#D97757] hover:text-[#c46a4b] font-medium">
+                    class="col-span-2 inline-flex items-center gap-1 text-[13px] not-italic text-[#D97757] font-medium hover:underline mt-1">
               <span data-more-toggle-target="label">View more</span>
               <i class="ri-arrow-down-s-line transition-transform" data-more-toggle-chevron></i>
             </button>
