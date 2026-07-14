@@ -306,6 +306,12 @@
           </div>
         <% end %>
 
+        <%# Centered disclaimer — sits in the middle of the conversation space
+            as the resting empty-state for the Ask HosAlivio thread. %>
+        <p id="assistant-empty" class="max-w-md mx-auto text-center text-[13px] text-[#6B665F] leading-relaxed py-10">
+          HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
+        </p>
+
         <%# Ask HosAlivio conversation — question + answer bubbles append here
             during the session (ephemeral; cleared on reload). %>
         <div id="assistant-thread" class="space-y-3 max-w-2xl"></div>
@@ -317,7 +323,7 @@
              data-controller="composer mention-autocomplete"
              data-mention-autocomplete-items-value="<%= @mentionables.to_json %>"
              data-composer-ask-url-value="<%= admin_assistant_ask_path %>"
-             data-composer-ask-placeholder-value="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…">
+             data-composer-ask-placeholder-value="Ask HosAlivio anything">
 
           <%# One-tap oversight questions — each runs an Admin::Overview command
               and renders its answer into the same assistant-answer frame. %>
@@ -414,7 +420,7 @@
               </div>
               <input type="text" name="q" autocomplete="off"
                      data-composer-target="input" data-mention-autocomplete-target="input"
-                     placeholder="Ask HosAlivio anything — today's priorities, patients needing attention, new referrals…"
+                     placeholder="Ask HosAlivio anything"
                      class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[15px] placeholder-[#6B665F] py-2">
               <button type="submit"
                       title="Send"
@@ -443,10 +449,6 @@
               <span data-more-toggle-target="label">View more</span>
               <i class="ri-arrow-down-s-line transition-transform" data-more-toggle-chevron></i>
             </button>
-          </div>
-
-          <div data-composer-target="hint" class="mt-2 text-[11px] text-[#6B665F] text-center">
-            HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
           </div>
         </div>
       <% end %>
@@ -851,6 +853,8 @@
         const q = (form.querySelector('input[name="q"]')?.value || "").trim();
         const thread = document.getElementById("assistant-thread");
         if (!thread || !q) return;
+        // The conversation is starting — retire the centered empty-state disclaimer.
+        document.getElementById("assistant-empty")?.classList.add("hidden");
         window.__askStartedAt = Date.now();
 
         const question = document.createElement("div");
