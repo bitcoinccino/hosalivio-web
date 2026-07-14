@@ -179,7 +179,7 @@
       <% end %>
 
       <!-- Stage body — the Ask HosAlivio conversation + at-a-glance -->
-      <div id="assistant-stage" class="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+      <div id="assistant-stage" class="flex-1 flex flex-col overflow-y-auto px-6 py-6 space-y-5">
         <%
           has_glance = @pending_certifications.any? || @noe_overdue.any? || @noe_due_today.any? ||
                        @licenses_expired.to_i.positive? || @licenses_expiring.to_i.positive? ||
@@ -270,11 +270,15 @@
           </div>
         <% end %>
 
-        <%# Centered disclaimer — sits in the middle of the conversation space
-            as the resting empty-state for the Ask HosAlivio thread. %>
-        <p id="assistant-empty" class="max-w-md mx-auto text-center text-[13px] text-[#6B665F] leading-relaxed py-10">
-          HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
-        </p>
+        <%# Centered disclaimer — vertically centered in the empty conversation
+            space (the flex-1 wrapper grows to fill) as the resting empty-state.
+            The whole wrapper hides once chatting begins, so the thread reclaims
+            the space. %>
+        <div id="assistant-empty" class="flex-1 flex items-center justify-center">
+          <p class="max-w-md text-center text-[13px] text-[#6B665F] leading-relaxed">
+            HosAlivio answers from your agency's live data. Nothing here is written to a patient's chart.
+          </p>
+        </div>
 
         <%# Ask HosAlivio conversation — question + answer bubbles append here
             during the session (ephemeral; cleared on reload). %>

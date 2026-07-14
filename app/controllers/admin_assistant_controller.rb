@@ -20,6 +20,19 @@ class AdminAssistantController < ApplicationController
     [ /\b(?:priorit|pending|today|attention|overview|blocker|noe|due|summary|standup)\b/i,                  "pending_items" ]
   ].freeze
 
+  # Tappable follow-up prompts rendered beneath each answer, so a manager can
+  # keep the conversation going with one tap (like the public chat's chips).
+  # Keyed by the report just shown; freeform / unmatched answers get the
+  # DEFAULT set. Each entry is a `q` that re-enters #ask on click.
+  FOLLOWUP_SUGGESTIONS = {
+    "pending_items"              => [ "patients needing attention", "new referrals", "daily report" ],
+    "patients_needing_attention" => [ "compliance status", "overdue visits", "today's priorities" ],
+    "compliance_status"          => [ "expiring licenses", "recertifications this week", "patients needing attention" ],
+    "new_referrals"              => [ "unassigned patients", "today's priorities", "daily report" ],
+    "daily_report"               => [ "patients needing attention", "new referrals", "who's on call" ]
+  }.freeze
+  DEFAULT_FOLLOWUPS = [ "today's priorities", "patients needing attention", "compliance status", "daily report" ].freeze
+
   def ask
     @query = params[:q].to_s.strip
     ActsAsTenant.with_tenant(current_user.agency) do
@@ -36,6 +49,8 @@ class AdminAssistantController < ApplicationController
         # canned reply still handles greetings/help; otherwise the nudge.
         @answer = freeform_answer(@query) || canned_reply(@query)
       end
+      # Always offer a couple of tappable next steps so no answer dead-ends.
+      @followups = followups_for(command)
     end
 
     respond_to do |format|
@@ -50,6 +65,14 @@ class AdminAssistantController < ApplicationController
     return "pending_items" if query.blank?
     COMMAND_ROUTES.each { |pattern, command| return command if pattern.match?(query) }
     nil
+  end
+
+  # Two-to-three follow-up prompts to render as chips, minus whatever the
+  # manager just asked (so we don't suggest the current view back to them).
+  def followups_for(command)
+    (FOLLOWUP_SUGGESTIONS[command] || DEFAULT_FOLLOWUPS)
+      .reject { |q| q.casecmp?(@query) }
+      .first(3)
   end
 
   # Reports that always emit a fixed set of metric lines (even all-zero) — a

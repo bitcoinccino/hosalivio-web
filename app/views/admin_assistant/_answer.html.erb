@@ -21,5 +21,21 @@
 <% elsif @answer.present? %>
   <div class="text-[13px] text-[#1D1C1A] whitespace-pre-wrap leading-snug"><%= @answer %></div>
 <% else %>
-  <p class="text-[13px] text-[#6B665F]">I didn't catch that. Try: <strong>today's priorities</strong>, <strong>patients needing attention</strong>, <strong>compliance status</strong>, <strong>new referrals</strong>, or <strong>daily report</strong>.</p>
+  <p class="text-[13px] text-[#6B665F]">I don't have that one as a ready report yet — try one of these:</p>
+<% end %>
+
+<%# Tappable follow-up prompts — keep the conversation going with one tap.
+    Each re-enters #ask via the same optimistic path as the composer's
+    quick-asks (button_to → POST /assistant/ask → turbo-stream append). %>
+<% if @followups.present? %>
+  <div class="mt-3 flex flex-wrap gap-1.5">
+    <% @followups.each do |q| %>
+      <%= button_to admin_assistant_ask_path, params: { q: q }, method: :post,
+            form: { class: "contents" },
+            class: "inline-flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full border border-[#EFECE6] bg-white text-[#6B665F] hover:text-[#D97757] hover:border-[#D97757] transition" do %>
+        <i class="ri-corner-down-right-line text-[13px]"></i>
+        <%= q.humanize %>
+      <% end %>
+    <% end %>
+  </div>
 <% end %>
