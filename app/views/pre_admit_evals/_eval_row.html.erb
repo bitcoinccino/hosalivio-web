@@ -17,8 +17,14 @@
   subs << (record.evaluated_at || record.created_at)&.strftime("%b %-d, %Y")
   subs << record.evaluator_name if !show_patient && record.evaluator_name.present?
   subs << record.primary_icd10  if !show_patient && record.primary_icd10.present?
+
+  # Filter facets for the Admissions-queue instant search (inert elsewhere).
+  # admitted = noe_filed (on the benefit); cancelled = revoked.
+  group = { "draft" => "draft", "final" => "final", "certified" => "certified",
+            "noe_filed" => "admitted", "revoked" => "cancelled" }[record.status.to_s] || "draft"
+  search_text = [ record.patient&.full_name, dx, record.primary_icd10, record.evaluator_name ].compact.join(" ").downcase
 %>
-<li>
+<li data-admissions-filter-target="row" data-status="<%= group %>" data-search="<%= search_text %>">
   <%= link_to pre_admit_eval_path(record),
         class: "block rounded-2xl border border-[#EFECE6] bg-white p-4 hover:bg-[#FBF9F5] transition" do %>
     <div class="flex items-center justify-between gap-3">
