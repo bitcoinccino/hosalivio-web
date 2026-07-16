@@ -101,17 +101,8 @@
     </div>
   </div>
 
-  <%# Sidebar footer only: a direct, always-visible Sign out so it isn't
-      buried in the account dropdown. %>
-  <% if sidebar %>
-    <%= button_to destroy_user_session_path,
-          method: :delete,
-          form: { class: "flex-shrink-0", data: { turbo_confirm: "Sign out of HosAlivio?" } },
-          title: "Sign out",
-          "aria-label": "Sign out",
-          class: "w-9 h-9 rounded-full bg-white border border-[#EFECE6] text-[#6B665F] hover:text-[#C1403A] hover:border-[#D97757] hover:bg-[#FFF3EC] inline-flex items-center justify-center transition" do %>
-      <i class="ri-logout-box-r-line text-[15px]"></i>
-    <% end %>
-  </div>
-  <% end %>
+  <%# Sidebar footer only: close the flex wrapper that pairs the account pill
+      with the collapsed-sidebar layout. Sign out lives in the account menu
+      above (no separate button — it duplicated the menu's Sign out). %>
+  <% if sidebar %></div><% end %>
 <% end %>

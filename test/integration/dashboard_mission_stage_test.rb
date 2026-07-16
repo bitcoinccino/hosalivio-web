@@ -34,20 +34,17 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     # mobile bottom tab bar
     assert_match "Activity", response.body
     assert_match "Stage", response.body
-    # team chat moved into the composer's "+" modal, with flip-to-channel wiring
-    assert_match "Team channels", response.body
-    assert_match "general", response.body
-    assert_match "admission", response.body
+    # center composer is Ask HosAlivio only — team chat lives in the right-rail
+    # panel (its own composer + live thread), which posts to the channels
     assert_match "composer", response.body
-    assert_match "composer#channel", response.body
     assert_match channel_messages_path("general"), response.body
-    # composer mode toggle — Ask HosAlivio ⇄ Team chat segmented control
-    assert_match "Composer mode", response.body
-    assert_match 'data-composer-target="modeTab"', response.body
-    # popover-style menu (like the patient composer) with channel blurbs
+    assert_match channel_messages_path("admission"), response.body
+    # "+" menu prefills Ask HosAlivio for scheduling / assignment
+    assert_match "Schedule a visit", response.body
+    assert_match "Assign a Clinician", response.body
+    assert_match "composer#prefill", response.body
+    # popover-style menu (like the patient composer)
     assert_match "data-quick-actions-target", response.body
-    assert_match "Team announcements and general discussion", response.body
-    assert_match "Referrals, pre-admit evals, blockers, and scheduling.", response.body
     # @-mention autocomplete in the composer, pooled with agency staff
     assert_match "mention-autocomplete", response.body
     assert_match "data-mention-autocomplete-target", response.body
@@ -55,7 +52,7 @@ class DashboardMissionStageTest < ActionDispatch::IntegrationTest
     # the chat thread + the submit listener that matches the real ask route
     assert_match 'id="assistant-thread"', response.body
     assert_match 'includes("/assistant/ask")', response.body
-    # one-tap oversight quick-ask buttons above the composer (hidden in team-chat mode)
+    # one-tap oversight quick-ask buttons above the composer
     assert_match 'data-composer-target="quickAsks"', response.body
     assert_match "Today&#39;s priorities", response.body
     assert_match "Patients needing attention", response.body

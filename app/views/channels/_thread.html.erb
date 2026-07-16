@@ -16,62 +16,38 @@
 
 <%# Live-append new messages/replies for anyone viewing this channel. %>
 <%= turbo_stream_from [ channel, :messages ] %>
+<%# Split the thread at the latest day: everything before it tucks behind a
+    "Show earlier messages" toggle (like the activity feed + Ask thread); the
+    latest day stays open and is where live-appended messages land. %>
+<% latest_date     = messages.any? ? messages.map { |m| m.created_at.to_date }.max : nil %>
+<% earlier, recent = messages.partition { |m| latest_date && m.created_at.to_date < latest_date } %>
 <div class="flex-1 overflow-y-auto px-1 py-3">
   <div id="channel-<%= channel.id %>-messages" class="space-y-1">
+    <% if earlier.any? %>
+      <details class="group/earlier">
+        <summary class="list-none cursor-pointer flex items-center justify-center py-1 [&::-webkit-details-marker]:hidden">
+          <span class="inline-flex items-center gap-1 px-3 py-1 text-[11px] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full hover:bg-[#EFECE6] transition">
+            <i class="ri-arrow-up-s-line group-open/earlier:rotate-180 transition-transform"></i>
+            <span class="group-open/earlier:hidden">Show earlier messages</span>
+            <span class="hidden group-open/earlier:inline">Hide earlier messages</span>
+          </span>
+        </summary>
+        <div class="space-y-1 mt-2">
+          <% last_date = nil %>
+          <% earlier.each do |m| %>
+            <% d = m.created_at.to_date %>
+            <% if d != last_date %><%= render "channels/thread_day", date: d %><% last_date = d %><% end %>
+            <%= render "channels/thread_message", message: m, can_post: can_post, post_url: post_url %>
+          <% end %>
+        </div>
+      </details>
+    <% end %>
+
     <% last_date = nil %>
-    <% messages.each do |m| %>
+    <% recent.each do |m| %>
       <% d = m.created_at.to_date %>
-      <% if d != last_date %>
-        <div class="flex items-center justify-center pt-2 pb-1">
-          <div class="px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#6B665F] bg-[#FBF9F5] border border-[#EFECE6] rounded-full font-medium"><%= relative_date_label(d) %></div>
-        </div>
-        <% last_date = d %>
-      <% end %>
-
-      <div data-controller="thread">
-        <%= render "channel_messages/message", message: m %>
-
-        <%# Thread: replies + reply affordances, indented under the avatar. %>
-        <% replies = m.replies.sort_by(&:created_at) %>
-        <div class="ml-[46px]">
-          <% if replies.any? %>
-            <button type="button" data-action="thread#toggleReplies"
-                    class="inline-flex items-center gap-1 text-[11px] text-[#6B665F] hover:text-[#1D1C1A] font-medium">
-              <i class="ri-corner-down-right-line"></i>
-              <%= replies.size %> <%= "reply".pluralize(replies.size) %>
-              <i class="ri-arrow-up-s-line transition-transform" data-thread-target="chevron"></i>
-            </button>
-          <% end %>
-
-          <div id="channel-message-<%= m.id %>-replies" data-thread-target="replies"
-               class="space-y-1 pl-3 border-l-2 border-[#EFECE6] mt-1">
-            <% replies.each do |r| %>
-              <%= render "channel_messages/message", message: r, reply: true %>
-            <% end %>
-          </div>
-
-          <% if can_post %>
-            <button type="button" data-action="thread#openReply"
-                    class="mt-1 inline-flex items-center gap-1 text-[11px] text-[#D97757] hover:underline font-medium">
-              <i class="ri-reply-line"></i> Reply
-            </button>
-            <div data-thread-target="form" class="hidden mt-1">
-              <%= form_with url: post_url, method: :post, data: { turbo: false } do %>
-                <%= hidden_field_tag :parent_id, m.id %>
-                <div class="flex items-center gap-2 bg-white rounded-2xl pl-3 pr-1.5 py-1 border border-[#EFECE6] shadow-sm">
-                  <input type="text" name="body" autocomplete="off"
-                         placeholder="Reply to <%= m.user&.full_name.presence || "message" %>…"
-                         class="flex-1 w-full bg-transparent border-0 focus:outline-none text-[13px] placeholder-[#6B665F] py-1">
-                  <button type="submit" title="Send reply"
-                          class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white transition">
-                    <i class="ri-send-plane-fill text-[13px]"></i>
-                  </button>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      </div>
+      <% if d != last_date %><%= render "channels/thread_day", date: d %><% last_date = d %><% end %>
+      <%= render "channels/thread_message", message: m, can_post: can_post, post_url: post_url %>
     <% end %>
   </div>
   <% if messages.empty? %>

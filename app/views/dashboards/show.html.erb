@@ -289,9 +289,7 @@
       <% if is_manager %>
         <div class="px-6 pb-6 pt-3 bg-[#FBF9F5]"
              data-controller="composer mention-autocomplete"
-             data-mention-autocomplete-items-value="<%= @mentionables.to_json %>"
-             data-composer-ask-url-value="<%= admin_assistant_ask_path %>"
-             data-composer-ask-placeholder-value="Ask HosAlivio anything">
+             data-mention-autocomplete-items-value="<%= @mentionables.to_json %>">
 
           <%# One-tap oversight questions — each runs an Admin::Overview command
               and renders its answer into the same assistant-answer frame. %>
@@ -310,35 +308,6 @@
                { label: "Who's on call",              q: "who's on call",              icon: "ri-phone-line" }
              ] %>
 
-          <%# Mode toggle — flips the one composer between Ask HosAlivio (AI)
-              and Team chat. "Team chat" jumps straight to #general; the chip
-              below then shows the active channel and can switch it. Reuses the
-              same ask()/channel() wiring as the chip × and the "+" menu. %>
-          <div class="inline-flex items-center gap-1 p-1 mb-2.5 rounded-full bg-[#EFECE6] text-[13px]" role="tablist" aria-label="Composer mode">
-            <button type="button" role="tab" data-composer-target="modeTab" data-mode="ask"
-                    data-action="composer#ask" data-active="true"
-                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition text-[#6B665F] data-[active=true]:bg-white data-[active=true]:shadow-sm data-[active=true]:text-[#1D1C1A]">
-              <i class="ri-sparkling-2-line"></i> Ask HosAlivio
-            </button>
-            <button type="button" role="tab" data-composer-target="modeTab" data-mode="channel"
-                    data-action="composer#channel" data-active="false"
-                    data-channel-slug="general"
-                    data-channel-url="<%= channel_messages_path('general', return_to: 'dashboard') %>"
-                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition text-[#6B665F] data-[active=true]:bg-white data-[active=true]:shadow-sm data-[active=true]:text-[#1D1C1A]">
-              <i class="ri-chat-3-line"></i> Team chat
-            </button>
-          </div>
-
-          <%# Team-chat mode chip — hidden until a channel is picked. %>
-          <div data-composer-target="chip" class="hidden mb-2 flex items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1 rounded-full bg-[#EAF1F7] text-[#2B4A7A] border border-[#CADCEC]">
-              <i class="ri-chat-3-line"></i>
-              <span data-composer-target="chipLabel"># general</span>
-              <button type="button" data-action="composer#ask" title="Back to Ask HosAlivio" class="ml-1 hover:text-[#1D1C1A]"><i class="ri-close-line"></i></button>
-            </span>
-            <span class="text-[11px] text-[#6B665F]">Team-chat mode — your message posts to this channel.</span>
-          </div>
-
           <%= form_with url: admin_assistant_ask_path, method: :post, data: { composer_target: "form" } do %>
             <div class="relative">
               <%# @-mention autocomplete dropdown (populated by JS, opens above the input). %>
@@ -346,62 +315,41 @@
                    class="hidden absolute bottom-full left-0 mb-2 w-72 max-h-64 overflow-y-auto rounded-2xl border border-[#EFECE6] bg-white shadow-lg py-1 z-50"></div>
             <div class="flex items-center gap-3 bg-white rounded-3xl pl-3 pr-2 py-2 border border-[#EFECE6] shadow-sm">
               <%# "+" menu — a popover (same pattern as the patient composer's
-                  quick-actions dropdown), moved here from the sidebar. %>
+                  quick-actions dropdown). Team chat is reached from the
+                  empty-state HosAlivio ⇄ Team switch, not here. %>
               <div class="relative flex-shrink-0" data-controller="quick-actions">
-                <button type="button" data-action="click->quick-actions#toggle" title="Team channels"
+                <button type="button" data-action="click->quick-actions#toggle" title="Actions"
                         class="w-9 h-9 rounded-full bg-[#FBF9F5] hover:bg-[#EFECE6] text-[#D97757] text-lg flex items-center justify-center transition">
                   <i class="ri-add-line"></i>
                 </button>
-                <%
-                  channel_blurbs = {
-                    "general"   => "Team announcements and general discussion",
-                    "admission" => "Referrals, pre-admit evals, blockers, and scheduling."
-                  }
-                %>
                 <div data-quick-actions-target="panel"
                      class="hidden absolute left-0 bottom-full mb-2 w-72 rounded-2xl bg-white border border-[#EFECE6] shadow-lg overflow-hidden z-50">
-                  <div class="px-4 py-2 border-b border-[#EFECE6]">
-                    <div class="text-[10px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Team channels</div>
-                    <div class="text-[12px] text-[#1D1C1A] mt-0.5">Post to a channel</div>
-                  </div>
                   <div class="py-1">
-                    <% if @channels.blank? %>
-                      <div class="px-4 py-3 text-[12px] text-[#6B665F] italic">No channels yet.</div>
-                    <% else %>
-                      <% @channels.each do |c| %>
-                        <% blurb = channel_blurbs[c.slug] || "Team channel" %>
-                        <% if c.postable_by?(current_user) %>
-                          <%# Flip the composer into team-chat mode for this channel. %>
-                          <button type="button"
-                                  data-action="composer#channel quick-actions#close"
-                                  data-channel-slug="<%= c.slug %>"
-                                  data-channel-url="<%= channel_messages_path(c, return_to: "dashboard") %>"
-                                  class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[#FBF9F5] transition cursor-pointer">
-                            <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0 text-[#2B4A7A]">
-                              <i class="ri-hashtag"></i>
-                            </span>
-                            <span class="min-w-0 flex-1">
-                              <span class="block text-[13px] text-[#1D1C1A]"># <%= c.name %></span>
-                              <span class="block text-[11px] text-[#6B665F]"><%= blurb %></span>
-                            </span>
-                          </button>
-                        <% else %>
-                          <%= link_to channel_path(c), data: { action: "quick-actions#close" },
-                                class: "flex items-center gap-3 w-full px-4 py-2.5 hover:bg-[#FBF9F5] transition" do %>
-                            <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0 text-[#6B665F]">
-                              <i class="ri-hashtag"></i>
-                            </span>
-                            <span class="min-w-0 flex-1">
-                              <span class="flex items-center gap-2">
-                                <span class="block text-[13px] text-[#1D1C1A]"># <%= c.name %></span>
-                                <span class="text-[9px] uppercase tracking-wider text-[#6B665F] inline-flex items-center gap-1"><i class="ri-lock-line"></i> read-only</span>
-                              </span>
-                              <span class="block text-[11px] text-[#6B665F]"><%= blurb %></span>
-                            </span>
-                          <% end %>
-                        <% end %>
-                      <% end %>
-                    <% end %>
+                    <%# Schedule a visit / Assign a Clinician — prefill Ask HosAlivio. %>
+                    <button type="button"
+                            data-action="composer#prefill quick-actions#close"
+                            data-prompt="Schedule a visit for "
+                            class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[#FBF9F5] transition cursor-pointer">
+                      <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0 text-[#2B4A7A]">
+                        <i class="ri-calendar-schedule-line"></i>
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block text-[13px] text-[#1D1C1A]">Schedule a visit</span>
+                        <span class="block text-[11px] text-[#6B665F]">Ask HosAlivio to book a visit</span>
+                      </span>
+                    </button>
+                    <button type="button"
+                            data-action="composer#prefill quick-actions#close"
+                            data-prompt="Assign a clinician to "
+                            class="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-[#FBF9F5] transition cursor-pointer">
+                      <span class="w-8 h-8 rounded-full bg-[#FBF9F5] flex items-center justify-center flex-shrink-0 text-[#2B4A7A]">
+                        <i class="ri-user-add-line"></i>
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block text-[13px] text-[#1D1C1A]">Assign a Clinician</span>
+                        <span class="block text-[11px] text-[#6B665F]">Ask HosAlivio to assign a clinician</span>
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -445,6 +393,7 @@
   <!-- ─── Right Rail: Live agent-activity feed ─────────────────── -->
   <% if @agency %>
     <aside data-mission-mobile-target="tab" data-tab-name="activity" data-controller="tabs"
+           data-tabs-initial-value="<%= params[:tab] == "team" ? 1 : 0 %>"
            class="hidden md:flex w-96 bg-white border-l border-[#EFECE6] flex-col overflow-hidden
                   data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full">
       <%# Two live surfaces share this column: the agent-activity feed and the
@@ -459,7 +408,7 @@
           <i class="ri-close-line text-lg"></i>
         </button>
         <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="0" data-on="true"
-                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+                class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-2 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#D97757] data-[on=true]:text-white">
           <span class="relative flex h-1.5 w-1.5">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2F6F4E] opacity-70"></span>
             <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#2F6F4E]"></span>
@@ -467,12 +416,12 @@
           Live activity
         </button>
         <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="1" data-on="false"
-                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+                class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-2 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#D97757] data-[on=true]:text-white">
           <i class="ri-chat-3-line"></i> Team chat
         </button>
         <% unread_notifs = @my_notifications.count { |n| n.read_at.nil? } %>
         <button type="button" data-tabs-target="tab" data-action="tabs#show" data-tabs-index-param="2" data-on="false"
-                class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#1D1C1A] data-[on=true]:text-white">
+                class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-2 py-1 rounded-full text-[#6B665F] hover:bg-[#FBF9F5] transition data-[on=true]:bg-[#D97757] data-[on=true]:text-white">
           <i class="ri-notification-3-line"></i> Notifications
           <% if unread_notifs > 0 %>
             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#D97757] text-white"><%= unread_notifs %></span>
@@ -570,11 +519,12 @@
           </div>
         <% end %>
       </div>
+      </div>
       <%# ── end Pane 0 ─────────────────────────────────────────── %>
 
       <%# ── Pane 1: live team-chat thread (same panel every role sees) ── %>
       <div data-tabs-target="pane" class="flex-1 flex flex-col min-h-0 overflow-hidden hidden">
-        <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables %>
+        <%= render "shared/team_chat_panel", threads: @team_threads, mentionables: @mentionables, active_slug: params[:channel] %>
       </div>
 
       <%# ── Pane 2: my notifications (moved off the sidebar) ── %>
@@ -824,6 +774,29 @@
       }  // end initMissionStage
 
       document.addEventListener("turbo:load", initMissionStage);
+
+      // --- Deep-link the right rail after a channel post ---
+      // Posting from the composer returns to /dashboard?tab=team&channel=<slug>.
+      // Open the "Team chat" tab (and that channel) by replaying the existing
+      // tab clicks — works regardless of Stimulus connect() timing.
+      document.addEventListener("turbo:load", function openTeamChatFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("tab") !== "team") return;
+        const aside = document.querySelector('aside[data-controller~="tabs"]');
+        if (!aside) return;
+        requestAnimationFrame(function () {
+          const tabs = Array.from(aside.querySelectorAll('[data-tabs-target="tab"]'));
+          // Outer right-rail tab labelled "Team chat".
+          const teamTab = tabs.find((b) => /team chat/i.test(b.textContent));
+          if (teamTab) teamTab.click();
+          // Inner channel switcher button "# <slug>".
+          const slug = (params.get("channel") || "").toLowerCase();
+          if (slug) {
+            const chanTab = tabs.find((b) => b.textContent.trim().replace(/^#\s*/, "").toLowerCase() === slug);
+            if (chanTab) chanTab.click();
+          }
+        });
+      });
 
       // --- Ask HosAlivio: optimistic question bubble + typing indicator ---
       const isAskForm = (form) => form && String(form.action || "").includes("/assistant/ask");

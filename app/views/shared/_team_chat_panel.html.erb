@@ -9,11 +9,13 @@
 %>
 <% threads      = local_assigns.fetch(:threads, []) %>
 <% mentionables = local_assigns.fetch(:mentionables, []) %>
+<%# Open a specific channel on load (e.g. right after posting to it). %>
+<% active_index = threads.index { |t| t[:channel].slug == local_assigns[:active_slug] } || 0 %>
 
 <%# flex-1 (not h-full) so the panel fills its flex parent reliably — an
     h-full child of a flex item whose height comes from flex-grow doesn't
     resolve its height in some browsers, which collapsed the panel to blank. %>
-<div data-controller="tabs" class="flex flex-col flex-1 min-h-0">
+<div data-controller="tabs" data-tabs-initial-value="<%= active_index %>" class="flex flex-col flex-1 min-h-0">
   <% if threads.empty? %>
     <p class="px-5 py-8 text-center text-[13px] text-[#6B665F]">No team channels yet.</p>
   <% else %>
