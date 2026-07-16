@@ -1,14 +1,15 @@
 <% content_for :title, "Inquiry · #{@inquiry.first_name.presence || "Referral"}" %>
 <%
   status_pill = {
-    "new_lead"  => [ "#D97757", "#FFF3EC", "New lead" ],
-    "claimed"   => [ "#2B4A7A", "#F0F4FA", "Claimed" ],
-    "contacted" => [ "#2F6F4E", "#E6F0EE", "Contacted" ],
-    "converted" => [ "#2F6F4E", "#E6F0EE", "Converted" ],
-    "dismissed" => [ "#6B665F", "#EFECE6", "Dismissed" ]
+    "new_lead"    => [ "#D97757", "#FFF3EC", "New lead" ],
+    "claimed"     => [ "#2B4A7A", "#F0F4FA", "Claimed" ],
+    "contacted"   => [ "#2F6F4E", "#E6F0EE", "Contacted" ],
+    "considering" => [ "#8C6A2F", "#FBF3E3", "Considering" ],
+    "converted"   => [ "#2F6F4E", "#E6F0EE", "Converted" ],
+    "dismissed"   => [ "#6B665F", "#EFECE6", "Dismissed" ]
   }
   st_fg, st_bg, st_label = status_pill[@inquiry.status.to_s] || [ "#6B665F", "#EFECE6", @inquiry.status.to_s ]
-  is_open = @inquiry.status_new_lead? || @inquiry.status_claimed? || @inquiry.status_contacted?
+  is_open = @inquiry.status_new_lead? || @inquiry.status_claimed? || @inquiry.status_contacted? || @inquiry.status_considering?
 
   # Timeline stamps to show, in order, when present.
   stamps = [
@@ -77,6 +78,15 @@
                   <% end %>
                 <% end %>
 
+                <%# Family needs time — park for follow-up (not declined). %>
+                <% unless @inquiry.status_considering? %>
+                  <%= button_to defer_inquiry_path(@inquiry, follow_up_in_days: 7),
+                        form: { class: "block" }, data: { action: "menu#close" },
+                        class: "w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#8C6A2F] hover:bg-[#FBF3E3]" do %>
+                    <i class="ri-time-line"></i> Still deciding — follow up in 7d
+                  <% end %>
+                <% end %>
+
                 <div class="my-1 border-t border-[#EFECE6]"></div>
                 <%= button_to dismiss_inquiry_path(@inquiry),
                       form: { class: "block", data: { turbo_confirm: "Dismiss this inquiry? It will drop off the inbox." } },
@@ -97,6 +107,33 @@
           </div>
         </div>
       </div>
+
+      <%# Still-deciding banner — the family needs time; shows the follow-up date
+          and lets the coordinator push it or (via the menu) convert / dismiss. %>
+      <% if @inquiry.status_considering? %>
+        <% due = @inquiry.follow_up_due? %>
+        <div class="mb-4 rounded-2xl border <%= due ? "border-[#D97757] bg-[#FFF3EC]" : "border-[#EAD9B5] bg-[#FBF3E3]" %> p-4">
+          <div class="flex items-center gap-2 text-[13px] <%= due ? "text-[#B4552F]" : "text-[#8C6A2F]" %>">
+            <i class="ri-time-line"></i>
+            <span class="font-medium">
+              <% if due %>Follow-up due<% else %>Still deciding<% end %>
+            </span>
+            <% if @inquiry.follow_up_at.present? %>
+              <span>· follow up <%= @inquiry.follow_up_at.to_date.strftime("%b %-d, %Y") %></span>
+            <% end %>
+          </div>
+          <%= form_with url: defer_inquiry_path(@inquiry), method: :post,
+                class: "mt-2.5 flex items-center gap-2" do %>
+            <input type="date" name="follow_up_at"
+                   value="<%= @inquiry.follow_up_at&.to_date&.iso8601 %>"
+                   class="text-[13px] px-3 py-1.5 rounded-full border border-[#EAD9B5] bg-white focus:outline-none focus:border-[#8C6A2F]">
+            <button type="submit"
+                    class="text-[12px] px-3 py-1.5 rounded-full bg-[#8C6A2F] text-white hover:bg-[#755826] transition">
+              Update follow-up
+            </button>
+          <% end %>
+        </div>
+      <% end %>
 
       <%# Full captured record. %>
       <%= render "summary", inquiry: @inquiry %>

@@ -70,13 +70,19 @@ class Inquiry < ApplicationRecord
   }.freeze
   validates :preferred_slot, inclusion: { in: CALL_SLOTS.keys }, allow_blank: true
 
+  # considering → family needs time to decide; parked with a follow_up_at date
+  #               so it resurfaces when it's time to check back (not declined).
   enum :status, {
-    new_lead:   0,
-    claimed:    1,
-    contacted:  2,
-    converted:  3,
-    dismissed:  4
+    new_lead:    0,
+    claimed:     1,
+    contacted:   2,
+    converted:   3,
+    dismissed:   4,
+    considering: 5
   }, prefix: :status, validate: true
+
+  # A parked "still deciding" lead whose follow-up date has arrived (or passed).
+  def follow_up_due? = status_considering? && follow_up_at.present? && follow_up_at <= Time.current
 
   belongs_to :agency
   belongs_to :claimed_by,        class_name: "User",    optional: true

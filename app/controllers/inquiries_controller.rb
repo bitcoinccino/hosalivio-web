@@ -7,7 +7,7 @@ class InquiriesController < ApplicationController
   # landing-page submission (:create) is open.
   before_action :authorize_inquiry_manager!, except: :create
 
-  before_action :set_inquiry, only: [ :show, :claim, :mark_contacted, :dismiss, :convert, :convert_to_patient ]
+  before_action :set_inquiry, only: [ :show, :claim, :mark_contacted, :defer, :dismiss, :convert, :convert_to_patient ]
 
   # ── Public submission from landing page ──────────────────────────────
   def create
@@ -54,16 +54,20 @@ class InquiriesController < ApplicationController
     ActsAsTenant.with_tenant(current_user.agency) do
       @agency = current_user.agency
       # The inbox tracks open work: leads to claim, claimed leads to convert,
-      # and contacted-but-not-yet-converted leads. Converted/dismissed drop off.
-      open_scope     = Inquiry.where(status: [ :new_lead, :claimed, :contacted ])
+      # contacted-but-not-yet-converted leads, plus "considering" leads parked
+      # for follow-up. Converted/dismissed drop off.
+      open_scope     = Inquiry.where(status: [ :new_lead, :claimed, :contacted, :considering ])
       raw_counts     = open_scope.group(:status).count
       # group(:status).count can key by enum label or raw integer depending on
       # the adapter; normalize to label strings either way.
       @status_counts = raw_counts.transform_keys { |k| k.is_a?(Integer) ? Inquiry.statuses.key(k) : k.to_s }
       @open_total    = @status_counts.values.sum
-      @status        = params[:status].presence_in(%w[new_lead claimed contacted])
+      # Parked "still deciding" leads whose follow-up date has arrived.
+      @followups_due = Inquiry.status_considering.where("follow_up_at <= ?", Time.current).count
+      @status        = params[:status].presence_in(%w[new_lead claimed contacted considering])
       list           = @status ? open_scope.where(status: @status) : open_scope
-      @inquiries     = list.order(created_at: :desc).limit(100)
+      order          = @status == "considering" ? { follow_up_at: :asc } : { created_at: :desc }
+      @inquiries     = list.order(order).limit(100)
     end
     respond_to do |f|
       f.html
@@ -87,6 +91,18 @@ class InquiriesController < ApplicationController
   def mark_contacted
     @inquiry.update!(contacted_at: Time.current, status: :contacted)
     redirect_back fallback_location: inquiries_path, notice: "Marked contacted."
+  end
+
+  # POST /inquiries/:id/defer — family is unsure and needs time to decide.
+  # Parks the lead as "considering" with a follow-up date so it resurfaces
+  # instead of going cold (or being wrongly dismissed as declined).
+  def defer
+    days = params[:follow_up_in_days].to_i
+    at   = params[:follow_up_at].presence
+    follow_up = at ? Time.zone.parse(at) : (days > 0 ? days.days.from_now : 1.week.from_now)
+    @inquiry.update!(status: :considering, follow_up_at: follow_up)
+    redirect_back fallback_location: inquiry_path(@inquiry),
+                  notice: "Marked as still deciding — follow up #{follow_up.to_date.strftime('%b %-d')}."
   end
 
   def dismiss
