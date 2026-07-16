@@ -546,6 +546,7 @@
 </div>
 
 <% if @agency %>
+  <%= render "dashboards/feed_constants" %>
   <script>
     // Bound once for the tab's lifetime, and run on `turbo:load` — which fires
     // on the initial load AND on every Turbo Drive visit. The old
@@ -646,33 +647,8 @@
         }));
       };
       ws.onclose = () => { statusEl.textContent = "disconnected"; statusEl.classList.add("text-[#C1403A]"); };
-      // Persona for live rendering — keep in sync with app/services/event_narrator.rb
-      const PERSONA = {
-        admissions:         { name: "HosAlivio",  title: "Admissions",    initials: "H", color: "#1D1C1A", ai: true },
-        triage:             { name: "HosAlivio",  title: "Triage",        initials: "H", color: "#1D1C1A", ai: true },
-        dispatch:           { name: "HosAlivio",  title: "Dispatch",      initials: "H", color: "#1D1C1A", ai: true },
-        hosalivio_brain:    { name: "HosAlivio",  title: "",              initials: "H", color: "#1D1C1A", ai: true },
-        front_door_inbound: { name: "Care Portal",title: "Family-facing", initials: "⌂", color: "#D97757" },
-        rn:                 { name: "Pascal",     title: "RN",            initials: "P", color: "#2F6F4E" },
-        md:                 { name: "Dr. Esther", title: "MD",            initials: "E", color: "#2B4A7A" },
-        don:                { name: "Diaphnie",   title: "DON",           initials: "D", color: "#8B5A2B" },
-        social_worker:      { name: "Nickla",     title: "Social Worker", initials: "N", color: "#7A4A8C" },
-        chaplain:           { name: "Geoginio",   title: "Chaplain",      initials: "G", color: "#8C6A2F" },
-        pharmacy:           { name: "Simone",     title: "Pharmacy",      initials: "S", color: "#5A2F7A" },
-        dme:                { name: "Marcus",     title: "DME",           initials: "M", color: "#3E5D5D" },
-        insurance:          { name: "Kendra",     title: "Insurance",     initials: "K", color: "#3A3936" },
-        billing:            { name: "Wolfwide",   title: "Billing",       initials: "W", color: "#6B665F" },
-        aide:               { name: "Flore",      title: "Aide",          initials: "F", color: "#AD7340" },
-        family:             { name: "Family",     title: "Care Portal",   initials: "♥", color: "#D97757" },
-        system:             { name: "HosAlivio",  title: "Agent",         initials: "•", color: "#6B665F", ai: true }
-      };
-      const ROLE_LABEL = {
-        rn: "RN", md: "MD", don: "DON", aide: "Aide",
-        visit_rn: "Visit RN", admission_rn: "Admission RN",
-        social_worker: "Social Work", chaplain: "Chaplain",
-        pharmacy: "Pharmacy", dme: "DME", insurance: "Insurance",
-        billing: "Billing", admissions: "Admissions"
-      };
+      // Serialized from EventNarrator by dashboards/_feed_constants.
+      const { PERSONA, ROLE_LABEL, AI_ICON } = window.HosAlivioFeed;
 
       // Must mirror EventNarrator#narrate in app/services/event_narrator.rb
       function narrate(p) {
@@ -723,9 +699,7 @@
 
       // --- Card helpers (mirror EventNarrator::Story#action_label / #source_label) ---
       function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
-      // Mirrors EventNarrator::AI_ICON / Story#avatar_icon: HosAlivio wears the
-      // AI mark, people wear their initials.
-      const AI_ICON = "ri-sparkling-2-line";
+      // Mirrors Story#avatar_icon: HosAlivio wears the AI mark, people their initials.
       function avatarGlyph(persona) {
         return persona.ai ? `<i class="${AI_ICON} text-[15px] not-italic"></i>` : esc(persona.initials || "?");
       }
