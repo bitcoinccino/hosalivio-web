@@ -8,30 +8,19 @@
     "dme" => "#7A6B5A", "pharmacy" => "#4A6B8C"
   }
 %>
-<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+<%# The Mission banner supplies the back link, title and agency; the rail
+    supplies the user menu and the Branches link. Only the count and the page
+    action stay. %>
+<div class="py-6 md:py-10 px-4">
   <div class="max-w-5xl mx-auto">
     <div class="flex items-center justify-between mb-6">
-      <div>
-        <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1 mb-2">
-          <i class="ri-arrow-left-line"></i> Dashboard
-        </a>
-        <h1 class="font-serif text-2xl text-[#1D1C1A]">Clinical Team</h1>
-        <div class="text-[12px] text-[#6B665F] mt-0.5">
-          <%= current_user.agency&.name %> ·
-          <%= @members_by_branch.values.flatten.count %> members across <%= @branches.count %> branch<%= @branches.count == 1 ? "" : "es" %>
-        </div>
+      <div class="text-[12px] text-[#6B665F]">
+        <%= @members_by_branch.values.flatten.count %> members across <%= @branches.count %> branch<%= @branches.count == 1 ? "" : "es" %>
       </div>
-      <div class="flex items-center gap-2">
-        <%= link_to branches_path, class: "inline-flex items-center gap-1.5 text-[13px] px-3 py-2 rounded-full border border-[#D9D5CD] text-[#1D1C1A] hover:bg-white" do %>
-          <i class="ri-map-pin-line"></i> Branches
-        <% end %>
-        <%= link_to new_team_member_path,
-              class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium" do %>
-          <i class="ri-user-add-line"></i> Add team member
-        <% end %>
-        <span class="w-px h-6 bg-[#EFECE6] mx-1"></span>
-        <%= render "shared/user_menu" %>
-      </div>
+      <%= link_to new_team_member_path,
+            class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium" do %>
+        <i class="ri-user-add-line"></i> Add team member
+      <% end %>
     </div>
 
     <% if flash[:notice] %>
@@ -97,6 +86,11 @@
             No members at this branch yet.
           </div>
         <% else %>
+          <%# Five columns don't fit a phone. The two lowest-value ones (the
+              caseload bar, the status word) drop out below md/sm — inactive rows
+              are already dimmed, so status survives as a visual cue — and the
+              wrapper scrolls rather than letting anything squash. %>
+          <div class="overflow-x-auto">
           <table class="w-full">
             <tbody>
               <% members.each do |m| %>
@@ -144,13 +138,13 @@
                       <% end %>
                     </div>
                   </td>
-                  <td class="px-4 py-3 w-[140px]">
+                  <td class="hidden md:table-cell px-4 py-3 w-[140px]">
                     <div class="text-[10px] text-[#6B665F]"><%= caseload %>/<%= cap %> caseload</div>
                     <div class="mt-1 h-1.5 w-full rounded-full bg-[#EFECE6] overflow-hidden">
                       <div class="h-full rounded-full" style="width: <%= (util * 100).round %>%; background: <%= bar_color %>;"></div>
                     </div>
                   </td>
-                  <td class="px-4 py-3 text-[11px]">
+                  <td class="hidden sm:table-cell px-4 py-3 text-[11px]">
                     <% if m.active %>
                       <span class="text-[#2F6F4E]">● Active</span>
                     <% else %>
@@ -181,6 +175,7 @@
               <% end %>
             </tbody>
           </table>
+          </div>
         <% end %>
       </div>
     <% end %>

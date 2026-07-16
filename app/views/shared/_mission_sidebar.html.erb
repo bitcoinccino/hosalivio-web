@@ -1,0 +1,97 @@
+<%# The left nav rail, shared by the Mission Stage and every page that renders
+    inside layouts/mission. Driven by MissionNavHelper::NAV so adding a
+    destination is one entry, not an edit here plus an edit to each banner.
+
+    Locals:
+      active     — nav key of the current page (:stage, :patients, …), highlighted
+      mobile     — participate in a mission-mobile tab switcher, so the rail can
+                   open as a full-screen drawer on phones
+      mobile_tab — this rail's tab name within that switcher. The Stage calls it
+                   "census" (its switcher also has stage/activity); layouts/mission
+                   calls it "nav". mission_mobile defaults to the "stage" tab, so
+                   either way the rail starts closed on mobile. %>
+<%
+  active     = local_assigns.fetch(:active, nil)&.to_sym
+  mobile     = local_assigns.fetch(:mobile, false)
+  mobile_tab = local_assigns.fetch(:mobile_tab, "census")
+
+  nav_item   = "flex items-center gap-2 px-3 py-2 text-[#6B665F] hover:text-[#1D1C1A] hover:bg-[#D9D5CD] rounded-lg group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0"
+  nav_on     = "flex items-center gap-2 px-3 py-2 rounded-lg bg-[#D9D5CD] text-[#1D1C1A] font-medium group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0"
+  nav_soon   = "flex items-center gap-2 px-3 py-2 text-[#9A938A] group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0"
+  nav_group  = "mt-4 mb-1 px-3 text-[10px] uppercase tracking-widest text-[#B9B3A9] font-bold group-data-[collapsed=true]/sb:hidden"
+  label_span = "group-data-[collapsed=true]/sb:hidden"
+
+  aside_class = [
+    "group/sb w-72 data-[collapsed=true]:w-16 bg-[#EFECE6] border-r border-[#D9D5CD] flex flex-col p-6 data-[collapsed=true]:p-3 transition-[width,padding] duration-200",
+    "hidden md:flex"
+  ]
+  aside_class << "data-[mobile-active=true]:flex data-[mobile-active=true]:absolute data-[mobile-active=true]:inset-0 data-[mobile-active=true]:z-30 data-[mobile-active=true]:w-full data-[mobile-active=true]:pb-20 md:data-[mobile-active=true]:pb-6" if mobile
+
+  aside_attrs = { "data-sidebar-target": "sidebar", "data-collapsed": "false", class: aside_class.join(" ") }
+  aside_attrs.merge!("data-mission-mobile-target": "tab", "data-tab-name": mobile_tab) if mobile
+
+  last_group = nil
+%>
+<%= tag.aside(**aside_attrs) do %>
+  <div class="flex-shrink-0">
+    <div class="flex items-center justify-between group-data-[collapsed=true]/sb:justify-center">
+      <div class="flex items-center gap-2 group-data-[collapsed=true]/sb:hidden">
+        <div class="w-7 h-7 rounded-full bg-[#D97757] text-white flex items-center justify-center flex-shrink-0">
+          <i class="ri-heart-pulse-line text-sm"></i>
+        </div>
+        <h1 class="text-xs uppercase tracking-[0.2em] text-[#6B665F] font-bold group-data-[collapsed=true]/sb:hidden">HosAlivio</h1>
+      </div>
+      <button type="button" data-action="click->sidebar#toggle" title="Toggle sidebar"
+              class="w-7 h-7 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] hidden md:flex items-center justify-center flex-shrink-0 transition">
+        <i class="ri-side-bar-line text-[15px]"></i>
+      </button>
+      <% if mobile %>
+        <%# Mobile-only close — the rail is a full-screen overlay here, so
+            dismiss it by switching back to the Stage tab. %>
+        <button type="button" data-action="click->mission-mobile#activate" data-tab-name="stage" aria-label="Close menu"
+                class="md:hidden w-8 h-8 rounded-full hover:bg-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] flex items-center justify-center flex-shrink-0 transition">
+          <i class="ri-close-line text-lg"></i>
+        </button>
+      <% end %>
+    </div>
+
+    <nav class="mt-8 space-y-1 text-sm">
+      <% mission_nav_visible.each do |item| %>
+        <% if item[:group] != last_group %>
+          <% last_group = item[:group] %>
+          <% if last_group %><div class="<%= nav_group %>"><%= last_group %></div><% end %>
+        <% end %>
+
+        <% if item[:soon] %>
+          <div title="<%= item[:label] %> (soon)" class="<%= nav_soon %>">
+            <i class="<%= item[:icon] %>"></i>
+            <span class="<%= label_span %>"><%= item[:label] %></span>
+            <span class="text-[10px] ml-auto italic <%= label_span %>">soon</span>
+          </div>
+        <% elsif item[:key] == :referrals %>
+          <% pending = mission_nav_pending_inquiries %>
+          <a href="<%= public_send(item[:path]) %>"
+             title="<%= item[:label] %><%= " · #{pending} new" if pending.to_i.positive? %>"
+             class="<%= active == item[:key] ? nav_on : nav_item %>">
+            <i class="<%= item[:icon] %>"></i><span class="<%= label_span %>"><%= item[:label] %></span>
+            <% if pending.to_i.positive? %>
+              <span class="ml-auto <%= label_span %> inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#D97757] text-white text-[10px] font-bold leading-none"><%= pending %></span>
+            <% end %>
+          </a>
+        <% else %>
+          <a href="<%= public_send(item[:path]) %>" title="<%= item[:label] %>"
+             class="<%= active == item[:key] ? nav_on : nav_item %>">
+            <i class="<%= item[:icon] %>"></i><span class="<%= label_span %>"><%= item[:label] %></span>
+          </a>
+        <% end %>
+      <% end %>
+    </nav>
+  </div>
+
+  <%# Spacer pins the user menu to the bottom. %>
+  <div class="flex-1"></div>
+
+  <div class="mt-3 flex-shrink-0">
+    <%= render "shared/user_menu", direction: :up %>
+  </div>
+<% end %>

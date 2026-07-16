@@ -1,4 +1,8 @@
 class PreAdmitEvalsController < ApplicationController
+  # Renders inside the Mission shell (nav rail + banner) rather than
+  # standalone; @mission_nav drives the highlight and the banner title.
+  layout "mission", only: [ :queue ]
+  before_action -> { @mission_nav = :admissions }, only: [ :queue ]
   before_action :authenticate_user!
   before_action :authorize_clinician!
   before_action :set_patient, only: :index

@@ -1,18 +1,10 @@
 <% content_for :title, "Admissions queue" %>
 
 <div class="max-w-4xl mx-auto px-4 md:px-8 py-6" data-controller="admissions-filter">
-  <%# Back to the Mission Stage (this page has no persistent sidebar). %>
-  <%= link_to dashboard_path,
-        class: "inline-flex items-center gap-1.5 text-[12px] text-[#6B665F] hover:text-[#D97757] font-medium transition mb-4" do %>
-    <i class="ri-arrow-left-line"></i> Mission Stage
-  <% end %>
-
-  <div class="mb-5 text-center">
-    <div class="text-[11px] uppercase tracking-[0.2em] text-[#6B665F] font-bold">Admissions</div>
-    <h1 class="font-serif text-[24px] text-[#1D1C1A]">Admissions queue</h1>
-    <div class="text-[12px] text-[#6B665F]">
-      <%= @agency&.name.presence || "Your agency" %> · in-flight admission evals across all patients
-    </div>
+  <%# Back link, title and agency now come from the Mission banner
+      (layouts/mission); only the page's own subtitle stays. %>
+  <div class="mb-5 text-center text-[12px] text-[#6B665F]">
+    In-flight admission evals across all patients
   </div>
 
   <%# Instant search + status filter (client-side; no reload). %>

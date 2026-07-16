@@ -1,4 +1,8 @@
 class TeamMembersController < ApplicationController
+  # Renders inside the Mission shell (nav rail + banner) rather than
+  # standalone; @mission_nav drives the highlight and the banner title.
+  layout "mission", only: [ :index ]
+  before_action -> { @mission_nav = :team }, only: [ :index ]
   before_action :authenticate_user!
   before_action :authorize_team_manager!
   before_action :set_member, only: [ :edit, :update, :destroy, :reactivate ]

@@ -1,4 +1,8 @@
 class BranchesController < ApplicationController
+  # Renders inside the Mission shell (nav rail + banner) rather than
+  # standalone; @mission_nav drives the highlight and the banner title.
+  layout "mission", only: [ :index ]
+  before_action -> { @mission_nav = :branches }, only: [ :index ]
   before_action :authenticate_user!
   before_action :authorize_branch_manager!
   before_action :set_branch, only: [ :edit, :update, :destroy ]

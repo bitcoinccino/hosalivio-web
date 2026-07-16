@@ -1,24 +1,16 @@
 <% content_for :title, "Branches · HosAlivio" %>
-<div class="min-h-screen bg-[#FBF9F5] py-10 px-4">
+<%# The Mission banner supplies the back link, title and agency; the rail
+    supplies the user menu. Only the count and the page action stay. %>
+<div class="py-6 md:py-10 px-4">
   <div class="max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-6">
-      <div>
-        <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1 mb-2">
-          <i class="ri-arrow-left-line"></i> Dashboard
-        </a>
-        <h1 class="font-serif text-2xl text-[#1D1C1A]">Branches</h1>
-        <div class="text-[12px] text-[#6B665F] mt-0.5">
-          <%= current_user.agency&.name %> · <%= @branches.count %> location<%= @branches.count == 1 ? "" : "s" %>
-        </div>
+      <div class="text-[12px] text-[#6B665F]">
+        <%= @branches.count %> location<%= @branches.count == 1 ? "" : "s" %>
       </div>
-      <div class="flex items-center gap-2">
-        <%= link_to new_branch_path,
-              class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium" do %>
-          <i class="ri-map-pin-add-line"></i> New branch
-        <% end %>
-        <span class="w-px h-6 bg-[#EFECE6] mx-1"></span>
-        <%= render "shared/user_menu" %>
-      </div>
+      <%= link_to new_branch_path,
+            class: "inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded-full bg-[#D97757] hover:bg-[#c46a4b] text-white font-medium" do %>
+        <i class="ri-map-pin-add-line"></i> New branch
+      <% end %>
     </div>
 
     <% if flash[:notice] %>
