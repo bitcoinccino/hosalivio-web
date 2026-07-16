@@ -70,15 +70,47 @@
     .print-only-flex { display: flex !important; }
     .print-page-break { break-before: page; page-break-before: always; }
 
-    /* Force every collapsible section open in the printed chart */
-    details > summary { display: none !important; }
+    /* Every collapsible section prints open, with its title as a report heading
+       (on screen the summary is an interactive disclosure; in print it becomes a
+       ruled section header). */
+    details, details[open] { display: block !important; }
+    details > summary {
+      display: block !important;
+      list-style: none;
+      cursor: auto;
+      margin: 16px 0 6px !important;
+      padding: 0 0 3px !important;
+      border: 0 !important;
+      border-bottom: 1px solid #333 !important;
+      break-after: avoid; page-break-after: avoid;
+    }
+    /* Strip the interactive chrome from the heading: chevron, section icon,
+       status pills, action buttons. */
+    details > summary i,
+    details > summary [class*="rounded-full"],
+    details > summary .no-print { display: none !important; }
+    details > summary span { font-weight: 700 !important; color: #000 !important; }
     details > *:not(summary) { display: block !important; }
+    details > div { padding: 0 !important; }
 
+    /* Flatten every card into a clean flowing document — no rounded boxes,
+       borders, shadows, or tinted panels. */
     .pae-show-root { background: white !important; padding: 0 !important; min-height: 0 !important; }
-    .pae-show-card { background: white !important; }
-    section { break-inside: avoid; page-break-inside: avoid; }
+    .pae-show-card { background: white !important; max-width: 100% !important; }
+    .pae-show-root [class*="rounded"] {
+      border-radius: 0 !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      background: white !important;
+    }
+    /* Card bodies carry inset padding on screen; drop the side inset in print. */
+    .pae-show-root [class*="p-5"], .pae-show-root [class*="p-4"],
+    .pae-show-root [class*="px-5"], .pae-show-root [class*="px-4"] {
+      padding-left: 0 !important; padding-right: 0 !important;
+    }
+    section, details { break-inside: avoid; page-break-inside: avoid; margin-bottom: 8px; }
     li      { break-inside: avoid; }
-    .pae-show-root, .pae-show-root * { color: black !important; border-color: #999 !important; }
+    .pae-show-root, .pae-show-root * { color: black !important; }
     .pae-show-root [style*="background"] { background: white !important; }
     a, a:visited { text-decoration: none !important; color: black !important; }
     img { max-width: 100% !important; }
