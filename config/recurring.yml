@@ -28,6 +28,9 @@ production:
   noe_deadline_sweep:
     class: NoeDeadlineSweepJob
     schedule: every 6 hours
+  follow_up_due_sweep:
+    class: FollowUpDueSweepJob
+    schedule: every day at 8am
 
 development:
   visit_reminder_24h:
@@ -42,3 +45,6 @@ development:
   cms_hospice_lcd_refresh:
     class: CmsHospiceLcdRefreshJob
     schedule: every day at 3am
+  follow_up_due_sweep:
+    class: FollowUpDueSweepJob
+    schedule: every day at 8am

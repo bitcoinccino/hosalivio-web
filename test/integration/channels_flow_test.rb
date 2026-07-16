@@ -77,9 +77,9 @@ class ChannelsFlowTest < ActionDispatch::IntegrationTest
     assert_match "<audio", response.body
   end
 
-  test "posting from the dashboard returns to the dashboard, not the channel" do
+  test "posting from the dashboard returns to the dashboard's Team-chat tab on that channel" do
     sign_in @rn
     post channel_messages_path("general"), params: { body: "quick note", return_to: "dashboard" }
-    assert_redirected_to dashboard_path
+    assert_redirected_to dashboard_path(tab: "team", channel: "general")
   end
 end

@@ -8,9 +8,10 @@ class ChannelMessagesController < ApplicationController
       body    = params[:body].to_s.strip
 
       # Posts made from the Mission Stage composer come back to the dashboard
-      # (with a confirmation), rather than yanking the manager into the channel.
+      # with the right rail opened to Team chat on this channel, rather than
+      # yanking the manager into the standalone channel page.
       from_dashboard = params[:return_to] == "dashboard"
-      back           = from_dashboard ? dashboard_path : channel_path(channel)
+      back           = from_dashboard ? dashboard_path(tab: "team", channel: channel.slug) : channel_path(channel)
 
       unless channel.postable_by?(current_user)
         return redirect_to back, status: :see_other,

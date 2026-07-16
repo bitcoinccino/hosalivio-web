@@ -34,7 +34,7 @@
         data-hosalivio-bot-src="<%= asset_path('hosalivio_assistant.png') %>">
     <%# Global flash / toast messages — auto-wired to flash_controller.js (dismiss). %>
     <% if flash.any? %>
-      <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-[min(92vw,360px)]">
+      <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 w-[min(92vw,360px)]">
         <% flash.each do |type, message| %>
           <% next if message.blank? %>
           <%

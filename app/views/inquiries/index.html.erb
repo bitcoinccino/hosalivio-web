@@ -2,9 +2,10 @@
 <%
   # Status pill: colour + human label per inquiry state shown in the inbox.
   status_pill = {
-    "new_lead"  => [ "#D97757", "New lead" ],
-    "claimed"   => [ "#2B4A7A", "Claimed" ],
-    "contacted" => [ "#2F6F4E", "Contacted" ]
+    "new_lead"    => [ "#D97757", "New lead" ],
+    "claimed"     => [ "#2B4A7A", "Claimed" ],
+    "contacted"   => [ "#2F6F4E", "Contacted" ],
+    "considering" => [ "#8C6A2F", "Considering" ]
   }
   # Payer chip: fg + bg per coverage type (Medicare/Medicaid stand out).
   payer_pill = {
@@ -24,13 +25,19 @@
       <h1 class="font-serif text-[24px] text-[#1D1C1A]">Referrals &amp; inquiries</h1>
       <div class="text-[12px] text-[#6B665F]"><%= @agency&.name %> · <%= @open_total %> open</div>
     </div>
+    <% if @followups_due.to_i > 0 %>
+      <%= link_to inquiries_path(status: "considering"),
+            class: "inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#FFF3EC] text-[#B4552F] border border-[#F1C7AE] hover:bg-[#FCE7DA] transition" do %>
+        <i class="ri-time-line"></i> <%= @followups_due %> follow-up<%= "s" if @followups_due != 1 %> due
+      <% end %>
+    <% end %>
   </div>
 
   <%# Status filter chips (link-based, preserve nothing else — this list has no search yet). %>
   <div class="flex items-center gap-1.5 flex-wrap mb-4">
     <%= link_to "All", inquiries_path,
           class: "text-[11px] px-2.5 py-1 rounded-full border transition #{@status.blank? ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" %>
-    <% %w[new_lead claimed contacted].each do |st| %>
+    <% %w[new_lead claimed contacted considering].each do |st| %>
       <% color, label = status_pill[st] %>
       <%= link_to inquiries_path(status: st),
             class: "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition #{@status == st ? 'bg-[#1D1C1A] text-white border-[#1D1C1A]' : 'border-[#EFECE6] text-[#6B665F] hover:bg-[#FBF9F5]'}" do %>
@@ -79,6 +86,11 @@
                 <div class="text-[11px] text-[#6B665F] truncate">
                   <span class="font-mono"><%= inq.zip.presence || "ZIP —" %></span>
                   <% if inq.city_state.present? %> · <%= inq.city_state %><% end %>
+                  <% if inq.status_considering? && inq.follow_up_at.present? %>
+                    · <span class="<%= inq.follow_up_due? ? "text-[#B4552F] font-medium" : "text-[#8C6A2F]" %>">
+                        <i class="ri-time-line"></i> follow up <%= inq.follow_up_at.to_date.strftime("%b %-d") %>
+                      </span>
+                  <% end %>
                 </div>
               </div>
               <span class="inline-flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-full border border-[#EFECE6] text-[#3A3936] flex-shrink-0">

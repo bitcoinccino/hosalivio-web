@@ -251,6 +251,7 @@ Rails.application.routes.draw do
     member do
       post :claim
       post :mark_contacted
+      post :defer              # family still deciding → parked for follow-up
       post :dismiss
       get  :convert            # form page
       post :convert_to_patient # atomic transaction

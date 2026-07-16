@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_14_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_043601) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -431,6 +431,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_000001) do
     t.string "external_mrn"
     t.string "external_referral_id"
     t.string "first_name"
+    t.datetime "follow_up_at"
     t.boolean "is_general", default: false, null: false
     t.string "last_name"
     t.string "payer"

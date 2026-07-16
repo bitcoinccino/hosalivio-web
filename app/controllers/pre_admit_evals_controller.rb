@@ -14,12 +14,14 @@ class PreAdmitEvalsController < ApplicationController
   # Cross-patient admissions worklist: in-flight evals grouped by stage,
   # NOE-critical ones ordered by their deadline.
   def queue
-    ActsAsTenant.with_tenant(current_user.agency) do
-      base          = PreAdmitEval.where(agency: current_user.agency).includes(:patient)
+    @agency = current_user.agency
+    ActsAsTenant.with_tenant(@agency) do
+      base          = PreAdmitEval.where(agency: @agency).includes(:patient)
       @drafts       = base.where(status: :draft).order(created_at: :desc).to_a
       @awaiting_md  = base.where(status: :final).order(created_at: :desc).to_a
       @awaiting_noe = base.where(status: :certified).order(:noe_deadline_at).to_a
-      @completed    = base.where(status: [ :noe_filed, :revoked ]).order(updated_at: :desc).limit(15).to_a
+      @admitted     = base.where(status: :noe_filed).order(updated_at: :desc).limit(15).to_a
+      @cancelled    = base.where(status: :revoked).order(updated_at: :desc).limit(15).to_a
     end
   end
 
