@@ -5,9 +5,17 @@
 # ask "what persona did this?" and "what sentence should I render?".
 
 class EventNarrator
+  # The app-wide "HosAlivio did this" mark (see pre_admit_evals, visits,
+  # _intake_suggestions). Every HosAlivio persona wears it in the feed avatar,
+  # regardless of which function fired — the title carries the function, the
+  # glyph just says "this was the AI, not a person". Humans keep their initials.
+  AI_ICON = "ri-sparkling-2-line".freeze
+
   PERSONA = {
-    "admissions"         => { name: "HosAlivio",  title: "Admissions",   initials: "H", color: "#1D1C1A", icon: "ri-customer-service-2-line" },
-    "hosalivio_brain"    => { name: "HosAlivio",  title: "",             initials: "H", color: "#1D1C1A", icon: "ri-sparkling-2-line" },
+    "admissions"         => { name: "HosAlivio",  title: "Admissions",   initials: "H", color: "#1D1C1A", ai: true },
+    "triage"             => { name: "HosAlivio",  title: "Triage",       initials: "H", color: "#1D1C1A", ai: true },
+    "dispatch"           => { name: "HosAlivio",  title: "Dispatch",     initials: "H", color: "#1D1C1A", ai: true },
+    "hosalivio_brain"    => { name: "HosAlivio",  title: "",             initials: "H", color: "#1D1C1A", ai: true },
     "front_door_inbound" => { name: "Care Portal", title: "Family-facing", initials: "⌂", color: "#D97757", icon: "ri-feedback-line" },
     "rn"                 => { name: "Pascal",     title: "RN",           initials: "P", color: "#2F6F4E", icon: "ri-nurse-line" },
     "md"                 => { name: "Dr. Esther", title: "MD",           initials: "E", color: "#2B4A7A", icon: "ri-stethoscope-line" },
@@ -20,11 +28,12 @@ class EventNarrator
     "billing"            => { name: "Wolfwide",   title: "Billing",      initials: "W", color: "#6B665F", icon: "ri-bank-card-line" },
     "aide"               => { name: "Flore",      title: "Aide",         initials: "F", color: "#AD7340", icon: "ri-user-2-line" },
     "family"             => { name: "Family",     title: "Care Portal",  initials: "♥", color: "#D97757", icon: "ri-user-heart-line" },
-    "system"             => { name: "HosAlivio",  title: "System",       initials: "•", color: "#6B665F", icon: "ri-flashlight-line" }
+    "system"             => { name: "HosAlivio",  title: "Agent",        initials: "•", color: "#6B665F", ai: true }
   }.freeze
 
   ROLE_LABEL = {
     "rn" => "RN", "md" => "MD", "don" => "DON", "aide" => "Aide",
+    "visit_rn" => "Visit RN", "admission_rn" => "Admission RN",
     "social_worker" => "Social Work", "chaplain" => "Chaplain",
     "pharmacy" => "Pharmacy", "dme" => "DME", "insurance" => "Insurance",
     "billing" => "Billing", "admissions" => "Admissions"
@@ -34,7 +43,10 @@ class EventNarrator
     PERSONA[agent_id] || { name: agent_id.to_s.humanize, title: "", initials: agent_id.to_s[0].to_s.upcase, color: "#6B665F", icon: "ri-user-line" }
   end
 
-  # Collapse adjacent handoffs for the same patient into one story.
+  # Collapse adjacent handoffs — and adjacent triage notes — for the same
+  # patient into one story. Triage fires once per inbound family message, so
+  # without this a busy thread buries the rest of the feed under a stack of
+  # near-identical rows.
   # `events` is expected in reverse-chronological order (newest first).
   def self.stories_from(events, patient_lookup:)
     stories = []
@@ -50,6 +62,11 @@ class EventNarrator
           j += 1
         end
         stories << Story.new(event: ev, extra_targets: targets, patient_lookup: patient_lookup)
+        i = j
+      elsif triage_note?(ev)
+        j = i + 1
+        j += 1 while j < events.length && mergeable_triage?(ev, events[j])
+        stories << Story.new(event: ev, extra_targets: [], patient_lookup: patient_lookup, merged_count: j - i)
         i = j
       else
         stories << Story.new(event: ev, extra_targets: [], patient_lookup: patient_lookup)
@@ -71,14 +88,31 @@ class EventNarrator
     (a.happened_at - b.happened_at).abs <= 60
   end
 
+  def self.triage_note?(ev)
+    ev.agent_id == "triage" && ev.action == "create" && ev.subject_type == "Note"
+  end
+
+  # Two triage notes merge if: both triage, same patient, within 60 s. Crisis
+  # rows never merge — they carry their own pill and must stay individually
+  # visible and individually clickable.
+  def self.mergeable_triage?(a, b)
+    return false unless triage_note?(b)
+    return false if a.subject&.urgency == "crisis" || b.subject&.urgency == "crisis"
+    pa = a.subject&.patient_id
+    pb = b.subject&.patient_id
+    return false if pa.nil? || pb.nil? || pa != pb
+    (a.happened_at - b.happened_at).abs <= 60
+  end
+
   # ────────────────────────────────────────────────────────────────────
   class Story
-    attr_reader :event, :extra_targets
+    attr_reader :event, :extra_targets, :merged_count
 
-    def initialize(event:, extra_targets:, patient_lookup:)
+    def initialize(event:, extra_targets:, patient_lookup:, merged_count: 1)
       @event          = event
       @extra_targets  = extra_targets.compact.uniq
       @patient_lookup = patient_lookup
+      @merged_count   = merged_count
     end
 
     def persona = EventNarrator.persona_for(event.agent_id)
@@ -110,20 +144,28 @@ class EventNarrator
     # Example: "HosAlivio (Admissions) | assigned | Maria Alvarez | to the RN + MD team"
     def narrate
       case [ event.agent_id, event.action, event.subject_type ]
-      in [ "admissions", "handoff", "Patient" ]
+      in [ "admissions" | "triage" | "dispatch", "handoff", "Patient" ]
         targets_text = @extra_targets.map { |r| EventNarrator::ROLE_LABEL[r] || r.to_s.humanize }.join(" + ")
         { before: "assigned", after: "to the #{targets_text} team", icon: "ri-send-plane-2-line" }
       in [ _, "handoff", "Patient" ]
         target = event.change_set.is_a?(Hash) ? event.change_set["target_role"] : nil
         team = EventNarrator::ROLE_LABEL[target] || target.to_s.humanize.presence || "care team"
         { before: "asked the #{team} team to follow up with", after: "", icon: "ri-send-plane-2-line" }
-      in [ "admissions", "create", "Note" ]
-        crisis = event.subject&.urgency == "crisis" ? " (crisis triage)" : ""
-        { before: "posted a triage update for", after: crisis, icon: "ri-chat-3-line" }
+      in [ "triage", "create", "Note" ]
+        # Crisis rows never merge, so merged_count > 1 is always routine.
+        n = @merged_count
+        { before: n > 1 ? "triaged #{n} family messages for" : "triaged a family message for", after: "", icon: "ri-chat-3-line" }
       in [ "front_door_inbound", "create", "Note" ]
-        urgency = event.subject&.urgency
-        after   = urgency == "crisis" ? "'s family — marked CRISIS" : "'s family"
-        { before: "logged a new concern from", after: after, icon: "ri-feedback-line" }
+        # Crisis is already shown as its own pill — don't say it twice.
+        { before: "family raised a new concern for", after: "", icon: "ri-feedback-line" }
+      in [ _, "answer_family_question", "Patient" ]
+        { before: "answered a family question for", after: "", icon: "ri-question-answer-line" }
+      in [ "system", "family_user_invited", _ ]
+        cs   = event.change_set || {}
+        who  = cs["family_full_name"].presence
+        rel  = cs["relationship"].presence
+        whom = [ who, rel ? "(#{rel})" : nil ].compact.join(" ").presence || "a family member"
+        { before: "invited #{whom} to the Care Portal for", after: "", icon: "ri-user-add-line" }
       in [ _, "answer_clinician_question", "Patient" ]
         { before: "answered a care-team question about", after: "", icon: "ri-question-answer-line" }
       in [ _, "polish_narrative", "Visit" ]
@@ -163,7 +205,7 @@ class EventNarrator
       in [ _, "update", "Patient" ]
         { before: "updated", after: "'s chart", icon: "ri-edit-2-line" }
       in [ _, "update", "Note" ]
-        { before: "acknowledged a note on", after: "'s chart", icon: "ri-check-line" }
+        { before: "marked a note reviewed for", after: "", icon: "ri-check-line" }
       in [ "admissions", "inquiry_received", "Inquiry" ]
         cs         = event.change_set || {}
         first_name = cs["first_name"].presence || "Someone"
@@ -210,6 +252,11 @@ class EventNarrator
         [ before, after ].reject(&:blank?).join(" ").strip
       end
     end
+
+    # Remix icon class for the avatar when the actor is HosAlivio, else nil
+    # (render #persona[:initials] instead). Mirrored by avatarIcon() in the
+    # dashboards live-feed scripts.
+    def avatar_icon = persona[:ai] ? EventNarrator::AI_ICON : nil
 
     # "HosAlivio (Admissions)" / "Care Portal" / "Pascal (RN)".
     def source_label

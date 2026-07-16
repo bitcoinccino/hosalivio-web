@@ -90,6 +90,10 @@ module ApplicationHelper
   # Human-friendly relative date label used to anchor chat-feed sections,
   # event timelines, and any other surface where "April 22" reads colder
   # than "Today" or "Yesterday".
+  #
+  # "Today"/"Yesterday" stand alone because they're unambiguous. A bare weekday
+  # isn't — "Monday" could be 2 days ago or 6, and a reader scrolling a timeline
+  # has no way to tell — so it carries its date.
   def relative_date_label(date_or_time)
     return "" if date_or_time.nil?
     date  = date_or_time.respond_to?(:to_date) ? date_or_time.to_date : date_or_time
@@ -100,7 +104,7 @@ module ApplicationHelper
     elsif date == today - 1
       "Yesterday"
     elsif date >= today - 6 && date < today
-      date.strftime("%A")
+      date.strftime("%A · %B %-d")
     elsif date.year == today.year
       date.strftime("%B %-d")
     else

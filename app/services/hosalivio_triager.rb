@@ -214,7 +214,7 @@ class HosalivioTriager
 
     # Stamp Current so AgentAuditable attributes every write to HosAlivio's session.
     Current.agency           = @agency
-    Current.agent_id         = "admissions"
+    Current.agent_id         = "triage"
     Current.agent_session_id = "hosalivio-#{brain_suffix(decision[:source])}-#{SecureRandom.hex(4)}"
 
     # 2 — INTERNAL TRIAGE NOTE (for clinicians; not family-facing)
@@ -335,7 +335,7 @@ class HosalivioTriager
   # family-visible HosAlivio reply. Audit-logged for compliance.
   def answer_family!
     Current.agency           = @agency
-    Current.agent_id         = "admissions"
+    Current.agent_id         = "triage"
     Current.agent_session_id = "hosalivio-family-qa-#{SecureRandom.hex(4)}"
 
     result = HosalivioBrain.answer_clinician_question(
@@ -572,7 +572,7 @@ class HosalivioTriager
   def emit_handoff(role, intent, urgency)
     AgentEvent.create!(
       agency:           @agency,
-      agent_id:         "admissions",
+      agent_id:         "triage",
       agent_session_id: Current.agent_session_id,
       action:           "handoff",
       subject:          @patient,
