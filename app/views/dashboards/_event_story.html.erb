@@ -1,6 +1,8 @@
-<%# One activity row, redesigned: category-colored avatar, a bold headline
-    (the patient, or the actor when there's no patient), an actor+action
-    subline, and a small meta line. Rows about a patient link to the chart. %>
+<%# One activity row, actor-led: avatar + bold headline are both the ACTOR, the
+    action is the subline, and the patient sits on the meta line beside the time
+    and MRN. This is the conventional feed shape — whoever the avatar shows is
+    whoever the headline names — so no row can read as though the patient acted.
+    Rows deep-link to the thing that happened, not just the chart. %>
 <%
   persona   = story.persona
   patient   = story.patient
@@ -11,33 +13,52 @@
   category = activity_category(ev)
   _key, cat_label, cat_color = activity_lane_meta(category)
 
-  headline = patient ? patient.full_name : story.source_label
-  action   = story.action_label
-  subline  = patient ? "#{story.source_label} #{action}" : action
-  initials = patient ? patient.full_name.to_s.split.map(&:first).first(2).join.upcase : persona[:initials]
+  headline = story.source_label
+  subline  = story.action_label
+
+  # Deep-link to the subject, falling back to the chart. `?note=` is the chat's
+  # existing focus mechanism (patient_chats/show.html.erb).
+  link =
+    if patient && ev.subject_type == "Note"  then patient_path(patient, note: ev.subject_id)
+    elsif ev.subject_type == "Visit"         then visit_path(ev.subject_id)
+    elsif ev.subject_type == "Inquiry"       then inquiry_path(ev.subject_id)
+    elsif patient                            then patient_path(patient)
+    end
 
   # Category accent bar on the left edge (color-coded per lane).
   row_class = [ "group/story flex items-start gap-2.5 rounded-lg border-l-[3px] pl-2.5 pr-2 py-1.5 -mx-2 transition" ]
-  row_class << "hover:bg-[#FBF9F5]" if patient
+  row_class << "hover:bg-[#FBF9F5]" if link
   row_class << "bg-[#FFF3EC]"       if pulses
   attrs = { "data-story": "", "data-category": category, class: row_class.join(" "), style: "border-left-color: #{cat_color};" }
-  attrs[:href] = patient_path(patient) if patient
+  attrs[:href] = link if link
 %>
-<%= content_tag(patient ? :a : :div, attrs) do %>
-  <!-- Category-colored avatar (patient or actor initials) -->
-  <span class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
-        style="background: <%= cat_color %>;" title="<%= cat_label %>"><%= initials %></span>
+<%= content_tag(link ? :a : :div, attrs) do %>
+  <%# Actor avatar on the persona's color: the AI mark for HosAlivio, initials
+      for people. Purely decorative — the headline names the same actor — so it
+      stays out of the accessibility tree and out of copied text. %>
+  <span aria-hidden="true"
+        class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+        style="background: <%= persona[:color] %>;" title="<%= story.source_label %> · <%= cat_label %>">
+    <% if story.avatar_icon %>
+      <i class="<%= story.avatar_icon %> text-[15px] not-italic"></i>
+    <% else %>
+      <%= persona[:initials] %>
+    <% end %>
+  </span>
 
   <div class="min-w-0 flex-1">
-    <div class="text-[13px] font-semibold text-[#1D1C1A] truncate <%= 'group-hover/story:text-[#D97757]' if patient %>"><%= headline %></div>
+    <div class="text-[13px] font-semibold text-[#1D1C1A] truncate <%= 'group-hover/story:text-[#D97757]' if link %>"><%= headline %></div>
     <div class="text-[12px] text-[#6B665F] leading-snug"><%= subline %></div>
     <div class="mt-0.5 flex items-center gap-2 text-[10px] text-[#9A938A]">
       <time datetime="<%= ev.happened_at.iso8601 %>" class="font-mono"><%= ev.happened_at.strftime("%-l:%M %p") %></time>
       <% if is_crisis %>
         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>
       <% end %>
+      <%# The patient lives here now — still the scannable identity, just no
+          longer competing with the actor for the headline. %>
       <% if patient %>
-        <span class="font-mono">· <%= patient.mrn %></span>
+        <span class="truncate">· <%= patient.full_name %></span>
+        <span class="font-mono flex-shrink-0">· <%= patient.mrn %></span>
       <% end %>
     </div>
   </div>

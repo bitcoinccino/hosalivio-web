@@ -14,8 +14,10 @@ module MissionStageHelper
 
     return "admissions" if role == "admissions"
     return "admissions" if subject == "Inquiry" || (subject == "Patient" && action == "create")
-    return "family"     if %w[family front_door_inbound].include?(role)
-    return "ops"        if %w[pharmacy dme insurance billing system].include?(role)
+    # "triage" is family-chat triage → Family lane. "dispatch" is HosAlivio
+    # routing a clinician's @-mention request to a human role → Ops lane.
+    return "family"     if %w[family front_door_inbound triage].include?(role)
+    return "ops"        if %w[pharmacy dme insurance billing system dispatch].include?(role)
     return "clinical"   if %w[rn md aide social_worker chaplain].include?(role)
 
     "ops"

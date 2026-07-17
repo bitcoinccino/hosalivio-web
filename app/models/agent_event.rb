@@ -112,6 +112,9 @@ class AgentEvent < ApplicationRecord
       urgency:       subject.respond_to?(:urgency) ? subject.urgency : nil,
       handoff_role:  change_set.is_a?(Hash) ? change_set["target_role"]  : nil,
       intent:        change_set.is_a?(Hash) ? change_set["intent"]       : nil,
+      # Populated only on `family_user_invited`; nil (and dropped) otherwise.
+      family_name:   change_set.is_a?(Hash) ? change_set["family_full_name"] : nil,
+      relationship:  change_set.is_a?(Hash) ? change_set["relationship"]     : nil,
       patient_mrn:   patient&.mrn,
       patient_name:  patient&.full_name,
       drug_name:     drug,

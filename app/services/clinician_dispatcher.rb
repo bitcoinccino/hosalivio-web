@@ -174,7 +174,7 @@ class ClinicianDispatcher
     return Result.new(dispatched: false, reason: "no_intent_matched") unless intent
 
     Current.agency           = @agency
-    Current.agent_id         = "admissions"
+    Current.agent_id         = "dispatch"
     Current.agent_session_id = "hosalivio-dispatch-#{SecureRandom.hex(4)}"
 
     case intent
@@ -289,11 +289,11 @@ class ClinicianDispatcher
   # so the right human role sees it on the Mission Stage queue.
   def dispatch_role_handoff(role, intent_label, ack: nil)
     Current.agency           ||= @agency
-    Current.agent_id         ||= "admissions"
+    Current.agent_id         ||= "dispatch"
     Current.agent_session_id ||= "hosalivio-dispatch-#{SecureRandom.hex(4)}"
     AgentEvent.create!(
       agency:           @agency,
-      agent_id:         "admissions",
+      agent_id:         "dispatch",
       agent_session_id: Current.agent_session_id,
       action:           "handoff",
       subject:          @patient,
@@ -804,7 +804,7 @@ class ClinicianDispatcher
   # a bell notification + an audit event. Shared by the confirm path.
   def deliver_relay(role:, target:, message:)
     Current.agency           ||= @agency
-    Current.agent_id         ||= "admissions"
+    Current.agent_id         ||= "dispatch"
     Current.agent_session_id ||= "hosalivio-dispatch-#{SecureRandom.hex(4)}"
     first = target.full_name.to_s.split(/\s+/, 2).first.presence || "team"
     note  = Note.create!(
@@ -826,7 +826,7 @@ class ClinicianDispatcher
     )
     AgentEvent.create!(
       agency:           @agency,
-      agent_id:         "admissions",
+      agent_id:         "dispatch",
       agent_session_id: Current.agent_session_id,
       action:           "notify_clinician",
       subject:          @patient,

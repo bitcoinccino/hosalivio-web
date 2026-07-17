@@ -1,0 +1,20 @@
+<%# Single source of truth for the live feed's persona/role maps.
+    EventNarrator's Ruby constants are the origin; this serializes them once per
+    page for the feed scripts to read.
+
+    Both feed scripts (dashboards/show.html.erb and _mission_feed_script.html.erb)
+    used to carry their own hand-maintained copies of these maps — three copies
+    of the same data, kept in sync by remembering to. They drifted:
+    hosalivio_brain was missing from both JS copies, so live brain events
+    rendered the raw agent_id as the actor's name, and `don` was missing from
+    one. Adding a persona in Ruby now reaches the feed with no JS edit.
+
+    Rendered before the scripts that read it — both boot on turbo:load, well
+    after this executes. %>
+<script>
+  window.HosAlivioFeed = Object.assign(window.HosAlivioFeed || {}, {
+    PERSONA:    <%= raw json_escape(EventNarrator::PERSONA.to_json) %>,
+    ROLE_LABEL: <%= raw json_escape(EventNarrator::ROLE_LABEL.to_json) %>,
+    AI_ICON:    <%= raw json_escape(EventNarrator::AI_ICON.to_json) %>
+  });
+</script>

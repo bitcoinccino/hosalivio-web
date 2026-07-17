@@ -546,6 +546,7 @@
 </div>
 
 <% if @agency %>
+  <%= render "dashboards/feed_constants" %>
   <script>
     // Bound once for the tab's lifetime, and run on `turbo:load` — which fires
     // on the initial load AND on every Turbo Drive visit. The old
@@ -602,8 +603,10 @@
         const r = p.agent_id, s = p.subject_type, a = p.event;
         if (r === "admissions") return "admissions";
         if (s === "Inquiry" || (s === "Patient" && a === "create")) return "admissions";
-        if (r === "family" || r === "front_door_inbound") return "family";
-        if (["pharmacy", "dme", "insurance", "billing", "don", "system"].includes(r)) return "ops";
+        // "triage" = family-chat triage (Family). "dispatch" = routing a
+        // clinician request to a human role (Ops). Mirrors MissionStageHelper.
+        if (["family", "front_door_inbound", "triage"].includes(r)) return "family";
+        if (["pharmacy", "dme", "insurance", "billing", "don", "system", "dispatch"].includes(r)) return "ops";
         if (["rn", "md", "aide", "social_worker", "chaplain"].includes(r)) return "clinical";
         return "ops";
       }
@@ -644,41 +647,26 @@
         }));
       };
       ws.onclose = () => { statusEl.textContent = "disconnected"; statusEl.classList.add("text-[#C1403A]"); };
-      // Persona for live rendering — keep in sync with app/services/event_narrator.rb
-      const PERSONA = {
-        admissions:         { name: "HosAlivio",  title: "Admissions",    initials: "H", color: "#1D1C1A" },
-        front_door_inbound: { name: "Care Portal",title: "Family-facing", initials: "⌂", color: "#D97757" },
-        rn:                 { name: "Pascal",     title: "RN",            initials: "P", color: "#2F6F4E" },
-        md:                 { name: "Dr. Esther", title: "MD",            initials: "E", color: "#2B4A7A" },
-        don:                { name: "Diaphnie",   title: "DON",           initials: "D", color: "#8B5A2B" },
-        social_worker:      { name: "Nickla",     title: "Social Worker", initials: "N", color: "#7A4A8C" },
-        chaplain:           { name: "Geoginio",   title: "Chaplain",      initials: "G", color: "#8C6A2F" },
-        pharmacy:           { name: "Simone",     title: "Pharmacy",      initials: "S", color: "#5A2F7A" },
-        dme:                { name: "Marcus",     title: "DME",           initials: "M", color: "#3E5D5D" },
-        insurance:          { name: "Kendra",     title: "Insurance",     initials: "K", color: "#3A3936" },
-        billing:            { name: "Wolfwide",   title: "Billing",       initials: "W", color: "#6B665F" },
-        aide:               { name: "Flore",      title: "Aide",          initials: "F", color: "#AD7340" },
-        family:             { name: "Family",     title: "Care Portal",   initials: "♥", color: "#D97757" },
-        system:             { name: "HosAlivio",  title: "System",        initials: "•", color: "#6B665F" }
-      };
-      const ROLE_LABEL = {
-        rn: "RN", md: "MD", don: "DON", aide: "Aide",
-        social_worker: "Social Work", chaplain: "Chaplain",
-        pharmacy: "Pharmacy", dme: "DME", insurance: "Insurance",
-        billing: "Billing", admissions: "Admissions"
-      };
+      // Serialized from EventNarrator by dashboards/_feed_constants.
+      const { PERSONA, ROLE_LABEL, AI_ICON } = window.HosAlivioFeed;
 
       // Must mirror EventNarrator#narrate in app/services/event_narrator.rb
       function narrate(p) {
         const s = p.subject_type, a = p.event, r = p.agent_id;
-        if (r === "admissions" && a === "handoff" && s === "Patient") {
+        if ((r === "admissions" || r === "triage") && a === "handoff" && s === "Patient") {
           const t = p.handoff_role ? (ROLE_LABEL[p.handoff_role] || p.handoff_role) : "team";
           return { before: "assigned", after: `to the ${t} team`, icon: "ri-send-plane-2-line" };
         }
-        if (r === "admissions" && a === "create" && s === "Note")
-          return { before: "posted a triage update for", after: p.urgency === "crisis" ? " (crisis triage)" : "", icon: "ri-chat-3-line" };
+        if (r === "triage" && a === "create" && s === "Note")
+          return { before: "triaged a family message for", after: p.urgency === "crisis" ? " (crisis)" : "", icon: "ri-chat-3-line" };
         if (r === "front_door_inbound" && a === "create" && s === "Note")
-          return { before: "logged a new concern from", after: p.urgency === "crisis" ? "'s family — marked CRISIS" : "'s family", icon: "ri-feedback-line" };
+          return { before: "family raised a new concern for", after: "", icon: "ri-feedback-line" };
+        if (a === "answer_family_question" && s === "Patient")
+          return { before: "answered a family question for", after: "", icon: "ri-question-answer-line" };
+        if (r === "system" && a === "family_user_invited") {
+          const whom = [p.family_name, p.relationship ? `(${p.relationship})` : null].filter(Boolean).join(" ") || "a family member";
+          return { before: `invited ${whom} to the Care Portal for`, after: "", icon: "ri-user-add-line" };
+        }
         if (a === "create" && s === "MedicationOrder")
           return { before: `authorized a new medication order${p.drug_name ? ` (${p.drug_name})` : ""} for`, after: "", icon: "ri-capsule-line" };
         if (a === "update" && s === "MedicationOrder")    return { before: "updated a medication order for", after: "", icon: "ri-capsule-line" };
@@ -689,7 +677,7 @@
         if (a === "create" && s === "DmeOrder")           return { before: `ordered${p.equipment_type ? " a " + p.equipment_type.replace(/_/g, ' ') : " equipment"} for`, after: "", icon: "ri-tools-line" };
         if (a === "create" && s === "Patient")            return { before: "admitted", after: "as a new referral", icon: "ri-user-add-line" };
         if (a === "update" && s === "Patient")            return { before: "updated", after: "'s chart", icon: "ri-edit-2-line" };
-        if (a === "update" && s === "Note")               return { before: "acknowledged a note on", after: "'s chart", icon: "ri-check-line" };
+        if (a === "update" && s === "Note")               return { before: "marked a note reviewed for", after: "", icon: "ri-check-line" };
         if (a === "inquiry_received" && s === "Inquiry") {
           const firstName = p.first_name || "Someone";
           const zip       = p.zip_prefix || "unknown";
@@ -711,7 +699,18 @@
 
       // --- Card helpers (mirror EventNarrator::Story#action_label / #source_label) ---
       function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
-      function initialsOf(name) { return (name || "").split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?"; }
+      // Mirrors Story#avatar_icon: HosAlivio wears the AI mark, people their initials.
+      function avatarGlyph(persona) {
+        return persona.ai ? `<i class="${AI_ICON} text-[15px] not-italic"></i>` : esc(persona.initials || "?");
+      }
+      // Mirrors the `link` branch in dashboards/_event_story.html.erb.
+      function deepLink(p) {
+        if (p.patient_id && p.subject_type === "Note") return `/patients/${p.patient_id}?note=${p.subject_id}`;
+        if (p.subject_type === "Visit")   return `/visits/${p.subject_id}`;
+        if (p.subject_type === "Inquiry") return `/inquiries/${p.subject_id}`;
+        if (p.patient_id)                 return `/patients/${p.patient_id}`;
+        return null;
+      }
       function actionLabel(phrase) {
         let before = (phrase.before || "").trim();
         const after = (phrase.after || "").trim();
@@ -734,30 +733,30 @@
         const catLabel = LANE_LABEL[cat] || "Ops";
         const source     = persona.title ? `${persona.name} (${persona.title})` : persona.name;
         const action     = actionLabel(phrase);
-        const hasPatient = !!p.patient_id;
-        const headline   = hasPatient ? (p.patient_name || source) : source;
-        const initials   = hasPatient && p.patient_name ? initialsOf(p.patient_name) : (persona.initials || "?");
+        const headline   = source;   // actor-led: avatar and headline are the same actor
+        const link       = deepLink(p);
         const crisisPill = isCrisis
           ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C1403A] text-white tracking-wider">CRISIS</span>`
           : "";
         const flash = isCrisis ? "bg-[#FFF3EC]" : "bg-[#FFFBEB]";
 
-        const row = document.createElement(hasPatient ? "a" : "div");
-        row.className = `group/story flex items-start gap-2.5 rounded-lg border-l-[3px] pl-2.5 pr-2 py-1.5 -mx-2 transition ${hasPatient ? "hover:bg-[#FBF9F5]" : ""} ${flash}`;
+        const row = document.createElement(link ? "a" : "div");
+        row.className = `group/story flex items-start gap-2.5 rounded-lg border-l-[3px] pl-2.5 pr-2 py-1.5 -mx-2 transition ${link ? "hover:bg-[#FBF9F5]" : ""} ${flash}`;
         row.style.borderLeftColor = catColor;
         row.setAttribute("data-story", "");
         row.setAttribute("data-category", cat);
-        if (hasPatient) row.setAttribute("href", `/patients/${p.patient_id}`);
+        if (link) row.setAttribute("href", link);
         row.innerHTML = `
-          <span class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
-                style="background: ${catColor};" title="${esc(catLabel)}">${esc(initials)}</span>
+          <span aria-hidden="true" class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-[11px]"
+                style="background: ${persona.color || catColor};" title="${esc(source)} · ${esc(catLabel)}">${avatarGlyph(persona)}</span>
           <div class="min-w-0 flex-1">
-            <div class="text-[13px] font-semibold text-[#1D1C1A] truncate ${hasPatient ? "group-hover/story:text-[#D97757]" : ""}">${esc(headline)}</div>
-            <div class="text-[12px] text-[#6B665F] leading-snug">${hasPatient ? esc(source) + " " : ""}${esc(action)}</div>
+            <div class="text-[13px] font-semibold text-[#1D1C1A] truncate ${link ? "group-hover/story:text-[#D97757]" : ""}">${esc(headline)}</div>
+            <div class="text-[12px] text-[#6B665F] leading-snug">${esc(action)}</div>
             <div class="mt-0.5 flex items-center gap-2 text-[10px] text-[#9A938A]">
               <time class="font-mono">${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
               ${crisisPill}
-              ${p.patient_mrn ? `<span class="font-mono">· ${esc(p.patient_mrn)}</span>` : ""}
+              ${p.patient_name ? `<span class="truncate">· ${esc(p.patient_name)}</span>` : ""}
+              ${p.patient_mrn ? `<span class="font-mono flex-shrink-0">· ${esc(p.patient_mrn)}</span>` : ""}
             </div>
           </div>
         `;
