@@ -563,6 +563,11 @@
           return { before: "family raised a new concern for", after: "", icon: "ri-feedback-line" };
         if (a === "answer_family_question" && s === "Patient")
           return { before: "answered a family question for", after: "", icon: "ri-question-answer-line" };
+        // Mirrors EventNarrator: the named-person half of escalation.
+        if (a === "notify_clinician" && s === "Patient") {
+          const whom = p.target_name || ROLE_LABEL[p.handoff_role] || "a clinician";
+          return { before: "flagged " + whom + " to follow up with", after: "", icon: "ri-alarm-warning-line" };
+        }
         if (r === "system" && a === "family_user_invited") {
           const whom = [p.family_name, p.relationship ? `(${p.relationship})` : null].filter(Boolean).join(" ") || "a family member";
           return { before: `invited ${whom} to the Care Portal for`, after: "", icon: "ri-user-add-line" };

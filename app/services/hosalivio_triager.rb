@@ -18,7 +18,13 @@ class HosalivioTriager
     "dyspnea"            => %w[visit_rn md],
     "decline"            => %w[visit_rn],
     "caregiver_distress" => %w[social_worker chaplain],
-    "transitioning"      => %w[visit_rn chaplain],
+    # MD included: someone actively dying needs the physician, not only the
+    # nurse and chaplain — comfort orders and pronouncement both run through
+    # them. Added 2026-07-17 after lib/eval surfaced that the taxonomy had no
+    # home for acute deterioration that isn't pain or dyspnea: the only intent
+    # that paged an MD was pain_crisis, so "grey, clammy, unresponsive" had to
+    # be mislabelled as pain to reach a doctor. See lib/eval/README.md.
+    "transitioning"      => %w[visit_rn chaplain md],
     "med_refill"         => %w[pharmacy visit_rn],
     "callback_request"   => %w[visit_rn],
     "spiritual"          => %w[chaplain social_worker],
@@ -446,6 +452,24 @@ class HosalivioTriager
       title:  "HosAlivio flagged a patient for your review",
       body:   "#{@patient.full_name}: #{reason.presence || "Follow-up requested."}",
       linked: note
+    )
+
+    # This path wakes a real human, so it belongs in the agent audit trail
+    # alongside emit_handoff. It previously wrote only a Note + Notification and
+    # no AgentEvent, which meant an escalation could be invisible to the Mission
+    # Stage feed and to anything querying AgentEvent — "we alerted the nurse" was
+    # not provable from one place. Same action verb and change_set shape as
+    # ClinicianDispatcher's relay, so AgentEvent.escalations covers both paths.
+    AgentEvent.create!(
+      agency:           @agency,
+      agent_id:         "triage",
+      agent_session_id: Current.agent_session_id,
+      action:           "notify_clinician",
+      subject:          @patient,
+      change_set:       { target_role: role, target_user_id: target.id,
+                          target_name: target.full_name, reason: reason.presence,
+                          urgency: @note.urgency.to_s },
+      happened_at:      Time.current
     )
   rescue => e
     Rails.logger.warn("[HosalivioTriager#execute_notify] #{e.class}: #{e.message}")

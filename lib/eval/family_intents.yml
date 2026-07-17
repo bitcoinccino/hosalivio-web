@@ -1,0 +1,183 @@
+# Labelled family messages for the triage-intent classifier.
+#
+# WHAT THIS IS FOR
+# The classifier's job is not to pick a pretty label — it is to wake the right
+# humans. So the label that matters is the ROUTING it implies via
+# HosalivioTriager::ESCALATION_ROLES. Confusing pain_crisis with dyspnea still
+# pages [visit_rn, md] and is harmless; confusing pain_crisis with
+# status_question silently drops the MD. The scorer weighs it that way.
+#
+# FIELDS
+#   id              stable slug — cite it when a case regresses
+#   message         what the family actually types (verbatim register: lowercase,
+#                   typos, panic, hedging — not clean prose)
+#   family_urgency  what the family marked in the portal (normal|urgent|crisis).
+#                   Often WRONG in both directions, which is the point: families
+#                   under-report crises out of politeness and over-report out of
+#                   fear. The classifier must read the text, not the flag.
+#   expect          the intent a competent triage nurse would assign
+#   why             why that intent, for the person reading a failure report
+#   fallback_ok     false when the regex fallback is KNOWN to miss this case.
+#                   Not an excuse — a ledger. See lib/eval/README.md.
+#
+# ADDING CASES
+# Add the real message whenever triage gets one wrong in production. This file
+# only earns its keep if it accumulates the failures you actually saw.
+
+cases:
+  # ── pain_crisis → [visit_rn, md] ────────────────────────────────────────
+  - id: pain_obvious
+    message: "mom is in terrible pain, she's been moaning for an hour and the morphine isn't touching it"
+    family_urgency: crisis
+    expect: pain_crisis
+    why: "Explicit pain + breakthrough despite meds."
+
+  - id: pain_understated
+    message: "sorry to bother you. he seems a bit uncomfortable tonight, keeps wincing when we move him. probably nothing"
+    family_urgency: normal
+    expect: pain_crisis
+    why: "Families apologise and minimise. 'Wincing on movement' after a hospice admission is uncontrolled pain. The normal flag is wrong."
+    fallback_ok: false
+
+  - id: pain_no_keyword
+    message: "she cried out when we turned her and hasn't settled since. she never does that"
+    family_urgency: urgent
+    expect: pain_crisis
+    why: "Distress described behaviourally, never named as pain. Regex has no hook."
+    fallback_ok: false
+
+  # ── dyspnea → [visit_rn, md] ────────────────────────────────────────────
+  - id: dyspnea_obvious
+    message: "he can't breathe properly, he's gasping and it's scaring me"
+    family_urgency: crisis
+    expect: dyspnea
+
+  - id: dyspnea_described
+    message: "there's a rattling sound when he breathes now and he's working really hard for each one"
+    family_urgency: urgent
+    expect: dyspnea
+    why: "Terminal secretions + increased work of breathing."
+
+  # ── decline → [visit_rn] ────────────────────────────────────────────────
+  - id: decline_intake
+    message: "she hasn't eaten in two days and barely drinks. is that normal?"
+    family_urgency: normal
+    expect: decline
+    why: "Reduced intake is a decline marker. Phrased as a question but it is not a status question."
+    fallback_ok: false
+
+  - id: decline_sleeping
+    message: "he's sleeping almost all day now and i can't really wake him for his pills"
+    family_urgency: normal
+    expect: decline
+    fallback_ok: false
+
+  # ── transitioning → [visit_rn, chaplain] ────────────────────────────────
+  - id: transitioning_mottling
+    message: "her hands and feet have gone purple and blotchy and they're cold. her breathing keeps stopping then starting"
+    family_urgency: urgent
+    expect: transitioning
+    why: "Mottling + Cheyne-Stokes. Actively dying — needs nurse AND chaplain, not nurse alone."
+    fallback_ok: false
+
+  - id: transitioning_asking
+    message: "how long do you think she has? we want to know whether to call her brother tonight"
+    family_urgency: normal
+    expect: transitioning
+    why: "Prognosis question at the bedside is a transition conversation."
+    fallback_ok: false
+
+  # ── caregiver_distress → [social_worker, chaplain] ──────────────────────
+  - id: caregiver_burnout
+    message: "i haven't slept in three days. i can't keep doing this on my own, i really can't"
+    family_urgency: normal
+    expect: caregiver_distress
+    why: "The PATIENT is fine; the CAREGIVER is the one in crisis. Routes to SW/chaplain, not the nurse."
+    fallback_ok: false
+
+  - id: caregiver_guilt
+    message: "i feel like i'm failing her. everyone says i'm doing enough but i know i'm not"
+    family_urgency: normal
+    expect: caregiver_distress
+    fallback_ok: false
+
+  # ── med_refill → [pharmacy, visit_rn] ───────────────────────────────────
+  - id: refill_plain
+    message: "we're running low on the lorazepam, down to about two doses"
+    family_urgency: normal
+    expect: med_refill
+
+  - id: refill_urgent_tone
+    message: "we are completely out of his morphine and he has a dose due at 2"
+    family_urgency: urgent
+    expect: med_refill
+    why: "Still a refill — but pharmacy AND nurse, which is what med_refill routes to."
+
+  # ── callback_request → [visit_rn] ───────────────────────────────────────
+  - id: callback_plain
+    message: "can someone please call me when you get a chance"
+    family_urgency: normal
+    expect: callback_request
+
+  - id: callback_polite
+    message: "no rush at all but i'd love to talk to pascal at some point today"
+    family_urgency: normal
+    expect: callback_request
+    fallback_ok: false
+
+  # ── spiritual → [chaplain, social_worker] ───────────────────────────────
+  - id: spiritual_plain
+    message: "would it be possible for a chaplain to visit? she's been asking to pray with someone"
+    family_urgency: normal
+    expect: spiritual
+
+  - id: spiritual_indirect
+    message: "she keeps saying she's scared of what comes next and i don't know what to say to her"
+    family_urgency: normal
+    expect: spiritual
+    why: "Existential fear. Regex catches 'scared'? No — it looks for 'afraid'."
+    fallback_ok: false
+
+  # ── logistics → [dme, visit_rn] ─────────────────────────────────────────
+  - id: logistics_bed
+    message: "the hospital bed they delivered is making a grinding noise when we raise it"
+    family_urgency: normal
+    expect: logistics
+
+  - id: logistics_oxygen
+    message: "how do we get a bigger oxygen tank for taking her to the appointment"
+    family_urgency: normal
+    expect: logistics
+
+  # ── status_question → [visit_rn] ────────────────────────────────────────
+  - id: status_when
+    message: "what time is the nurse coming tomorrow?"
+    family_urgency: normal
+    expect: status_question
+
+  - id: status_who
+    message: "who should we expect this week? is it the same nurse as last time"
+    family_urgency: normal
+    expect: status_question
+
+  # ── other → [visit_rn] ──────────────────────────────────────────────────
+  - id: other_thanks
+    message: "just wanted to say thank you all so much for yesterday. it meant a lot"
+    family_urgency: normal
+    expect: other
+    why: "Gratitude. No action needed — must NOT be escalated as a crisis."
+
+  # ── adversarial: the classifier must read text, not the urgency flag ────
+  - id: crisis_flag_but_benign
+    message: "sorry i think i hit the wrong button. i just wanted to check if the aide is coming friday"
+    family_urgency: crisis
+    expect: status_question
+    why: "Family mis-flagged as crisis. Trusting the flag pages the MD at 3am for a schedule question. NOTE: the fallback short-circuits on urgency==crisis and CANNOT pass this."
+    fallback_ok: false
+
+  - id: normal_flag_but_crisis
+    message: "he's grey and clammy and i can't get him to respond to me"
+    family_urgency: normal
+    expect: pain_crisis
+    why: "Family flagged normal. Text is an emergency. The inverse failure — and the dangerous one."
+    fallback_ok: false
