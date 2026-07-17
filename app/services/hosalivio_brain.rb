@@ -39,6 +39,25 @@ class HosalivioBrain
 
   URGENCIES = %w[crisis urgent normal].freeze
 
+  # Triage is classification, not creative writing — but every provider defaults
+  # to temperature 1.0 (full sampling), and nothing here used to override it.
+  #
+  # That was measurable, not theoretical. Running lib/eval three times against
+  # the live provider, the identical message — "how long do you think she has?
+  # we want to know whether to call her brother tonight" — classified
+  # `transitioning` twice and `decline` once. transitioning routes to
+  # [visit_rn, chaplain, md]; decline routes to [visit_rn]. So one run in three,
+  # a family asking whether to summon the brother tonight got the nurse alone,
+  # with no chaplain and no MD, on identical input.
+  #
+  # Pinned to 0 so the same message routes the same way every time. The reply
+  # prose becomes deterministic too, which is fine — different families ask
+  # different things, and identical questions deserve identical answers.
+  #
+  # Prose paths (call_claude_plain, the public marketing chat) are deliberately
+  # left at provider defaults; variance there is harmless.
+  TRIAGE_TEMPERATURE = Float(ENV.fetch("HOSALIVIO_TRIAGE_TEMPERATURE", 0)).freeze
+
   # Ordered provider chain. Each returns {intent, urgency, reasoning, reply, source}
   # or raises. `fallback` never raises.
   PROVIDER_CHAIN = %i[claude openai openrouter].freeze
@@ -461,8 +480,9 @@ class HosalivioBrain
     req["x-api-key"]         = ENV.fetch("ANTHROPIC_API_KEY")
     req["anthropic-version"] = CLAUDE_VERSION
     req.body = {
-      model:      CLAUDE_MODEL,
-      max_tokens: 700,
+      model:       CLAUDE_MODEL,
+      max_tokens:  700,
+      temperature: TRIAGE_TEMPERATURE,
       system: [
         { type: "text", text: soul_md,           cache_control: { type: "ephemeral" } },
         { type: "text", text: instruction_block }
@@ -489,6 +509,7 @@ class HosalivioBrain
     body = {
       model: model,
       max_tokens: 700,
+      temperature: TRIAGE_TEMPERATURE,
       messages: [
         { role: "system", content: "#{soul_md}\n\n---\n\n#{instruction_block}" },
         { role: "user",   content: user_prompt }
@@ -1840,8 +1861,14 @@ class HosalivioBrain
     text = @note.body.to_s.downcase
     intent =
       if @note.urgency.to_s == "crisis" then "pain_crisis"
-      elsif text.match?(/\b(pain|hurt|moan|gasp|choking|severe)\b/)                     then "pain_crisis"
-      elsif text.match?(/\b(breath|breathing|can['t]*\s*breathe|dyspnea|air hunger)\b/) then "dyspnea"
+      # Respiratory is checked BEFORE pain: "gasping" is breathing, not pain, and
+      # both route to [visit_rn, md] so the order is safe either way.
+      # \w* on the stems is load-bearing — the old /\bbreath\b/ did not match
+      # "breathes", so "rattling when he breathes" fell through to the
+      # status_question branch on the word "when" and dropped the MD.
+      # Caught by lib/eval (eval:intents, case dyspnea_described).
+      elsif text.match?(/\b(breath\w*|dyspnea|air hunger|gasp\w*|rattl\w*|choking|wheez\w*)\b/) then "dyspnea"
+      elsif text.match?(/\b(pain|hurt\w*|moan\w*|ach(e|ing)|severe|wince\w*|writh\w*)\b/)       then "pain_crisis"
       elsif text.match?(/\b(refill|out of|running low|need more|resupply)\b/)           then "med_refill"
       elsif text.match?(/(call me|call us|please call|can someone call|give (me|us) a call|phone me)/) then "callback_request"
       elsif text.match?(/\b(chaplain|pray|god|faith|afraid|dying|coping|spiritual)\b/)  then "spiritual"
