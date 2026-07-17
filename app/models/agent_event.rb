@@ -14,6 +14,34 @@ class AgentEvent < ApplicationRecord
   scope :pending,      -> { where(acknowledged_at: nil) }
   scope :acknowledged, -> { where.not(acknowledged_at: nil) }
 
+  # ── Escalations ────────────────────────────────────────────────────────
+  # "Which humans did HosAlivio wake, and why?" — one query, both paths.
+  #
+  # Two mechanisms escalate and they differ in effect, so both are recorded
+  # rather than collapsed:
+  #
+  #   handoff          -> a ROLE's dashboard queue (HosalivioTriager#emit_handoff)
+  #   notify_clinician -> a NAMED person's notifications
+  #                       (HosalivioTriager#execute_notify, ClinicianDispatcher)
+  #
+  # Until 2026-07-17 only `handoff` wrote an AgentEvent, so a notify-path
+  # escalation left no trace here at all — it was invisible to the Mission Stage
+  # feed and unprovable from the audit trail. Both are now recorded, which is
+  # what makes "we alerted the nurse" answerable from one place.
+  ESCALATION_ACTIONS = %w[handoff notify_clinician].freeze
+
+  scope :escalations, -> { where(action: ESCALATION_ACTIONS) }
+  scope :for_patient, ->(patient) { where(subject_type: "Patient", subject_id: patient.is_a?(Patient) ? patient.id : patient) }
+
+  def escalation? = ESCALATION_ACTIONS.include?(action.to_s)
+
+  # The role this escalation targeted, or nil. Both paths carry target_role.
+  def escalated_to_role = change_set.is_a?(Hash) ? change_set["target_role"].presence : nil
+
+  # The named person, when the mechanism targeted one (notify_clinician only —
+  # a handoff addresses a role's queue, not an individual).
+  def escalated_to_user_id = change_set.is_a?(Hash) ? change_set["target_user_id"].presence : nil
+
   def acknowledged?
     acknowledged_at.present?
   end
@@ -115,6 +143,8 @@ class AgentEvent < ApplicationRecord
       # Populated only on `family_user_invited`; nil (and dropped) otherwise.
       family_name:   change_set.is_a?(Hash) ? change_set["family_full_name"] : nil,
       relationship:  change_set.is_a?(Hash) ? change_set["relationship"]     : nil,
+      # Populated only on `notify_clinician`; lets the live feed name who was woken.
+      target_name:   change_set.is_a?(Hash) ? change_set["target_name"]      : nil,
       patient_mrn:   patient&.mrn,
       patient_name:  patient&.full_name,
       drug_name:     drug,

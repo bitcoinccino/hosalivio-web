@@ -160,6 +160,15 @@ class EventNarrator
         { before: "family raised a new concern for", after: "", icon: "ri-feedback-line" }
       in [ _, "answer_family_question", "Patient" ]
         { before: "answered a family question for", after: "", icon: "ri-question-answer-line" }
+      in [ _, "notify_clinician", "Patient" ]
+        # The other half of escalation: a handoff addresses a role's queue, this
+        # wakes a named person. Both are AgentEvent.escalations; only this one
+        # can say who. Previously had no case and rendered as the raw action.
+        cs   = event.change_set || {}
+        whom = cs["target_name"].presence ||
+               EventNarrator::ROLE_LABEL[cs["target_role"]] ||
+               cs["target_role"].to_s.humanize.presence || "a clinician"
+        { before: "flagged #{whom} to follow up with", after: "", icon: "ri-alarm-warning-line" }
       in [ "system", "family_user_invited", _ ]
         cs   = event.change_set || {}
         who  = cs["family_full_name"].presence
