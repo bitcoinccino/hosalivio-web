@@ -11,7 +11,9 @@
   can_schedule = (current_user.role_names & %w[admin admissions]).any?
 %>
 
-<div class="min-h-screen" data-controller="calendar">
+<%# No min-h-screen: layouts/mission already owns the viewport and gives this
+    page a scroll container beneath the banner. %>
+<div data-controller="calendar">
   <!-- Top bar -->
   <header class="md:sticky md:top-0 z-20 bg-[#FBF9F5]/90 backdrop-blur border-b border-[#EFECE6]">
     <%
@@ -33,15 +35,12 @@
         end
     %>
     <div class="max-w-[1400px] mx-auto px-4 md:px-6 min-h-14 py-2 flex items-center justify-between gap-3">
+      <%# The Mission banner carries the back link, the "Calendar" title and the
+          agency; this row keeps the month/week the RN is actually looking at. %>
       <div class="flex items-center gap-3 min-w-0">
-        <a href="/dashboard" class="text-[12px] text-[#6B665F] hover:text-[#1D1C1A] inline-flex items-center gap-1 flex-shrink-0">
-          <i class="ri-arrow-left-line"></i><span class="hidden sm:inline"> Dashboard</span>
-        </a>
         <div class="min-w-0">
           <h1 class="font-serif text-[17px] md:text-[20px] text-[#1D1C1A] leading-tight truncate"><%= month_label %></h1>
-          <span class="text-[10px] md:text-[11px] text-[#6B665F] font-mono block truncate">
-            <%= @agency&.name %> · <%= week_range %>
-          </span>
+          <span class="text-[10px] md:text-[11px] text-[#6B665F] font-mono block truncate"><%= week_range %></span>
         </div>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
@@ -70,8 +69,6 @@
             <i class="ri-add-line"></i> New visit
           </a>
         <% end %>
-        <span class="hidden md:block w-px h-6 bg-[#EFECE6] mx-1"></span>
-        <%= render "shared/user_menu" %>
       </div>
     </div>
   </header>

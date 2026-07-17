@@ -17,14 +17,9 @@
   }
 %>
 <div class="max-w-5xl mx-auto px-4 md:px-8 py-6">
+  <%# Back link, title and agency come from the Mission banner (layouts/mission). %>
   <div class="flex items-start justify-between gap-3 mb-5 flex-wrap">
-    <div>
-      <a href="<%= dashboard_path %>" class="inline-flex items-center gap-1 text-[12px] text-[#6B665F] hover:text-[#1D1C1A] mb-2">
-        <i class="ri-arrow-left-line"></i> Dashboard
-      </a>
-      <h1 class="font-serif text-[24px] text-[#1D1C1A]">Referrals &amp; inquiries</h1>
-      <div class="text-[12px] text-[#6B665F]"><%= @agency&.name %> · <%= @open_total %> open</div>
-    </div>
+    <div class="text-[12px] text-[#6B665F]"><%= @open_total %> open</div>
     <% if @followups_due.to_i > 0 %>
       <%= link_to inquiries_path(status: "considering"),
             class: "inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#FFF3EC] text-[#B4552F] border border-[#F1C7AE] hover:bg-[#FCE7DA] transition" do %>

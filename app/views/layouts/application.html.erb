@@ -70,7 +70,10 @@
       <div id="notification-toasts" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-[min(92vw,360px)]"></div>
     <% end %>
 
-    <%= yield %>
+    <%# `:content` is set by nested layouts (layouts/mission), which wrap the
+        page in the Mission shell and then render this template. A plain page
+        with no nested layout just yields normally. %>
+    <%= content_for?(:content) ? yield(:content) : yield %>
 
     <%# Cookie notice — shown to visitors (signed-in users have already passed
         through the public site); avoids overlapping the app's fixed bottom UI. %>

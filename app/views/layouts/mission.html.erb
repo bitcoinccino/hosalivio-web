@@ -1,0 +1,59 @@
+<%# Shell for the pages the Mission Stage nav reaches (Referrals, Admissions,
+    Patients, Calendar, Branches, Team). Previously each rendered standalone,
+    so following a nav link dropped the rail entirely and every page hand-rolled
+    its own back link + title + agency line.
+
+    Two columns: the nav rail and the page. The live-activity rail deliberately
+    stays on the Mission Stage — these pages are mostly tables and want the
+    width.
+
+    Controllers opt in with `layout "mission"` and set @mission_nav to their key
+    from MissionNavHelper::NAV; the banner's icon and title come from that entry,
+    so they always match the link that got you here. %>
+<%
+  item   = mission_nav_item(@mission_nav)
+  agency = @agency || current_user&.agency
+%>
+<% content_for :content do %>
+  <div class="flex h-screen" data-controller="sidebar mission-mobile" data-sidebar-storage-key-value="dashboardSidebar">
+    <%# mobile_tab "nav" — mission_mobile starts on its default "stage" tab, so
+        the rail begins closed on phones and the hamburger below opens it. %>
+    <%= render "shared/mission_sidebar", active: @mission_nav, mobile: true, mobile_tab: "nav" %>
+
+    <main data-mission-mobile-target="tab" data-tab-name="stage"
+          class="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <%# Same slim banner as the Stage, so moving between them doesn't shift
+          the page. Back always goes to the Stage — never browser history — so
+          it means the same thing however you arrived. %>
+      <header class="relative flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2.5 border-b border-[#EFECE6] bg-white flex-shrink-0">
+        <%# Phones only: open the nav rail as a full-screen drawer. On desktop
+            the rail is always present, so this would be noise. %>
+        <button type="button" data-action="click->mission-mobile#activate" data-tab-name="nav"
+                aria-label="Open menu"
+                class="md:hidden w-8 h-8 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:bg-[#FBF9F5] inline-flex items-center justify-center flex-shrink-0 transition">
+          <i class="ri-menu-line text-base"></i>
+        </button>
+
+        <a href="<%= dashboard_path %>" title="Back to Mission Stage" aria-label="Back to Mission Stage"
+           class="w-8 h-8 rounded-full border border-[#D9D5CD] text-[#6B665F] hover:text-[#1D1C1A] hover:border-[#D97757] hover:bg-[#FBF9F5] inline-flex items-center justify-center flex-shrink-0 transition">
+          <i class="ri-arrow-left-line text-base"></i>
+        </a>
+
+        <%# The page icon is redundant with the title on a narrow screen — the
+            title is what has to survive, so the icon goes first. %>
+        <div class="hidden sm:flex w-8 h-8 rounded-full bg-[#D97757] text-white items-center justify-center flex-shrink-0">
+          <i class="<%= item&.dig(:icon) || "ri-file-list-line" %> text-base"></i>
+        </div>
+        <h2 class="font-serif text-[15px] text-[#1D1C1A] truncate min-w-0"><%= item&.dig(:label) || "HosAlivio" %></h2>
+        <% if agency %>
+          <span class="hidden md:inline text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE6] text-[#1D1C1A] tracking-wider uppercase truncate max-w-[160px] flex-shrink-0"><%= agency.name %></span>
+        <% end %>
+      </header>
+
+      <div class="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+        <%= yield %>
+      </div>
+    </main>
+  </div>
+<% end %>
+<%= render template: "layouts/application" %>

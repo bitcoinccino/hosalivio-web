@@ -1,4 +1,8 @@
 class CalendarsController < ApplicationController
+  # Renders inside the Mission shell (nav rail + banner) rather than
+  # standalone; @mission_nav drives the highlight and the banner title.
+  layout "mission", only: [ :show ]
+  before_action -> { @mission_nav = :calendar }, only: [ :show ]
   before_action :authenticate_user!
   before_action :redirect_family_users
 
