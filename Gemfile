@@ -104,7 +104,7 @@ gem "fhir_models", "~> 5.0"
 # HosAlivio UI
 gem "tailwindcss-rails"
 
-gem "pdf-reader", "~> 2.14"
+gem "pdf-reader", "~> 2.16"
 
 # Server-side PDF generation (signed-consent download — works on any device,
 # unlike browser print-to-PDF). Pure Ruby, no external binaries.
